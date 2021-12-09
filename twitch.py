@@ -7,8 +7,7 @@ os.system('cls||clear')
 import LEDarcade as LED
 from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
-import time
-from datetime import datetime
+
 import random
 from configparser import SafeConfigParser
 import requests
@@ -27,6 +26,10 @@ import select
 #list of connection messages
 from CustomMessages import ConnectionMessages
 from CustomMessages import ChatStartMessages
+
+
+import time
+from datetime import datetime
 
 
 
