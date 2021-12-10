@@ -114,6 +114,7 @@ class Bot(commands.Bot):
     BotScrollSpeed      = TerminalScrollSpeed
     MessageCount        = 0
     SpeedupMessageCount = 5
+    ChatTerminalOn      = False
 
 
 
@@ -125,6 +126,7 @@ class Bot(commands.Bot):
         print("BOT_CHANNEL:     ",BOT_CHANNEL)
         print("BOT_ACCESS_TOKEN:",BOT_ACCESS_TOKEN)
         super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
+        self.BotStartTime        = time.time()
 
 
 
@@ -165,9 +167,10 @@ class Bot(commands.Bot):
           #Close Bot after X minutes of inactivity
           h,m,s    = LED.GetElapsedTime(self.LastMessageReceived,time.time())
           h2,m2,s2 = LED.GetElapsedTime(self.BotStartTime,time.time())
-          print("Seconds since last message:",s," MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:",m2," Messages Queued:",self.MessageCount,end="\r")
+          print("Seconds since last message:",s," MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:","{:5.2f}".format((m2 + s2 / 60))," Messages Queued:",self.MessageCount,end="\r")
 
-          if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
+          #if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
+          if (m >= self.MinutesToWaitBeforeClosing or m2 >= 1):
             print("No chat activity for the past {} minutes OR max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing,self.MinutesMaxTime))
             print("")       
             print("*****************")       
@@ -183,8 +186,12 @@ class Bot(commands.Bot):
             LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
             self.CursorH = CursorH
             self.CursorV = CursorV
+                                  
             await self.close()
+            
 
+            BOT_CHANNEL = 'hungrygoriya'
+            self.__init__()
 
           
 
@@ -205,6 +212,8 @@ class Bot(commands.Bot):
         #UserList = self.fetch_users()
         print(f'Logged in as | {self.nick}')
     
+        
+        
         #Display connection message
         x = len(ConnectionMessages)
         print("ConnectionMessages: ",x)
@@ -217,7 +226,6 @@ class Bot(commands.Bot):
         LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
         self.CursorH = CursorH
         self.CursorV = CursorV
-        self.MesageCount = self.MessageCount -1
 
 
         print(self.connected_channels.__len__())
@@ -254,9 +262,14 @@ class Bot(commands.Bot):
 
     async def event_message(self, message):
         
+        #Exit if Chat Terminal is not on
+        if (self.ChatTerminalOn = False):
+          return
+        
         #Remove emoji from message
         message.content = LED.deEmojify(message.content)
 
+        
 
         #If we have too many messages in the queue, speed up the terminal
         self.MessageCount = self.MessageCount + 1
@@ -292,7 +305,6 @@ class Bot(commands.Bot):
 
 
         try:
-
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message.author.display_name + ":",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,0,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=1,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, ScrollText,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=0,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
         
@@ -302,12 +314,13 @@ class Bot(commands.Bot):
         except:
           LED.ShowScrollingBanner2('ERROR! INVALID CHARACTER',(200,0,0),ScrollSleep=0.005,v=25)
 
+        self.MesageCount = self.MessageCount -1
 
 
         #Close Bot if we went past the max time. This is necessary here because the messages queue up 
         #and PerformTimeBaseFunctions has lower priority
         h2,m2,s2 = LED.GetElapsedTime(self.BotStartTime,time.time())
-        print("MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:",m2," Messages Queued:",self.MessageCount,end="\r")
+        print("MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:","{:5.2f}".format((m2 + s2 / 60))," Messages Queued:",self.MessageCount,end="\r")
 
         if (m2 >= self.MinutesMaxTime):
           print("Max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing))       
@@ -965,7 +978,7 @@ while (1==1):
       LittleTextZoom      = 1
       )
   
-    mybot.MinutesMaxTime = 2
+    mybot.MinutesMaxTime = 1
 
   
   LED.ClearBigLED()
@@ -1023,10 +1036,10 @@ while (1==1):
     RGB = LED.LowGreen,
     ShadowRGB     = LED.ShadowGreen,
     ZoomFactor    = 2,
-    AnimationDelay= 30,
+    AnimationDelay= 60,
     RunMinutes = 5)
 
-  LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 5 )
+  LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
 
 
