@@ -168,7 +168,7 @@ class Bot(commands.Bot):
           print("Seconds since last message:",s," MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:",m2," Messages Queued:",self.MessageCount,end="\r")
 
           if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
-            print(f"No chat activity for the past %s minutes OR max minutes reached.  Closing bot..." % self.MinutesToWaitBeforeClosing)       
+            print("No chat activity for the past {} minutes OR max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing,self.MinutesMaxTime))
             print("")       
             print("*****************")       
             print("** EXITING BOT **")
@@ -310,7 +310,7 @@ class Bot(commands.Bot):
         print("MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:",m2," Messages Queued:",self.MessageCount,end="\r")
 
         if (m2 >= self.MinutesMaxTime):
-          print(f"Max minutes reached.  Closing bot..." % self.MinutesToWaitBeforeClosing)       
+          print("Max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing))       
           print("")       
           print("*****************")       
           print("** EXITING BOT **")
@@ -736,9 +736,9 @@ def GetBasicTwitchInfo():
 
     
     if(StreamActive):
-      StreamStartedDatetime = datetime.fromisoformat(StreamStartedAt)
-
-      elapsed_time = time.time() - StreamStartedAt
+      StreamStartedDateTime =  ConvertDate(StreamStartedAt)
+      
+      elapsed_time = time.time() - StreamStartedDateTime
       elapsed_hours, rem = divmod(elapsed_time, 3600)
       elapsed_minutes, elapsed_seconds = divmod(rem, 60)
       print("Elapsed Time: {:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds),end="\r")
@@ -957,7 +957,7 @@ while (1==1):
       LittleText          = "NO STREAM",
       LittleTextRGB       = LED.MedRed,
       LittleTextShadowRGB = LED.ShadowRed, 
-      ScrollText          = "Main stream not active. Lets try another...",
+      ScrollText          = CHANNEL + " not active. Lets try " + BOT_CHANNEL,
       ScrollTextRGB       = LED.MedYellow,
       ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
       DisplayTime         = 1,           # time in seconds to wait before exiting 
