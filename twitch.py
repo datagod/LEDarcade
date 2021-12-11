@@ -263,7 +263,7 @@ class Bot(commands.Bot):
     async def event_message(self, message):
         
         #Exit if Chat Terminal is not on
-        if (self.ChatTerminalOn = False):
+        if (self.ChatTerminalOn == False):
           return
         
         #Remove emoji from message
