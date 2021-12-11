@@ -1039,7 +1039,7 @@ while (1==1):
     AnimationDelay= 60,
     RunMinutes = 5)
 
-  LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
+  #LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
 
 
