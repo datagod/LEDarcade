@@ -105,6 +105,15 @@ HatWidth  = 64
 
 
 
+#Sprite display locations
+LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
+LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
+LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
+LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
+
+
+
+
 
 
 class Bot(commands.Bot):
@@ -196,7 +205,7 @@ class Bot(commands.Bot):
             LittleText          = "NO STREAM",
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = CHANNEL + " not active. Tray again later...",
+            ScrollText          = CHANNEL + " not active. Try again later...",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 1,           # time in seconds to wait before exiting 
@@ -310,19 +319,34 @@ class Bot(commands.Bot):
             self.ChatTerminalOn = False                        
             #await self.close()
                       
+            if( StreamActive == True):
+              LED.DisplayDigitalClock(
+                ClockStyle = 3,
+                CenterHoriz = True,
+                v   = 1, 
+                hh  = 24,
+                RGB = LED.LowGreen,
+                ShadowRGB        = LED.ShadowGreen,
+                ZoomFactor       = 3,
+                AnimationDelay   = 30,
+                RunMinutes       = 1,
+                StartDateTimeUTC = StreamStartedDateTime,
+                HHMMSS           = StreamDurationHHMMSS)
 
-            LED.DisplayDigitalClock(
-              ClockStyle = 3,
-              CenterHoriz = True,
-              v   = 1, 
-              hh  = 24,
-              RGB = LED.LowGreen,
-              ShadowRGB        = LED.ShadowGreen,
-              ZoomFactor       = 3,
-              AnimationDelay   = 30,
-              RunMinutes       = 1,
-              StartDateTimeUTC = StreamStartedDateTime,
-              HHMMSS           = StreamDurationHHMMSS)
+            else:
+              LED.DisplayDigitalClock(
+                ClockStyle = 1,
+                CenterHoriz = True,
+                v   = 1, 
+                hh  = 24,
+                RGB = LED.LowGreen,
+                ShadowRGB        = LED.ShadowGreen,
+                ZoomFactor       = 3,
+                AnimationDelay   = 30,
+                RunMinutes       = 5
+                )
+
+
 
             self.MinutesMaxTime = 1
 
