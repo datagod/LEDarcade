@@ -1057,6 +1057,7 @@ class Sprite(object):
     self.directionV  = 0
     self.velocityH   = 0
     self.velocityV   = 0
+    self.on          = True
 
   
   
@@ -12719,6 +12720,19 @@ def UpdateClockWithTransition(ClockSprite,hh=24,h=0,v=0,RGB=HighGreen,ShadowRGB=
 
 
 
+
+
+
+
+
+
+----->  need a new function here that will take an input time and calculate duration HHMMSS from current
+
+
+
+
+
+
 def UpdateTimerWithTransition(TimerSprite,h=0,v=0,RGB=HighGreen,ShadowRGB=ShadowGreen,ZoomFactor=1,Fill=False,TransitionType=1):
 
   global ScreenArray
@@ -12769,7 +12783,8 @@ def DisplayDigitalClock(
   ZoomFactor  = 2,
   AnimationDelay = 10,
   ScrollSleep    = 0.02,
-  RunMinutes     = 5
+  RunMinutes     = 5,
+  TimeStartedAt  = '00:00:00'
   
   ):
 
@@ -13859,7 +13874,7 @@ def DisplayDigitalClock(
 
     #Timer counting up?
     if (ClockStyle == 3):
-      TimerSprite = CreateTimerSprite('00:00:00')
+      TimerSprite = CreateTimerSprite(TimeStartedAt)
       MakeAndShowTimer(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
       #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
@@ -14510,10 +14525,34 @@ def ScrollScreenArray(ScreenArray,lines,speed):
 
 
 
+def BlinkCursor(CursorH=0,CursorV=0,CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),BlinkSpeed=0.25,BlinkCount=1):
 
 
+  for i in range (0,BlinkCount*2):
+    #If on, draw dark, if off, draw bright
+    #print ("BlinkCursor:",CursorSprite.on)
+    if(CursorSprite.on == True):
+      ColorTuple = CursorDarkRGB
+      CursorSprite.on = False
+    else:
+      ColorTuple = CursorRGB
+      CursorSprite.on = True
 
 
+    CopySpriteToPixelsZoom(
+      TheSprite = CursorSprite,
+      h = CursorH,
+      v = CursorV,
+      ColorTuple = ColorTuple,
+      FillerTuple=(0,0,0),
+      ZoomFactor = 1,
+      Fill = False
+    )
+
+    if (BlinkSpeed > 0):
+      time.sleep(BlinkSpeed)
+
+  return
 
 
         

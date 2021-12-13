@@ -14,9 +14,13 @@ import requests
 import traceback
 import socket
 import twitchio
+
+
+# Twitch / Asyncio
 import asyncio
 from twitchio.ext import pubsub
 from twitchio.ext import commands
+
 import pprint
 import copy
 
@@ -29,7 +33,9 @@ from CustomMessages import ChatStartMessages
 
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+
+
 
 
 
@@ -58,8 +64,6 @@ CHANNEL_LITTLE_TEXT = ''
 USER_ID           = ''
 BROADCASTER_ID    = ''
 BOT_CHANNEL       = ''
-BOT_CHANNEL1      = ''
-BOT_CHANNEL2      = ''
 BOT_ACCESS_TOKEN  = ''
 BOT_REFRESH_TOKEN = ''
 BOT_CLIENT_ID     = ''
@@ -73,10 +77,12 @@ GameName        = ''
 Title           = ''
 
 # Stream Info
-StreamStartedAt = ''
-StreamType      = ''
-ViewerCount     = 0
-StreamActive    = False
+StreamStartedAt      = ''
+StreamStartedTime    = ''
+StreamDurationHHMMSS = ''
+StreamType           = ''
+ViewerCount          = 0
+StreamActive         = False
 
 
 
@@ -104,12 +110,14 @@ class Bot(commands.Bot):
 
     CursorH             = 0
     CursorV             = 0
+    CursorRGB           = (0,255,0)
+    CursorDarkRGB       = (0,50,0)
     AnimationDelay      = 60
     LastMessageReceived = time.time()
-    MinutesToWaitBeforeClosing = 5
+    MinutesToWaitBeforeClosing = 0
     MinutesMaxTime      = 10
     BotStartTime        = time.time()
-    SendStartupMessage  = False
+    SendStartupMessage  = True
     BotTypeSpeed        = TerminalTypeSpeed
     BotScrollSpeed      = TerminalScrollSpeed
     MessageCount        = 0
@@ -122,12 +130,21 @@ class Bot(commands.Bot):
         # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
         # prefix can be a callable, which returns a list of strings or a string...
         # initial_channels can also be a callable which returns a list of strings...
+
+        
         print("Bot Initialization")
         print("BOT_CHANNEL:     ",BOT_CHANNEL)
         print("BOT_ACCESS_TOKEN:",BOT_ACCESS_TOKEN)
+      
+       
+        print("=====================================================")
+        print("Initiating client object to connect to twitch")
+        print("Initial_Channels:",BOT_CHANNEL)
         super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
-        self.BotStartTime        = time.time()
-
+        self.BotStartTime   = time.time()
+        LastMessageReceived = time.time()
+        print("=====================================================")
+        
 
 
 
@@ -136,18 +153,116 @@ class Bot(commands.Bot):
         channel = self.get_channel(BOT_CHANNEL)
         #channel2 = self.fetch_channel(CHANNEL_ID)
 
+        #await self.CheckStream()
+
+        if(StreamActive == True):
+          #SHOW INTRO FOR MAIN CHANNEL
+          LED.ShowTitleScreen(
+            BigText             = CHANNEL_BIG_TEXT,
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            LittleText          = CHANNEL_LITTLE_TEXT,
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = Title,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            LittleTextZoom      = 2
+            )
+
+
+          LED.ShowTitleScreen(
+            BigText             = str(Followers),
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            LittleText          = 'FOLLOWS',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = GameName,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+        else:
+          #Explain the main intro is not live
+          LED.ShowTitleScreen(
+            BigText             = "404",
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            LittleText          = "NO STREAM",
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = CHANNEL + " not active. Lets try " + BOT_CHANNEL,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            LittleTextZoom      = 1
+            )
+        
+
+
 
         x = len(ChatStartMessages)
-        #print("ChatStartMessages: ",x)
         i = random.randint(0,x-1)
         message = ChatStartMessages[i]         
         print("Message:",message)
 
         if (self.SendStartupMessage == True):
           await channel.send(message)
-
+       
+        self.ChatTerminalOn = True
       
 
+    #---------------------------------------
+    #- Check Stream Info                  --
+    #---------------------------------------
+    # check to see if the stream is live or not
+    async def CheckStream(self):
+      GetBasicTwitchInfo()
+      
+      #Show title info if Main stream is active
+      if(StreamActive == True):
+
+        #SHOW INTRO FOR MAIN CHANNEL
+        LED.ShowTitleScreen(
+          BigText             = CHANNEL_BIG_TEXT,
+          BigTextRGB          = LED.MedPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
+          LittleText          = CHANNEL_LITTLE_TEXT,
+          LittleTextRGB       = LED.MedRed,
+          LittleTextShadowRGB = LED.ShadowRed, 
+          ScrollText          = Title,
+          ScrollTextRGB       = LED.MedYellow,
+          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+          DisplayTime         = 1,           # time in seconds to wait before exiting 
+          ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+          LittleTextZoom      = 2
+          )
+
+
+        LED.ShowTitleScreen(
+          BigText             = str(Followers),
+          BigTextRGB          = LED.MedPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
+          LittleText          = 'FOLLOWS',
+          LittleTextRGB       = LED.MedRed,
+          LittleTextShadowRGB = LED.ShadowRed, 
+          ScrollText          = 'Now Playing: ' + GameName,
+          ScrollTextRGB       = LED.MedYellow,
+          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+          DisplayTime         = 1,           # time in seconds to wait before exiting 
+          ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+          )
+
+
+
+    #---------------------------------------
+    #- Perform Time Based Actions         --
+    #---------------------------------------
 
     async def PerformTimeBasedActions(self):
         loop = asyncio.get_running_loop()
@@ -156,8 +271,11 @@ class Bot(commands.Bot):
 
         while True:
           #print('Now: ',datetime.now())
+          
+          #asyncio.sleep suspends the current task, allowing other processes to run
           await asyncio.sleep(1)
-         
+          LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
+
           
           #elapsed_time = time.time() - starttime
           #elapsed_hours, rem = divmod(elapsed_time, 3600)
@@ -169,8 +287,7 @@ class Bot(commands.Bot):
           h2,m2,s2 = LED.GetElapsedTime(self.BotStartTime,time.time())
           print("Seconds since last message:",s," MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:","{:5.2f}".format((m2 + s2 / 60))," Messages Queued:",self.MessageCount,end="\r")
 
-          #if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
-          if (m >= self.MinutesToWaitBeforeClosing or m2 >= 1):
+          if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
             print("No chat activity for the past {} minutes OR max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing,self.MinutesMaxTime))
             print("")       
             print("*****************")       
@@ -187,19 +304,37 @@ class Bot(commands.Bot):
             self.CursorH = CursorH
             self.CursorV = CursorV
                                   
-            await self.close()
+            #await self.close()
             
 
-            BOT_CHANNEL = 'hungrygoriya'
-            self.__init__()
+            LED.DisplayDigitalClock(
+              ClockStyle = 3,
+              CenterHoriz = True,
+              v   = 1, 
+              hh  = 24,
+              RGB = LED.LowGreen,
+              ShadowRGB     = LED.ShadowGreen,
+              ZoomFactor    = 3,
+              AnimationDelay= 30,
+              RunMinutes = 1,
+              TimeStartedAt = StreamDurationHHMMSS)
+
+            self.MinutesMaxTime = 1
+
+
+            #Check to see if stream is live yet
+            await self.CheckStream()
+
+            #self.__init__()
+            super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
 
           
 
           #Display animations after X seconds
-          h,m,s = LED.GetElapsedTime(self.LastMessageReceived,self.BotStartTime)
-          if (s >= self.AnimationDelay):
-            LED.DisplayRandomAnimation()
-            self.BotStartTime = time.time()
+          #h,m,s = LED.GetElapsedTime(self.LastMessageReceived,self.BotStartTime)
+          #if (s >= self.AnimationDelay):
+          #  LED.DisplayRandomAnimation()
+          #  self.BotStartTime = time.time()
 
 
 
@@ -212,21 +347,8 @@ class Bot(commands.Bot):
         #UserList = self.fetch_users()
         print(f'Logged in as | {self.nick}')
     
+      
         
-        
-        #Display connection message
-        x = len(ConnectionMessages)
-        print("ConnectionMessages: ",x)
-        i = random.randint(0,x-1)
-        message = ConnectionMessages[i]         
-        print("ConnectionMessage:",message)
-        CursorH = self.CursorH
-        CursorV = self.CursorH
-        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-        self.CursorH = CursorH
-        self.CursorV = CursorV
-
 
         print(self.connected_channels.__len__())
         #Channel = self.fetch_channel(CHANNEL)
@@ -234,6 +356,25 @@ class Bot(commands.Bot):
 
         await self.my_custom_startup()
         #await self.Sleep()
+
+        #------------------------------
+        # Display connection message
+        #------------------------------
+        LED.ClearBigLED()
+        LED.ClearBuffers()
+        x = len(ConnectionMessages)
+        i = random.randint(0,x-1)
+        message = ConnectionMessages[i]         
+        print("Connection message:",message)
+        CursorH = self.CursorH
+        CursorV = self.CursorH
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+        LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+        self.CursorH = CursorH
+        self.CursorV = CursorV
+
+
 
         await self.PerformTimeBasedActions()
 
@@ -307,7 +448,9 @@ class Bot(commands.Bot):
         try:
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message.author.display_name + ":",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,0,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=1,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, ScrollText,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=0,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
-        
+          LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
+
           #Store running values in the bot object
           self.CursorH = CursorH
           self.CursorV = CursorV
@@ -347,8 +490,13 @@ class Bot(commands.Bot):
 
    
     async def event_join(self,channel,user):
+      #Called when a channel event is detected?
+      print("")
+      print ("Event:  event_join")
+      print("Channel:",channel.name)
+      print("User:   ",user.name)
+
       
-      print ("Event: event_join")
         
     
 
@@ -469,8 +617,7 @@ def LoadTwitchKeys():
   
   global USER_ID
   global BROADCASTER_ID
-  global BOT_CHANNEL1
-  global BOT_CHANNEL2
+  global BOT_CHANNEL
   global BOT_ACCESS_TOKEN
   global BOT_REFRESH_TOKEN
   global BOT_CLIENT_ID
@@ -507,8 +654,8 @@ def LoadTwitchKeys():
 
 
     #Bot specific connection info
-    BOT_CHANNEL1       = KeyFile.get("KEYS","BOT_CHANNEL1")
-    BOT_CHANNEL2       = KeyFile.get("KEYS","BOT_CHANNEL2")
+    #in case we want a bot to connect separately, or to other channels
+    BOT_CHANNEL = CHANNEL
     BOT_ACCESS_TOKEN   = KeyFile.get("KEYS","BOT_ACCESS_TOKEN")  
     BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
     BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
@@ -523,8 +670,7 @@ def LoadTwitchKeys():
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
     #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
 
-    print("BOT_CHANNEL1:        ",BOT_CHANNEL1)   
-    print("BOT_CHANNEL2:        ",BOT_CHANNEL2)   
+    print("BOT_CHANNEL:         ",BOT_CHANNEL)   
     print("BOT_CLIENT_ID:       ",BOT_CLIENT_ID)
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
     #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
@@ -570,6 +716,8 @@ def GetBasicTwitchInfo():
 
     #Stream Info
     global StreamStartedAt 
+    global StreamStartedTime
+    global StreamDurationHHMMSS
     global StreamType      
     global ViewerCount     
     global StreamActive 
@@ -586,13 +734,50 @@ def GetBasicTwitchInfo():
 
    
 
-    print ("--GetBasicTwitchINfo--")
+    print ("--GetBasicTwitchInfo--")
+
+    #----------------------------------------
+    # GET USER_ID
+    #----------------------------------------
+    print("Get CHANNEL info")
+    API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + CHANNEL
+    head = {
+    'Client-ID': CLIENT_ID,
+    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    }
+
+    #print ("URL: ",API_ENDPOINT, 'data:',head)
+    r = requests.get(url = API_ENDPOINT, headers = head)
+    results = r.json()
+    pprint.pprint(results)
+    #print(" ")
+
+    if results['data']:
+      print("Data found.  Processing...")
+
+      try:
+        USER_ID   = results['data'][0]['id']
+        BROADCASTER_ID = USER_ID
+
+      except Exception as ErrorMessage:
+        TraceMessage = traceback.format_exc()
+        AdditionalInfo = "Getting CHANNEL info from API call" 
+        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+     
+
+
+
+
+
+
+
+
 
     #----------------------------------------
     # GET CHANNEL INFO
     #----------------------------------------
     print("Get CHANNEL info")
-    API_ENDPOINT = "https://api.twitch.tv/helix/channels?broadcaster_id=657401641"
+    API_ENDPOINT = "https://api.twitch.tv/helix/channels?broadcaster_id=" + BROADCASTER_ID
     head = {
     'Client-ID': CLIENT_ID,
     'Authorization': 'Bearer ' +  ACCESS_TOKEN
@@ -659,7 +844,7 @@ def GetBasicTwitchInfo():
     # Follower Count
     #----------------------------------------
     print("Get FOLLOWER information")
-    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=657401641"
+    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + USER_ID
     head = {
     'Client-ID': CLIENT_ID,
     'Authorization': 'Bearer ' +  ACCESS_TOKEN
@@ -685,7 +870,7 @@ def GetBasicTwitchInfo():
     #Hype Train
     #----------------------------------------
     print("Get HYPETRAIN info")
-    API_ENDPOINT = "https://api.twitch.tv/helix/hypetrain/events?broadcaster_id=657401641"
+    API_ENDPOINT = "https://api.twitch.tv/helix/hypetrain/events?broadcaster_id=" + BROADCASTER_ID
     head = {
     'Client-ID': CLIENT_ID,
     'Authorization': 'Bearer ' +  ACCESS_TOKEN
@@ -725,6 +910,16 @@ def GetBasicTwitchInfo():
 
 
 
+    if(StreamActive):
+      print("** STREAM ACTIVE **")
+      #twitch dates are special format, and in UTC
+      #Convert to datetime (timezone naive)
+      StreamStartedDateTime = datetime.strptime(StreamStartedAt, '%Y-%m-%dT%H:%M:%SZ')
+      
+      hh,mm,ss, StreamDurationHHMMSS = CalculateElapsedTime(StreamStartedDateTime)
+      print("Stream Duration:",StreamDurationHHMMSS)
+
+
 
 
 
@@ -733,7 +928,8 @@ def GetBasicTwitchInfo():
     print("GameName:",GameName)
 
     if(StreamActive):
-      print("StreamStartedAt:",StreamStartedAt)
+      print("StreamStartedAt: ",StreamStartedAt)
+      print("StreamDurationHHMMSS:",StreamDurationHHMMSS)
       print("StreamType:",StreamType)
       print("ViewerCount:",ViewerCount)
 
@@ -748,19 +944,35 @@ def GetBasicTwitchInfo():
 
 
     
-    if(StreamActive):
-      StreamStartedDateTime =  ConvertDate(StreamStartedAt)
-      
-      elapsed_time = time.time() - StreamStartedDateTime
-      elapsed_hours, rem = divmod(elapsed_time, 3600)
-      elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-      print("Elapsed Time: {:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds),end="\r")
+
+
+def CalculateElapsedTime(StartDateUTC):
+  #get current UTC datetime (timezone naive)
+  nowUTC = datetime.utcnow()
+
+  print("nowUTC:",nowUTC,nowUTC.timestamp())
+  
+  #This creates a timedelta object
+  elapsed_time =  nowUTC - StartDateUTC
+  elapsed_hours, rem = divmod(elapsed_time.seconds, 3600)
+  elapsed_minutes, elapsed_seconds = divmod(rem, 60)
+    
+  HHMMSS = "{:0>2}:{:0>2}:{:0>2}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds)
+  
+  return elapsed_hours, elapsed_minutes, elapsed_seconds, HHMMSS
+  
+
+
+
 
 
 def ConvertDate(TheDate):
+  #take a funky twitch 3339 style date and convert it to a python datetime UTC
   StringDate = TheDate
   NewDate = StringDate[0:10]+ ' ' + StringDate[11:19]
   NewDate = datetime.strptime(NewDate, '%Y-%m-%d %H:%M:%S')
+  NewDate.replace(tzinfo=timezone.utc)
+
 
   return NewDate
 
@@ -790,6 +1002,11 @@ def ConvertDate(TheDate):
 
 
 
+LoadTwitchKeys()
+GetBasicTwitchInfo()
+
+mybot = Bot()
+mybot.run()
 
 
 
@@ -895,151 +1112,68 @@ IPAddress = LED.ShowIPAddress(Wait=5)
 
 
 LoadTwitchKeys()
-BOT_CHANNEL = BOT_CHANNEL1
+GetBasicTwitchInfo()
+
 mybot = Bot()
+LED.ClearBigLED()
+LED.ClearBuffers()
+
+#Show this one reading chats
+LED.ShowTitleScreen(
+  BigText             = 'CHAT',
+  BigTextRGB          = LED.MedRed,
+  BigTextShadowRGB    = LED.ShadowRed,
+  LittleText          = 'TERMINAL',
+  LittleTextRGB       = LED.MedBlue,
+  LittleTextShadowRGB = LED.ShadowBlue, 
+  ScrollText          = 'TUNING IN TO ' +  BOT_CHANNEL,
+  ScrollTextRGB       = LED.MedOrange,
+  ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+  DisplayTime         = 1,           # time in seconds to wait before exiting 
+  ExitEffect          = 0,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+  LittleTextZoom      = 1
+  )
+
+#Show terminal connection message
+LED.ClearBigLED()
+LED.ClearBuffers()
+CursorH = 0
+CursorV = 0
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
+mybot.CursorH = CursorH
+mybot.CursorV = CursorV
 
 
-while (1==1):
-
-  GetBasicTwitchInfo()
-
-  #Decide which stream to monitor the chats
-  if(StreamActive == True):
-    print ("** Main Stream Active**")
-    BOT_CHANNEL = CHANNEL
-  else:
-    print ("** Main Stream NOT Active**")
-    ("Alternate channel selected")
-    BOT_CHANNEL = BOT_CHANNEL1
-
-  
-  #Show title info if Main stream is active
-  if(StreamActive == True):
-
-    #SHOW INTRO FOR MAIN CHANNEL
-    LED.ShowTitleScreen(
-      BigText             = CHANNEL_BIG_TEXT,
-      BigTextRGB          = LED.MedPurple,
-      BigTextShadowRGB    = LED.ShadowPurple,
-      LittleText          = CHANNEL_LITTLE_TEXT,
-      LittleTextRGB       = LED.MedRed,
-      LittleTextShadowRGB = LED.ShadowRed, 
-      ScrollText          = Title,
-      ScrollTextRGB       = LED.MedYellow,
-      ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-      DisplayTime         = 1,           # time in seconds to wait before exiting 
-      ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-      LittleTextZoom      = 2
-      )
 
 
-    LED.ShowTitleScreen(
-      BigText             = str(Followers),
-      BigTextRGB          = LED.MedPurple,
-      BigTextShadowRGB    = LED.ShadowPurple,
-      LittleText          = 'FOLLOWS',
-      LittleTextRGB       = LED.MedRed,
-      LittleTextShadowRGB = LED.ShadowRed, 
-      ScrollText          = 'CURRENT GAME: ' + GameName,
-      ScrollTextRGB       = LED.MedYellow,
-      ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-      DisplayTime         = 1,           # time in seconds to wait before exiting 
-      ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-      )
-
-
-    LED.DisplayDigitalClock(
-      ClockStyle = 3,
-      CenterHoriz = True,
-      v   = 1, 
-      hh  = 24,
-      RGB = LED.LowGreen,
-      ShadowRGB     = LED.ShadowGreen,
-      ZoomFactor    = 3,
-      AnimationDelay= 30,
-      RunMinutes = 1)
-
-    mybot.MinutesMaxTime = 15
-
-  else:
-    #Explain the main intro is not live
-    LED.ShowTitleScreen(
-      BigText             = "404",
-      BigTextRGB          = LED.MedPurple,
-      BigTextShadowRGB    = LED.ShadowPurple,
-      LittleText          = "NO STREAM",
-      LittleTextRGB       = LED.MedRed,
-      LittleTextShadowRGB = LED.ShadowRed, 
-      ScrollText          = CHANNEL + " not active. Lets try " + BOT_CHANNEL,
-      ScrollTextRGB       = LED.MedYellow,
-      ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-      DisplayTime         = 1,           # time in seconds to wait before exiting 
-      ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-      LittleTextZoom      = 1
-      )
-  
-    mybot.MinutesMaxTime = 1
-
-  
-  LED.ClearBigLED()
-  LED.ClearBuffers()
-
-  #Show this one reading chats
-  LED.ShowTitleScreen(
-    BigText             = 'CHAT',
-    BigTextRGB          = LED.MedRed,
-    BigTextShadowRGB    = LED.ShadowRed,
-    LittleText          = 'TERMINAL',
-    LittleTextRGB       = LED.MedBlue,
-    LittleTextShadowRGB = LED.ShadowBlue, 
-    ScrollText          = 'TUNING IN TO ' +  BOT_CHANNEL,
-    ScrollTextRGB       = LED.MedOrange,
-    ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-    DisplayTime         = 1,           # time in seconds to wait before exiting 
-    ExitEffect          = 0,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-    LittleTextZoom      = 1
-    )
-
-  #Show terminal connection message
+try:
+  print("Loading chat bot for: ",BOT_CHANNEL)
+  mybot.run()
+except:
   LED.ClearBigLED()
   LED.ClearBuffers()
   CursorH = 0
   CursorV = 0
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
-  mybot.CursorH = CursorH
-  mybot.CursorV = CursorV
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"The chat bot has experienced a terminal error",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Connection closed",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  
 
 
 
 
-  try:
-    print("Loading chat bot for: ",BOT_CHANNEL)
-    mybot.run()
-  except:
-    LED.ClearBigLED()
-    LED.ClearBuffers()
-    CursorH = 0
-    CursorV = 0
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"The chat bot has experienced a terminal error",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Connection closed",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    
+LED.DisplayDigitalClock(
+  ClockStyle = 1,
+  CenterHoriz = True,
+  v   = 1, 
+  hh  = 24,
+  RGB = LED.LowGreen,
+  ShadowRGB     = LED.ShadowGreen,
+  ZoomFactor    = 2,
+  AnimationDelay= 60,
+  RunMinutes = 5)
 
-
-
-
-  LED.DisplayDigitalClock(
-    ClockStyle = 1,
-    CenterHoriz = True,
-    v   = 1, 
-    hh  = 24,
-    RGB = LED.LowGreen,
-    ShadowRGB     = LED.ShadowGreen,
-    ZoomFactor    = 2,
-    AnimationDelay= 60,
-    RunMinutes = 5)
-
-  #LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
+#LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
 
 
