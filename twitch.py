@@ -77,12 +77,13 @@ GameName        = ''
 Title           = ''
 
 # Stream Info
-StreamStartedAt      = ''
-StreamStartedTime    = ''
-StreamDurationHHMMSS = ''
-StreamType           = ''
-ViewerCount          = 0
-StreamActive         = False
+StreamStartedAt       = ''
+StreamStartedTime     = ''
+StreamStartedDateTime = ''
+StreamDurationHHMMSS  = ''
+StreamType            = ''
+ViewerCount           = 0
+StreamActive          = False
 
 
 
@@ -117,7 +118,7 @@ class Bot(commands.Bot):
     MinutesToWaitBeforeClosing = 0
     MinutesMaxTime      = 10
     BotStartTime        = time.time()
-    SendStartupMessage  = True
+    SendStartupMessage  = False
     BotTypeSpeed        = TerminalTypeSpeed
     BotScrollSpeed      = TerminalScrollSpeed
     MessageCount        = 0
@@ -195,7 +196,7 @@ class Bot(commands.Bot):
             LittleText          = "NO STREAM",
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = CHANNEL + " not active. Lets try " + BOT_CHANNEL,
+            ScrollText          = CHANNEL + " not active. Tray again later...",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 1,           # time in seconds to wait before exiting 
@@ -211,7 +212,9 @@ class Bot(commands.Bot):
         message = ChatStartMessages[i]         
         print("Message:",message)
 
-        if (self.SendStartupMessage == True):
+        
+        #send startup message if stream is active
+        if (self.SendStartupMessage == True and StreamActive == True):
           await channel.send(message)
        
         self.ChatTerminalOn = True
@@ -290,9 +293,9 @@ class Bot(commands.Bot):
           if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
             print("No chat activity for the past {} minutes OR max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing,self.MinutesMaxTime))
             print("")       
-            print("*****************")       
-            print("** EXITING BOT **")
-            print("*****************")       
+            print("***************************")       
+            print("** EXITING CHAT TERMINAL **")
+            print("***************************")       
             print("")       
             LED.ClearBigLED()
             LED.ClearBuffers()
@@ -303,9 +306,10 @@ class Bot(commands.Bot):
             LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
             self.CursorH = CursorH
             self.CursorV = CursorV
-                                  
+
+            self.ChatTerminalOn = False                        
             #await self.close()
-            
+                      
 
             LED.DisplayDigitalClock(
               ClockStyle = 3,
@@ -313,11 +317,12 @@ class Bot(commands.Bot):
               v   = 1, 
               hh  = 24,
               RGB = LED.LowGreen,
-              ShadowRGB     = LED.ShadowGreen,
-              ZoomFactor    = 3,
-              AnimationDelay= 30,
-              RunMinutes = 1,
-              TimeStartedAt = StreamDurationHHMMSS)
+              ShadowRGB        = LED.ShadowGreen,
+              ZoomFactor       = 3,
+              AnimationDelay   = 30,
+              RunMinutes       = 1,
+              StartDateTimeUTC = StreamStartedDateTime,
+              HHMMSS           = StreamDurationHHMMSS)
 
             self.MinutesMaxTime = 1
 
@@ -468,9 +473,9 @@ class Bot(commands.Bot):
         if (m2 >= self.MinutesMaxTime):
           print("Max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing))       
           print("")       
-          print("*****************")       
-          print("** EXITING BOT **")
-          print("*****************")       
+          print("***************************")       
+          print("** EXITING CHAT TERMINAL **")
+          print("***************************")       
           print("")       
           LED.ClearBigLED()
           LED.ClearBuffers()
@@ -481,7 +486,10 @@ class Bot(commands.Bot):
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
           self.CursorH = CursorH
           self.CursorV = CursorV
-          await self.close()
+          
+          self.ChatTerminalOn = False
+          
+          #await self.close()
       
 
         # Since we have commands and are overriding the default `event_message`
@@ -717,6 +725,7 @@ def GetBasicTwitchInfo():
     #Stream Info
     global StreamStartedAt 
     global StreamStartedTime
+    global StreamStartedDateTime
     global StreamDurationHHMMSS
     global StreamType      
     global ViewerCount     
@@ -916,7 +925,7 @@ def GetBasicTwitchInfo():
       #Convert to datetime (timezone naive)
       StreamStartedDateTime = datetime.strptime(StreamStartedAt, '%Y-%m-%dT%H:%M:%SZ')
       
-      hh,mm,ss, StreamDurationHHMMSS = CalculateElapsedTime(StreamStartedDateTime)
+      hh,mm,ss, StreamDurationHHMMSS = LED.CalculateElapsedTime(StreamStartedDateTime)
       print("Stream Duration:",StreamDurationHHMMSS)
 
 
@@ -946,21 +955,6 @@ def GetBasicTwitchInfo():
     
 
 
-def CalculateElapsedTime(StartDateUTC):
-  #get current UTC datetime (timezone naive)
-  nowUTC = datetime.utcnow()
-
-  print("nowUTC:",nowUTC,nowUTC.timestamp())
-  
-  #This creates a timedelta object
-  elapsed_time =  nowUTC - StartDateUTC
-  elapsed_hours, rem = divmod(elapsed_time.seconds, 3600)
-  elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-    
-  HHMMSS = "{:0>2}:{:0>2}:{:0>2}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds)
-  
-  return elapsed_hours, elapsed_minutes, elapsed_seconds, HHMMSS
-  
 
 
 
