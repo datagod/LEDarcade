@@ -2970,6 +2970,40 @@ PlusSignSprite = Sprite(
 )
 
 
+
+#(
+LeftParenthesisSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [0,0,1,
+   0,1,0,
+   0,1,0,
+   0,1,0,
+   0,0,1,]
+)
+
+
+#(
+RightParenthesisSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [0,1,0,
+   0,0,1,
+   0,0,1,
+   0,0,1,
+   0,1,0,]
+)
+
+
+
+
+
 #>
 GreaterThanSprite = Sprite(
   3,
@@ -9778,6 +9812,14 @@ def CreateBannerSprite(TheMessage):
     elif (c == ','):
       BannerSprite = JoinSprite(BannerSprite, CommaSprite,0)
 
+
+    elif (c == '('):
+      BannerSprite = JoinSprite(BannerSprite, LeftParenthesisSprite,0)
+    elif (c == ')'):
+      BannerSprite = JoinSprite(BannerSprite, RightParenthesisSprite,0)
+
+
+
     elif (c == '>'):
       BannerSprite = JoinSprite(BannerSprite, GreaterThanSprite,0)
 
@@ -12867,8 +12909,10 @@ def DisplayDigitalClock(
   ):
 
 
-    ClearBigLED()
-    ClearBuffers()
+    
+
+    #ClearBigLED()
+    #ClearBuffers()
     global ScreenArray
 
 
@@ -12895,24 +12939,37 @@ def DisplayDigitalClock(
       DayOfMonthSprite    = CreateDayOfMonthSprite()
    
     
+
+
+
+
+  
+  
+
+
   
     # Clock at top, random scrolling animations
     if (ClockStyle == 1):
-      MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
-      #ClockSprite = CreateClockSprite(hh)
-      #ClearBuffers() #clean the internal graphic buffers
-      #CopySpriteToPixelsZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,           Fill=False)
-      #CopySpriteToPixelsZoom(ClockSprite,h,v,    RGB,      (0,0,0),ZoomFactor=ZoomFactor,Fill=False)
+    
+      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
+      ScreenArray2  = ([[]])
+      ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+      ClockSprite = CreateClockSprite(hh)
+      CopySpriteToPixelsZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,          Fill=False)
+      CopySpriteToPixelsZoom(ClockSprite,h,v,    RGB,      (0,0,0),ZoomFactor=ZoomFactor,Fill=False)
+      
 
-      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
-      ClockSprite = UpdateClockWithTransition(ClockSprite,hh,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True)
 
+      
       #Show Custom Sprite
       CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
       CopySpriteToPixelsZoom(MonthSprite,      MonthH,      MonthV,      MonthRGB,       SpriteFillerRGB,1)
       CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
 
-
+      TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
+  
+      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
+      ClockSprite = UpdateClockWithTransition(ClockSprite,hh,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True)
 
 
       while (Done == False):
