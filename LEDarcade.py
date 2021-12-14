@@ -11642,7 +11642,7 @@ def ShowTitleScreen(
   ScrollTextRGB  = HighYellow,
   ScrollSleep    = 0.05,    #how long to wait between each frame of scrolling
   DisplayTime    = 5,       #how long to wait before exiting
-  ExitEffect     = True,
+  ExitEffect     = 0,
   LittleTextZoom = 1
   ):
 
@@ -11710,7 +11710,10 @@ def ShowTitleScreen(
 
   #Pick a random special affect
  
-  if(ExitEffect == 0):
+  if(ExitEffect == -1):
+    print("No effect")
+
+  elif(ExitEffect == 0):
     r = random.randint(0,5)
     if (r == 0):
       #Zoom out
