@@ -10834,11 +10834,15 @@ def ShowIPAddress(Wait=5):
 
   #print dots on the same line
   V = CursorV
+  
   #duplicate this underscore WAIT number of times
-  message = '_' * Wait
+  #message = '_' * Wait
   #One second between each letter
-  print(message)
-  ScreenArray,CursorH,CursorV = TerminalScroll(ScreenArray,message,CursorH=CursorH,CursorV=V,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=1,ScrollSpeed=ScrollSleep)
+  #print(message)
+  #ScreenArray,CursorH,CursorV = TerminalScroll(ScreenArray,message,CursorH=CursorH,CursorV=V,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=1,ScrollSpeed=ScrollSleep)
+  
+  BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),BlinkSpeed=0.5,BlinkCount=Wait)
+
 
 
   return IPAddress
@@ -12795,7 +12799,7 @@ def DisplayDigitalClock(
     ClockSprite = CreateClockSprite(hh)
     Done        = False
     StartTime   = time.time()
-    print ("StartTime: ",StartTime)
+    print("RunMinutes:",RunMinutes)
 
     if (CenterHoriz == True):
       h = (HatWidth  // 2)  - ((ClockSprite.width * ZoomFactor) // 2) + 1

@@ -50,6 +50,8 @@ from datetime import datetime, timezone
 ScrollSleep         = 0.025
 TerminalTypeSpeed   = 0.02  #pause in seconds between characters
 TerminalScrollSpeed = 0.02  #pause in seconds between new lines
+CursorRGB           = (0,255,0)
+CursorDarkRGB       = (0,50,0)
 
 
 #TWITCH VARIABLES
@@ -124,7 +126,7 @@ class Bot(commands.Bot):
     CursorDarkRGB       = (0,50,0)
     AnimationDelay      = 60
     LastMessageReceived = time.time()
-    MinutesToWaitBeforeClosing = 5
+    MinutesToWaitBeforeClosing = 1
     MinutesMaxTime      = 10
     BotStartTime        = time.time()
     SendStartupMessage  = False
@@ -155,6 +157,7 @@ class Bot(commands.Bot):
         LastMessageReceived = time.time()
         print("=====================================================")
         
+        
 
 
 
@@ -163,40 +166,11 @@ class Bot(commands.Bot):
         channel = self.get_channel(BOT_CHANNEL)
         #channel2 = self.fetch_channel(CHANNEL_ID)
 
-        #await self.CheckStream()
+        #Check Twitch advanced info 
+        await self.CheckStream()
+
 
         if(StreamActive == True):
-          #SHOW INTRO FOR MAIN CHANNEL
-          LED.ShowTitleScreen(
-            BigText             = CHANNEL_BIG_TEXT,
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            LittleText          = CHANNEL_LITTLE_TEXT,
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = Title,
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
-            ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            LittleTextZoom      = 2
-            )
-
-
-          LED.ShowTitleScreen(
-            BigText             = str(Followers),
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            LittleText          = 'FOLLOWS',
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = GameName,
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
-            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            )
-
           x = len(ChatStartMessages)
           i = random.randint(0,x-1)
           message = ChatStartMessages[i]         
@@ -244,37 +218,36 @@ class Bot(commands.Bot):
       #Show title info if Main stream is active
       if(StreamActive == True):
 
-        #SHOW INTRO FOR MAIN CHANNEL
-        LED.ShowTitleScreen(
-          BigText             = CHANNEL_BIG_TEXT,
-          BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
-          LittleText          = CHANNEL_LITTLE_TEXT,
-          LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
-          ScrollText          = Title,
-          ScrollTextRGB       = LED.MedYellow,
-          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-          DisplayTime         = 1,           # time in seconds to wait before exiting 
-          ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-          LittleTextZoom      = 2
-          )
+        #------------------------------
+        # Display connection message
+        #------------------------------
+                
+        #Show terminal connection message
+        LED.ClearBigLED()
+        LED.ClearBuffers()
+        CursorH = 0
+        CursorV = 0
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
+        self.CursorH = CursorH
+        self.CursorV = CursorV
+        
+        LED.ClearBigLED()
+        LED.ClearBuffers()
+        x = len(ConnectionMessages)
+        i = random.randint(0,x-1)
+        message = ConnectionMessages[i]         
+        print("Connection message:",message)
+        CursorH = self.CursorH
+        CursorV = self.CursorH
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+        LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+        self.CursorH = CursorH
+        self.CursorV = CursorV
 
-
-        LED.ShowTitleScreen(
-          BigText             = str(Followers),
-          BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
-          LittleText          = 'FOLLOWS',
-          LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
-          ScrollText          = 'Now Playing: ' + GameName,
-          ScrollTextRGB       = LED.MedYellow,
-          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-          DisplayTime         = 1,           # time in seconds to wait before exiting 
-          ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-          )
-
+ 
+        
 
 
     #---------------------------------------
@@ -378,14 +351,16 @@ class Bot(commands.Bot):
 
 
 
+    #---------------------------------------
+    #- Event Ready                         --
+    #---------------------------------------
     
     async def event_ready(self):
         # Notify us when everything is ready!
         # We are logged in and ready to chat and use commands...
         #UserList = self.fetch_users()
         print(f'Logged in as | {self.nick}')
-    
-      
+          
         print(self.connected_channels.__len__())
         #Channel = self.fetch_channel(CHANNEL)
         #print(Channel)
@@ -393,23 +368,58 @@ class Bot(commands.Bot):
         await self.my_custom_startup()
         #await self.Sleep()
 
+
+
         if(StreamActive == True):
-          #------------------------------
-          # Display connection message
-          #------------------------------
-          LED.ClearBigLED()
-          LED.ClearBuffers()
-          x = len(ConnectionMessages)
-          i = random.randint(0,x-1)
-          message = ConnectionMessages[i]         
-          print("Connection message:",message)
-          CursorH = self.CursorH
-          CursorV = self.CursorH
-          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-          LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-          self.CursorH = CursorH
-          self.CursorV = CursorV
+
+          #SHOW INTRO FOR MAIN CHANNEL
+          LED.ShowTitleScreen(
+            BigText             = CHANNEL_BIG_TEXT,
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            LittleText          = CHANNEL_LITTLE_TEXT,
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = Title,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            LittleTextZoom      = 2
+            )
+
+        #SHOW FOLLOWERS
+          LED.ShowTitleScreen(
+            BigText             = str(Followers),
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            LittleText          = 'FOLLOWS',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = 'Now Playing: ' + GameName,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+
+          #Show this one reading chats
+          LED.ShowTitleScreen(
+            BigText             = 'CHAT',
+            BigTextRGB          = LED.MedRed,
+            BigTextShadowRGB    = LED.ShadowRed,
+            LittleText          = 'TERMINAL',
+            LittleTextRGB       = LED.MedBlue,
+            LittleTextShadowRGB = LED.ShadowBlue, 
+            ScrollText          = 'TUNING IN TO ' +  CHANNEL,
+            ScrollTextRGB       = LED.MedOrange,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 0,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            LittleTextZoom      = 1
+            )
+
+
 
 
         await self.PerformTimeBasedActions()
@@ -425,6 +435,12 @@ class Bot(commands.Bot):
 
     async def event_message(self, message):
         
+        # Messages with echo set to True are messages sent by the bot...
+        # For now we just want to ignore them...
+        if message.echo:
+            return
+
+
         #Exit if Chat Terminal is not on
         if (self.ChatTerminalOn == False):
           return
@@ -452,11 +468,7 @@ class Bot(commands.Bot):
 
         self.LastMessageReceived = time.time()
 
-        # Messages with echo set to True are messages sent by the bot...
-        # For now we just want to ignore them...
-        if message.echo:
-            return
-
+        
         ScrollText = message.content
         print(message.author.display_name + ": " + ScrollText)
 
@@ -944,8 +956,8 @@ def GetBasicTwitchInfo():
       
       hh,mm,ss, StreamDurationHHMMSS = LED.CalculateElapsedTime(StreamStartedDateTime)
       print("Stream Duration:",StreamDurationHHMMSS)
-
-
+    else:
+      print("** STREAM NOT ACTIVE **")
 
 
 
@@ -1013,16 +1025,6 @@ def ConvertDate(TheDate):
 
 
 
-LoadTwitchKeys()
-GetBasicTwitchInfo()
-
-mybot = Bot()
-mybot.run()
-
-
-
-
-
 
 #------------------------------------------------------------------------------
 # MAIN SECTION                                                               --
@@ -1049,53 +1051,6 @@ print ("")
 
 
 
-
-
-#we want to show a timer for how long the stream has been active
-#this can be triggerred by a command possibly
-#StartTime = time.time()
-#HHMMSS = '00:00:00'
-#TimerSprite = LED.CreateTimerSprite(HHMMSS)
-
-#while(1==1):
-  #elapsed_time = time.time() - StartTime
-  #elapsed_hours, rem = divmod(elapsed_time, 3600)
-  #elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-  #HHMMSS = "{:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds)
-  #print ('ElapsedTime: ',HHMMSS,end="\r")
-  #print(TimerSprite.width,HatWidth)
-  #h = int(((HatWidth - TimerSprite.width * 3) / 2))
-  #print(h)
-  #TimerSprite = LED.UpdateTimerWithTransition(TimerSprite, h ,0,(150,0,0),(15,0,0),3,Fill=True,TransitionType=1)  
-  #time.sleep(1)
-
-
-
-
-
-
-#--------------------------------------
-#  SHOW TITLE SCREEN                 --
-#--------------------------------------
-
-
-#examples
-# Show Follows
-#TheBanner = LED.CreateBannerSprite(str(Followers))
-#LED.ClearBuffers() #clean the internal graphic buffers
-#LED.ShowGlowingSprite(CenterHoriz=True,CenterVert=False,h=0,v=0,TheSprite=TheBanner,RGB=LED.MedRed,ShadowRGB=LED.ShadowRed,ZoomFactor= 3,GlowLevels=100,FadeLevels=0,DropShadow=True,FadeDelay=0)
-#LED.ShowGlowingText(CenterHoriz=True,CenterVert=False,h=0,v=17,Text='FOLLOWS',RGB=LED.MedPurple,ShadowRGB=LED.ShadowPurple,ZoomFactor= 2,GlowLevels=25,DropShadow=True)
-#time.sleep(2) 
-
-# Show Follows
-#LED.ClearBigLED()
-#TheBanner = LED.CreateBannerSprite('XTIAN')
-#LED.ShowGlowingSprite(CenterHoriz=True,CenterVert=False,h=0,v=0,TheSprite=TheBanner,RGB=LED.MedBlue,ShadowRGB=LED.ShadowBlue,ZoomFactor= 2,GlowLevels=100,FadeLevels=0,DropShadow=True,FadeDelay=0)
-#TheBanner = LED.CreateBannerSprite('NINJA')
-#LED.ShowGlowingSprite(CenterHoriz=True,CenterVert=False,h=0,v=13,TheSprite=TheBanner,RGB=LED.MedBlue,ShadowRGB=LED.ShadowBlue,ZoomFactor= 2,GlowLevels=100,FadeLevels=0,DropShadow=True,FadeDelay=0)
-#time.sleep(2) 
-
-
       
 
 #--------------------------------------
@@ -1109,54 +1064,25 @@ CursorH = 0
 CursorV = 0
 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"by datagod",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Boot sequence initiated",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RAM CHECK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"STORAGE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-time.sleep(1)
+LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
 IPAddress = LED.ShowIPAddress(Wait=5)
 
 
 
 
 
+
 LoadTwitchKeys()
-GetBasicTwitchInfo()
+#GetBasicTwitchInfo()
 
 mybot = Bot()
-LED.ClearBigLED()
-LED.ClearBuffers()
-
-#Show this one reading chats
-LED.ShowTitleScreen(
-  BigText             = 'CHAT',
-  BigTextRGB          = LED.MedRed,
-  BigTextShadowRGB    = LED.ShadowRed,
-  LittleText          = 'TERMINAL',
-  LittleTextRGB       = LED.MedBlue,
-  LittleTextShadowRGB = LED.ShadowBlue, 
-  ScrollText          = 'TUNING IN TO ' +  BOT_CHANNEL,
-  ScrollTextRGB       = LED.MedOrange,
-  ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-  DisplayTime         = 1,           # time in seconds to wait before exiting 
-  ExitEffect          = 0,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-  LittleTextZoom      = 1
-  )
-
-#Show terminal connection message
-LED.ClearBigLED()
-LED.ClearBuffers()
-CursorH = 0
-CursorV = 0
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
-mybot.CursorH = CursorH
-mybot.CursorV = CursorV
-
-
-
 
 try:
   print("Loading chat bot for: ",BOT_CHANNEL)
@@ -1171,18 +1097,6 @@ except:
   
 
 
-
-
-LED.DisplayDigitalClock(
-  ClockStyle = 1,
-  CenterHoriz = True,
-  v   = 1, 
-  hh  = 24,
-  RGB = LED.LowGreen,
-  ShadowRGB     = LED.ShadowGreen,
-  ZoomFactor    = 2,
-  AnimationDelay= 60,
-  RunMinutes = 5)
 
 #LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
