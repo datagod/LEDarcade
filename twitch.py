@@ -131,7 +131,7 @@ class Bot(commands.Bot):
     MinutesToWaitBeforeClosing = 10              #close chat after X minutes of inactivity
     MinutesMaxTime      = 10                     #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
-    SendStartupMessage  = False
+    SendStartupMessage  = True
     BotTypeSpeed        = TerminalTypeSpeed
     BotScrollSpeed      = TerminalScrollSpeed
     MessageCount        = 0
@@ -251,6 +251,7 @@ class Bot(commands.Bot):
             #Close Bot after X minutes of inactivity
             h,m,s    = LED.GetElapsedTime(self.LastMessageReceived,time.time())
             h2,m2,s2 = LED.GetElapsedTime(self.BotStartTime,time.time())
+            
             print("Seconds since last message:",s," MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:","{:5.2f}".format((m2 + s2 / 60))," Messages Queued:",self.MessageCount,end="\r")
 
             if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
@@ -414,7 +415,7 @@ class Bot(commands.Bot):
         #Exit if Chat Terminal is not on
         if (self.ChatTerminalOn == False):
           self.MesageCount = self.MessageCount -1
-        return
+          return
         
         #Remove emoji from message
         message.content = LED.deEmojify(message.content)
