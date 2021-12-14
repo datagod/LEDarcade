@@ -171,22 +171,8 @@ class Bot(commands.Bot):
         #Check Twitch advanced info 
         await self.CheckStream()
 
-
-
         if(StreamActive == True):
-          x = len(ChatStartMessages)
-          i = random.randint(0,x-1)
-          message = ChatStartMessages[i]         
-          print("Message:",message)
-
-          
-          #send startup message if stream is active
-          if (self.SendStartupMessage == True and StreamActive == True):
-            await channel.send(message)
-        
           self.ChatTerminalOn = True
-
-
         else:
           #Explain the main intro is not live
           LED.ShowTitleScreen(
@@ -340,8 +326,7 @@ class Bot(commands.Bot):
         await self.my_custom_startup()
         #await self.Sleep()
 
-
-
+        
         if(StreamActive == True):
 
           #SHOW INTRO FOR MAIN CHANNEL
@@ -391,6 +376,7 @@ class Bot(commands.Bot):
             LittleTextZoom      = 1
             )
 
+          await self.SendRandomChatGreeting()
         await self.PerformTimeBasedActions()
 
     
@@ -409,7 +395,7 @@ class Bot(commands.Bot):
         # Messages with echo set to True are messages sent by the bot...
         # For now we just want to ignore them...
         if message.echo:
-            return
+          return
 
 
         #Exit if Chat Terminal is not on
@@ -545,6 +531,26 @@ class Bot(commands.Bot):
       self.CursorV = CursorV
       
     
+
+    #---------------------------------------
+    # Send random chat greeting           --
+    #---------------------------------------
+    async def SendRandomChatGreeting(self):
+      x = len(ChatStartMessages)
+      i = random.randint(0,x-1)
+      message = ChatStartMessages[i]         
+      print("Message:",message)
+
+      self.ChatTerminalOn = True
+
+      #send startup message if stream is active
+      if (self.SendStartupMessage == True and StreamActive == True):
+        await channel.send(message)
+    
+
+
+
+
 
     @commands.command()
     async def hello(self, ctx: commands.Context):
