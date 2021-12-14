@@ -128,15 +128,16 @@ class Bot(commands.Bot):
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
-    MinutesToWaitBeforeClosing = 10              #close chat after X minutes of inactivity
-    MinutesMaxTime      = 10                     #exit chat terminal after X minutes and display clock
+    MinutesToWaitBeforeClosing        = 10       #close chat after X minutes of inactivity
+    MinutesMaxTime                    = 10       #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
-    SendStartupMessage  = True
+    SendStartupMessage  = False
     BotTypeSpeed        = TerminalTypeSpeed
     BotScrollSpeed      = TerminalScrollSpeed
     MessageCount        = 0
     SpeedupMessageCount = 5
     ChatTerminalOn      = False
+    Channel             = ''
 
 
 
@@ -165,7 +166,7 @@ class Bot(commands.Bot):
 
     async def my_custom_startup(self):
         await asyncio.sleep(1)
-        channel = self.get_channel(BOT_CHANNEL)
+        self.Channel = self.get_channel(BOT_CHANNEL)
         #channel2 = self.fetch_channel(CHANNEL_ID)
 
         #Check Twitch advanced info 
@@ -251,11 +252,14 @@ class Bot(commands.Bot):
               LED.ClearBuffers()
               CursorH = 0
               CursorV = 0
-              LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"No chat activity detected.  Did everyone fall asleep?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-              LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Closing terminal",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-              LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-              self.CursorH = CursorH
-              self.CursorV = CursorV
+              
+              #only show terminal messages if terminal is on)
+              if(self.ChatTerminalOn == True):
+                LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"No chat activity detected.  Did everyone fall asleep?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+                LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Closing terminal",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+                LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+                self.CursorH = CursorH
+                self.CursorV = CursorV
 
               self.ChatTerminalOn = False                        
               #await self.close()
@@ -276,7 +280,7 @@ class Bot(commands.Bot):
 
               #reset timer
               self.LastMessageReceived = time.time()
-              print("Clock display ended")
+              print("Clock display ended.  Resetting LastMessageReceived:",self.LastMessageReceived)
               print("")
               self.CursorH = 0
               self.CursorV = 0
@@ -353,12 +357,31 @@ class Bot(commands.Bot):
             LittleText          = 'FOLLOWS',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = 'Now Playing: ' + GameName,
+            ScrollText          = '',
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 1,           # time in seconds to wait before exiting 
             ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
             )
+
+
+        #SHOW VIEWERS
+          LED.ShowTitleScreen(
+            BigText             = str(ViewerCount),
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            LittleText          = 'Viewers',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = 'Now Playing: ' + GameName,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+
+
+
 
           #Show this one reading chats
           LED.ShowTitleScreen(
@@ -540,12 +563,11 @@ class Bot(commands.Bot):
       i = random.randint(0,x-1)
       message = ChatStartMessages[i]         
       print("Message:",message)
-
-      self.ChatTerminalOn = True
+      
 
       #send startup message if stream is active
       if (self.SendStartupMessage == True and StreamActive == True):
-        await channel.send(message)
+        await self.Channel.send(message)
     
 
 

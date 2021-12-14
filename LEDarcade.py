@@ -2865,6 +2865,20 @@ PoundSignSprite = Sprite(
 )
 
 
+#AmpersandSprite
+AmpersandSprite = Sprite(
+  5,
+  5,
+  0,
+  0,
+  0,
+  [0,0,0,1,0,
+   1,1,1,1,1,
+   0,1,0,1,0,
+   0,0,1,1,0,
+   0,0,0,1,0]
+)
+
 
  
 ColonSprite = Sprite(
@@ -2925,6 +2939,22 @@ CommaSprite = Sprite(
 )
 
 
+
+# `
+BackTickSprite = Sprite(
+  3,
+  5,
+  RedR,
+  RedG,
+  RedB,
+  [1,0,0,
+   0,1,0,
+   0,0,0,
+   0,0,0,
+   0,0,0]
+)
+
+
 #+
 PlusSignSprite = Sprite(
   5,
@@ -2940,6 +2970,37 @@ PlusSignSprite = Sprite(
 )
 
 
+#>
+GreaterThanSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [1,0,0,
+   0,1,0,
+   0,0,1,
+   0,1,0,
+   1,0,0]
+)
+
+
+#>
+LessThanSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [0,0,1,
+   0,1,0,
+   1,0,0,
+   0,1,0,
+   1,0,1]
+)
+
+
+
 #@
 AtSignSprite = Sprite(
   5,
@@ -2953,6 +3014,8 @@ AtSignSprite = Sprite(
    1,0,0,0,0,
    0,1,1,1,0]
 )
+
+
 
 
 
@@ -9711,8 +9774,22 @@ def CreateBannerSprite(TheMessage):
       BannerSprite = JoinSprite(BannerSprite, ColonSprite,0)
     elif (c == '@'):
       BannerSprite = JoinSprite(BannerSprite, AtSignSprite,0)
+
     elif (c == ','):
       BannerSprite = JoinSprite(BannerSprite, CommaSprite,0)
+
+    elif (c == '>'):
+      BannerSprite = JoinSprite(BannerSprite, GreaterThanSprite,0)
+
+
+    elif (c == '&'):
+      BannerSprite = JoinSprite(BannerSprite, AmpersandSprite,0)
+
+
+    elif (c == '`'):
+      BannerSprite = JoinSprite(BannerSprite, BackTickSprite,0)
+
+
     elif (c == '|'):
       BannerSprite = JoinSprite(BannerSprite, PipeSprite,0)
 
