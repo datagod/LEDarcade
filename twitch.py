@@ -573,6 +573,9 @@ class Bot(commands.Bot):
 
 
 
+    #---------------------------------------
+    # Bot commands                        --
+    #---------------------------------------
 
     @commands.command()
     async def hello(self, ctx: commands.Context):
@@ -583,6 +586,29 @@ class Bot(commands.Bot):
         # Send a hello back!
         # Sending a reply back to the channel is easy... Below is an example.
         await ctx.send(f'Greetings from dataBot! {ctx.author.name}!')
+
+
+    @commands.command()
+    async def viewers(self, ctx: commands.Context):
+      #SHOW VIEWERS
+      LED.ShowTitleScreen(
+        BigText             = str(ViewerCount),
+        BigTextRGB          = LED.MedPurple,
+        BigTextShadowRGB    = LED.ShadowPurple,
+        LittleText          = 'Viewers',
+        LittleTextRGB       = LED.MedRed,
+        LittleTextShadowRGB = LED.ShadowRed, 
+        ScrollText          = 'Now Playing: ' + GameName,
+        ScrollTextRGB       = LED.MedYellow,
+        ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+        DisplayTime         = 1,           # time in seconds to wait before exiting 
+        ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        )
+
+      self.CursorH = 0
+      await ctx.send("There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount))
+    
+
 
 
 LED.ClearBigLED()
