@@ -126,8 +126,10 @@ class Bot(commands.Bot):
     CursorDarkRGB       = (0,50,0)
     AnimationDelay      = 60
     LastMessageReceived = time.time()
-    MinutesToWaitBeforeClosing = 1
-    MinutesMaxTime      = 10
+    LastStreamCheckTime = time.time()
+    MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
+    MinutesToWaitBeforeClosing = 10              #close chat after X minutes of inactivity
+    MinutesMaxTime      = 10                     #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
     SendStartupMessage  = False
     BotTypeSpeed        = TerminalTypeSpeed
@@ -168,6 +170,7 @@ class Bot(commands.Bot):
 
         #Check Twitch advanced info 
         await self.CheckStream()
+
 
 
         if(StreamActive == True):
@@ -214,39 +217,12 @@ class Bot(commands.Bot):
     # check to see if the stream is live or not
     async def CheckStream(self):
       GetBasicTwitchInfo()
-      
+      self.LastStreamCheckTime = time.time()
       #Show title info if Main stream is active
-      if(StreamActive == True):
+      #if(StreamActive == True):
+      #  await self.DisplayConnectingToTerminalMessage()
+      #  await self.DisplayRandomConnectionMessage()
 
-        #------------------------------
-        # Display connection message
-        #------------------------------
-                
-        #Show terminal connection message
-        LED.ClearBigLED()
-        LED.ClearBuffers()
-        CursorH = 0
-        CursorV = 0
-        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
-        self.CursorH = CursorH
-        self.CursorV = CursorV
-        
-        LED.ClearBigLED()
-        LED.ClearBuffers()
-        x = len(ConnectionMessages)
-        i = random.randint(0,x-1)
-        message = ConnectionMessages[i]         
-        print("Connection message:",message)
-        CursorH = self.CursorH
-        CursorV = self.CursorH
-        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-        LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-        self.CursorH = CursorH
-        self.CursorV = CursorV
-
- 
         
 
 
@@ -258,23 +234,19 @@ class Bot(commands.Bot):
         loop = asyncio.get_running_loop()
         #end_time = loop.time() + self.AnimationDelay
         
+        if(StreamActive == True):
+          await self.DisplayConnectingToTerminalMessage()
+          await self.DisplayRandomConnectionMessage()
 
         while True:
           #print('Now: ',datetime.now())
           
           #asyncio.sleep suspends the current task, allowing other processes to run
           await asyncio.sleep(1)
-          
-          
+                    
           if(StreamActive == True):
-          
-            LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
-
             
-            #elapsed_time = time.time() - starttime
-            #elapsed_hours, rem = divmod(elapsed_time, 3600)
-            #elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-
+            LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
             
             #Close Bot after X minutes of inactivity
             h,m,s    = LED.GetElapsedTime(self.LastMessageReceived,time.time())
@@ -284,9 +256,9 @@ class Bot(commands.Bot):
             if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
               print("No chat activity for the past {} minutes OR max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing,self.MinutesMaxTime))
               print("")       
-              print("***************************")       
-              print("** EXITING CHAT TERMINAL **")
-              print("***************************")       
+              print("*****************************************")       
+              print("** EXITING CHAT TERMINAL - NO ACTIVITY **")
+              print("*****************************************")       
               print("")       
               LED.ClearBigLED()
               LED.ClearBuffers()
@@ -315,6 +287,14 @@ class Bot(commands.Bot):
                   StartDateTimeUTC = StreamStartedDateTime,
                   HHMMSS           = StreamDurationHHMMSS)
 
+              #reset timer
+              self.LastMessageReceived = time.time()
+              print("Clock display ended")
+              print("")
+              self.CursorH = 0
+              self.CursorV = 0
+
+
           else:
             LED.DisplayDigitalClock(
               ClockStyle = 1,
@@ -328,25 +308,17 @@ class Bot(commands.Bot):
               RunMinutes       = 5
               )
 
-
-
-            self.MinutesMaxTime = 1
-
-
-            #Check to see if stream is live yet
+          
+          
+          #Check to see if stream is live yet (only ever X minutes)
+          h,m,s = LED.GetElapsedTime(self.LastStreamCheckTime,time.time())
+          if (m >= self.MinutesToWaitBeforeCheckingStream):
             await self.CheckStream()
 
             #self.__init__()
-            super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
+            #super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
 
           
-
-          #Display animations after X seconds
-          #h,m,s = LED.GetElapsedTime(self.LastMessageReceived,self.BotStartTime)
-          #if (s >= self.AnimationDelay):
-          #  LED.DisplayRandomAnimation()
-          #  self.BotStartTime = time.time()
-
 
 
 
@@ -354,7 +326,6 @@ class Bot(commands.Bot):
     #---------------------------------------
     #- Event Ready                         --
     #---------------------------------------
-    
     async def event_ready(self):
         # Notify us when everything is ready!
         # We are logged in and ready to chat and use commands...
@@ -419,9 +390,6 @@ class Bot(commands.Bot):
             LittleTextZoom      = 1
             )
 
-
-
-
         await self.PerformTimeBasedActions()
 
     
@@ -432,7 +400,9 @@ class Bot(commands.Bot):
 
     
       
-
+    #---------------------------------------
+    # Event Message                       --
+    #---------------------------------------
     async def event_message(self, message):
         
         # Messages with echo set to True are messages sent by the bot...
@@ -443,7 +413,8 @@ class Bot(commands.Bot):
 
         #Exit if Chat Terminal is not on
         if (self.ChatTerminalOn == False):
-          return
+          self.MesageCount = self.MessageCount -1
+        return
         
         #Remove emoji from message
         message.content = LED.deEmojify(message.content)
@@ -491,6 +462,7 @@ class Bot(commands.Bot):
         except:
           LED.ShowScrollingBanner2('ERROR! INVALID CHARACTER',(200,0,0),ScrollSleep=0.005,v=25)
 
+        print("subtract")
         self.MesageCount = self.MessageCount -1
 
 
@@ -526,6 +498,10 @@ class Bot(commands.Bot):
         await self.handle_commands(message)
 
    
+
+    #---------------------------------------
+    # Event Join                          --
+    #---------------------------------------
     async def event_join(self,channel,user):
       #Called when a channel event is detected?
       print("")
@@ -534,7 +510,39 @@ class Bot(commands.Bot):
       print("User:   ",user.name)
 
       
-        
+    #---------------------------------------
+    # Display Random Connection Message   --
+    #---------------------------------------
+    async def DisplayRandomConnectionMessage(self):
+      #LED.ClearBigLED()
+      #LED.ClearBuffers()
+      x = len(ConnectionMessages)
+      i = random.randint(0,x-1)
+      message = ConnectionMessages[i]         
+      print("Connection message:",message)
+      CursorH = self.CursorH
+      CursorV = self.CursorH
+      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+      LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+      self.CursorH = CursorH
+      self.CursorV = CursorV
+
+ 
+    #---------------------------------------
+    # Display connection message          --
+    #---------------------------------------
+    async def DisplayConnectingToTerminalMessage(self):
+      #Show terminal connection message
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
+      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
+      self.CursorH = CursorH
+      self.CursorV = CursorV
+      
     
 
     @commands.command()
@@ -640,6 +648,8 @@ def IRCStuff():
 #------------------------------------------------------------------------------
 # Functions                                                                  --
 #------------------------------------------------------------------------------
+
+
 
 
 
@@ -1080,8 +1090,6 @@ IPAddress = LED.ShowIPAddress(Wait=5)
 
 
 LoadTwitchKeys()
-#GetBasicTwitchInfo()
-
 mybot = Bot()
 
 try:
@@ -1095,8 +1103,6 @@ except:
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"The chat bot has experienced a terminal error",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Connection closed",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   
-
-
 
 #LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
