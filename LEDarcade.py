@@ -12907,7 +12907,9 @@ def DisplayDigitalClock(
   ScrollSleep    = 0.02,
   RunMinutes     = 5,
   StartDateTimeUTC  = '',
-  HHMMSS            = '00:00:00'
+  HHMMSS            = '00:00:00',
+  DisplayNumber1    = 0,
+  DisplayNumber2    = 0
   
   ):
 
@@ -14018,14 +14020,52 @@ def DisplayDigitalClock(
 
     #Timer counting up?
     if (ClockStyle == 3):
-      TimerSprite = CreateTimerSprite(HHMMSS)
-      MakeAndShowTimer(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
+      #TimerSprite = CreateTimerSprite(HHMMSS)
+      #MakeAndShowTimer(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
+      #TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
 
-      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
-      TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
+      
+      ScreenArray1  = ([[]])
+      ScreenArray1  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+      ScreenArray2  = ([[]])
+      ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+      TimerSprite = CreateTimerSprite(HHMMSS)
+      #TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
+
+
+      ScreenArray1 = CopySpriteToScreenArrayZoom(TimerSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
+      ScreenArray1 = CopySpriteToScreenArrayZoom(TimerSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
+      TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=1)
+  
+
+      message = "Viewers:{}".format(DisplayNumber1)
+      BannerSprite = CreateBannerSprite(message)
+      h1 = h 
+      v1 = v * ZoomFactor + 2
+      ScreenArray1 = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,(200,0,0),(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray1)
+
+      message = "Followers:{}".format(DisplayNumber2)
+      BannerSprite = CreateBannerSprite(message)
+      h1 = h 
+      v1 = v * ZoomFactor + 8
+      ScreenArray1 = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,(200,0,0),(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray1)
+
 
       #Show Custom Sprite
       #CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
+      #CopySpriteToPixelsZoom(MonthSprite,      MonthH,      MonthV,      MonthRGB,       SpriteFillerRGB,1)
+      #CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
+
+      
+
+
+
+
+
+
+
+
+
 
 
       while (Done == False):
