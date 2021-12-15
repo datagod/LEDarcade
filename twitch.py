@@ -606,7 +606,8 @@ class Bot(commands.Bot):
         )
 
       self.CursorH = 0
-      await ctx.send("There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount))
+      message = "There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount)
+      await self.Channel.send(message)
     
 
 
@@ -1116,7 +1117,6 @@ print ("")
 
 
 
-      
 
 #--------------------------------------
 #  Begin Twitch                      --
