@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#LEDArcade Stuff
+KeyConfig.ini
+go2.sh

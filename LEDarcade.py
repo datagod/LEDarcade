@@ -1057,6 +1057,7 @@ class Sprite(object):
     self.directionV  = 0
     self.velocityH   = 0
     self.velocityV   = 0
+    self.on          = True
 
   
   
@@ -2864,6 +2865,20 @@ PoundSignSprite = Sprite(
 )
 
 
+#AmpersandSprite
+AmpersandSprite = Sprite(
+  5,
+  5,
+  0,
+  0,
+  0,
+  [0,0,0,1,0,
+   1,1,1,1,1,
+   0,1,0,1,0,
+   0,0,1,1,0,
+   0,0,0,1,0]
+)
+
 
  
 ColonSprite = Sprite(
@@ -2924,6 +2939,22 @@ CommaSprite = Sprite(
 )
 
 
+
+# `
+BackTickSprite = Sprite(
+  3,
+  5,
+  RedR,
+  RedG,
+  RedB,
+  [1,0,0,
+   0,1,0,
+   0,0,0,
+   0,0,0,
+   0,0,0]
+)
+
+
 #+
 PlusSignSprite = Sprite(
   5,
@@ -2939,6 +2970,71 @@ PlusSignSprite = Sprite(
 )
 
 
+
+#(
+LeftParenthesisSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [0,0,1,
+   0,1,0,
+   0,1,0,
+   0,1,0,
+   0,0,1,]
+)
+
+
+#(
+RightParenthesisSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [0,1,0,
+   0,0,1,
+   0,0,1,
+   0,0,1,
+   0,1,0,]
+)
+
+
+
+
+
+#>
+GreaterThanSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [1,0,0,
+   0,1,0,
+   0,0,1,
+   0,1,0,
+   1,0,0]
+)
+
+
+#>
+LessThanSprite = Sprite(
+  3,
+  5,
+  0,
+  0,
+  0,
+  [0,0,1,
+   0,1,0,
+   1,0,0,
+   0,1,0,
+   1,0,1]
+)
+
+
+
 #@
 AtSignSprite = Sprite(
   5,
@@ -2952,6 +3048,8 @@ AtSignSprite = Sprite(
    1,0,0,0,0,
    0,1,1,1,0]
 )
+
+
 
 
 
@@ -9710,8 +9808,30 @@ def CreateBannerSprite(TheMessage):
       BannerSprite = JoinSprite(BannerSprite, ColonSprite,0)
     elif (c == '@'):
       BannerSprite = JoinSprite(BannerSprite, AtSignSprite,0)
+
     elif (c == ','):
       BannerSprite = JoinSprite(BannerSprite, CommaSprite,0)
+
+
+    elif (c == '('):
+      BannerSprite = JoinSprite(BannerSprite, LeftParenthesisSprite,0)
+    elif (c == ')'):
+      BannerSprite = JoinSprite(BannerSprite, RightParenthesisSprite,0)
+
+
+
+    elif (c == '>'):
+      BannerSprite = JoinSprite(BannerSprite, GreaterThanSprite,0)
+
+
+    elif (c == '&'):
+      BannerSprite = JoinSprite(BannerSprite, AmpersandSprite,0)
+
+
+    elif (c == '`'):
+      BannerSprite = JoinSprite(BannerSprite, BackTickSprite,0)
+
+
     elif (c == '|'):
       BannerSprite = JoinSprite(BannerSprite, PipeSprite,0)
 
@@ -10833,11 +10953,15 @@ def ShowIPAddress(Wait=5):
 
   #print dots on the same line
   V = CursorV
+  
   #duplicate this underscore WAIT number of times
-  message = '_' * Wait
+  #message = '_' * Wait
   #One second between each letter
-  print(message)
-  ScreenArray,CursorH,CursorV = TerminalScroll(ScreenArray,message,CursorH=CursorH,CursorV=V,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=1,ScrollSpeed=ScrollSleep)
+  #print(message)
+  #ScreenArray,CursorH,CursorV = TerminalScroll(ScreenArray,message,CursorH=CursorH,CursorV=V,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=1,ScrollSpeed=ScrollSleep)
+  
+  BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),BlinkSpeed=0.5,BlinkCount=Wait)
+
 
 
   return IPAddress
@@ -11518,7 +11642,7 @@ def ShowTitleScreen(
   ScrollTextRGB  = HighYellow,
   ScrollSleep    = 0.05,    #how long to wait between each frame of scrolling
   DisplayTime    = 5,       #how long to wait before exiting
-  ExitEffect     = True,
+  ExitEffect     = 0,
   LittleTextZoom = 1
   ):
 
@@ -11586,7 +11710,10 @@ def ShowTitleScreen(
 
   #Pick a random special affect
  
-  if(ExitEffect == 0):
+  if(ExitEffect == -1):
+    print("No effect")
+
+  elif(ExitEffect == 0):
     r = random.randint(0,5)
     if (r == 0):
       #Zoom out
@@ -12719,30 +12846,39 @@ def UpdateClockWithTransition(ClockSprite,hh=24,h=0,v=0,RGB=HighGreen,ShadowRGB=
 
 
 
-def UpdateTimerWithTransition(TimerSprite,h=0,v=0,RGB=HighGreen,ShadowRGB=ShadowGreen,ZoomFactor=1,Fill=False,TransitionType=1):
+
+
+
+
+
+
+
+
+
+
+
+
+def UpdateTimerWithTransition(TimerSprite,h=0,v=0,RGB=HighGreen,ShadowRGB=ShadowGreen,ZoomFactor=1,Fill=False,TransitionType=1,StartDateTimeUTC=''):
 
   global ScreenArray
-    
-  elapsed_time = time.time() - StartTime
-  elapsed_hours, rem = divmod(elapsed_time, 3600)
-  elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-  HHMMSS = "{:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds)
-  print ('ElapsedTime2: ',HHMMSS,end="\r")
+  
+  hh,mm,ss, HHMMSS = CalculateElapsedTime(StartDateTimeUTC)
+  print ('DurationHHMMSS: ',HHMMSS,end="\r")
   
   if (HHMMSS != TimerSprite.HHMMSS):
-
     TimerSprite = CreateTimerSprite(HHMMSS)
 
     ScreenArray2 = CopySpriteToScreenArrayZoom(TimerSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,          Fill=False)
     ScreenArray2 = CopySpriteToScreenArrayZoom(TimerSprite,h,v,    RGB,      (0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray2)
-    
-    
     ScreenArray = copy.deepcopy(ScreenArray2)
     CopyScreenArrayToCanvasVSync(ScreenArray2)
 
   return TimerSprite
 
   
+
+
+
 
 
 
@@ -12769,13 +12905,17 @@ def DisplayDigitalClock(
   ZoomFactor  = 2,
   AnimationDelay = 10,
   ScrollSleep    = 0.02,
-  RunMinutes     = 5
+  RunMinutes     = 5,
+  StartDateTimeUTC  = '',
+  HHMMSS            = '00:00:00'
   
   ):
 
 
-    ClearBigLED()
-    ClearBuffers()
+    
+
+    #ClearBigLED()
+    #ClearBuffers()
     global ScreenArray
 
 
@@ -12783,7 +12923,7 @@ def DisplayDigitalClock(
     ClockSprite = CreateClockSprite(hh)
     Done        = False
     StartTime   = time.time()
-    print ("StartTime: ",StartTime)
+    print("RunMinutes:",RunMinutes)
 
     if (CenterHoriz == True):
       h = (HatWidth  // 2)  - ((ClockSprite.width * ZoomFactor) // 2) + 1
@@ -12802,24 +12942,43 @@ def DisplayDigitalClock(
       DayOfMonthSprite    = CreateDayOfMonthSprite()
    
     
+
+
+
+
+  
+  
+
+
   
     # Clock at top, random scrolling animations
     if (ClockStyle == 1):
-      MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
-      #ClockSprite = CreateClockSprite(hh)
-      #ClearBuffers() #clean the internal graphic buffers
-      #CopySpriteToPixelsZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,           Fill=False)
+    
+      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
+      ScreenArray1  = ([[]])
+      ScreenArray1  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+      ScreenArray2  = ([[]])
+      ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+      ClockSprite = CreateClockSprite(hh)
+
+
+      ScreenArray1 = CopySpriteToScreenArrayZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
+      ScreenArray1 = CopySpriteToScreenArrayZoom(ClockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
+      TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=1)
+  
+
+      #CopySpriteToPixelsZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,          Fill=False)
       #CopySpriteToPixelsZoom(ClockSprite,h,v,    RGB,      (0,0,0),ZoomFactor=ZoomFactor,Fill=False)
-
-      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
-      ClockSprite = UpdateClockWithTransition(ClockSprite,hh,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True)
-
+      
+      
       #Show Custom Sprite
       CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
       CopySpriteToPixelsZoom(MonthSprite,      MonthH,      MonthV,      MonthRGB,       SpriteFillerRGB,1)
       CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
 
-
+      
+      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
+      ClockSprite = UpdateClockWithTransition(ClockSprite,hh,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True)
 
 
       while (Done == False):
@@ -13859,11 +14018,11 @@ def DisplayDigitalClock(
 
     #Timer counting up?
     if (ClockStyle == 3):
-      TimerSprite = CreateTimerSprite('00:00:00')
+      TimerSprite = CreateTimerSprite(HHMMSS)
       MakeAndShowTimer(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
       #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
-      TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True)
+      TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
 
       #Show Custom Sprite
       #CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
@@ -13872,11 +14031,11 @@ def DisplayDigitalClock(
       while (Done == False):
 
         time.sleep(AnimationDelay)
-        TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+        TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
 
         r = random.randint(1,11)
         if (r == 1):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
 
           RunningMan2Sprite.ScrollAcrossScreen(20,15,'right', ScrollSleep )
@@ -13887,7 +14046,7 @@ def DisplayDigitalClock(
           RunningMan2Sprite.HorizontalFlip()
 
         elif (r == 2):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
           r = random.randint(1,2)
           MoveAnimatedSpriteAcrossScreen(BigSpiderWalkingSprite,Position='bottom',direction="right",steps=14*r,ZoomFactor=r,sleep=0.05)
@@ -13898,7 +14057,7 @@ def DisplayDigitalClock(
 
         elif (r == 3):
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
 
           MoveAnimatedSpriteAcrossScreenFramesPerStep(
             ThreeGhostPacSprite,
@@ -13932,7 +14091,7 @@ def DisplayDigitalClock(
 
         elif (r == 4):
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
 
           SpaceInvader.framerate = 2
           SpaceInvader.InitializeScreenArray()
@@ -13972,7 +14131,7 @@ def DisplayDigitalClock(
             )
 
         elif (r == 5):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
           r = random.randint(1,3)
@@ -13999,7 +14158,7 @@ def DisplayDigitalClock(
 
 
         elif (r == 6):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
           MoveAnimatedSpriteAcrossScreenStepsPerFrame(
@@ -14026,7 +14185,7 @@ def DisplayDigitalClock(
 
 
         elif (r == 7):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
           MoveAnimatedSpriteAcrossScreenStepsPerFrame(
@@ -14052,7 +14211,7 @@ def DisplayDigitalClock(
 
 
         if (r == 8):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
           RunningMan3Sprite.ScrollAcrossScreen(20,15,'right', ScrollSleep )
@@ -14063,7 +14222,7 @@ def DisplayDigitalClock(
 
         elif (r == 9):
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
 
           i = random.randint(0,27)
           ShipSprites[i].InitializeScreenArray()
@@ -14115,7 +14274,7 @@ def DisplayDigitalClock(
             )
 
         elif (r == 10):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
           MoveAnimatedSpriteAcrossScreenStepsPerFrame(
@@ -14139,7 +14298,7 @@ def DisplayDigitalClock(
 
 
         elif (r == 11):
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
 
           
@@ -14205,7 +14364,7 @@ def DisplayDigitalClock(
 
         if (TimerSprite.HHMM != datetime.now().strftime('%H:%M')):
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
-          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
+          TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
 
         if elapsed_minutes >= RunMinutes:
           Done = True
@@ -14510,10 +14669,34 @@ def ScrollScreenArray(ScreenArray,lines,speed):
 
 
 
+def BlinkCursor(CursorH=0,CursorV=0,CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),BlinkSpeed=0.25,BlinkCount=1):
 
 
+  for i in range (0,BlinkCount*2):
+    #If on, draw dark, if off, draw bright
+    #print ("BlinkCursor:",CursorSprite.on)
+    if(CursorSprite.on == True):
+      ColorTuple = CursorDarkRGB
+      CursorSprite.on = False
+    else:
+      ColorTuple = CursorRGB
+      CursorSprite.on = True
 
 
+    CopySpriteToPixelsZoom(
+      TheSprite = CursorSprite,
+      h = CursorH,
+      v = CursorV,
+      ColorTuple = ColorTuple,
+      FillerTuple=(0,0,0),
+      ZoomFactor = 1,
+      Fill = False
+    )
+
+    if (BlinkSpeed > 0):
+      time.sleep(BlinkSpeed)
+
+  return
 
 
         
@@ -14663,3 +14846,22 @@ def TerminalScroll(ScreenArray, Message="",CursorH=0,CursorV=0,MessageRGB=(0,150
 def deEmojify(InputString):
     return InputString.encode('ascii', 'ignore').decode('ascii')
 
+
+
+
+
+def CalculateElapsedTime(StartDateTimeUTC):
+  #get current UTC datetime (timezone naive)
+  nowUTC = datetime.utcnow()
+
+  print("nowUTC:",nowUTC,nowUTC.timestamp())
+  
+  #This creates a timedelta object
+  elapsed_time =  nowUTC - StartDateTimeUTC
+  elapsed_hours, rem = divmod(elapsed_time.seconds, 3600)
+  elapsed_minutes, elapsed_seconds = divmod(rem, 60)
+    
+  HHMMSS = "{:0>2}:{:0>2}:{:0>2}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds)
+  
+  return elapsed_hours, elapsed_minutes, elapsed_seconds, HHMMSS
+  
