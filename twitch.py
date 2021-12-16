@@ -276,7 +276,9 @@ class Bot(commands.Bot):
                   AnimationDelay   = 30,
                   RunMinutes       = 1,
                   StartDateTimeUTC = StreamStartedDateTime,
-                  HHMMSS           = StreamDurationHHMMSS)
+                  HHMMSS           = StreamDurationHHMMSS,
+                  DisplayNumber1   = ViewerCount,
+                  DisplayNumber2   = Followers)
 
               #reset timer
               self.LastMessageReceived = time.time()
@@ -591,6 +593,7 @@ class Bot(commands.Bot):
     @commands.command()
     async def viewers(self, ctx: commands.Context):
       #SHOW VIEWERS
+      GetTwitchCounts()
       LED.ShowTitleScreen(
         BigText             = str(ViewerCount),
         BigTextRGB          = LED.MedPurple,
@@ -806,7 +809,56 @@ def LoadTwitchKeys():
 
 
 
+def GetTwitchCounts():
+    
+    #User / Channel Info
+    global GameName        
+    global Title           
 
+    #Stream Info
+    global StreamStartedAt 
+    global StreamStartedTime
+    global StreamStartedDateTime
+    global StreamDurationHHMMSS
+    global StreamType      
+    global ViewerCount     
+    global StreamActive 
+
+    #Follower Info
+    global Followers      
+
+    
+    #----------------------------------------
+    # GET USER INFO - ACTIVE STREAM
+    #----------------------------------------
+    print ("Getting USER info")
+    API_ENDPOINT = "https://api.twitch.tv/helix/streams?user_login=" + CHANNEL
+    head = {
+    'Client-ID': CLIENT_ID,
+    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    }
+    print ("URL: ",API_ENDPOINT, 'data:',head)
+    r = requests.get(url = API_ENDPOINT, headers = head)
+    results = r.json()
+    pprint.pprint(results)
+    #print(" ")
+
+    if results['data']:
+      print("Data found.  Processing...")
+
+      try:
+        StreamStartedAt = results['data'][0]['started_at']
+        StreamType      = results['data'][0]['type']
+        ViewerCount     = results['data'][0]['viewer_count']
+        StreamActive    = True
+
+      except Exception as ErrorMessage:
+        TraceMessage = traceback.format_exc()
+        AdditionalInfo = "Getting USER info from API call" 
+        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+    else:
+      print("Stream NOT active")
+      StreamActive = False  
 
 
 
