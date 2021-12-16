@@ -12439,6 +12439,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1):
     GlowCount = len(PixelsToGlow)
 
     #print ("FadeCount:",FadeCount," GlowCount:",GlowCount)
+    #j is used to control brightness levels.  j +- 10
     for j in range (1,26):
       
       if (FadeCount > 1):
@@ -12868,7 +12869,7 @@ def UpdateTimerWithTransition(TimerSprite,h=0,v=0,RGB=HighGreen,ShadowRGB=Shadow
   if (HHMMSS != TimerSprite.HHMMSS):
     TimerSprite = CreateTimerSprite(HHMMSS)
 
-    ScreenArray2 = CopySpriteToScreenArrayZoom(TimerSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,          Fill=False)
+    ScreenArray2 = CopySpriteToScreenArrayZoom(TimerSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,           Fill=False,InputScreenArray=ScreenArray)
     ScreenArray2 = CopySpriteToScreenArrayZoom(TimerSprite,h,v,    RGB,      (0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray2)
     ScreenArray = copy.deepcopy(ScreenArray2)
     CopyScreenArrayToCanvasVSync(ScreenArray2)
@@ -14025,31 +14026,41 @@ def DisplayDigitalClock(
       #TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
 
       
-      ScreenArray1  = ([[]])
-      ScreenArray1  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+      #ScreenArray1  = ([[]])
+      #ScreenArray1  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TimerSprite = CreateTimerSprite(HHMMSS)
       #TimerSprite = UpdateTimerWithTransition(TimerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
 
 
-      ScreenArray1 = CopySpriteToScreenArrayZoom(TimerSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
-      ScreenArray1 = CopySpriteToScreenArrayZoom(TimerSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
-      TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=1)
+      ScreenArray = CopySpriteToScreenArrayZoom(TimerSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
+      ScreenArray = CopySpriteToScreenArrayZoom(TimerSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
+      
+      #message = "V:{}".format(DisplayNumber1)
+      #BannerSprite = CreateBannerSprite(message)
+      #h1 = 0 
+      #v1 = 19
+      #ScreenArray1 = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,(0,0,100),(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray1)
+
+      #message = "F:{}".format(DisplayNumber2)
+      #BannerSprite = CreateBannerSprite(message)
+      #h1 = 32 
+      #v1 = 19
+      #ScreenArray1 = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,(0,0,100),(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray1)
+
+      message = "Stream Run"
+      BannerSprite = CreateBannerSprite(message)
+      h1 = round((HatWidth - BannerSprite.width) / 2)
+      v1 = 19
+      ScreenArray = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,(50,0,150),(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray)
+      #CopyScreenArrayToCanvasVSync(ScreenArray1)
+      
+
+
+      TransitionBetweenScreenArrays(ScreenArray2,ScreenArray,TransitionType=1)
   
-
-      message = "Viewers:{}".format(DisplayNumber1)
-      BannerSprite = CreateBannerSprite(message)
-      h1 = h 
-      v1 = v * ZoomFactor + 2
-      ScreenArray1 = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,(200,0,0),(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray1)
-
-      message = "Followers:{}".format(DisplayNumber2)
-      BannerSprite = CreateBannerSprite(message)
-      h1 = h 
-      v1 = v * ZoomFactor + 8
-      ScreenArray1 = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,(200,0,0),(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray1)
-
+      time.sleep(2)
 
       #Show Custom Sprite
       #CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
