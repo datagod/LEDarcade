@@ -123,12 +123,12 @@ class Bot(commands.Bot):
     CursorV             = 0
     CursorRGB           = (0,255,0)
     CursorDarkRGB       = (0,50,0)
-    AnimationDelay      = 60
+    AnimationDelay      = 30
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
     MinutesToWaitBeforeClosing        = 10       #close chat after X minutes of inactivity
-    MinutesMaxTime                    = 10       #exit chat terminal after X minutes and display clock
+    MinutesMaxTime                    = 0        #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
     SendStartupMessage  = True
     BotTypeSpeed        = TerminalTypeSpeed
@@ -272,7 +272,7 @@ class Bot(commands.Bot):
                   RGB = LED.LowGreen,
                   ShadowRGB        = LED.ShadowGreen,
                   ZoomFactor       = 3,
-                  AnimationDelay   = 30,
+                  AnimationDelay   = self.AnimationDelay,
                   RunMinutes       = 1,
                   StartDateTimeUTC = StreamStartedDateTime,
                   HHMMSS           = StreamDurationHHMMSS,
@@ -296,7 +296,7 @@ class Bot(commands.Bot):
               RGB = LED.LowGreen,
               ShadowRGB        = LED.ShadowGreen,
               ZoomFactor       = 3,
-              AnimationDelay   = 30,
+              AnimationDelay   = self.AnimationDelay,
               RunMinutes       = 5
               )
 
