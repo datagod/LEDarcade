@@ -14044,7 +14044,7 @@ def DisplayDigitalClock(
 
       
       #This will be displayed under the clock
-      message = "Stream Run"
+      message = "Uptime"
       BannerSprite = CreateBannerSprite(message)
       h1 = round((HatWidth - BannerSprite.width) / 2)
       v1 = 19
