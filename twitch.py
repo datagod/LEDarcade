@@ -268,7 +268,7 @@ class Bot(commands.Bot):
               self.ChatTerminalOn = False                        
               #await self.close()
                         
-              if( StreamActive == True):
+              if( StreamActive == True and SHOW_VIEWERS == True):
                 LED.DisplayDigitalClock(
                   ClockStyle = 3,
                   CenterHoriz = True,
@@ -358,36 +358,38 @@ class Bot(commands.Bot):
               LittleTextZoom      = 2
               )
 
-          #SHOW FOLLOWERS
-            LED.ShowTitleScreen(
-              BigText             = str(Followers),
-              BigTextRGB          = LED.MedPurple,
-              BigTextShadowRGB    = LED.ShadowPurple,
-              LittleText          = 'FOLLOWS',
-              LittleTextRGB       = LED.MedRed,
-              LittleTextShadowRGB = LED.ShadowRed, 
-              ScrollText          = '',
-              ScrollTextRGB       = LED.MedYellow,
-              ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-              DisplayTime         = 1,           # time in seconds to wait before exiting 
-              ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-              )
+            #SHOW FOLLOWERS
+            if (SHOW_FOLLOWERS == True):
+              LED.ShowTitleScreen(
+                BigText             = str(Followers),
+                BigTextRGB          = LED.MedPurple,
+                BigTextShadowRGB    = LED.ShadowPurple,
+                LittleText          = 'FOLLOWS',
+                LittleTextRGB       = LED.MedRed,
+                LittleTextShadowRGB = LED.ShadowRed, 
+                ScrollText          = '',
+                ScrollTextRGB       = LED.MedYellow,
+                ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+                DisplayTime         = 1,           # time in seconds to wait before exiting 
+                ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+                )
 
 
-          #SHOW VIEWERS
-            LED.ShowTitleScreen(
-              BigText             = str(ViewerCount),
-              BigTextRGB          = LED.MedPurple,
-              BigTextShadowRGB    = LED.ShadowPurple,
-              LittleText          = 'Viewers',
-              LittleTextRGB       = LED.MedRed,
-              LittleTextShadowRGB = LED.ShadowRed, 
-              ScrollText          = 'Now Playing: ' + GameName,
-              ScrollTextRGB       = LED.MedYellow,
-              ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-              DisplayTime         = 1,           # time in seconds to wait before exiting 
-              ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-              )
+            #SHOW VIEWERS
+            if (SHOW_VIEWERS == True):
+              LED.ShowTitleScreen(
+                BigText             = str(ViewerCount),
+                BigTextRGB          = LED.MedPurple,
+                BigTextShadowRGB    = LED.ShadowPurple,
+                LittleText          = 'Viewers',
+                LittleTextRGB       = LED.MedRed,
+                LittleTextShadowRGB = LED.ShadowRed, 
+                ScrollText          = 'Now Playing: ' + GameName,
+                ScrollTextRGB       = LED.MedYellow,
+                ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+                DisplayTime         = 1,           # time in seconds to wait before exiting 
+                ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+                )
 
 
 
@@ -648,6 +650,17 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def followers(self, ctx: commands.Context):
+      
+      #SHOW FOLLOWQERS
+      if(SHOW_FOLLOWERS == True):
+        GetTwitchCounts()
+
+        message = "{} viewers follow this channel. Gotta get those numbers up!".format(Followers)
+        await self.Channel.send(message)
+      else:
+        message = "{} has decided to not show followers.".format(CHANNEL)
+        await self.Channel.send(message)
+
       #SHOW FOLLOWS
       GetTwitchCounts()
 
@@ -675,10 +688,14 @@ class Bot(commands.Bot):
     @commands.command()
     async def subs(self, ctx: commands.Context):
       #SHOW SUBS
-      GetTwitchCounts()
+      if(SHOW_SUBS == True):
+        GetTwitchCounts()
 
-      message = "This channel has {} subscribers. We can always use more.".format(Subs)
-      await self.Channel.send(message)
+        message = "This channel has {} subscribers. We can always use more.".format(Subs)
+        await self.Channel.send(message)
+      else:
+        message = "{} has decided to not show viewers".format(CHANNEL)
+        await self.Channel.send(message)
 
       LED.ShowTitleScreen(
         BigText             = str(subs),
@@ -1190,9 +1207,9 @@ def LoadConfigFiles():
     MyConfigFile.read(MyConfigFileName)
 
     #Get settings
-    SHOW_VIEWERS   = MyConfigFile.get("SHOW","ShowViewers")
-    SHOW_FOLLOWERS = MyConfigFile.get("SHOW","ShowFollowers")
-    SHOW_SUBS      = MyConfigFile.get("SHOW","ShowSubs")
+    SHOW_VIEWERS   = MyConfigFile.get("SHOW","SHOW_VIEWERS")
+    SHOW_FOLLOWERS = MyConfigFile.get("SHOW","SHOW_FOLLOWERS")
+    SHOW_SUBS      = MyConfigFile.get("SHOW","SHOW_SUBS")
 
     print("SHOW_VIEWERS:   ",SHOW_VIEWERS)   
     print("SHOW_FOLLOWERS: ",SHOW_FOLLOWERS)   
@@ -1230,9 +1247,9 @@ def CheckConfigFiles():
       #CREATE A CONFIG FILE
       MyConfigFile = open(MyConfigFileName,'a+')
       MyConfigFile.write("[SHOW]\n")
-      MyConfigFile.write("  ShowViewers   = True\n")
-      MyConfigFile.write("  ShowFollowers = True\n")
-      MyConfigFile.write("  ShowSubs      = True\n")
+      MyConfigFile.write("  SHOW_VIEWERS   = True\n")
+      MyConfigFile.write("  SHOW_FOLLOWERS = True\n")
+      MyConfigFile.write("  SHOW_SUBS      = True\n")
 
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
