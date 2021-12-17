@@ -24,7 +24,6 @@ ConnectionMessages = [
   "Dave's not here!"
 
 
-
 ]
 
 ChatStartMessages = [
