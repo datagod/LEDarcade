@@ -104,6 +104,11 @@ HatHeight = 32
 HatWidth  = 64
 
 
+#Files
+KeyConfigFileName = "KeyConfig.ini" 
+MyConfigFileName  = "MyConfig.ini"
+  
+
 
 
 #Sprite display locations
@@ -127,8 +132,8 @@ class Bot(commands.Bot):
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
-    MinutesToWaitBeforeClosing        = 10       #close chat after X minutes of inactivity
-    MinutesMaxTime                    = 0        #exit chat terminal after X minutes and display clock
+    MinutesToWaitBeforeClosing        = 5       #close chat after X minutes of inactivity
+    MinutesMaxTime                    = 10       #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
     SendStartupMessage  = True
     BotTypeSpeed        = TerminalTypeSpeed
@@ -688,7 +693,6 @@ class Bot(commands.Bot):
         DisplayTime         = 1,           # time in seconds to wait before exiting 
         ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
         )
-
       self.CursorH = 0
 
 
@@ -784,107 +788,13 @@ def IRCStuff():
 
 
 #------------------------------------------------------------------------------
-# Functions                                                                  --
+# File Functions                                                             --
 #------------------------------------------------------------------------------
 
 
 
 
 
-def LoadTwitchKeys():
-  
-  global ACCESS_TOKEN
-  global REFRESH_TOKEN
-  global CLIENT_ID
-  global CHANNEL
-  global CHANNEL_BIG_TEXT
-  global CHANNEL_LITTLE_TEXT
-  
-  global USER_ID
-  global BROADCASTER_ID
-  global BOT_CHANNEL
-  global BOT_ACCESS_TOKEN
-  global BOT_REFRESH_TOKEN
-  global BOT_CLIENT_ID
-
-
-
-  #XtianNinja
-  #ACCESS_TOKEN  = '***REMOVED***'
-  #REFRESH_TOKEN = '***REMOVED***'
-  #CLIENT_ID     = '***REMOVED***'
-  #CHANNEL       = 'XtianNinja'
-
-
-  KeyFileName = "KeyConfig.ini" 
-  print ("--Load Twitch Keys--")
-
-
-  if (os.path.exists(KeyFileName)):
-
-    print ("Config file (",KeyFileName,"): already exists")
-    KeyFile = SafeConfigParser()
-    KeyFile.read(KeyFileName)
-
-    #Get tokens
-    CHANNEL             = KeyFile.get("KEYS","CHANNEL")
-    CHANNEL_BIG_TEXT    = KeyFile.get("KEYS","CHANNEL_BIG_TEXT")
-    CHANNEL_LITTLE_TEXT = KeyFile.get("KEYS","CHANNEL_LITTLE_TEXT")
-
-    USER_ID        = KeyFile.get("KEYS","USER_ID")        #Same as Broadcaster_ID
-    BROADCASTER_ID = KeyFile.get("KEYS","BROADCASTER_ID") #Same as UserID
-    ACCESS_TOKEN   = KeyFile.get("KEYS","ACCESS_TOKEN")  
-    REFRESH_TOKEN  = KeyFile.get("KEYS","REFRESH_TOKEN")
-    CLIENT_ID      = KeyFile.get("KEYS","CLIENT_ID")      #ID of the twitch connected app (this program)
-
-
-    #Bot specific connection info
-    #in case we want a bot to connect separately, or to other channels
-    BOT_CHANNEL = CHANNEL
-    BOT_ACCESS_TOKEN   = KeyFile.get("KEYS","BOT_ACCESS_TOKEN")  
-    BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
-    BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
-
-
-    print("CHANNEL:             ",CHANNEL)   
-    print("CHANNEL_BIG_TEXT:    ",CHANNEL_BIG_TEXT)   
-    print("CHANNEL_LITTLE_TEXT: ",CHANNEL_LITTLE_TEXT)   
-    print("USER_ID:             ",USER_ID)
-    print("BROADCASTER_ID:      ",BROADCASTER_ID)
-    print("CLIENT_ID:           ",CLIENT_ID)
-    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
-    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
-
-    print("BOT_CHANNEL:         ",BOT_CHANNEL)   
-    print("BOT_CLIENT_ID:       ",BOT_CLIENT_ID)
-    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
-    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
-
-
-  else:
-    
-    #To be finished later
-    print ("ERROR: Could not locate Key file (",KeyFileName,"). Create a file and make sure to pupulate it with your own keys.")
-    #NewKeyFile = SafeConfigParser()
-    #NewKeyFile.read(ConfigFileName)
-    #NewKeyFile.add_section('KEYS')
-    
-
-
-
-    #open(KeyFileName "w+")
-    #KeyFile.add_section('KEYS')
-    #KeyFile.set('KEYS','CHANNEL','YourChannelHere')
-    
-
-    #KeyFile = SafeConfigParser()
-    #KeyFile.read(KeyFileName)
-    
-
-    
-  print ("--------------------")
-  print (" ")
-  
 
 
 
@@ -1200,6 +1110,168 @@ def ConvertDate(TheDate):
 
 
 
+def LoadConfigFiles():
+  
+  global ACCESS_TOKEN
+  global REFRESH_TOKEN
+  global CLIENT_ID
+  global CHANNEL
+  global CHANNEL_BIG_TEXT
+  global CHANNEL_LITTLE_TEXT
+  
+  global USER_ID
+  global BROADCASTER_ID
+  global BOT_CHANNEL
+  global BOT_ACCESS_TOKEN
+  global BOT_REFRESH_TOKEN
+  global BOT_CLIENT_ID
+
+
+  
+  
+  print ("--Load Twitch Keys--")
+  print("KeyConfig.ini")
+  if (os.path.exists(KeyConfigFileName)):
+
+    print ("Config file (",KeyConfigFileName,"): found")
+    KeyFile = SafeConfigParser()
+    KeyFile.read(KeyConfigFileName)
+
+    #Get tokens
+    CHANNEL             = KeyFile.get("KEYS","CHANNEL")
+    CHANNEL_BIG_TEXT    = KeyFile.get("KEYS","CHANNEL_BIG_TEXT")
+    CHANNEL_LITTLE_TEXT = KeyFile.get("KEYS","CHANNEL_LITTLE_TEXT")
+
+    USER_ID        = KeyFile.get("KEYS","USER_ID")        #Same as Broadcaster_ID
+    BROADCASTER_ID = KeyFile.get("KEYS","BROADCASTER_ID") #Same as UserID
+    ACCESS_TOKEN   = KeyFile.get("KEYS","ACCESS_TOKEN")  
+    REFRESH_TOKEN  = KeyFile.get("KEYS","REFRESH_TOKEN")
+    CLIENT_ID      = KeyFile.get("KEYS","CLIENT_ID")      #ID of the twitch connected app (this program)
+
+
+    #Bot specific connection info
+    #in case we want a bot to connect separately, or to other channels
+    BOT_CHANNEL = CHANNEL
+    BOT_ACCESS_TOKEN   = KeyFile.get("KEYS","BOT_ACCESS_TOKEN")  
+    BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
+    BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
+
+
+    print("CHANNEL:             ",CHANNEL)   
+    print("CHANNEL_BIG_TEXT:    ",CHANNEL_BIG_TEXT)   
+    print("CHANNEL_LITTLE_TEXT: ",CHANNEL_LITTLE_TEXT)   
+    print("USER_ID:             ",USER_ID)
+    print("BROADCASTER_ID:      ",BROADCASTER_ID)
+    print("CLIENT_ID:           ",CLIENT_ID)
+    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
+    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
+
+    print("BOT_CHANNEL:         ",BOT_CHANNEL)   
+    print("BOT_CLIENT_ID:       ",BOT_CLIENT_ID)
+    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
+    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
+
+    print ("--------------------")
+    print (" ")
+
+  else:
+    #To be finished later
+    print ("ERROR: Could not locate Key file (",KeyConfigFileName,"). Create a file and make sure to pupulate it with your own keys.")
+
+
+
+  print ("--Load Personal Configurations--")
+  print("MyConfig.ini")
+
+  if (os.path.exists(MyConfigFileName)):
+
+    print ("Config file (",MyConfigFileName,"): found")
+    MyConfigFile = SafeConfigParser()
+    MyConfigFile.read(MyConfigFileName)
+
+    #Get settings
+    SHOW_VIEWERS   = MyConfigFile.get("SHOW","ShowViewers")
+    SHOW_FOLLOWERS = MyConfigFile.get("SHOW","ShowFollowers")
+    SHOW_SUBS      = MyConfigFile.get("SHOW","ShowSubs")
+
+    print("SHOW_VIEWERS:   ",SHOW_VIEWERS)   
+    print("SHOW_FOLLOWERS: ",SHOW_FOLLOWERS)   
+    print("SHOW_SUBS:      ",SHOW_SUBS)   
+
+
+  else:
+    print ("ERROR: Could not locate config file (",MyConfigFileName,").")
+  
+  print ("--------------------")
+  print (" ")
+  
+
+
+
+
+
+
+def CheckConfigFiles():
+  #This function will create the config files if they do not exist and populate them 
+  #with examples
+
+  #KeyConfig.ini
+
+
+  if (os.path.exists(MyConfigFileName)):
+    print("File found:",MyConfigFileName)
+
+  else:
+
+    try:
+      print("Warning! File not found:",MyConfigFileName)
+      print("We will attempt to create a file with default values")
+    
+      #CREATE A CONFIG FILE
+      MyConfigFile = open(MyConfigFileName,'a+')
+      MyConfigFile.write("[SHOW]\n")
+      MyConfigFile.write("  ShowViewers   = True\n")
+      MyConfigFile.write("  ShowFollowers = True\n")
+      MyConfigFile.write("  ShowSubs      = True\n")
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Creating the {}file".format(MyConfigFileName)
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+
+  if (os.path.exists(KeyConfigFileName)):
+    print("File found:",KeyConfigFileName)
+  else:
+    try:
+      print("Warning! File not found:",KeyConfigFileName)
+      print("We will attempt to create a file with default values")
+  
+      #CREATE A CONFIG FILE
+      KeyConfigFile = open(KeyConfigFileName,'a+')
+      KeyConfigFile.write("[KEYS]\n")
+      KeyConfigFile.write("  CHANNEL             = YourChannelName\n")
+      KeyConfigFile.write("  CHANNEL_BIG_TEXT    = LED\n")
+      KeyConfigFile.write("  CHANNEL_LITTLE_TEXT = ARCADE\n")
+      KeyConfigFile.write("\n")
+      KeyConfigFile.write("  USER_ID        = 12345\n")
+      KeyConfigFile.write("  BROADCASTER_ID = 12345 (same as UserID)\n")
+      KeyConfigFile.write("  ACCESS_TOKEN   = abcdefg\n")
+      KeyConfigFile.write("  REFRESH_TOKEN  = hijklmn\n")
+      KeyConfigFile.write("  CLIENT_ID      = ***REMOVED***\n")
+      KeyConfigFile.write("\n")
+      KeyConfigFile.write("  BOT_ACCESS_TOKEN  = abcde\n")
+      KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
+      KeyConfigFile.write("  BOT_CLIENT_ID     = ***REMOVED***\n")
+
+      print("File created")
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Creating the {}file".format(KeyConfigFileName)
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+    
+
 
 
 
@@ -1228,6 +1300,8 @@ def ConvertDate(TheDate):
 
 
 
+
+
 print ("---------------------------------------------------------------")
 print ("WELCOME TO THE LED ARCADE - Twitch Version                     ")
 print ("")
@@ -1251,7 +1325,9 @@ print ("")
 #  Begin Twitch                      --
 #--------------------------------------
 
-LoadTwitchKeys()
+
+CheckConfigFiles()
+LoadConfigFiles()
 
 
 #skip all this if running datagod
