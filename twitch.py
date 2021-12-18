@@ -73,7 +73,6 @@ BOT_CLIENT_ID     = ''
 
 
 
-
 #User / Channel Info
 GameName        = ''
 Title           = ''
@@ -109,6 +108,11 @@ KeyConfigFileName = "KeyConfig.ini"
 MyConfigFileName  = "MyConfig.ini"
   
 
+#Configurations
+SHOW_VIEWERS   = True
+SHOW_FOLLOWERS = True
+SHOW_SUBS      = True
+
 
 
 #Sprite display locations
@@ -117,7 +121,9 @@ LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
 LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
 LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
 
-
+#Colors
+TerminalRGB = (0,200,0)
+CursorRGB = (0,75,0)
 
 
 
@@ -169,6 +175,15 @@ class Bot(commands.Bot):
 
 
     async def my_custom_startup(self):
+
+        
+        #TESTING A TASK
+        message = "Welcome to the jungle.  We got plenty of cake"
+        task = asyncio.create_task(self.DisplayTerminalMessage(message,TerminalRGB))
+
+
+
+
         await asyncio.sleep(1)
         self.Channel = self.get_channel(BOT_CHANNEL)
         #channel2 = self.fetch_channel(CHANNEL_ID)
@@ -226,7 +241,7 @@ class Bot(commands.Bot):
         #end_time = loop.time() + self.AnimationDelay
         
         if(StreamActive == True):
-          await self.DisplayConnectingToTerminalMessage()
+          #await self.DisplayConnectingToTerminalMessage()
           await self.DisplayRandomConnectionMessage()
 
         while True:
@@ -268,7 +283,7 @@ class Bot(commands.Bot):
               self.ChatTerminalOn = False                        
               #await self.close()
                         
-              if( StreamActive == True and SHOW_VIEWERS == True):
+              if( StreamActive == True ):
                 LED.DisplayDigitalClock(
                   ClockStyle = 3,
                   CenterHoriz = True,
@@ -278,7 +293,7 @@ class Bot(commands.Bot):
                   ShadowRGB        = LED.ShadowGreen,
                   ZoomFactor       = 3,
                   AnimationDelay   = self.AnimationDelay,
-                  RunMinutes       = 1,
+                  RunMinutes       = 5,
                   StartDateTimeUTC = StreamStartedDateTime,
                   HHMMSS           = StreamDurationHHMMSS,
                   DisplayNumber1   = ViewerCount,
@@ -293,17 +308,9 @@ class Bot(commands.Bot):
 
 
           else:
-            LED.DisplayDigitalClock(
-              ClockStyle = 1,
-              CenterHoriz = True,
-              v   = 1, 
-              hh  = 24,
-              RGB = LED.LowGreen,
-              ShadowRGB        = LED.ShadowGreen,
-              ZoomFactor       = 3,
-              AnimationDelay   = self.AnimationDelay,
-              RunMinutes       = 5
-              )
+
+            ClockTask = asyncio.create_task(self.DisplayDigitalClock())
+
 
           
           
@@ -542,7 +549,7 @@ class Bot(commands.Bot):
       message = ConnectionMessages[i]         
       print("Connection message:",message)
       CursorH = self.CursorH
-      CursorV = self.CursorH
+      CursorV = self.CursorV
       LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
       LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
       LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
@@ -580,6 +587,40 @@ class Bot(commands.Bot):
       if (self.SendStartupMessage == True and StreamActive == True):
         await self.Channel.send(message)
     
+
+
+    #---------------------------------------
+    # DisplayTerminalMessage              --
+    #---------------------------------------
+
+    async def DisplayTerminalMessage(self,message,RGB):
+      print("DisplayTerminalMessage:",message)
+      #Show terminal connection message
+      #LED.ClearBigLED()
+      #LED.ClearBuffers()
+      CursorH = self.CursorH
+      CursorV = self.CursorV 
+      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=RGB,CursorRGB=CursorRGB,CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+      self.CursorH = CursorH
+      self.CursorV = CursorV
+
+
+    #---------------------------------------
+    # Turn on Clock                       --
+    #---------------------------------------
+
+    async def DisplayDigitalClock(self):
+      LED.DisplayDigitalClock(
+        ClockStyle = 1,
+        CenterHoriz = True,
+        v   = 1, 
+        hh  = 24,
+        RGB = LED.LowGreen,
+        ShadowRGB        = LED.ShadowGreen,
+        ZoomFactor       = 3,
+        AnimationDelay   = self.AnimationDelay,
+        RunMinutes       = 5
+        )
 
 
 
@@ -629,14 +670,14 @@ class Bot(commands.Bot):
       #SHOW FOLLOWS
       GetTwitchCounts()
 
-      message = "{} viewers follow this channel. Thanks for asking.".format(ViewerCount)
+      message = "{} viewers follow this channel. Thanks for asking.".format(Followers)
       await self.Channel.send(message)
 
       LED.ShowTitleScreen(
         BigText             = str(Followers),
         BigTextRGB          = LED.MedPurple,
         BigTextShadowRGB    = LED.ShadowPurple,
-        LittleText          = 'Viewers',
+        LittleText          = 'Follows',
         LittleTextRGB       = LED.MedRed,
         LittleTextShadowRGB = LED.ShadowRed, 
         ScrollText          = '',
@@ -690,27 +731,29 @@ class Bot(commands.Bot):
       #SHOW SUBS
       if(SHOW_SUBS == True):
         GetTwitchCounts()
-
         message = "This channel has {} subscribers. We can always use more.".format(Subs)
         await self.Channel.send(message)
+
+        LED.ShowTitleScreen(
+          BigText             = str(Subs),
+          BigTextRGB          = LED.MedPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
+          LittleText          = 'Subscribers',
+          LittleTextRGB       = LED.MedRed,
+          LittleTextShadowRGB = LED.ShadowRed, 
+          ScrollText          = '',
+          ScrollTextRGB       = LED.MedYellow,
+          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+          DisplayTime         = 1,           # time in seconds to wait before exiting 
+          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+          )
+        self.CursorH = 0
+
       else:
-        message = "{} has decided to not show viewers".format(CHANNEL)
+        message = "Well, you are viewing.  I am viewing.  {} is viewing.  That's at least three.  The rest is a mystery to me.".format(CHANNEL)
         await self.Channel.send(message)
 
-      LED.ShowTitleScreen(
-        BigText             = str(subs),
-        BigTextRGB          = LED.MedPurple,
-        BigTextShadowRGB    = LED.ShadowPurple,
-        LittleText          = 'Subscribers',
-        LittleTextRGB       = LED.MedRed,
-        LittleTextShadowRGB = LED.ShadowRed, 
-        ScrollText          = '',
-        ScrollTextRGB       = LED.MedYellow,
-        ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-        DisplayTime         = 1,           # time in seconds to wait before exiting 
-        ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-        )
-      self.CursorH = 0
+      
 
 
 
@@ -1143,6 +1186,10 @@ def LoadConfigFiles():
   global BOT_REFRESH_TOKEN
   global BOT_CLIENT_ID
 
+  global SHOW_VIEWERS
+  global SHOW_FOLLOWERS
+  global SHOW_SUBS
+  
 
   
   
