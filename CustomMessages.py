@@ -18,7 +18,11 @@ ConnectionMessages = [
   'insert 25 cents to continue...',
   "today's your lucky day",
   "do you feel lucky punk?",
-  "enter at your own risk"
+  "enter at your own risk",
+  "Knock Knock...",
+  "Imagine if you will a door...",
+  "Dave's not here!"
+
 
 ]
 
@@ -33,6 +37,16 @@ ChatStartMessages = [
   '/me walks in, looks around, makes himself comfortable',
   'Hey everyone!',
   'Glad to be here.',
-  'Greetings programs!'
+  'Greetings programs!',
+  '/me is happy to be of service',
+  'Hey there everyone!  I am your new clock based overlord.',
+  'Is it that time already?',
+  'Knock knock',
+  'Wow, what a time to be alive!',
+  '/me is all wound up for a new day',
+  '/me pumps up the volume',
+  '/me arrives just in the nick of time',
+  'Hi.  I am a your friendly neighborhood chatbot'
+  
   
 ]
