@@ -73,7 +73,6 @@ BOT_CLIENT_ID     = ''
 
 
 
-
 #User / Channel Info
 GameName        = ''
 Title           = ''
@@ -87,23 +86,32 @@ StreamType            = ''
 ViewerCount           = 0
 StreamActive          = False
 
-
-
 #Follower Info
-Followers      = 0
+Followers            = 0
+Subs                 = 0
 
 #HypeTrain info
-HypeTrainStartTime  = ''
-HypeTrainExpireTime = ''
-HypeTrainGoal       = ''
-HypeTrainLevel      = 0
-HypeTrainTotal      = ''
+HypeTrainStartTime   = ''
+HypeTrainExpireTime  = ''
+HypeTrainGoal        = ''
+HypeTrainLevel       = 0
+HypeTrainTotal       = ''
 
 
 
 HatHeight = 32
 HatWidth  = 64
 
+
+#Files
+KeyConfigFileName = "KeyConfig.ini" 
+MyConfigFileName  = "MyConfig.ini"
+  
+
+#Configurations
+SHOW_VIEWERS   = True
+SHOW_FOLLOWERS = True
+SHOW_SUBS      = True
 
 
 
@@ -113,7 +121,9 @@ LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
 LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
 LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
 
-
+#Colors
+TerminalRGB = (0,200,0)
+CursorRGB = (0,75,0)
 
 
 
@@ -124,14 +134,14 @@ class Bot(commands.Bot):
     CursorV             = 0
     CursorRGB           = (0,255,0)
     CursorDarkRGB       = (0,50,0)
-    AnimationDelay      = 60
+    AnimationDelay      = 30
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
-    MinutesToWaitBeforeClosing        = 10       #close chat after X minutes of inactivity
-    MinutesMaxTime                    = 10       #exit chat terminal after X minutes and display clock
+    MinutesToWaitBeforeClosing        = 2        #close chat after X minutes of inactivity
+    #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
-    SendStartupMessage  = False
+    SendStartupMessage  = True
     BotTypeSpeed        = TerminalTypeSpeed
     BotScrollSpeed      = TerminalScrollSpeed
     MessageCount        = 0
@@ -165,6 +175,14 @@ class Bot(commands.Bot):
 
 
     async def my_custom_startup(self):
+
+        
+        #TESTING A TASK
+        message = "Welcome to the jungle.  We got plenty of cake"
+        
+        #task = asyncio.create_task(self.DisplayTerminalMessage(message,TerminalRGB))
+        
+
         await asyncio.sleep(1)
         self.Channel = self.get_channel(BOT_CHANNEL)
         #channel2 = self.fetch_channel(CHANNEL_ID)
@@ -222,89 +240,69 @@ class Bot(commands.Bot):
         #end_time = loop.time() + self.AnimationDelay
         
         if(StreamActive == True):
-          await self.DisplayConnectingToTerminalMessage()
+          #await self.DisplayConnectingToTerminalMessage()
           await self.DisplayRandomConnectionMessage()
 
         while True:
-          #print('Now: ',datetime.now())
           
           #asyncio.sleep suspends the current task, allowing other processes to run
           await asyncio.sleep(1)
                     
           if(StreamActive == True):
-            
-            LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
-            
-            #Close Bot after X minutes of inactivity
-            h,m,s    = LED.GetElapsedTime(self.LastMessageReceived,time.time())
-            h2,m2,s2 = LED.GetElapsedTime(self.BotStartTime,time.time())
-            
-            print("Seconds since last message:",s," MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:","{:5.2f}".format((m2 + s2 / 60))," Messages Queued:",self.MessageCount,end="\r")
-
-            if (m >= self.MinutesToWaitBeforeClosing or m2 >= self.MinutesMaxTime):
-              print("No chat activity for the past {} minutes OR max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing,self.MinutesMaxTime))
-              print("")       
-              print("*****************************************")       
-              print("** EXITING CHAT TERMINAL - NO ACTIVITY **")
-              print("*****************************************")       
-              print("")       
-              LED.ClearBigLED()
-              LED.ClearBuffers()
-              CursorH = 0
-              CursorV = 0
+            if (self.ChatTerminalOn == True):
               
-              #only show terminal messages if terminal is on)
-              if(self.ChatTerminalOn == True):
+              #Don't blink cursor if displaying the uptime
+              #maybe have a blinkcursor switch instead
+              if(LED.TwitchTimerOn == False):
+                LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
+            
+              #Close Chat Terminal after X minutes of inactivity
+              h,m,s    = LED.GetElapsedTime(self.LastMessageReceived,time.time())
+                        
+              print("Seconds since last message:",s," MinutesToWaitBeforeClosing: ",self.MinutesToWaitBeforeClosing," Messages Queued:",self.MessageCount,end="\r")
+
+              if (m >= self.MinutesToWaitBeforeClosing ):
+                print("No chat activity for the past {} minutes.  Closing terminal...".format(self.MinutesToWaitBeforeClosing))
+                print("")       
+                print("*****************************************")       
+                print("** EXITING CHAT TERMINAL - NO ACTIVITY **")
+                print("*****************************************")       
+                print("")       
+                LED.ClearBigLED()
+                LED.ClearBuffers()
+                CursorH = 0
+                CursorV = 0
                 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"No chat activity detected.  Did everyone fall asleep?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
                 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Closing terminal",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
                 LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+                LED.ClearBigLED()
+                LED.ClearBuffers()
                 self.CursorH = CursorH
                 self.CursorV = CursorV
 
-              self.ChatTerminalOn = False                        
-              #await self.close()
-                        
-              if( StreamActive == True):
-                LED.DisplayDigitalClock(
-                  ClockStyle = 3,
-                  CenterHoriz = True,
-                  v   = 1, 
-                  hh  = 24,
-                  RGB = LED.LowGreen,
-                  ShadowRGB        = LED.ShadowGreen,
-                  ZoomFactor       = 3,
-                  AnimationDelay   = 30,
-                  RunMinutes       = 1,
-                  StartDateTimeUTC = StreamStartedDateTime,
-                  HHMMSS           = StreamDurationHHMMSS)
+                self.ChatTerminalOn = False                        
+                #await self.close()
 
-              #reset timer
-              self.LastMessageReceived = time.time()
-              print("Clock display ended.  Resetting LastMessageReceived:",self.LastMessageReceived)
-              print("")
-              self.CursorH = 0
-              self.CursorV = 0
+            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
+              self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
+              time.sleep(5)
 
 
-          else:
-            LED.DisplayDigitalClock(
-              ClockStyle = 1,
-              CenterHoriz = True,
-              v   = 1, 
-              hh  = 24,
-              RGB = LED.LowGreen,
-              ShadowRGB        = LED.ShadowGreen,
-              ZoomFactor       = 3,
-              AnimationDelay   = 30,
-              RunMinutes       = 5
-              )
+          #If the stream is not live, display a regular clock 
+          if (StreamActive == False):
+            await self.DisplayDigitalClock()
+
+
+
 
           
           
-          #Check to see if stream is live yet (only ever X minutes)
+          #Check to see if stream is live yet (only check every X minutes)
           h,m,s = LED.GetElapsedTime(self.LastStreamCheckTime,time.time())
           if (m >= self.MinutesToWaitBeforeCheckingStream):
             await self.CheckStream()
+            if(StreamActive == True):
+              self.LastStreamCheckTime = time.time()
 
             #self.__init__()
             #super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
@@ -333,71 +331,76 @@ class Bot(commands.Bot):
         
         if(StreamActive == True):
 
-          #SHOW INTRO FOR MAIN CHANNEL
-          LED.ShowTitleScreen(
-            BigText             = CHANNEL_BIG_TEXT,
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            LittleText          = CHANNEL_LITTLE_TEXT,
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = Title,
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
-            ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            LittleTextZoom      = 2
-            )
+          #skip my own channel for testing purposes
+          if(CHANNEL != 'datagod'):
 
-        #SHOW FOLLOWERS
-          LED.ShowTitleScreen(
-            BigText             = str(Followers),
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            LittleText          = 'FOLLOWS',
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = '',
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
-            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            )
+            #SHOW INTRO FOR MAIN CHANNEL
+            LED.ShowTitleScreen(
+              BigText             = CHANNEL_BIG_TEXT,
+              BigTextRGB          = LED.MedPurple,
+              BigTextShadowRGB    = LED.ShadowPurple,
+              LittleText          = CHANNEL_LITTLE_TEXT,
+              LittleTextRGB       = LED.MedRed,
+              LittleTextShadowRGB = LED.ShadowRed, 
+              ScrollText          = Title,
+              ScrollTextRGB       = LED.MedYellow,
+              ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+              DisplayTime         = 1,           # time in seconds to wait before exiting 
+              ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+              LittleTextZoom      = 2
+              )
 
-
-        #SHOW VIEWERS
-          LED.ShowTitleScreen(
-            BigText             = str(ViewerCount),
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            LittleText          = 'Viewers',
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = 'Now Playing: ' + GameName,
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
-            ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            )
+            #SHOW FOLLOWERS
+            if (SHOW_FOLLOWERS == True):
+              LED.ShowTitleScreen(
+                BigText             = str(Followers),
+                BigTextRGB          = LED.MedPurple,
+                BigTextShadowRGB    = LED.ShadowPurple,
+                LittleText          = 'FOLLOWS',
+                LittleTextRGB       = LED.MedRed,
+                LittleTextShadowRGB = LED.ShadowRed, 
+                ScrollText          = '',
+                ScrollTextRGB       = LED.MedYellow,
+                ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+                DisplayTime         = 1,           # time in seconds to wait before exiting 
+                ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+                )
 
 
+            #SHOW VIEWERS
+            if (SHOW_VIEWERS == True):
+              LED.ShowTitleScreen(
+                BigText             = str(ViewerCount),
+                BigTextRGB          = LED.MedPurple,
+                BigTextShadowRGB    = LED.ShadowPurple,
+                LittleText          = 'Viewers',
+                LittleTextRGB       = LED.MedRed,
+                LittleTextShadowRGB = LED.ShadowRed, 
+                ScrollText          = 'Now Playing: ' + GameName,
+                ScrollTextRGB       = LED.MedYellow,
+                ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+                DisplayTime         = 1,           # time in seconds to wait before exiting 
+                ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+                )
 
 
-          #Show this one reading chats
-          LED.ShowTitleScreen(
-            BigText             = 'CHAT',
-            BigTextRGB          = LED.MedRed,
-            BigTextShadowRGB    = LED.ShadowRed,
-            LittleText          = 'TERMINAL',
-            LittleTextRGB       = LED.MedBlue,
-            LittleTextShadowRGB = LED.ShadowBlue, 
-            ScrollText          = 'TUNING IN TO ' +  CHANNEL,
-            ScrollTextRGB       = LED.MedOrange,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
-            ExitEffect          = 0,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            LittleTextZoom      = 1
-            )
+
+
+            #Show this one reading chats
+            LED.ShowTitleScreen(
+              BigText             = 'CHAT',
+              BigTextRGB          = LED.MedRed,
+              BigTextShadowRGB    = LED.ShadowRed,
+              LittleText          = 'TERMINAL',
+              LittleTextRGB       = LED.MedBlue,
+              LittleTextShadowRGB = LED.ShadowBlue, 
+              ScrollText          = 'TUNING IN TO ' +  CHANNEL,
+              ScrollTextRGB       = LED.MedOrange,
+              ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+              DisplayTime         = 1,           # time in seconds to wait before exiting 
+              ExitEffect          = 0,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+              LittleTextZoom      = 1
+              )
 
           await self.SendRandomChatGreeting()
         await self.PerformTimeBasedActions()
@@ -419,6 +422,10 @@ class Bot(commands.Bot):
         # For now we just want to ignore them...
         if message.echo:
           return
+
+        # Since we have commands and are overriding the default `event_message`
+        # We must let the bot know we want to handle and invoke our commands...
+        await self.handle_commands(message)
 
 
         #Exit if Chat Terminal is not on
@@ -476,37 +483,11 @@ class Bot(commands.Bot):
         self.MesageCount = self.MessageCount -1
 
 
-        #Close Bot if we went past the max time. This is necessary here because the messages queue up 
-        #and PerformTimeBaseFunctions has lower priority
-        h2,m2,s2 = LED.GetElapsedTime(self.BotStartTime,time.time())
-        print("MaxMinutes: ",self.MinutesMaxTime, " Minutes Run:","{:5.2f}".format((m2 + s2 / 60))," Messages Queued:",self.MessageCount,end="\r")
-
-        if (m2 >= self.MinutesMaxTime):
-          print("Max {} minutes reached.  Closing bot...".format(self.MinutesToWaitBeforeClosing))       
-          print("")       
-          print("***************************")       
-          print("** EXITING CHAT TERMINAL **")
-          print("***************************")       
-          print("")       
-          LED.ClearBigLED()
-          LED.ClearBuffers()
-          CursorH = 0
-          CursorV = 0
-          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"maximum time reached",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Closing terminal",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-          self.CursorH = CursorH
-          self.CursorV = CursorV
-          
-          self.ChatTerminalOn = False
           
           #await self.close()
       
 
-        # Since we have commands and are overriding the default `event_message`
-        # We must let the bot know we want to handle and invoke our commands...
-        await self.handle_commands(message)
-
+        
    
 
     #---------------------------------------
@@ -531,7 +512,7 @@ class Bot(commands.Bot):
       message = ConnectionMessages[i]         
       print("Connection message:",message)
       CursorH = self.CursorH
-      CursorV = self.CursorH
+      CursorV = self.CursorV
       LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
       LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
       LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
@@ -571,10 +552,83 @@ class Bot(commands.Bot):
     
 
 
+    #---------------------------------------
+    # DisplayTerminalMessage              --
+    #---------------------------------------
+
+    async def DisplayTerminalMessage(self,message,RGB):
+      if(self.ChatTerminalOn == True):
+        print("DisplayTerminalMessage:",message)
+        #Show terminal connection message
+        #LED.ClearBigLED()
+        #LED.ClearBuffers()
+        CursorH = self.CursorH
+        CursorV = self.CursorV 
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=RGB,CursorRGB=CursorRGB,CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+        self.CursorH = CursorH
+        self.CursorV = CursorV
 
 
     #---------------------------------------
-    # Bot commands                        --
+    # Turn on Timer                       --
+    #---------------------------------------
+
+    async def DisplayTwitchTimer(self):
+      
+      
+      print ("Task started: DisplayTwitchTimer")
+      
+      #Only do this if the timer function is actually finished
+      if(LED.TwitchTimerOn == False):
+        LED.TwitchTimerOn = True
+            
+        await LED.DisplayTwitchTimer(
+          CenterHoriz = True,
+          CenterVert  = False,
+          h   = 0,
+          v   = 1, 
+          hh  = 24,
+          RGB              = LED.LowGreen,
+          ShadowRGB        = LED.ShadowGreen,
+          ZoomFactor       = 3,
+          AnimationDelay   = self.AnimationDelay,
+          RunMinutes       = 1,
+          StartDateTimeUTC = StreamStartedDateTime,
+          HHMMSS           = StreamDurationHHMMSS
+          )
+        print("Returned back from DisplayTwitchTimer")
+      else:
+        print("Timer is not yet finished")
+        
+
+
+
+    #---------------------------------------
+    # Turn on RegularClock                --
+    #---------------------------------------
+
+    async def DisplayDigitalClock(self):
+      print ("Starting: DisplayDigitalClock")
+
+      LED.DisplayDigitalClock(
+        ClockStyle = 1,
+        CenterHoriz = True,
+        v   = 1, 
+        hh  = 24,
+        RGB = LED.LowGreen,
+        ShadowRGB        = LED.ShadowGreen,
+        ZoomFactor       = 3,
+        AnimationDelay   = self.AnimationDelay,
+        RunMinutes       = 1
+        )
+      print("Clock function completed")
+
+
+
+
+
+    #---------------------------------------
+    # B O T   C O M M A N D S             --
     #---------------------------------------
 
     @commands.command()
@@ -585,12 +639,18 @@ class Bot(commands.Bot):
 
         # Send a hello back!
         # Sending a reply back to the channel is easy... Below is an example.
-        await ctx.send(f'Greetings from dataBot! {ctx.author.name}!')
+        await ctx.send(f'Greetings! {ctx.author.name}!')
+
 
 
     @commands.command()
     async def viewers(self, ctx: commands.Context):
       #SHOW VIEWERS
+      GetTwitchCounts()
+
+      message = "There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount)
+      await self.Channel.send(message)
+
       LED.ShowTitleScreen(
         BigText             = str(ViewerCount),
         BigTextRGB          = LED.MedPurple,
@@ -606,9 +666,117 @@ class Bot(commands.Bot):
         )
 
       self.CursorH = 0
-      message = "There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount)
-      await self.Channel.send(message)
     
+
+
+    @commands.command()
+    async def follows(self, ctx: commands.Context):
+      #SHOW FOLLOWS
+      GetTwitchCounts()
+
+      message = "{} viewers follow this channel. Thanks for asking.".format(Followers)
+      await self.Channel.send(message)
+
+      LED.ShowTitleScreen(
+        BigText             = str(Followers),
+        BigTextRGB          = LED.MedPurple,
+        BigTextShadowRGB    = LED.ShadowPurple,
+        LittleText          = 'Follows',
+        LittleTextRGB       = LED.MedRed,
+        LittleTextShadowRGB = LED.ShadowRed, 
+        ScrollText          = '',
+        ScrollTextRGB       = LED.MedYellow,
+        ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+        DisplayTime         = 1,           # time in seconds to wait before exiting 
+        ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        )
+
+      self.CursorH = 0
+
+
+
+    @commands.command()
+    async def followers(self, ctx: commands.Context):
+      
+      #SHOW FOLLOWERS
+      print("SHOW_FOLLOWERS:",SHOW_FOLLOWERS)
+      if(SHOW_FOLLOWERS == True):
+        GetTwitchCounts()
+        message = "{} viewers follow this channel. Gotta get those numbers up!".format(Followers)
+        await self.Channel.send(message)
+
+        LED.ShowTitleScreen(
+          BigText             = str(Followers),
+          BigTextRGB          = LED.MedPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
+          LittleText          = 'Follows',
+          LittleTextRGB       = LED.MedRed,
+          LittleTextShadowRGB = LED.ShadowRed, 
+          ScrollText          = '',
+          ScrollTextRGB       = LED.MedYellow,
+          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+          DisplayTime         = 1,           # time in seconds to wait before exiting 
+          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+          )
+
+        self.CursorH = 0
+
+
+
+      else:
+        message = "{} has decided to not show followers.".format(CHANNEL)
+        await self.Channel.send(message)
+
+
+
+    @commands.command()
+    async def subs(self, ctx: commands.Context):
+      #SHOW SUBS
+      if(SHOW_SUBS == True):
+        GetTwitchCounts()
+        message = "This channel has {} subscribers. We can always use more.".format(Subs)
+        await self.Channel.send(message)
+
+        LED.ShowTitleScreen(
+          BigText             = str(Subs),
+          BigTextRGB          = LED.MedPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
+          LittleText          = 'Subscribers',
+          LittleTextRGB       = LED.MedRed,
+          LittleTextShadowRGB = LED.ShadowRed, 
+          ScrollText          = '',
+          ScrollTextRGB       = LED.MedYellow,
+          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+          DisplayTime         = 1,           # time in seconds to wait before exiting 
+          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+          )
+        self.CursorH = 0
+
+      else:
+        message = "Well, you are viewing.  I am viewing.  {} is viewing.  That's at least three.  The rest is a mystery to me.".format(CHANNEL)
+        await self.Channel.send(message)
+
+
+      
+    @commands.command()
+    async def uptime(self, ctx: commands.Context):
+      #SHOW UPTIME
+      message = "{} has been streaming for {} HHMMSS".format(CHANNEL,StreamDurationHHMMSS)
+      await self.Channel.send(message)
+      self.ChatTerminalOn = False
+      self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
+
+
+    @commands.command()
+    async def chat(self, ctx: commands.Context):
+      #SHOW UPTIME
+      self.ChatTerminalOn = True
+      LED.TwitchTimerOn   = False
+      message = "The chat will now be displayed on the LEDarcade clock thingy.".format(CHANNEL,StreamDurationHHMMSS)
+      await self.Channel.send(message)
+      
+
+
 
 
 
@@ -702,107 +870,120 @@ def IRCStuff():
 
 
 #------------------------------------------------------------------------------
-# Functions                                                                  --
+# File Functions                                                             --
 #------------------------------------------------------------------------------
 
 
 
 
 
-def LoadTwitchKeys():
-  
-  global ACCESS_TOKEN
-  global REFRESH_TOKEN
-  global CLIENT_ID
-  global CHANNEL
-  global CHANNEL_BIG_TEXT
-  global CHANNEL_LITTLE_TEXT
-  
-  global USER_ID
-  global BROADCASTER_ID
-  global BOT_CHANNEL
-  global BOT_ACCESS_TOKEN
-  global BOT_REFRESH_TOKEN
-  global BOT_CLIENT_ID
 
 
 
-  #XtianNinja
-  #ACCESS_TOKEN  = '***REMOVED***'
-  #REFRESH_TOKEN = '***REMOVED***'
-  #CLIENT_ID     = '***REMOVED***'
-  #CHANNEL       = 'XtianNinja'
-
-
-  KeyFileName = "KeyConfig.ini" 
-  print ("--Load Twitch Keys--")
-
-
-  if (os.path.exists(KeyFileName)):
-
-    print ("Config file (",KeyFileName,"): already exists")
-    KeyFile = SafeConfigParser()
-    KeyFile.read(KeyFileName)
-
-    #Get tokens
-    CHANNEL             = KeyFile.get("KEYS","CHANNEL")
-    CHANNEL_BIG_TEXT    = KeyFile.get("KEYS","CHANNEL_BIG_TEXT")
-    CHANNEL_LITTLE_TEXT = KeyFile.get("KEYS","CHANNEL_LITTLE_TEXT")
-
-    USER_ID        = KeyFile.get("KEYS","USER_ID")        #Same as Broadcaster_ID
-    BROADCASTER_ID = KeyFile.get("KEYS","BROADCASTER_ID") #Same as UserID
-    ACCESS_TOKEN   = KeyFile.get("KEYS","ACCESS_TOKEN")  
-    REFRESH_TOKEN  = KeyFile.get("KEYS","REFRESH_TOKEN")
-    CLIENT_ID      = KeyFile.get("KEYS","CLIENT_ID")      #ID of the twitch connected app (this program)
-
-
-    #Bot specific connection info
-    #in case we want a bot to connect separately, or to other channels
-    BOT_CHANNEL = CHANNEL
-    BOT_ACCESS_TOKEN   = KeyFile.get("KEYS","BOT_ACCESS_TOKEN")  
-    BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
-    BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
-
-
-    print("CHANNEL:             ",CHANNEL)   
-    print("CHANNEL_BIG_TEXT:    ",CHANNEL_BIG_TEXT)   
-    print("CHANNEL_LITTLE_TEXT: ",CHANNEL_LITTLE_TEXT)   
-    print("USER_ID:             ",USER_ID)
-    print("BROADCASTER_ID:      ",BROADCASTER_ID)
-    print("CLIENT_ID:           ",CLIENT_ID)
-    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
-    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
-
-    print("BOT_CHANNEL:         ",BOT_CHANNEL)   
-    print("BOT_CLIENT_ID:       ",BOT_CLIENT_ID)
-    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
-    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
-
-
-  else:
+def GetTwitchCounts():
     
-    #To be finished later
-    print ("ERROR: Could not locate Key file (",KeyFileName,"). Create a file and make sure to pupulate it with your own keys.")
-    #NewKeyFile = SafeConfigParser()
-    #NewKeyFile.read(ConfigFileName)
-    #NewKeyFile.add_section('KEYS')
-    
+    #User / Channel Info
+    global GameName        
+    global Title           
 
+    #Stream Info
+    global StreamStartedAt 
+    global StreamStartedTime
+    global StreamStartedDateTime
+    global StreamDurationHHMMSS
+    global StreamType      
+    global ViewerCount     
+    global StreamActive 
 
-
-    #open(KeyFileName "w+")
-    #KeyFile.add_section('KEYS')
-    #KeyFile.set('KEYS','CHANNEL','YourChannelHere')
-    
-
-    #KeyFile = SafeConfigParser()
-    #KeyFile.read(KeyFileName)
-    
+    #Follower Info
+    global Followers      
+    global Subs
 
     
-  print ("--------------------")
-  print (" ")
-  
+    #----------------------------------------
+    # GET USER INFO - ACTIVE STREAM
+    #----------------------------------------
+    print ("Getting USER info")
+    API_ENDPOINT = "https://api.twitch.tv/helix/streams?user_login=" + CHANNEL
+    head = {
+    'Client-ID': CLIENT_ID,
+    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    }
+    print ("URL: ",API_ENDPOINT, 'data:',head)
+    r = requests.get(url = API_ENDPOINT, headers = head)
+    results = r.json()
+    pprint.pprint(results)
+    #print(" ")
+
+    if results['data']:
+      print("Data found.  Processing...")
+
+      try:
+        StreamStartedAt = results['data'][0]['started_at']
+        StreamType      = results['data'][0]['type']
+        ViewerCount     = results['data'][0]['viewer_count']
+        StreamActive    = True
+
+      except Exception as ErrorMessage:
+        TraceMessage = traceback.format_exc()
+        AdditionalInfo = "Getting USER info from API call" 
+        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+    else:
+      print("Stream NOT active")
+      StreamActive = False  
+
+
+    #----------------------------------------
+    # Follower Count
+    #----------------------------------------
+    print("Get FOLLOWER information")
+    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + USER_ID
+    head = {
+    'Client-ID': CLIENT_ID,
+    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    }
+
+    #print ("URL: ",API_ENDPOINT, 'data:',head)
+    r = requests.get(url = API_ENDPOINT, headers = head)
+    #pp.pprint(r.content)
+
+    try:
+      results = r.json()
+      Followers = results['total']
+      #pprint.pprint(results)
+      #print("")
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Getting FOLLOWER info from API call" 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+    #----------------------------------------
+    # Subscriber Count
+    #----------------------------------------
+    print("Get SUBSCRIBER information")
+    API_ENDPOINT = "https://api.twitch.tv/helix/subscriptions?broadcaster_id=" + BROADCASTER_ID
+    head = {
+    'Client-ID': CLIENT_ID,
+    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    }
+
+    #print ("URL: ",API_ENDPOINT, 'data:',head)
+    r = requests.get(url = API_ENDPOINT, headers = head)
+
+    try:
+      results = r.json()
+      Subs = results['total']
+      pprint.pprint(results)
+      #print("")
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Getting SUBSCRIBER info from API call - This usually means your account does not have permission, or you are not an affiliate/partner." 
+      pprint.pprint(r.content)
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+      
 
 
 
@@ -905,70 +1086,10 @@ def GetBasicTwitchInfo():
         AdditionalInfo = "Getting CHANNEL info from API call" 
         LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
      
-
-
-
-
-    #----------------------------------------
-    # GET USER INFO - ACTIVE STREAM
-    #----------------------------------------
-    print ("Getting USER info")
-    API_ENDPOINT = "https://api.twitch.tv/helix/streams?user_login=" + CHANNEL
-    head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
-    }
-    print ("URL: ",API_ENDPOINT, 'data:',head)
-    r = requests.get(url = API_ENDPOINT, headers = head)
-    results = r.json()
-    pprint.pprint(results)
-    #print(" ")
-
-    if results['data']:
-      print("Data found.  Processing...")
-
-      try:
-        StreamStartedAt = results['data'][0]['started_at']
-        StreamType      = results['data'][0]['type']
-        ViewerCount     = results['data'][0]['viewer_count']
-        StreamActive    = True
-
-      except Exception as ErrorMessage:
-        TraceMessage = traceback.format_exc()
-        AdditionalInfo = "Getting USER info from API call" 
-        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
-    else:
-      print("Stream NOT active")
-      StreamActive = False  
-
-
-
-
-    #----------------------------------------
-    # Follower Count
-    #----------------------------------------
-    print("Get FOLLOWER information")
-    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + USER_ID
-    head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
-    }
-
-    #print ("URL: ",API_ENDPOINT, 'data:',head)
-    r = requests.get(url = API_ENDPOINT, headers = head)
-    #pp.pprint(r.content)
-
-    try:
-      results = r.json()
-      Followers = results['total']
-      #pprint.pprint(results)
-      #print("")
-
-    except Exception as ErrorMessage:
-      TraceMessage = traceback.format_exc()
-      AdditionalInfo = "Getting FOLLOWER info from API call" 
-      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
-
+    
+    
+    GetTwitchCounts()
+   
 
     #----------------------------------------
     #Hype Train
@@ -1071,6 +1192,183 @@ def ConvertDate(TheDate):
 
 
 
+def LoadConfigFiles():
+  
+  global ACCESS_TOKEN
+  global REFRESH_TOKEN
+  global CLIENT_ID
+  global CHANNEL
+  global CHANNEL_BIG_TEXT
+  global CHANNEL_LITTLE_TEXT
+  
+  global USER_ID
+  global BROADCASTER_ID
+  global BOT_CHANNEL
+  global BOT_ACCESS_TOKEN
+  global BOT_REFRESH_TOKEN
+  global BOT_CLIENT_ID
+
+  global SHOW_VIEWERS
+  global SHOW_FOLLOWERS
+  global SHOW_SUBS
+  
+
+  
+  
+  print ("--Load Twitch Keys--")
+  print("KeyConfig.ini")
+  if (os.path.exists(KeyConfigFileName)):
+
+    print ("Config file (",KeyConfigFileName,"): found")
+    KeyFile = SafeConfigParser()
+    KeyFile.read(KeyConfigFileName)
+
+    #Get tokens
+    CHANNEL             = KeyFile.get("KEYS","CHANNEL")
+    CHANNEL_BIG_TEXT    = KeyFile.get("KEYS","CHANNEL_BIG_TEXT")
+    CHANNEL_LITTLE_TEXT = KeyFile.get("KEYS","CHANNEL_LITTLE_TEXT")
+
+    USER_ID        = KeyFile.get("KEYS","USER_ID")        #Same as Broadcaster_ID
+    BROADCASTER_ID = KeyFile.get("KEYS","BROADCASTER_ID") #Same as UserID
+    ACCESS_TOKEN   = KeyFile.get("KEYS","ACCESS_TOKEN")  
+    REFRESH_TOKEN  = KeyFile.get("KEYS","REFRESH_TOKEN")
+    CLIENT_ID      = KeyFile.get("KEYS","CLIENT_ID")      #ID of the twitch connected app (this program)
+
+
+    #Bot specific connection info
+    #in case we want a bot to connect separately, or to other channels
+    BOT_CHANNEL = CHANNEL
+    BOT_ACCESS_TOKEN   = KeyFile.get("KEYS","BOT_ACCESS_TOKEN")  
+    BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
+    BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
+
+
+    print("CHANNEL:             ",CHANNEL)   
+    print("CHANNEL_BIG_TEXT:    ",CHANNEL_BIG_TEXT)   
+    print("CHANNEL_LITTLE_TEXT: ",CHANNEL_LITTLE_TEXT)   
+    print("USER_ID:             ",USER_ID)
+    print("BROADCASTER_ID:      ",BROADCASTER_ID)
+    print("CLIENT_ID:           ",CLIENT_ID)
+    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
+    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
+
+    print("BOT_CHANNEL:         ",BOT_CHANNEL)   
+    print("BOT_CLIENT_ID:       ",BOT_CLIENT_ID)
+    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
+    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
+
+    print ("--------------------")
+    print (" ")
+
+  else:
+    #To be finished later
+    print ("ERROR: Could not locate Key file (",KeyConfigFileName,"). Create a file and make sure to pupulate it with your own keys.")
+
+
+
+  print ("--Load Personal Configurations--")
+  print("MyConfig.ini")
+
+  if (os.path.exists(MyConfigFileName)):
+
+    print ("Config file (",MyConfigFileName,"): found")
+    MyConfigFile = SafeConfigParser()
+    MyConfigFile.read(MyConfigFileName)
+
+    #Get settings
+    SHOW_VIEWERS   = MyConfigFile.get("SHOW","SHOW_VIEWERS")
+    SHOW_FOLLOWERS = MyConfigFile.get("SHOW","SHOW_FOLLOWERS")
+    SHOW_SUBS      = MyConfigFile.get("SHOW","SHOW_SUBS")
+
+    #The config file reads in True as 'True' (string)
+    #we need to convert to True/False boolean
+    if(SHOW_VIEWERS == 'True'):
+      SHOW_VIEWERS = True
+    if(SHOW_FOLLOWERS == 'True'):
+      SHOW_FOLLOWERS = True
+    if(SHOW_SUBS == 'True'):
+      SHOW_SUBS = True
+
+
+
+    print("SHOW_VIEWERS:   ",SHOW_VIEWERS)   
+    print("SHOW_FOLLOWERS: ",SHOW_FOLLOWERS)   
+    print("SHOW_SUBS:      ",SHOW_SUBS)   
+
+
+  else:
+    print ("ERROR: Could not locate config file (",MyConfigFileName,").")
+  
+  print ("--------------------")
+  print (" ")
+  
+
+
+
+
+
+
+def CheckConfigFiles():
+  #This function will create the config files if they do not exist and populate them 
+  #with examples
+
+  #KeyConfig.ini
+
+
+  if (os.path.exists(MyConfigFileName)):
+    print("File found:",MyConfigFileName)
+
+  else:
+
+    try:
+      print("Warning! File not found:",MyConfigFileName)
+      print("We will attempt to create a file with default values")
+    
+      #CREATE A CONFIG FILE
+      MyConfigFile = open(MyConfigFileName,'a+')
+      MyConfigFile.write("[SHOW]\n")
+      MyConfigFile.write("  SHOW_VIEWERS   = True\n")
+      MyConfigFile.write("  SHOW_FOLLOWERS = True\n")
+      MyConfigFile.write("  SHOW_SUBS      = True\n")
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Creating the {}file".format(MyConfigFileName)
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+
+  if (os.path.exists(KeyConfigFileName)):
+    print("File found:",KeyConfigFileName)
+  else:
+    try:
+      print("Warning! File not found:",KeyConfigFileName)
+      print("We will attempt to create a file with default values")
+  
+      #CREATE A CONFIG FILE
+      KeyConfigFile = open(KeyConfigFileName,'a+')
+      KeyConfigFile.write("[KEYS]\n")
+      KeyConfigFile.write("  CHANNEL             = YourChannelName\n")
+      KeyConfigFile.write("  CHANNEL_BIG_TEXT    = LED\n")
+      KeyConfigFile.write("  CHANNEL_LITTLE_TEXT = ARCADE\n")
+      KeyConfigFile.write("\n")
+      KeyConfigFile.write("  USER_ID        = 12345\n")
+      KeyConfigFile.write("  BROADCASTER_ID = 12345 (same as UserID)\n")
+      KeyConfigFile.write("  ACCESS_TOKEN   = abcdefg\n")
+      KeyConfigFile.write("  REFRESH_TOKEN  = hijklmn\n")
+      KeyConfigFile.write("  CLIENT_ID      = ***REMOVED***\n")
+      KeyConfigFile.write("\n")
+      KeyConfigFile.write("  BOT_ACCESS_TOKEN  = abcde\n")
+      KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
+      KeyConfigFile.write("  BOT_CLIENT_ID     = ***REMOVED***\n")
+
+      print("File created")
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Creating the {}file".format(KeyConfigFileName)
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+    
+
 
 
 
@@ -1095,6 +1393,25 @@ def ConvertDate(TheDate):
 #------------------------------------------------------------------------------
 # MAIN SECTION                                                               --
 #------------------------------------------------------------------------------
+
+
+#For testing purposes
+"""
+LED.DisplayTwitchTimer(
+  CenterHoriz = True,
+  CenterVert  = False,
+  h   = 0,
+  v   = 1, 
+  hh  = 24,
+  RGB              = LED.LowGreen,
+  ShadowRGB        = LED.ShadowGreen,
+  ZoomFactor       = 3,
+  AnimationDelay   = 0,
+  RunMinutes       = 2,
+  StartDateTimeUTC = datetime.utcnow(),
+  HHMMSS           = '00:44:00'
+  )
+"""
 
 
 
@@ -1122,34 +1439,45 @@ print ("")
 #  Begin Twitch                      --
 #--------------------------------------
 
-#Fake boot sequence
-LED.ClearBigLED()
-LED.ClearBuffers()
-CursorH = 0
-CursorV = 0
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"by datagod",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Boot sequence initiated",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RAM CHECK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"STORAGE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
-IPAddress = LED.ShowIPAddress(Wait=5)
+CheckConfigFiles()
+LoadConfigFiles()
 
 
+#skip all this if running datagod
+if (CHANNEL != 'datagod'):
+  #Fake boot sequence
+  LED.ClearBigLED()
+  LED.ClearBuffers()
+  CursorH = 0
+  CursorV = 0
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"by datagod",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Boot sequence initiated",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RAM CHECK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"STORAGE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
+  IPAddress = LED.ShowIPAddress(Wait=5)
+else:
+  print("Skipping boot up sequence")
 
-
-
-LoadTwitchKeys()
 mybot = Bot()
+
+
+#logging.getLogger("asyncio").setLevel(logging.WARNING)
+#logging.basicConfig(level=logging.DEBUG)
+
+mybot.run()
+
+
 
 try:
   print("Loading chat bot for: ",BOT_CHANNEL)
-  mybot.run()
+  #mybot.run()
 except:
   LED.ClearBigLED()
   LED.ClearBuffers()
@@ -1169,3 +1497,4 @@ except:
 
 # %%
 
+ 
