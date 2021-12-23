@@ -1395,6 +1395,12 @@ def CheckConfigFiles():
 #------------------------------------------------------------------------------
 
 
+
+#LED.RotateAndZoomImage()
+#LED.ShowImage()
+#LED.DrawSquare()
+
+
 #For testing purposes
 """
 LED.DisplayTwitchTimer(

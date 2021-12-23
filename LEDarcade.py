@@ -52,9 +52,10 @@ import inspect
 
 
 
-#RGB Matrix
+#RGB Matrix and graphics
 from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from PIL import Image, ImageDraw
 
 
 
@@ -12942,8 +12943,8 @@ def DisplayDigitalClock(
 
     
 
-    #ClearBigLED()
-    #ClearBuffers()
+    ClearBigLED()
+    ClearBuffers()
     global ScreenArray
 
 
@@ -15023,3 +15024,72 @@ def CalculateElapsedTime(StartDateTimeUTC):
   
   return elapsed_hours, elapsed_minutes, elapsed_seconds, HHMMSS
   
+
+
+def RotateAndZoomImage():
+  #image = Image.open("/home/pi/LEDarcade/images/ninja64colors.png")
+  #image = Image.open("/home/pi/LEDarcade/images/ninja.png")
+  image = Image.open("/home/pi/LEDarcade/images/BigNinjaLogo256.png")
+  #image = Image.open("/home/pi/LEDarcade/images/Marquee_Berzerk.jpg")
+  image = image.convert('RGB')
+
+  for x in range(1,100):    
+
+    for r in range(1,256,2):
+      ResizedImage = image.rotate(r).resize(size=(r,r))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(r/2)),(HatHeight/2 -(r/2)))
+      time.sleep(0.01)
+    TheMatrix.Clear()
+ 
+    for r in range(256,1,-2):
+      ResizedImage = image.resize(size=(r,r))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(r/2)),(HatHeight/2 -(r/2)))
+      time.sleep(0.01)
+      TheMatrix.Clear()
+
+
+
+    for r in range(1,256,2):
+      ResizedImage = image.rotate(r*6).resize(size=(r,r))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(r/2)),(HatHeight/2 -(r/2)))
+      time.sleep(0.01)
+    TheMatrix.Clear()
+
+
+  for i in range (0,359):
+    NewImage = ResizedImage.rotate(i)
+    TheMatrix.SetImage(NewImage, 64-r/2, -18)
+    time.sleep(0.001 )
+
+
+
+def ShowImage():
+  # Make image fit our screen.
+  image = Image.open("/home/pi/LEDarcade/images/Marquee_Berzerk.jpg")
+  image.thumbnail((64, 32), Image.ANTIALIAS)
+  image = image.convert('RGB')
+  TheMatrix.SetImage(image)
+  for n in range(-32, 63):  # Start off top-left, move off bottom-right
+      TheMatrix.Clear()
+      TheMatrix.SetImage(image, n, 0)
+      time.sleep(0.01)
+
+      
+
+
+def DrawSquare():
+
+  # RGB example w/graphics prims.
+  # Note, only "RGB" mode is supported currently.
+  image = Image.new("RGB", (64, 32))  # Can be larger than matrix if wanted!!
+  draw = ImageDraw.Draw(image)  # Declare Draw instance before prims
+  # Draw some shapes into image (no immediate effect on matrix)...
+  draw.rectangle((0, 0, 31, 31), fill=(0, 0, 0), outline=(0, 0, 255))
+  draw.line((0, 0, 31, 31), fill=(255, 0, 0))
+  draw.line((0, 31, 31, 0), fill=(0, 255, 0))
+
+  # Then scroll image across matrix...
+  for n in range(-32, 63):  # Start off top-left, move off bottom-right
+      TheMatrix.Clear()
+      TheMatrix.SetImage(image, n, n)
+      time.sleep(0.01)
