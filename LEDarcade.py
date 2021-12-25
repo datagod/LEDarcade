@@ -57,6 +57,9 @@ from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 from PIL import Image, ImageDraw
 
+#URL
+import urllib.request
+import io
 
 
 
@@ -15026,16 +15029,66 @@ def CalculateElapsedTime(StartDateTimeUTC):
   
 
 
-def RotateAndZoomImage():
+
+
+
+def ZoomImage(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
+  global Canvas
+
+  image = Image.open(ImageName)
+  image = image.convert('RGB')
+ 
+  ZoomFactor    = 0
+  
+  
+  draw = ImageDraw.Draw(image)  # Declare Draw instance before prims
+
+  
+  if (ZoomStart <= ZoomStop):
+    for ZoomFactor in range (ZoomStart,ZoomStop,Step):
+      ResizedImage = image.resize(size=(ZoomFactor,ZoomFactor))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(HatHeight/2 -(ZoomFactor/2)))
+      if (ZoomSleep > 0):
+        time.sleep(ZoomSleep)
+        
+  else:
+    #for ZoomFactor in reversed(range(ZoomStop, ZoomStart,-Step)):
+    for ZoomFactor in range(ZoomStart, ZoomStop,-Step):
+      #clear the screen as we zoom to remove leftovers
+      ResizedImage = image.resize(size=(ZoomFactor,ZoomFactor))
+      
+      #zooming out (shrinking the image) will leave artifacts unless we erase them
+      if(ZoomFactor < HatWidth or ZoomFactor < HatHeight):
+        Canvas.Fill(0,0,0)
+      Canvas.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(HatHeight/2 -(ZoomFactor/2)))
+      Canvas = TheMatrix.SwapOnVSync(Canvas)
+      
+      if (ZoomSleep > 0):
+        time.sleep(ZoomSleep)
+      
+        
+
+      
+      
+        #if ZoomFactor <= HatWidth:
+        #  draw.rectangle((0,0, ZoomFactor, ZoomFactor), fill=(0, 0, 0))
+
+        #TheMatrix.Clear()        
+
+
+
+
+
+def RotateAndZoomImage(ImageName):
   #image = Image.open("/home/pi/LEDarcade/images/ninja64colors.png")
   #image = Image.open("/home/pi/LEDarcade/images/ninja.png")
-  image = Image.open("/home/pi/LEDarcade/images/BigNinjaLogo256.png")
-  #image = Image.open("/home/pi/LEDarcade/images/Marquee_Berzerk.jpg")
+  #image = Image.open("/home/pi/LEDarcade/images/BigNinjaLogo256.png")
+  image = Image.open(ImageName)
   image = image.convert('RGB')
 
   for x in range(1,100):    
 
-    for r in range(1,256,2):
+    for r in range(1,100,2):
       ResizedImage = image.rotate(r).resize(size=(r,r))
       TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(r/2)),(HatHeight/2 -(r/2)))
       time.sleep(0.01)
@@ -15063,9 +15116,25 @@ def RotateAndZoomImage():
 
 
 
-def ShowImage():
+
+def GetImageFromURL(URL,SaveName):
+  print("")
+  print("-- Show GetImageFromURL --")
+  print("ImageLocation:",URL)
+  print("SaveName:",SaveName)
+
+  with urllib.request.urlopen(URL) as i:
+    byteImg = io.BytesIO(i.read())
+    image = Image.open(byteImg)
+    image.save(SaveName)
+
+
+def ShowImage(ImageLocation):
   # Make image fit our screen.
-  image = Image.open("/home/pi/LEDarcade/images/Marquee_Berzerk.jpg")
+  print("")
+  print("-- Show Image --")
+  print("ImageLocation:",ImageLocation)
+  image = Image.open(ImageLocation)
   image.thumbnail((64, 32), Image.ANTIALIAS)
   image = image.convert('RGB')
   TheMatrix.SetImage(image)
