@@ -1,1 +1,1 @@
-sudo python3 clock.py
+sudo python3 DotInvaders.py

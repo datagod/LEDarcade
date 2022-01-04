@@ -139,7 +139,7 @@ class Bot(commands.Bot):
     CursorV             = 0
     CursorRGB           = (0,255,0)
     CursorDarkRGB       = (0,50,0)
-    AnimationDelay      = 30
+    AnimationDelay      = 0
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
@@ -582,6 +582,8 @@ class Bot(commands.Bot):
       if(LED.TwitchTimerOn == False):
         LED.TwitchTimerOn = True
             
+        LED.ClearBigLED()
+
         await LED.DisplayTwitchTimer(
           CenterHoriz = True,
           CenterVert  = False,
@@ -827,8 +829,8 @@ class Bot(commands.Bot):
       LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
-      time.sleep(2)
-      #LED.ClearBigLED()
+      time.sleep(3)
+      LED.ClearBigLED()
 
 
     #----------------------------------------
@@ -869,6 +871,35 @@ class Bot(commands.Bot):
 
 
 
+    #----------------------------------------
+    # ROBOT                                --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def robot(self, ctx: commands.Context):
+      #SHOW ROBOT
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Here is a big red robot for your amusement"
+        await self.Channel.send(message)
+
+        LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+          LED.BigRezonator2,
+          Position      = 'bottom',
+          direction     = "right",
+          StepsPerFrame = 2,
+          ZoomFactor    = 1,
+          sleep         = 0
+          )
+
+        self.CursorH = 0
+
+
+
+
+
+
+        
 
 
 
