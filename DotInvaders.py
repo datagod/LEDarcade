@@ -1636,7 +1636,7 @@ def LaunchDotInvaders():
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-    #PlayDotInvaders()
+    PlayDotInvaders()
         
 
 
