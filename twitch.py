@@ -913,14 +913,14 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
-        DI.LaunchDotInvaders()
+        DI.LaunchDotInvaders(GameMaxMinutes = 5)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
       CursorV = 0
 
 
-        
+       
 
 
 
