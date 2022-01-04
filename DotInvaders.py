@@ -134,6 +134,15 @@ Playfield = [[0 for i in range(LED.HatWidth)] for i in range(LED.HatHeight)]
 
 
 
+#---------------------------------------
+#Variable declaration section
+#---------------------------------------
+ScrollSleep         = 0.025
+TerminalTypeSpeed   = 0.02  #pause in seconds between characters
+TerminalScrollSpeed = 0.02  #pause in seconds between new lines
+CursorRGB           = (0,255,0)
+CursorDarkRGB       = (0,50,0)
+
 
 
 #----------------------
@@ -1267,7 +1276,7 @@ def PlayDotInvaders():
     LevelCount = LevelCount + 1
     #ShowLevelCount(LevelCount)
     
-
+    
     
     #Reset Variables between rounds
     LevelFinished     = 'N'
@@ -1516,7 +1525,7 @@ def PlayDotInvaders():
         FireworksExplosion.Animate(UFOMissile2.h,UFOMissile2.v,'forward',0.01,1)        
         FireworksExplosion.Animate(UFOShip.h,UFOShip.v,'forward',0.01,1)        
         
-        ShowFireworks(FireworksExplosion,(random.randint(1,10)),0.01)
+        ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.01)
         LED.ShowDropShip(PlayerShip.h,PlayerShip.v,'pickup',LED.ScrollSleep * 0.001)
 
       
@@ -1572,6 +1581,31 @@ def PlayDotInvaders():
 #--------------------------------------
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
+
+LED.ShowTitleScreen(
+    BigText             = 'ALERT!',
+    BigTextRGB          = LED.HighRed,
+    BigTextShadowRGB    = LED.ShadowRed,
+    LittleText          = 'DOTINVADERS',
+    LittleTextRGB       = LED.MedGreen,
+    LittleTextShadowRGB = (0,10,0), 
+    ScrollText          = 'DEFEND YOUR PLANET!',
+    ScrollTextRGB       = LED.MedYellow,
+    ScrollSleep         = 0.04, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+    DisplayTime         = 1,           # time in seconds to wait before exiting 
+    ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+    )
+
+
+LED.ClearBigLED()
+LED.ClearBuffers()
+CursorH = 0
+CursorV = 0
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO PLANETARY DEFENCE SYSTEMS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"GOOD LUCK!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
 
 PlayDotInvaders()
     
