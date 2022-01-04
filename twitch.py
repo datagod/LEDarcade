@@ -36,6 +36,8 @@ import time
 from datetime import datetime, timezone
 
 
+#games
+import DotInvaders as DI
 
 
 
@@ -629,6 +631,10 @@ class Bot(commands.Bot):
 
 
 
+
+
+
+
   #---------------------------------------
   # B O T   C O M M A N D S             --
   #---------------------------------------
@@ -895,6 +901,20 @@ class Bot(commands.Bot):
         self.CursorH = 0
 
 
+
+    #----------------------------------------
+    # DOT INVADERS                         --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def invaders(self, ctx: commands.Context):
+      #Play game DotInvaders
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Lets play a game of DotInvaders"
+        await self.Channel.send(message)
+
+        DI.LaunchDotInvaders()
 
 
 
