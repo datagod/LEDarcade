@@ -914,9 +914,11 @@ class Bot(commands.Bot):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
 
-        await DI.LaunchDotInvaders()
-
-
+        DI.LaunchDotInvaders()
+        LED.ClearBigLED()
+        LED.ClearBuffers()
+        CursorH = 0
+        CursorV = 0
 
 
         

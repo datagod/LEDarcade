@@ -171,6 +171,7 @@ start_time = time.time()
 
 
 
+
 #----------------------------
 #-- Dot Invaders           --
 #----------------------------
@@ -1561,8 +1562,12 @@ def PlayDotInvaders():
         
         LED.PlayerShipExplosion.Animate(PlayerShip.h-2,PlayerShip.v-2,'forward',0.025)
 
+      
+      
+      
       #End game after X seconds
-      if (CheckElapsedTime(600) == 1):
+      h,m,s    = LED.GetElapsedTime(start_time,time.time())
+      if(s > 600):
         ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
 
         LED.ClearBigLED()
