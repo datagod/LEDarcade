@@ -1052,7 +1052,7 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
     #follow the bomber or UFO
     
     #print("H",h)
-    print("Playfield object HV Name:",Playfield[0][h-1].h,Playfield[0][h-1].v,Playfield[0][h-1].name)
+    #print("Playfield object HV Name:",Playfield[0][h-1].h,Playfield[0][h-1].v,Playfield[0][h-1].name)
 
     Ship.direction = Playfield[0][h-1].direction
     #print ("MPS - ENEMY TO LEFT Enemy.name HV direction speed",Playfield[0][h-1].name,Playfield[0][h-1].h,Playfield[0][h-1].v, Playfield[0][h-1].direction,Playfield[0][h-1].speed)
@@ -1142,8 +1142,8 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
       ItemList[19] == 'EmptyObject' and
       ItemList[20] == 'EmptyObject' and
       ItemList[21] == 'EmptyObject' and 
-      Ship.h >= 10 and Ship.h <= (LED.HatWidth - RightSideSize)-10):
-    if (random.randint (0,10) != 1):
+      Ship.h >= 20 and Ship.h <= (LED.HatWidth - RightSideSize)-20):
+    if (random.randint (0,20) != 1):
       #print ("MPS - Staying in the middle")
       Ship.h = h
       Ship.v = v
@@ -1187,7 +1187,7 @@ def ShowFireworks(FireworksExplosion,count,speed):
 
         
           
-def PlayDotInvaders():
+def PlayDotInvaders(GameMaxMinutes = 10000):
   
   #Local variables
   moves       = 0
@@ -1567,11 +1567,11 @@ def PlayDotInvaders():
 
       
       
-      
       #End game after X seconds
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
-      if(s > 600):
-        print("Ending game after 600 seconds")
+      #print("mm:ss",m,s)
+      if(m > GameMaxMinutes):
+        print("Ending game after",m," minutes")
         ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
 
         LED.ClearBigLED()
@@ -1583,7 +1583,7 @@ def PlayDotInvaders():
         LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"LIVE TO FIGHT ANOTHER DAY",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
         LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
-        return;
+        return();
 
 
 
@@ -1614,7 +1614,7 @@ def PlayDotInvaders():
       
 
 
-def LaunchDotInvaders():
+def LaunchDotInvaders(GameMaxMinutes = 10000):
   
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
@@ -1629,7 +1629,7 @@ def LaunchDotInvaders():
         LittleTextShadowRGB = (0,10,0), 
         ScrollText          = 'DEFEND YOUR PLANET!',
         ScrollTextRGB       = LED.MedYellow,
-        ScrollSleep         = 0.04, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
         DisplayTime         = 1,           # time in seconds to wait before exiting 
         ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
         )
@@ -1641,11 +1641,11 @@ def LaunchDotInvaders():
     CursorV = 0
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO PLANETARY DEFENCE SYSTEMS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"GOOD LUCK!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"GOOD LUCK!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,0,255),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-    PlayDotInvaders()
+    PlayDotInvaders(GameMaxMinutes)
         
 
 
@@ -1655,8 +1655,9 @@ def LaunchDotInvaders():
 
 
 
-
-
+#execute if this script is called direction
+if __name__ == "__main__" :
+  LaunchDotInvaders(100000)        
 
 
 
