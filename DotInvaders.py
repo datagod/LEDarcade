@@ -1167,18 +1167,18 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
   return 
         
 
-def ShowFireworks(FireWorksExplosion,count,speed):
+def ShowFireworks(FireworksExplosion,count,speed):
   x = 0
   h = 0
   v = 0
 
-  FireworksExplosion  = copy.deepcopy(LED.PlayerShipExplosion)  
+  #FireworksExplosion  = copy.deepcopy(LED.PlayerShipExplosion)  
   
   for x in range(1,count):
     h = random.randint(2,LED.HatWidth)
     v = random.randint(2,LED.HatHeight / 2)
-    FireWorksExplosion.Animate(h,v,'forward',speed,StartFrame = 1) 
-    FireWorksExplosion.EraseLocation(h,v)       
+    FireworksExplosion.Animate(h,v,'forward',speed,StartFrame = 1) 
+    FireworksExplosion.EraseLocation(h,v)       
 
 
 
@@ -1528,22 +1528,22 @@ def PlayDotInvaders():
         LED.setpixel(UFOMissile2.h,UFOMissile2.v,0,0,0)
 
         FireworksExplosion.Animate(UFOShip.h,UFOShip.v,'forward',0.01,1)        
-        FireWorksExplosion.EraseLocation(UFOShip.h,UFOShip.v)       
+        FireworksExplosion.EraseLocation(UFOShip.h,UFOShip.v)       
 
         FireworksExplosion.Animate(PlayerMissile1.h,PlayerMissile1.v,'forward',0.01,1)        
-        FireWorksExplosion.EraseLocation(PlayerMissile1.h,PlayerMissile1.v)       
+        FireworksExplosion.EraseLocation(PlayerMissile1.h,PlayerMissile1.v)       
 
         FireworksExplosion.Animate(PlayerMissile2.h,PlayerMissile2.v,'forward',0.01,1)        
-        FireWorksExplosion.EraseLocation(PlayerMissile2.h,PlayerMissile2.v)       
+        FireworksExplosion.EraseLocation(PlayerMissile2.h,PlayerMissile2.v)       
 
         FireworksExplosion.Animate(UFOMissile1.h,UFOMissile1.v,'forward',0.01,1)        
-        FireWorksExplosion.EraseLocation(UFOMissile1.h,UFOMissile1.v)       
+        FireworksExplosion.EraseLocation(UFOMissile1.h,UFOMissile1.v)       
 
         FireworksExplosion.Animate(UFOMissile2.h,UFOMissile2.v,'forward',0.01,1)        
-        FireWorksExplosion.EraseLocation(UFOMissile2.h,UFOMissile2.v)       
+        FireworksExplosion.EraseLocation(UFOMissile2.h,UFOMissile2.v)       
 
         FireworksExplosion.Animate(UFOShip.h,UFOShip.v,'forward',0.01,1)        
-        FireWorksExplosion.EraseLocation(UFOShip.h,UFOShip.v)       
+        FireworksExplosion.EraseLocation(UFOShip.h,UFOShip.v)       
 
 
 
