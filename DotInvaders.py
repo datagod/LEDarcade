@@ -1171,6 +1171,9 @@ def ShowFireworks(FireWorksExplosion,count,speed):
   x = 0
   h = 0
   v = 0
+
+  FireworksExplosion  = copy.deepcopy(LED.PlayerShipExplosion)  
+  
   for x in range(1,count):
     h = random.randint(2,LED.HatWidth)
     v = random.randint(2,LED.HatHeight / 2)
@@ -1568,6 +1571,7 @@ def PlayDotInvaders():
       #End game after X seconds
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
       if(s > 600):
+        print("Ending game after 600 seconds")
         ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
 
         LED.ClearBigLED()
