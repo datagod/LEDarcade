@@ -9190,6 +9190,72 @@ AsteroidExplosion2.grid.append(
 
 
 
+BigGroundExplosion = ColorAnimatedSprite(
+  h            = -1, #this is important, it is used to indicate if the explosion is brand new.  I think.
+  v            = -1,  
+  name         = "Explosion", 
+  width        = 9, 
+  height       = 3, 
+  frames       = 6, 
+  framerate    = 150,
+  grid         = []
+)
+
+
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 4, 4, 4, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   0, 0, 4, 4, 4, 4, 4, 0, 0,
+   0, 0, 0, 0, 4, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   0, 4, 4, 4, 4, 4, 4, 4, 0,
+   0, 0, 0, 0, 4, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   4, 4, 4, 0, 0, 0, 4, 4, 4,
+   0, 0, 0, 0, 4, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   4, 0, 0, 0, 0, 0, 0, 0, 4,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+
+
+
+
 #------------------------------------------------------------------------------
 # FUNCTIONS                                                                  --
 #                                                                            --
