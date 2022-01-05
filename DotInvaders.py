@@ -1111,7 +1111,7 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
   # - randomly switch directions
   elif ((ItemList[1] == 'EmptyObject' and Ship.direction == 4) or 
         (ItemList[5] == 'EmptyObject' and Ship.direction == 2 )):
-    if ((random.randint(0,20) == 1) and Ship.h != 0 and Ship.h != 15):
+    if ((random.randint(0,50) == 1) and Ship.h != 0 and Ship.h != (LED.HatWidth - RightSideSize)):
       Ship.direction = LED.ReverseDirection(Ship.direction)
     
     #make sure we are not going off the edge
@@ -1386,7 +1386,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         ScoreSprite = LED.CreateBannerSprite(ScoreString)
         ScoreSprite.Display(ScoreH,ScoreV)
         
-        print("lives:",PlayerShip.lives)
+        #print("lives:",PlayerShip.lives)
       
       #Spawn UFOShip
       m,r = divmod(moves,ChanceOfUFOShip)
