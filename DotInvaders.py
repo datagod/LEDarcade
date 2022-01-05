@@ -87,7 +87,7 @@ PlayerShipMinSpeed    = 50
 PlayerShipAbsoluteMinSpeed = 10
 MaxPlayerMissiles     = 1
 PlayerMissiles        = 1
-PlayerMissileSpeed    = 15
+PlayerMissileSpeed    = 10
 PlayerMissileMinSpeed = 8
 PlayerShipLives       = 1
 
@@ -98,7 +98,7 @@ ChanceOfBomberShip    = 2000  #chance of a bomberhsip appearing
 BomberRockSpeed       = 30   #how fast the bomber dropped asteroid falls
 
 #UFO
-UFOMissileSpeed = 50
+UFOMissileSpeed = 75
 UFOShipSpeed    = 50  #also known as the EnemeyShip
 UFOShipMinSpeed = 25
 UFOShipMaxSpeed = 100
@@ -780,7 +780,7 @@ def DotInvadersMoveMissile(Missile,Ship,Playfield):
     elif (Item == 'Player1'):
       Ship.lives = Ship.lives -1
       Ship.alive = 0
-      LED.BigGroundExplosion.Animate(ScanH -5,ScanV-2,"forward",1)
+      LED.BigGroundExplosion.Animate(ScanH -5,ScanV-2,"forward",0.01)
       print("Player died.  Lives left: ",Ship.lives)
     else:
       Ship.score = Ship.score + 1
@@ -1283,7 +1283,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
     
     
-    LED.ClearBigLED()
+    
     LevelCount = LevelCount + 1
     #ShowLevelCount(LevelCount)
     
@@ -1516,7 +1516,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
             if (Armada[y][x].v > ArmadaLevel):
               ArmadaLevel = Armada[y][x].v
       #print ("M - Armada AliveCount ArmadaLevel: ",ArmadaCount,ArmadaLevel)
-      ArmadaSpeed = ArmadaCount * 10 + 25
+      ArmadaSpeed = ArmadaCount * 10 + 50
         
 
       if (ArmadaCount == 0):
@@ -1552,17 +1552,12 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
       
       if (ArmadaLevel == LED.HatHeight-1):
         PlayerShip.alive = 0
+        PlayerShip.lives = 0
         LevelFinished = 'Y'
-
-      
-        if (PlayerShip.lives <=0):
-          Finished = 'Y'
-
-
-        else:
-          PlayerShip.alive = 1
         
-        LED.PlayerShipExplosion.Animate(PlayerShip.h-2,PlayerShip.v-2,'forward',0.025)
+        LED.PlayerShipExplosion.Animate(PlayerShip.h-4,PlayerShip.v-2,'forward',0.025)
+        LED.PlayerShipExplosion.Animate(PlayerShip.h,PlayerShip.v-2,'forward',0.025)
+        LED.PlayerShipExplosion.Animate(PlayerShip.h+4,PlayerShip.v-2,'forward',0.025)
 
       
       
