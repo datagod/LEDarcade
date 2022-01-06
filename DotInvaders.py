@@ -82,36 +82,32 @@ import time
 
 
 #Player
-PlayerShipSpeed       = 200
+PlayerShipSpeed       = 50
+PlayerShipMaxSpeed    = 50
 PlayerShipMinSpeed    = 50
-PlayerShipAbsoluteMinSpeed = 10
+PlayerShipAbsoluteMinSpeed = 20
 MaxPlayerMissiles     = 1
 PlayerMissiles        = 1
-PlayerMissileSpeed    = 10
-PlayerMissileMinSpeed = 8
-PlayerShipLives       = 1
+PlayerMissileSpeed    = 20
+PlayerMissileMaxSpeed = 2
+PlayerMissileMinSpeed = 15
+PlayerShipLives       = 3
 
-
-#BomberShip
-BomberShipSpeed       = 80
-ChanceOfBomberShip    = 2000  #chance of a bomberhsip appearing
-BomberRockSpeed       = 30   #how fast the bomber dropped asteroid falls
+#Armada
+ArmadaDirection = 2
+ArmadaSpeed     = 10
+ArmadaHeight    = 0
+ArmadaWidth     = 0
 
 #UFO
 UFOMissileSpeed = 75
 UFOShipSpeed    = 50  #also known as the EnemeyShip
 UFOShipMinSpeed = 25
 UFOShipMaxSpeed = 100
+ChanceOfUFOShip = 10000
 
 #HomingMissile 
 UFOFrameRate               = 50  #random animated homing missiles
-HomingMissileFrameRate     = 50  #the white one that looks like satellite from astrosmash
-HomingMissileInitialSpeed  = 75
-HomingMissileLives         = 25
-HomingMissileSprites       = 12    #number of different sprites that can be homing missiles
-HomingMissileDescentChance = 3     #chance of homing missile  not descending, lower number greater chance of being slow
-ChanceOfHomingMissile      = 10000  #chance of a homing missile appearing
-
 
 
 #Points
@@ -127,7 +123,6 @@ AsteroidPoints       = 5
 Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
 
 
-KeyboardSpeed  = 15
 #Create playfield
 Playfield = ([[]])
 Playfield = [[0 for i in range(LED.HatWidth)] for i in range(LED.HatHeight)]
@@ -242,140 +237,6 @@ def CheckElapsedTime(seconds):
 
 
 
-def ProcessKeypress(Key):
-  #I moved this back into the main program because it was getting awkward trying to start another game
-  #from within CommonFunctions
-
-  global MainSleep
-  global ScrollSleep
-  global NumDots
-
-  # a = animation demo
-  # b = Big Clock
-  # h = set time - hours minutes
-  # q = quit - go on to next game
-  # i = show IP address
-  # r = reboot
-  # p or space = pause 5 seconds
-  # c = analog clock for 1 hour
-  # t = Clock Only mode
-  # 1 - 8 Games
-  # 8 = ShowDotZerkRobotTime
-  # 0 = ?
-  # m = Debug Playfield/Map
-    
-  if (Key == "p" or Key == " "):
-    time.sleep(5)
-  elif (Key == "q"):
-    LED.ClearBigLED()
-    Message = ("EXIT GAME")
-    TheBanner = LED.CreateBannerSprite(Message)
-    TheBanner.r = 200
-    TheBanner.g = 0
-    TheBanner.b = 0
-    TheBanner.Display((LED.HatWidth / 2) - (TheBanner.width / 2) ,(LED.HatHeight / 2) -3)
-    time.sleep(1)
-
-
-  elif (Key == "r"):
-    LED.TheMatrix.Clear
-    #ShowScrollingBanner("Reboot!",100,0,0,ScrollSleep * 0.55)
-    os.execl(sys.executable, sys.executable, *sys.argv)
-  elif (Key == "t"):
-
-    ActivateClockMode(60)
-
-  elif (Key == "c"):
-    LED.DrawTinyClock(60)
-  elif (Key == "h"):
-    SetTimeHHMM()
-  elif (Key == "i"):
-    ShowIPAddress()
-  elif (Key == "a"):
-    ShowAllAnimations(ScrollSleep * 0.5)
-  elif (Key == "b"):
-    ActivateBigClock()
-
-
-  elif (Key == "1"): 
-    PlayPacDot(30)
-  elif (Key == "2"):
-    PlaySuperWorms()
-  elif (Key == "3"):
-    PlayWormDot()
-  elif (Key == "4"):
-    PlaySpaceDot()
-  elif (Key == "5"):
-    PlayDotZerk()
-  elif (Key == "6"):
-    PlayDotInvaders()
-  elif (Key == "7"):
-    LED.TheMatrix.Clear
-    PlayRallyDot()
-  elif (Key == "8"):
-    LED.TheMatrix.Clear
-    PlayOutbreak()
-
-
-    
-  elif (Key == "9"):
-    LED.TheMatrix.Clear
-    ShowDotZerkRobotTime(0.03)
-    ShowFrogTime(0.04)
-  elif (Key == "0"):
-    LED.TheMatrix.Clear
-    DrawSnake(random.randint(0,LED.HatWidth-1),random.randint(0,LED.HatWidth-1),255,0,0,random.randint(1,4),.5)
-    DrawSnake(random.randint(0,LED.HatWidth-1),random.randint(0,LED.HatWidth-1),0,255,0,random.randint(1,4),.5)
-    DrawSnake(random.randint(0,LED.HatWidth-1),random.randint(0,LED.HatWidth-1),0,0,255,random.randint(1,4),.5)
-    DrawSnake(random.randint(0,LED.HatWidth-1),random.randint(0,LED.HatWidth-1),125,125,0,random.randint(1,4),.5)
-    DrawSnake(random.randint(0,LED.HatWidth-1),random.randint(0,LED.HatWidth-1),0,125,125,random.randint(1,4),.5)
-    DrawSnake(random.randint(0,LED.HatWidth-1),random.randint(0,LED.HatWidth-1),125,0,125,random.randint(1,4),.5)
-  elif (Key == "+"):
-    MainSleep = MainSleep -0.01
-    ScrollSleep = ScrollSleep * 0.75
-    if (MainSleep <= 0.01):
-      MainSleep = 0.01
-
-    #print("Game speeding up")
-    #print("MainSleep: ",MainSleep, " ScrollSleep: ",ScrollSleep)
-  elif (Key == "-"):
-    MainSleep = MainSleep +0.01
-    ScrollSleep = ScrollSleep / 0.75
-    #print("Game slowing down ")
-    #print("MainSleep: ",MainSleep, " ScrollSleep: ",ScrollSleep)
-
-
-
-
-
-
-
-#Draws the dots on the screen  
-def DrawDotMatrix(DotMatrix):
-  #LED.ClearBigLED()      
-  #print ("--DrawLED.DotMatrix--")
-  NumDots = 0
-  for h in range (0,LED.HatWidth):
-    for v in range (0,LED.HatHeight):
-      #print ("hv dot: ",h,v,DotMatrix[h][v])
-      if (LED.DotMatrix[h][v] == 1):
-        NumDots = NumDots + 1
-        LED.setpixel(h,v,LED.DotR,LED.DotG,LED.DotB)
-
-  #print ("Dots Found: ",NumDots)
-  
-  #SendBufferPacket(RemoteDisplay,LED.HatHeight,LED.HatWidth)
-  return NumDots;
-  
-
-
-
-
-
-
-
-
-
 
 
   
@@ -392,10 +253,10 @@ def AdjustSpeed(Ship,setting,amount):
   else:
     Ship.speed = Ship.speed - amount
   
-  if (Ship.speed <= PlayerShipMinSpeed):
+  if (Ship.speed >= PlayerShipMinSpeed):
     Ship.speed = PlayerShipMinSpeed
-  elif (Ship.speed >= 50):
-    Ship.speed = 50   
+  elif (Ship.speed <= PlayerShipMaxSpeed):
+    Ship.speed = PlayerShipMaxSpeed
   #print ("AS - AFTER Ship.name Ship.speed setting amount",Ship.name, Ship.speed, setting,amount)
   
 
@@ -440,8 +301,8 @@ def MoveUFO(UFOShip):
   v = UFOShip.v
   
   #print("checking border")
-  if ((UFOShip.direction == 2 and UFOShip.h >= LED.HatWidth-RightSideSize-2) or
-      (UFOShip.direction == 4 and UFOShip.h < 2)):
+  if ((UFOShip.direction == 2 and UFOShip.h >= LED.HatWidth-RightSideSize) or
+      (UFOShip.direction == 4 and UFOShip.h < 1)):
     UFOShip.direction = LED.ReverseDirection(UFOShip.direction)
 
 
@@ -490,6 +351,10 @@ def DisplayPlayfield(Playfield):
         
         
 def CreateSpecialArmada(ShowTime=True):
+
+    global  ArmadaHeight
+    global ArmadaWidth
+
     #Does the same as Display, but does not call show(), allowing calling function to further modify the Buffer
     #before displaying
     x = 0,
@@ -612,7 +477,11 @@ def DotInvadersExplodeMissile(Ship,Playfield,increment):
 def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
   #every ship in the armada will look in the directon they are travelling
   #if a wall is found, drop down a level and reverse direction
-  #if you hit the ground, game over
+  #if Armada hits the ground, game over
+  #to help the player ship navigate, we will also store the Armada direction as a global variable
+  #ArmadaDirection = X
+
+  global ArmadaDirection
 
   ScanH = 0
   ScanV = 0
@@ -727,6 +596,7 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
     for y in range (ArmadaHeight):
       if (Armada[y][x].alive == 1):
         ArmadaCount = ArmadaCount + 1
+        ArmadaDirection = Armada[y][x].direction
   
 
   #Drop missiles
@@ -740,7 +610,7 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
     UFOMissile2.v = LowestV
     UFOMissile2.alive = 1
 
-
+  
 
       
 def DotInvadersMoveMissile(Missile,Ship,Playfield):
@@ -761,7 +631,7 @@ def DotInvadersMoveMissile(Missile,Ship,Playfield):
   
   #Priority
   # 1 Hit target
-  # 2 See if we are hit by enemy missle
+  # 2 See if we are hit by enemy missile
   # 3 Move forward
   
 
@@ -845,7 +715,10 @@ def DotInvadersScanSpaceDot(h,v):
 #    print ("Border found HV: ",h,v)
   else:
     #FlashDot(h,v,0.01)
-    Item = Playfield[v][h].name
+    if(Playfield[v][h].alive == 1):
+      Item = Playfield[v][h].name
+    else:
+      Item = 'EmptyObject'
   return Item
 
 
@@ -1007,16 +880,23 @@ def DotInvaderScanShip(h,v,direction,Playfield):
   return ItemList;
 
 
-def DotInvaderMovePlayerShip(Ship,Playfield):
+def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
   #print ("DIMPS - moveship HV Direction:",Ship.h,Ship.v,Ship.direction)
   
   #Player ships always points up, enemy ships point down
   h = Ship.h
   v = Ship.v
+  LeftH = 0
+  RightH = 0
+
   ItemList = []
   #Scan all around, make decision, move
   ItemList = DotInvaderScanShip(Ship.h,Ship.v,Ship.scandirection,Playfield)
   
+  #we want to keep firing up the line of enemies, we won't move
+  #if we are shooting
+  BlastModeOn = False
+
   #print("MPS - ItemList",ItemList)
   #print("MPS - Ship.name HV",Ship.name,Ship.h,Ship.v)
   #get possible items, then prioritize
@@ -1025,11 +905,41 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
   # 1 Evade close objects
   # 2 Blast far objects
 
-  #if("UFO" in ItemList):
-  #  print("UFO Seen!")
-  #  print(ItemList[37],ItemList[38],ItemList[39])
 
-  #If UFO is detected, fire missile!
+
+  #UFO takes priority 
+
+  #Follow UFO
+  if(UFOShip.alive == 1):
+    if(UFOShip.h < h):
+      Ship.direction = 4
+    elif(UFOShip.h > h):
+      Ship.direction = 2
+    else:
+      Ship.direction = UFOShip.direction
+
+  #Go towards front of the armada
+  else:
+    #Find H for left and right sides of armada
+    for x in range (0,ArmadaWidth):
+      for y in range (0,ArmadaHeight):
+        if(Armada[y][x].alive == 1):
+          LeftH = Armada[y][x].h
+          break
+    for x in range (ArmadaWidth,0,-1):
+      for y in range(0,ArmadaHeight):
+        if(Armada[y][x].alive == 1):
+          RightH = Armada[y][x].h
+          break
+    #Move towards the armada
+    if(h < LeftH):
+      Ship.direction = 2
+    if(h > RightH):
+      Ship.direction = 4
+
+
+
+  #If something aboove is detected, fire missile!
   if ("ArmadaShip" in ItemList or "UFO" in ItemList or "UFOMissile" in ItemList ):
     if (ItemList[3] != "Bunker" and ItemList[6] != "Bunker"):
 
@@ -1039,58 +949,19 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
         PlayerMissile1.v = v
         PlayerMissile1.alive = 1
         PlayerMissile1.exploding = 0
-        Ship.score = Ship.score + 1
-          
-  #    elif (PlayerMissile2.alive == 0 and PlayerMissile2.exploding == 0):
-  #      #print ("MPS - UFO or asteroid Detected PlayerMissile1.alive:",PlayerMissile1.alive)
-  #      PlayerMissile2.h = h
-  #      PlayerMissile2.v = v
-  #      PlayerMissile2.alive = 1
-  #      PlayerMissile2.exploding = 0
 
-  #Follow UFO
-  #slow down if ahead of UFO, speed up if behind
-  if (ItemList[37] == 'UFO' or ItemList[37] == 'ArmadaShip'):
-    #follow the bomber or UFO
-    
-    #print("H",h)
-    #print("Playfield object HV Name:",Playfield[0][h-1].h,Playfield[0][h-1].v,Playfield[0][h-1].name)
-
-    Ship.direction = Playfield[0][h-1].direction
-    #print ("MPS - ENEMY TO LEFT Enemy.name HV direction speed",Playfield[0][h-1].name,Playfield[0][h-1].h,Playfield[0][h-1].v, Playfield[0][h-1].direction,Playfield[0][h-1].speed)
-    if (Playfield[0][h-1].direction == 4):
-      AdjustSpeed(Ship,'fast',5)
-    elif (Playfield[0][h-1].direction == 2):
-      AdjustSpeed(Ship,'slow',1)
-    
-  elif (ItemList[39] == 'UFO' or ItemList[39] == 'ArmadaShip'):
-
-    #for x in range (0,LED.HatWidth):
-      #for y in range (0,LED.HatHeight):
-        #print("Playfield[x][y].name HV speed direction: ",x,y,Playfield[x][y].name,Playfield[x][y].h,Playfield[x][y].v,Playfield[x][y].speed,Playfield[x][y].direction)
-
-
-    Ship.direction = Playfield[0][h+1].direction
-    #print ("MPS - ENEMY TO RIGHT Enemy.name HV direction",Playfield[0][h+1].name,Playfield[0][h+1].h,Playfield[0][h+1].v, Playfield[0][h+1].direction)
-    if (Playfield[0][h+1].direction == 2):
-      #print ("MPS - adjusting speed fast 3")
-      AdjustSpeed(Ship,'fast',4)
-    elif (Playfield[0][h+1].direction == 4):
-      #print ("MPS - adjusting speed slow 1")
-      AdjustSpeed(Ship,'slow',1)
-  
     
      
   
   #if heading to boundary or wall Reverse direction
   #print("checking border")
-  if ((Ship.direction == 4 and ItemList[1] == 'border') or
-      (Ship.direction == 2 and ItemList[5] == 'border')):
-    Ship.direction = LED.ReverseDirection(Ship.direction)
-    #print ("MPS - border detected, reversing direction")
-    AdjustSpeed(Ship,'slow',1)
-    #print("MPS - 2Ship.direction: ",Ship.direction)
-  
+  if (Ship.direction in (4,0) and ItemList[1] == 'border'):
+    Ship.direction = 2
+
+  elif (Ship.direction in (2,0) and ItemList[5] == 'border'):
+    Ship.direction = 4
+
+
   #Evade close objects
   # - if object in path of travel, reverse direction
   elif ((Ship.direction == 4 and ((ItemList[1] != 'EmptyObject' and ItemList[1] != 'Bunker') or (ItemList[2] != 'EmptyObject'and ItemList[2] != 'Bunker'))) or
@@ -1098,31 +969,10 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
     Ship.direction = LED.ReverseDirection(Ship.direction)
     #print("MPS - object in path, reversed direction")
     #print("MPS - 3Ship.direction: ",Ship.direction)
-    
-
-  # - speed up and move if object is directly above
-  elif ((Ship.direction == 4 and (ItemList[3] != 'EmptyObject' and ItemList[1] == 'EmptyObject')) or
-        (Ship.direction == 2 and (ItemList[3] != 'EmptyObject' and ItemList[5] == 'EmptyObject'))):
-    AdjustSpeed(Ship,'fast',8)
-    Ship.h, Ship.v =  LED.CalculateDotMovement(Ship.h,Ship.v,Ship.direction)
-
-  # - travelling left, move if empty
-  # - travelling right, move if empty
-  # - randomly switch directions
-  elif ((ItemList[1] == 'EmptyObject' and Ship.direction == 4) or 
-        (ItemList[5] == 'EmptyObject' and Ship.direction == 2 )):
-    if ((random.randint(0,50) == 1) and Ship.h != 0 and Ship.h != (LED.HatWidth - RightSideSize)):
-      Ship.direction = LED.ReverseDirection(Ship.direction)
-    
-    #make sure we are not going off the edge
-    h1,v1 = LED.CalculateDotMovement(Ship.h,Ship.v,Ship.direction)
-    if(DotInvadersCheckBoundary(h1,v1) == 0):
-      Ship.h, Ship.v =  h1, v1
-
-    #print("MPS - Travelling, move if empty")
 
 
-  #if nothing nearby, and near the middle, stop moving
+
+  #if nothing nearby, keep moving
   if (ItemList[1]  == 'EmptyObject' and
       ItemList[2]  == 'EmptyObject' and
       ItemList[3]  == 'EmptyObject' and
@@ -1143,25 +993,37 @@ def DotInvaderMovePlayerShip(Ship,Playfield):
       ItemList[18] == 'EmptyObject' and
       ItemList[19] == 'EmptyObject' and
       ItemList[20] == 'EmptyObject' and
-      ItemList[21] == 'EmptyObject' and 
-      Ship.h >= 20 and Ship.h <= (LED.HatWidth - RightSideSize)-20):
-    if (random.randint (0,20) != 1):
-      #print ("MPS - Staying in the middle")
-      Ship.h = h
-      Ship.v = v
-    
-  #print("MPS - 6Ship.direction: ",Ship.direction)
+      ItemList[21] == 'EmptyObject'):
+            
+      
+      direction = 0
+      #choose random direction (2 or 4)
+      d = random.randint(1,2)
+      if d == 1:
+        direction = 4
+      else:
+        direction = 2
+      Ship.direction = direction
+      BlastModeOn = False
 
-  #print("MPS - OldHV: ",h,v, " NewHV: ",Ship.h,Ship.v, "direction: ",Ship.direction)
-  Playfield[Ship.v][Ship.h]= Ship
+  #print("MissileSpeed:",PlayerMissile1.speed," ArmadaDirection:",ArmadaDirection)
+
+
+  Ship.h, Ship.v =  LED.CalculateDotMovement(Ship.h,Ship.v,Ship.direction)
+
+
+  if(BlastModeOn == True):
+    print("Blasting without moving MissileSpeed")
+    PlayerMissile1.speed = PlayerMissileMaxSpeed
+    
+  else:
+    Playfield[Ship.v][Ship.h]= Ship
   Ship.Display()
   
   if ((h != Ship.h or v != Ship.v) or
      (Ship.alive == 0)):
     Playfield[v][h] = Empty
     LED.setpixel(h,v,0,0,0)
-    #print ("MPS - Erasing Player")
-  #unicorn.show()
   #SendBufferPacket(RemoteDisplay,LED.HatHeight,LED.HatWidth)
 
   #print("MPS - 7Ship.direction: ",Ship.direction)
@@ -1190,7 +1052,9 @@ def ShowFireworks(FireworksExplosion,count,speed):
         
           
 def PlayDotInvaders(GameMaxMinutes = 10000):
-  
+
+  global ArmadaSpeed
+
   #Local variables
   moves       = 0
   Finished    = 'N'
@@ -1198,7 +1062,8 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   Playerh     = 0
   Playerv     = 0
   SleepTime   = LED.MainSleep / 4
-  ChanceOfUFOShip = 20000
+
+
 
 
   PlayerShipR = LED.SDMedBlueR
@@ -1278,7 +1143,6 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         Armada[y][x].h = x + (((LED.HatWidth - RightSideSize) // 2) - ((ArmadaWidth ) //2))
         Armada[y][x].v = y + 1
         #Armada[y][x].alive = 1
-    ArmadaSpeed = 125
     ArmadaAlive = 1
 
     
@@ -1357,20 +1221,10 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
     while (LevelFinished == 'N' and PlayerShip.alive == 1):
       moves = moves + 1
 
-      #Check for keyboard input
-      m,r = divmod(moves,KeyboardSpeed)
-      if (r == 0):
-        Key = LED.PollKeyboard()
-        ProcessKeypress(Key)
-        if (Key == 'q'):
-          LevelFinished = 'Y'
-          Finished      = 'Y'
-          PlayerShip.alive   = 0
-          return
 
       
       
-      #Show Space Invader sprite
+      #Animate Space Invader sprite
       m,r = divmod(moves,SpaceInvaderDisplaySpeed)
       if(r == 0):
         LED.SmallInvader.DisplayAnimated(InvaderH,InvaderV)
@@ -1414,7 +1268,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         #print ("M - Playership HV speed alive exploding direction: ",PlayerShip.h, PlayerShip.v,PlayerShip.speed, PlayerShip.alive, PlayerShip.exploding, PlayerShip.direction)
         m,r = divmod(moves,PlayerShip.speed)
         if (r == 0):
-          DotInvaderMovePlayerShip(PlayerShip,Playfield)
+          DotInvaderMovePlayerShip(PlayerShip,Playfield,Armada,UFOShip)
           i = random.randint(0,5)
           if (i >= 0):
             AdjustSpeed(PlayerShip,'fast',1)
@@ -1516,7 +1370,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
             if (Armada[y][x].v > ArmadaLevel):
               ArmadaLevel = Armada[y][x].v
       #print ("M - Armada AliveCount ArmadaLevel: ",ArmadaCount,ArmadaLevel)
-      ArmadaSpeed = ArmadaCount * 10 + 50
+      ArmadaSpeed = ArmadaCount * 10 
         
 
       if (ArmadaCount == 0):
@@ -1595,7 +1449,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FINAL SCORE:" + ScoreString,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"YOU FAILED YOUR PLANET!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,255,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"YOU FAILED YOUR PLANET!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,200,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
      
@@ -1606,6 +1460,9 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
 def LaunchDotInvaders(GameMaxMinutes = 10000):
   
+
+    PlayDotInvaders(GameMaxMinutes)
+
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
     #--------------------------------------

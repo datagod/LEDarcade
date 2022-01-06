@@ -3415,6 +3415,35 @@ UnderscoreSprite = Sprite(
 )
 
 
+# [
+LeftSquareBracketSprite = Sprite(
+  3,
+  3,
+  0,
+  0,
+  0,
+  [1,1,1,
+   1,0,0,
+   1,0,0,
+   1,0,0,
+   1,1,1]
+)
+
+# [
+RightSquareBracketSprite = Sprite(
+  3,
+  3,
+  0,
+  0,
+  0,
+  [1,1,1,
+   0,0,1,
+   0,0,1,
+   0,0,1,
+   1,1,1]
+)
+
+
 CursorSprite = Sprite(
   4,
   5,
@@ -10594,6 +10623,11 @@ def CreateBannerSprite(TheMessage):
     elif (c == '_'):
       BannerSprite = JoinSprite(BannerSprite, UnderscoreSprite,0)
 
+    elif (c == '['):
+      BannerSprite = JoinSprite(BannerSprite, LeftSquareBracketSprite,0)
+
+    elif (c == ']'):
+      BannerSprite = JoinSprite(BannerSprite, RightSquareBracketSprite,0)
 
 
     elif (c == ' '):
