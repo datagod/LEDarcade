@@ -599,15 +599,19 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
         ArmadaDirection = Armada[y][x].direction
   
 
-  #Drop missiles
-  h,v = NewH, NewV
+  #Drop missiles (from semi random location)
+  if(ArmadaDirection == 2):
+    h = NewH + random.randint(1,5)
+  else:
+    h = NewH - random.randint(1,5)
+  v = NewV
   if (UFOMissile1.alive == 0 and UFOMissile1.exploding == 0):
     UFOMissile1.h = h
-    UFOMissile1.v = LowestV
+    UFOMissile1.v = LowestV + 1
     UFOMissile1.alive = 1
   elif (UFOMissile2.alive == 0 and UFOMissile2.exploding == 0 and ArmadaCount > 1):
     UFOMissile2.h = h
-    UFOMissile2.v = LowestV
+    UFOMissile2.v = LowestV + 1
     UFOMissile2.alive = 1
 
   
@@ -1237,15 +1241,15 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
         if (PlayerShip.score >= HighScore):
           HighScore       = PlayerShip.score
-          HighScoreString = str(HighScore)
-          HighScoreSprite = LED.CreateBannerSprite(HighScoreString)
-          HighScoreH      = LED.HatWidth  - HighScoreSprite.width
-          HighScoreV      = 0
-          HighScoreSprite.r = 100
-          HighScoreSprite.g = 100
-          HighScoreSprite.b = 100
-          HighScoreSprite.EraseWholeSprite(HighScoreH,HighScoreV)
-          HighScoreSprite.Display(HighScoreH,0)
+        HighScoreString = str(HighScore)
+        HighScoreSprite = LED.CreateBannerSprite(HighScoreString)
+        HighScoreH      = LED.HatWidth  - HighScoreSprite.width
+        HighScoreV      = 0
+        HighScoreSprite.r = 100
+        HighScoreSprite.g = 100
+        HighScoreSprite.b = 100
+        HighScoreSprite.EraseWholeSprite(HighScoreH,HighScoreV)
+        HighScoreSprite.Display(HighScoreH,0)
       
       #Spawn UFOShip
       m,r = divmod(moves,ChanceOfUFOShip)
