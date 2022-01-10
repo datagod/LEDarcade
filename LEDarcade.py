@@ -158,6 +158,15 @@ Canvas.Fill(0,0,0)
 TwitchTimerOn = False
 
 
+
+#-----------------------------
+# Arcade Games              --
+#-----------------------------
+DotInvadersHighScore   = 0
+DotInvadersGamesPlayed = 0
+
+
+
 #-----------------------------
 # Timers                    --
 #-----------------------------
@@ -9721,8 +9730,7 @@ def random_message(MessageFile):
     
 
 
-def SaveConfigData():
-  
+def SaveConfigData():  
   
    
   print (" ")
@@ -9741,21 +9749,25 @@ def SaveConfigData():
     print ("Config file not found.  Creating new one.")
     ConfigFile = SafeConfigParser()
     ConfigFile.read(ConfigFileName)
-    ConfigFile.add_section('main')
-    ConfigFile.add_section('pacdot')
-    ConfigFile.add_section('crypto')
+    ConfigFile.add_section('scores')
+    #ConfigFile.add_section('pacdot')
+    #ConfigFile.add_section('crypto')
 
     
-  print ("Time to save: ",AdjustedTime)
-  print ("Pacdot score:      " ,PacDotScore)
-  print ("Pacdot high score: " ,PacDotHighScore)
-  print ("Pacdot games played:",PacDotGamesPlayed)
-  print ("Crypto balance:    " ,CryptoBalance)
+  #print ("Time to save: ",AdjustedTime)
+  print ("DotInvaders high score:   " ,DotInvadersHighScore)
+  print ("DotInvaders games played: " ,DotInvadersGamesPlayed)
+  #print ("Pacdot score:      " ,PacDotScore)
+  #print ("Pacdot high score: " ,PacDotHighScore)
+  #print ("Pacdot games played:",PacDotGamesPlayed)
+  #print ("Crypto balance:    " ,CryptoBalance)
 
-  ConfigFile.set('main',   'CurrentTime',       AdjustedTime)
-  ConfigFile.set('pacdot', 'PacDotHighScore',   str(PacDotHighScore))
-  ConfigFile.set('pacdot', 'PacDotGamesPlayed', str(PacDotGamesPlayed))
-  ConfigFile.set('crypto', 'balance',           str(CryptoBalance))
+  #ConfigFile.set('main',   'CurrentTime',       AdjustedTime)
+  ConfigFile.set('scores',   'DotInvadersHighScore',   str(DotInvadersHighScore))
+  ConfigFile.set('scores',   'DotInvadersGamesPlayed', str(DotInvadersGamesPlayed))
+  #ConfigFile.set('pacdot', 'PacDotHighScore',   str(PacDotHighScore))
+  #ConfigFile.set('pacdot', 'PacDotGamesPlayed', str(PacDotGamesPlayed))
+  #ConfigFile.set('crypto', 'balance',           str(CryptoBalance))
 
 
   print ("Writing configuration file")
@@ -9767,10 +9779,11 @@ def SaveConfigData():
 
     
 def LoadConfigData():
-  
+  global DotInvadersHighScore
+  global DotInvadersGamesPlayed
 
   print ("--Load Config Data--")
-  print ("PacDotHighScore Before Load: ",PacDotHighScore)
+  #print ("PacDotHighScore Before Load: ",PacDotHighScore)
     
   if (os.path.exists(ConfigFileName)):
     print ("Config file (",ConfigFileName,"): already exists")
@@ -9778,20 +9791,27 @@ def LoadConfigData():
     ConfigFile.read(ConfigFileName)
 
     #Get and set time    
-    TheTime = ConfigFile.get("main","currenttime")
-    print ("Setting time: ",TheTime)
-    CMD = "sudo date --set " + TheTime
+    #TheTime = ConfigFile.get("main","currenttime")
+    #print ("Setting time: ",TheTime)
+    #CMD = "sudo date --set " + TheTime
     #os.system(CMD)
    
     #Get pacdot data
-    PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
-    PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
-    print ("PacDotHighScore: ",  PacDotHighScore)
-    print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
+    #PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
+    #PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
+    #print ("PacDotHighScore: ",  PacDotHighScore)
+    #print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
 
     #Get CryptoBalance
-    CryptoBalance = ConfigFile.get("crypto","balance")
-    print ("CryptoBalance:   ",CryptoBalance)
+    #CryptoBalance = ConfigFile.get("crypto","balance")
+    #print ("CryptoBalance:   ",CryptoBalance)
+
+    #Get DotInvadersHighScore
+    DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
+    DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
+    print ("DotInvadersHighScore: ",  DotInvadersHighScore)
+    print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
+
 
     
   else:

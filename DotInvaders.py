@@ -82,28 +82,35 @@ import time
 
 
 #Player
-PlayerShipSpeed       = 50
-PlayerShipMaxSpeed    = 15
-PlayerShipMinSpeed    = 75
-PlayerShipAbsoluteMinSpeed = 20
-MaxPlayerMissiles     = 1
+PlayerShipSpeed       = 100
+PlayerShipMaxSpeed    = 50
+PlayerShipMinSpeed    = 150
+PlayerShipAbsoluteMinSpeed = 200
+MaxPlayerMissiles     = 2
 PlayerMissiles        = 1
 PlayerMissileSpeed    = 15
-PlayerMissileMaxSpeed = 2
+PlayerMissileMaxSpeed = 10
 PlayerMissileMinSpeed = 15
 PlayerShipLives       = 3
+PlayerShipJustMovingChance = 250
+PlayerShipJustMovingMoves  = 20
+PlayerShipJustMovingSpeed  = 10
 
 #Armada
 ArmadaDirection = 2
 ArmadaSpeed     = 10
 ArmadaHeight    = 0
 ArmadaWidth     = 0
+ArmadaHighestV  = 0
+ArmadaLowestV   = 0
+CondenseArmadaChance = 1000
+
 
 #UFO
 UFOMissileSpeed = 75
 UFOShipSpeed    = 100  #also known as the EnemeyShip
-UFOShipMinSpeed = 200
-UFOShipMaxSpeed = 100
+UFOShipMinSpeed = 300
+UFOShipMaxSpeed = 150
 ChanceOfUFOShip = 30000
 
 #HomingMissile 
@@ -112,13 +119,13 @@ UFOFrameRate               = 50  #random animated homing missiles
 
 #Points
 SpaceDotScore        = 0
-UFOPoints            = 10
+UFOPoints            = 50
 BomberPoints         = 5
 BomberHitPoints      = 1
 HomingMissilePoints  = 5
 AsteroidLandedPoints = 1
 AsteroidPoints       = 5
-HighScore            = 0
+
 
 Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
 
@@ -352,7 +359,7 @@ def DisplayPlayfield(Playfield):
         
 def CreateSpecialArmada(ShowTime=True):
 
-    global  ArmadaHeight
+    global ArmadaHeight
     global ArmadaWidth
 
     #Does the same as Display, but does not call show(), allowing calling function to further modify the Buffer
@@ -412,11 +419,15 @@ def CreateSpecialArmada(ShowTime=True):
           if TheArmadaSprite.grid[count] == 1:
             Armada[V][H].alive = 1
             Armada[V][H].name = 'ArmadaShip'
-            
+            Armada[V][H].h = H
+            Armada[V][H].v = V
           else:
             Armada[V][H].alive = 0
+            Armada[V][H].name  = 'Empty'
+            Armada[V][H].h = H
+            Armada[V][H].v = V
       
-   
+    
     return Armada,ArmadaHeight,ArmadaWidth;
 
 
@@ -482,6 +493,8 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
   #ArmadaDirection = X
 
   global ArmadaDirection
+  global ArmadaHighestV
+  global ArmadaLowestV
 
   ScanH = 0
   ScanV = 0
@@ -492,6 +505,8 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
   BorderDetected = 0
   LowestV = 0
 
+  NewH = 0
+  NewV = 0
 
 #  print ("=====***************************************************================")
 #  for x in range(ArmadaWidth-1,-1,-1):
@@ -503,8 +518,13 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
 #  print ("=====***************************************************================")
 
 
+  MiddleH = round((ArmadaWidth) / 2)
 
-  
+
+
+
+
+
   #Check for border
   for x in range(ArmadaWidth-1,-1,-1):
     for y in range (ArmadaHeight-1,-1,-1):
@@ -538,6 +558,7 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
   if (direction == 2):
     for x in range(ArmadaWidth-1,-1,-1):
       for y in range (ArmadaHeight-1,-1,-1):
+
         if (Armada[y][x].alive == 1):
 
           OldH = Armada[y][x].h
@@ -557,6 +578,13 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
 
          
           Playfield[OldV][OldH] = Empty
+          Playfield[NewV][NewH] = Armada[y][x]
+          
+          
+          # what about the new location?
+
+
+
 
 
           #print ("NewH NewV",NewH,NewV)
@@ -564,12 +592,17 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
             Playfield[NewV][NewH] = Armada[y][x]
           else:
             print ("Game Over")
-          
+  
+  #direction = 4   
   else:
     for x in range(ArmadaWidth):
       for y in range (ArmadaHeight-1,-1,-1):
+        
+        
+        
+        
         if (Armada[y][x].alive == 1):
-  
+          #print(Armada[y][x].name)
           OldH = Armada[y][x].h
           OldV = Armada[y][x].v
           #print ("MA  - OldH OldV direction",OldH,OldV,direction)
@@ -599,6 +632,14 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
         ArmadaDirection = Armada[y][x].direction
   
 
+
+
+
+
+  
+
+
+
   #Drop missiles (from semi random location)
   if(ArmadaDirection == 2):
     h = NewH + random.randint(1,5)
@@ -615,6 +656,12 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
     UFOMissile2.alive = 1
 
   
+  ArmadaLowestV  = LowestV + 1
+  ArmadaHighestV = LowestV - ArmadaHeight + 1
+  return
+
+
+
 
       
 def DotInvadersMoveMissile(Missile,Ship,Playfield):
@@ -648,7 +695,7 @@ def DotInvadersMoveMissile(Missile,Ship,Playfield):
     LED.setpixel(ScanH,ScanV,0,0,0)
     LED.setpixel(h,v,0,0,255)
     if (Item == 'UFOShip'):
-      Ship.score = Ship.score + random.randint(1,11)
+      Ship.score = Ship.score + UFOPoints
     elif (Item == 'Bunker'):
       Ship.score = Ship.score - 1
     elif (Item == 'Player1'):
@@ -884,6 +931,32 @@ def DotInvaderScanShip(h,v,direction,Playfield):
   return ItemList;
 
 
+def RandomDirectionRandomSpeed(Ship,MaxSpeed):
+
+  #Random direction left or right
+  i = random.randint(1,2)
+  if i == 1:
+    direction = 2
+  else: 
+    direction = 4
+  
+  #Random speed value
+  i = random.randint(1,MaxSpeed)
+  speed = i
+
+  #random speed up or down
+  i = random.randint(1,2)
+  if i == 1:
+    adjust = 'slow'
+  else: 
+    adjust = 'fast'
+
+  AdjustSpeed(Ship,setting = adjust,amount = speed)    
+
+  print("New speed/direction:",adjust, speed,direction)
+    
+ 
+
 def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
   #Player ships always points up, enemy ships point down
   h = Ship.h
@@ -908,86 +981,102 @@ def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
   # 2 Blast far objects
 
 
-  
-  #UFO takes priority 
+  #Sometimes, you just need to ignore the rules and do your own thing
+  if(Ship.JustMovingOn == False):
+    if(random.randint(1,PlayerShipJustMovingChance) == 1):
+      Ship.JustMovingOn    = True
+      Ship.JustMovingMoves = random.randint(1,PlayerShipJustMovingMoves)
+      #print("PlayerShip JustMoving moves speed:",Ship.JustMovingMoves,Ship.speed)
+      RandomDirectionRandomSpeed(Ship,PlayerShipJustMovingSpeed)
 
-  #Follow UFO
-  if(UFOShip.alive == 1):
+    
+  if (Ship.JustMovingOn == True):
+    Ship.JustMovingMoves = Ship.JustMovingMoves - 1
 
-    if(UFOShip.h < h):
-      #Slow player down if ship coming towards
-      Ship.direction = 4
-      if(UFOShip.direction == 2):
-        AdjustSpeed(Ship,'slow',5)
+    if(Ship.JustMovingMoves <= 0):
+      Ship.JustMovingOn    = False
 
-      else:
-        AdjustSpeed(Ship,'speedup',10)
 
-    elif(UFOShip.h > h ):
-      #Slow player down if ship coming towards
-      Ship.direction = 2
-      if(UFOShip.direction == 4):
-        AdjustSpeed(Ship,'slow',5)
-      else:
+  else:
+    #UFO takes priority 
+    #Follow UFO
+    if(UFOShip.alive == 1):
+
+      if(UFOShip.h +3 < h):
+        #Slow player down if ship coming towards
+        Ship.direction = 4
+        if(UFOShip.direction == 2):
+          AdjustSpeed(Ship,'slow',5)
+
+        else:
+          AdjustSpeed(Ship,'speedup',10)
+
+      elif(UFOShip.h -3 > h ):
+        #Slow player down if ship coming towards
+        Ship.direction = 2
+        if(UFOShip.direction == 4):
+          AdjustSpeed(Ship,'slow',5)
+        else:
+          AdjustSpeed(Ship,'speedup',10)
+
+      elif(UFOShip.h == h):
+        Ship.direction = UFOShip.direction
         AdjustSpeed(Ship,'speedup',20)
 
-    elif(UFOShip.h == h):
-      Ship.direction = UFOShip.direction
-      AdjustSpeed(Ship,'speedup',20)
-
-  #Go towards front of the armada
-  else:
-    LeftH  = -1
-    RightH = -1
-    #Find H for left and right sides of armada
-    for x in range (0,ArmadaWidth):
-      for y in range (0,ArmadaHeight):
-        if(Armada[y][x].alive == 1):
-          LeftH = Armada[y][x].h
+    #Go towards front of the armada
+    #but not if player is under the bunker
+    elif(ItemList[3] != "Bunker" and ItemList[6] != "Bunker"):
+      LeftH  = -1
+      RightH = -1
+      #Find H for left and right sides of armada
+      for x in range (0,ArmadaWidth):
+        for y in range (0,ArmadaHeight):
+          if(Armada[y][x].alive == 1):
+            LeftH = Armada[y][x].h
+            break
+        if (LeftH != -1):
           break
-      if (LeftH != -1):
-        break
-    for x in range (ArmadaWidth,0,-1):
-      for y in range(0,ArmadaHeight):
-        if(Armada[y][x].alive == 1):
-          RightH = Armada[y][x].h
+      for x in range (ArmadaWidth,0,-1):
+        for y in range(0,ArmadaHeight):
+          if(Armada[y][x].alive == 1):
+            RightH = Armada[y][x].h
+            break
+        if (RightH != -1):
           break
-      if (RightH != -1):
-        break
 
 
-    #print("h LeftH RightH OldDir ",h,LeftH,RightH,Ship.direction)
-    #If outside of Armada, move towards the armada
-    if(h < LeftH -1):
-      Ship.direction = 2
-    elif(h > RightH + 1):
-      Ship.direction = 4
-    #print("h LeftH RightH NewDir ",h,LeftH,RightH,Ship.direction)
-    
-    #if inside armada, move towards front (unless right near the border)
-    elif(ArmadaDirection == 2 and (h > 3 and h < LED.HatWidth - RightSideSize - 3)):
-      Ship.direction = 2
-      AdjustSpeed(Ship,'slow',20)
-    elif(ArmadaDirection == 4  and (h > 3 and h < LED.HatWidth - RightSideSize - 3)):
-      Ship.direction = 4
-      AdjustSpeed(Ship,'fast',20)
+      #print("h LeftH RightH OldDir ",h,LeftH,RightH,Ship.direction)
+      #If outside of Armada, move towards the armada
+      if(h < LeftH -1):
+        Ship.direction = 2
+      elif(h > RightH + 1):
+        Ship.direction = 4
+      #print("h LeftH RightH NewDir ",h,LeftH,RightH,Ship.direction)
+      
+      #if inside armada, move towards front (unless  near the border)
+      elif(ArmadaDirection == 2 and (h > 3 and h < LED.HatWidth - RightSideSize - 3)):
+        Ship.direction = 2
+        AdjustSpeed(Ship,'slow',20)
+      elif(ArmadaDirection == 4  and (h > 3 and h < LED.HatWidth - RightSideSize - 3)):
+        Ship.direction = 4
+        AdjustSpeed(Ship,'fast',20)
 
-    #pause if playership is at the edge
-    if(h == LeftH or h == RightH):
-      Ship.direction = 0
+      #pause if playership is at the edge
+      if(h == LeftH  or h == RightH ):
+        Ship.direction = 0
 
-  #If something aboove is detected, fire missile!
-  if ("ArmadaShip" in ItemList or "UFO" in ItemList or "UFOMissile" in ItemList ):
-    if (ItemList[3] != "Bunker" and ItemList[6] != "Bunker"):
+    #If something aboove is detected, fire missile!
+    if ("ArmadaShip" in ItemList or "UFO" in ItemList or "UFOMissile" in ItemList ):
+      if (ItemList[3] != "Bunker" and ItemList[6] != "Bunker"):
 
-      if (PlayerMissile1.alive == 0 and PlayerMissile1.exploding == 0):
-        #print ("MPS - UFO/Bomber/aseroid Detected PlayerMissile1.alive:",PlayerMissile1.alive)
-        PlayerMissile1.h = h
-        PlayerMissile1.v = v
-        PlayerMissile1.alive = 1
-        PlayerMissile1.exploding = 0
+        if (PlayerMissile1.alive == 0 and PlayerMissile1.exploding == 0):
+          #print ("MPS - UFO/Bomber/aseroid Detected PlayerMissile1.alive:",PlayerMissile1.alive)
+          PlayerMissile1.h = h
+          PlayerMissile1.v = v
+          PlayerMissile1.alive = 1
+          PlayerMissile1.exploding = 0
 
-    
+      
      
   
   #if heading to boundary or wall Reverse direction
@@ -1017,7 +1106,10 @@ def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
     Playfield[v][h] = Empty
     LED.setpixel(h,v,0,0,0)
 
-
+  if(Ship.h > LED.HatWidth - RightSideSize):
+    Ship.h = LED.HatWidth - RightSideSize
+  elif(Ship.h <0):
+    Ship.h = 0
   Ship.Display()
   
 
@@ -1049,7 +1141,8 @@ def ShowFireworks(FireworksExplosion,count,speed):
 def PlayDotInvaders(GameMaxMinutes = 10000):
 
   global ArmadaSpeed
-  global HighScore
+  
+  
 
   #Local variables
   moves       = 0
@@ -1058,8 +1151,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   Playerh     = 0
   Playerv     = 0
   SleepTime   = LED.MainSleep / 4
-
-
+  LED.DotInvadersGamesPlayed = LED.DotInvadersGamesPlayed + 1
 
 
   PlayerShipR = LED.SDMedBlueR
@@ -1074,7 +1166,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   BunkerRows  = 4
   BunkerBases = 4
   BunkerWidth = 5
-  BunkerStartH = 3
+  BunkerStartH = 4
   BunkerSpacing = round((LED.HatWidth - RightSideSize)/ BunkerBases)
   b           = 0
   BunkerDots  = ([])
@@ -1104,6 +1196,12 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
 
   PlayerShip = LED.Ship( 7,15,PlayerShipR,PlayerShipG,PlayerShipB,4,1,10,1,PlayerShipLives,'Player1', 0,0)
+  PlayerShip.JustMovingOn    = False
+  PlayerShip.JustMovingMoves = 0
+  
+
+
+
   UFOShip    = LED.Ship(0,0,LED.SDHighPurpleR,LED.SDHighPurpleG,LED.SDHighPurpleB,4,3,50,0,3,'UFO', 0,0)
   Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
 
@@ -1239,9 +1337,10 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         ScoreSprite = LED.CreateBannerSprite(ScoreString)
         ScoreSprite.Display(ScoreH,ScoreV)
 
-        if (PlayerShip.score >= HighScore):
-          HighScore       = PlayerShip.score
-        HighScoreString = str(HighScore)
+        if (PlayerShip.score >= LED.DotInvadersHighScore):
+          LED.DotInvadersHighScore       = PlayerShip.score
+
+        HighScoreString = str(LED.DotInvadersHighScore)
         HighScoreSprite = LED.CreateBannerSprite(HighScoreString)
         HighScoreH      = LED.HatWidth  - HighScoreSprite.width
         HighScoreV      = 0
@@ -1379,10 +1478,11 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
             if (Armada[y][x].v > ArmadaLevel):
               ArmadaLevel = Armada[y][x].v
       #print ("M - Armada AliveCount ArmadaLevel: ",ArmadaCount,ArmadaLevel)
-      ArmadaSpeed = ArmadaCount * 10 + 25
+      ArmadaSpeed = ArmadaCount * 10 + 50
         
 
       if (ArmadaCount == 0):
+        LED.SaveConfigData()
         LevelFinished = 'Y'
         #print ("M - Level:", LevelCount)
         LED.setpixel(PlayerMissile1.h,PlayerMissile1.v,0,0,0)
@@ -1414,7 +1514,10 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
       
       if (ArmadaLevel == LED.HatHeight-1):
+        LED.SaveConfigData()
         PlayerShip.alive = 0
+        
+        #Game over if Armada reaches the bottom
         PlayerShip.lives = 0
         LevelFinished = 'Y'
         
@@ -1428,6 +1531,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
       #print("mm:ss",m,s)
       if(m > GameMaxMinutes):
+        LED.SaveConfigData()
         print("Ending game after",m," minutes")
         ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
 
@@ -1439,7 +1543,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
         LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"LIVE TO FIGHT ANOTHER DAY",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
         LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-
+         
         return();
 
 
@@ -1447,7 +1551,8 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         
       #time.sleep(MainSleep / 5)
   print ("M - The end?")    
-  
+  LED.SaveConfigData()
+
   
   ScoreString = str(PlayerShip.score) 
   LED.ClearBigLED()
@@ -1469,8 +1574,9 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
 def LaunchDotInvaders(GameMaxMinutes = 10000):
   
-
     PlayDotInvaders(GameMaxMinutes)
+
+    #PlayDotInvaders(GameMaxMinutes)
 
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
@@ -1497,6 +1603,12 @@ def LaunchDotInvaders(GameMaxMinutes = 10000):
     CursorV = 0
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO PLANETARY DEFENCE SYSTEMS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"HIGH SCORE: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(LED.DotInvadersHighScore),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.DotInvadersGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"GOOD LUCK!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,0,255),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
@@ -1513,6 +1625,8 @@ def LaunchDotInvaders(GameMaxMinutes = 10000):
 while(1 == 1):
   #execute if this script is called direction
   if __name__ == "__main__" :
+    LED.LoadConfigData()
+    LED.SaveConfigData()
     LaunchDotInvaders(100000)        
 
 
