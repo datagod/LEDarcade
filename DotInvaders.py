@@ -76,7 +76,7 @@ import time
 
 
 #----------------------------
-#-- SpaceDot               --
+#-- Dot Invaders           --
 #----------------------------
 
 
@@ -92,9 +92,10 @@ PlayerMissileSpeed    = 15
 PlayerMissileMaxSpeed = 10
 PlayerMissileMinSpeed = 15
 PlayerShipLives       = 3
-PlayerShipJustMovingChance = 250
+PlayerShipJustMovingChance = 1000
 PlayerShipJustMovingMoves  = 20
 PlayerShipJustMovingSpeed  = 10
+ShotsMissedMax           = 3
 
 #Armada
 ArmadaDirection = 2
@@ -671,7 +672,7 @@ def DotInvadersMoveMissile(Missile,Ship,Playfield):
   #Record the current coordinates
   h = Missile.h
   v = Missile.v
-
+  TargetHit = False
   
   #Missiles simply drop to bottom and kablamo!
   #FF (one square in front of missile direction of travel)
@@ -690,6 +691,7 @@ def DotInvadersMoveMissile(Missile,Ship,Playfield):
   if (Item  in ('Player1','ArmadaShip','UFO','UFOMissile','Bunker')):
     #target hit, kill target
     #print ("DIMM - Item Name", Item, Playfield[ScanV][ScanH].name)
+    TargetHit = True
     Playfield[ScanV][ScanH].alive = 0
     Playfield[ScanV][ScanH]= Empty
     LED.setpixel(ScanH,ScanV,0,0,0)
@@ -722,6 +724,7 @@ def DotInvadersMoveMissile(Missile,Ship,Playfield):
     Missile.alive  = 0
     Missile.exploding = 0
     Missile.Erase()
+    Ship.ShotsMissed = Ship.ShotsMissed + 1
   elif (Item == 'border' and (Missile.name == 'UFOMissile' or Missile.name == 'Asteroid')):
     #print ("MM - Missile hit border")
     Missile.alive  = 0
@@ -745,6 +748,11 @@ def DotInvadersMoveMissile(Missile,Ship,Playfield):
     #print ("MM - Erasing Missile")
   #unicorn.show()
   #SendBufferPacket(RemoteDisplay,LED.HatHeight,LED.HatWidth)
+  
+  
+  if (TargetHit == True and  Missile.name == "PlayerMissile"):
+    Ship.ShotsMissed = 0
+  
   
   return 
     
@@ -992,9 +1000,11 @@ def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
     
   if (Ship.JustMovingOn == True):
     Ship.JustMovingMoves = Ship.JustMovingMoves - 1
+    #print("Just moving moves left:",Ship.JustMovingMoves)
 
     if(Ship.JustMovingMoves <= 0):
       Ship.JustMovingOn    = False
+      Ship.ShotsMissed     = 0
 
 
   else:
@@ -1068,14 +1078,20 @@ def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
     #If something aboove is detected, fire missile!
     if ("ArmadaShip" in ItemList or "UFO" in ItemList or "UFOMissile" in ItemList ):
       if (ItemList[3] != "Bunker" and ItemList[6] != "Bunker"):
-
         if (PlayerMissile1.alive == 0 and PlayerMissile1.exploding == 0):
           #print ("MPS - UFO/Bomber/aseroid Detected PlayerMissile1.alive:",PlayerMissile1.alive)
-          PlayerMissile1.h = h
-          PlayerMissile1.v = v
-          PlayerMissile1.alive = 1
-          PlayerMissile1.exploding = 0
 
+          #Only shoot if player has not missed X number of times already
+          if(Ship.ShotsMissed <= ShotsMissedMax):
+            PlayerMissile1.h = h
+            PlayerMissile1.v = v
+            PlayerMissile1.alive = 1
+            PlayerMissile1.exploding = 0
+          else:
+            #print ("Too many shots missed in a row.  Speeding up and moving.")
+            Ship.JustMovingOn    = True
+            Ship.JustMovingMoves = random.randint(1,PlayerShipJustMovingMoves)
+            RandomDirectionRandomSpeed(Ship,PlayerShipJustMovingSpeed)
       
      
   
@@ -1198,7 +1214,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   PlayerShip = LED.Ship( 7,15,PlayerShipR,PlayerShipG,PlayerShipB,4,1,10,1,PlayerShipLives,'Player1', 0,0)
   PlayerShip.JustMovingOn    = False
   PlayerShip.JustMovingMoves = 0
-  
+  PlayerShip.ShotsMissed     = 0
 
 
 
@@ -1340,7 +1356,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         if (PlayerShip.score >= LED.DotInvadersHighScore):
           LED.DotInvadersHighScore       = PlayerShip.score
 
-        HighScoreString = str(LED.DotInvadersHighScore)
+        HighScoreString = ' ' + str(LED.DotInvadersHighScore)
         HighScoreSprite = LED.CreateBannerSprite(HighScoreString)
         HighScoreH      = LED.HatWidth  - HighScoreSprite.width
         HighScoreV      = 0
