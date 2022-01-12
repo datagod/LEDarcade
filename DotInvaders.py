@@ -392,8 +392,33 @@ def CreateSpecialArmada(ShowTime=True):
     if ((random.randint(1,2) == 1) or ShowTime == True):
       TheArmadaSprite = LED.CreateClockSprite(12)
     else:
-      WordList=("PACMAN","ALIEN","DARTH","VADER","1943","USA","CAN","AUS","NZ","UK","[-O-]","QBERT","KONG",
-                "IOI",":)","BARF","LOLZ")
+      WordList=("PACMAN",
+                "ALIEN",
+                "DARTH",
+                "VADER",
+                "1943",
+                "USA",
+                "CAN",
+                "AUS",
+                "NZ",
+                "UK",
+                "[-O-]",
+                "QBERT",
+                "KONG",
+                "IOI",
+                ":)",
+                "BARF",
+                "LOLZ",
+                "|+|",
+                "Q",
+                "Z",
+                "777",
+                "PAKDOT",
+                "TRON",
+                "|-O-|",
+                ".",
+                "+"
+                )
       TheMessage = WordList[random.randint(1,len(WordList)-1)]
       print ("Armada Message:",TheMessage)
       TheArmadaSprite = LED.CreateBannerSprite(TheMessage)
@@ -402,10 +427,14 @@ def CreateSpecialArmada(ShowTime=True):
       #calculate zoomfactor
       if(len(TheMessage) >= 5):
         ZoomFactor = 1
-      elif (len(TheMessage) >= 3 and len(TheMessage) <= 4):
+      elif (len(TheMessage) == 4):
         ZoomFactor = 2
-      else:
+      elif (len(TheMessage) == 3):
+        ZoomFactor = 2
+      elif (len(TheMessage) == 2):
         ZoomFactor = 3
+      else:
+        ZoomFactor = 4
     
 
 
@@ -431,12 +460,12 @@ def CreateSpecialArmada(ShowTime=True):
             Armada[V][H].alive = 1
             Armada[V][H].name = 'ArmadaShip'
             Armada[V][H].h = H
-            Armada[V][H].v = V
+            Armada[V][H].v = V - ZoomFactor
           else:
             Armada[V][H].alive = 0
             Armada[V][H].name  = 'Empty'
             Armada[V][H].h = H
-            Armada[V][H].v = V
+            Armada[V][H].v = V - ZoomFactor
       
     
     return Armada,ArmadaHeight,ArmadaWidth;
@@ -1368,7 +1397,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         if (PlayerShip.score >= LED.DotInvadersHighScore):
           LED.DotInvadersHighScore       = PlayerShip.score
 
-        HighScoreString = ' ' + str(LED.DotInvadersHighScore)
+        HighScoreString = str(LED.DotInvadersHighScore)
         HighScoreSprite = LED.CreateBannerSprite(HighScoreString)
         HighScoreH      = LED.HatWidth  - HighScoreSprite.width
         HighScoreV      = 0
