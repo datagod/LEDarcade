@@ -88,14 +88,14 @@ PlayerShipMinSpeed    = 150
 PlayerShipAbsoluteMinSpeed = 200
 MaxPlayerMissiles     = 2
 PlayerMissiles        = 1
-PlayerMissileSpeed    = 15
-PlayerMissileMaxSpeed = 10
+PlayerMissileSpeed    = 12 
+PlayerMissileMaxSpeed = 1
 PlayerMissileMinSpeed = 15
 PlayerShipLives       = 3
 PlayerShipJustMovingChance = 1000
 PlayerShipJustMovingMoves  = 20
 PlayerShipJustMovingSpeed  = 10
-ShotsMissedMax           = 3
+ShotsMissedMax             = 5
 
 #Armada
 ArmadaDirection = 2
@@ -126,7 +126,7 @@ BomberHitPoints      = 1
 HomingMissilePoints  = 5
 AsteroidLandedPoints = 1
 AsteroidPoints       = 5
-
+LevelClearBonus      = 100
 
 Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
 
@@ -248,8 +248,18 @@ def CheckElapsedTime(seconds):
 
 
   
-
+def AdjustPlayerMissileSpeed(Missile,setting,amount):
+  if (setting == 'slow'):
+    Missile.speed = Missile.speed + amount
+  else:
+    Missile.speed = Missile.speed - amount
   
+  if (Missile.speed >= PlayerMissileMinSpeed):
+    Missile.speed = PlayerMissileMinSpeed
+  elif (Missile.speed <= PlayerMissileMaxSpeed):
+    Missile.speed = PlayerMissileMaxSpeed
+  
+
 
 
 
@@ -1064,18 +1074,18 @@ def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
       #print("h LeftH RightH NewDir ",h,LeftH,RightH,Ship.direction)
       
       #if inside armada, move towards front (unless  near the border)
-      elif(ArmadaDirection == 2 and (h > 3 and h < LED.HatWidth - RightSideSize - 3)):
+      elif(ArmadaDirection == 2 and (h > 3 and h < LED.HatWidth - RightSideSize + 1)):
         Ship.direction = 2
         AdjustSpeed(Ship,'slow',20)
-      elif(ArmadaDirection == 4  and (h > 3 and h < LED.HatWidth - RightSideSize - 3)):
+      elif(ArmadaDirection == 4  and (h > 3 and h < LED.HatWidth - RightSideSize + 1)):
         Ship.direction = 4
         AdjustSpeed(Ship,'fast',20)
 
       #pause if playership is at the edge
-      if(h == LeftH  or h == RightH ):
+      if(h == LeftH -1  or h == RightH +1 ):
         Ship.direction = 0
 
-    #If something aboove is detected, fire missile!
+    #If something above is detected, fire missile!
     if ("ArmadaShip" in ItemList or "UFO" in ItemList or "UFOMissile" in ItemList ):
       if (ItemList[3] != "Bunker" and ItemList[6] != "Bunker"):
         if (PlayerMissile1.alive == 0 and PlayerMissile1.exploding == 0):
@@ -1091,7 +1101,9 @@ def DotInvaderMovePlayerShip(Ship,Playfield,Armada,UFOShip):
             #print ("Too many shots missed in a row.  Speeding up and moving.")
             Ship.JustMovingOn    = True
             Ship.JustMovingMoves = random.randint(1,PlayerShipJustMovingMoves)
-            RandomDirectionRandomSpeed(Ship,PlayerShipJustMovingSpeed)
+            #RandomDirectionRandomSpeed(Ship,PlayerShipJustMovingSpeed)
+            AdjustPlayerMissileSpeed(PlayerMissile1,'fast',1)
+
       
      
   
@@ -1504,6 +1516,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         LED.setpixel(PlayerMissile1.h,PlayerMissile1.v,0,0,0)
         LED.setpixel(UFOMissile1.h,UFOMissile1.v,0,0,0)
         LED.setpixel(UFOMissile2.h,UFOMissile2.v,0,0,0)
+        PlayerShip.Display()
 
         FireworksExplosion.Animate(UFOShip.h,UFOShip.v,'forward',0.01,1)        
         FireworksExplosion.EraseLocation(UFOShip.h,UFOShip.v)       
@@ -1524,9 +1537,11 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         FireworksExplosion.EraseLocation(UFOShip.h,UFOShip.v)       
 
 
-
         ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.01)
-        LED.ShowDropShip(PlayerShip.h,PlayerShip.v,'pickup',LED.ScrollSleep * 0.001)
+        LED.ShowDropShip(PlayerShip.h,PlayerShip.v,'pickup',LED.ScrollSleep * 0.09)
+
+        PlayerShip.score = PlayerShip.score + LevelClearBonus
+        print("** LEVEL CLEARED! **")
 
       
       if (ArmadaLevel == LED.HatHeight-1):
@@ -1541,7 +1556,54 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         LED.PlayerShipExplosion.Animate(PlayerShip.h,PlayerShip.v-2,'forward',0.025)
         LED.PlayerShipExplosion.Animate(PlayerShip.h+4,PlayerShip.v-2,'forward',0.025)
 
-      
+
+
+        LED.SpaceInvader.framerate = 2
+        LED.SpaceInvader.InitializeScreenArray()
+        LED.SmallInvader.framerate = 2
+        LED.SmallInvader.InitializeScreenArray()
+        LED.TinyInvader.framerate  = 1
+        LED.TinyInvader.InitializeScreenArray()
+
+        r = random.randint(0,3)
+
+        if(r == 1):
+
+          LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+            LED.SpaceInvader,
+            Position      = 'bottom',
+            direction     = "right",
+            StepsPerFrame = 4,
+            ZoomFactor    = random.randint(1,3),
+            sleep         = 0.03
+            )
+
+        if(r == 2):
+
+          LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+            LED.SmallInvader,
+            Position      = 'bottom',
+            direction     = "right",
+            StepsPerFrame = 4,
+            ZoomFactor    = random.randint(1,3),
+            sleep         = 0.03
+            )
+
+        if(r == 3):
+
+          LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+            LED.TinyInvader,
+            Position      = 'bottom',
+            direction     = "right",
+            StepsPerFrame = 4,
+            ZoomFactor    = random.randint(1,3),
+            sleep         = 0.03
+            )
+
+
+
+
+
       
       #End game after X seconds
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
@@ -1577,7 +1639,8 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   CursorV = 0
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"PLANETARY DEFENCE SYSTEMS DEACTIVATING",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FINAL SCORE:" + ScoreString,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FINAL SCORE:" ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,ScoreString,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,100),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"YOU FAILED YOUR PLANET!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,200,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
