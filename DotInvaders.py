@@ -1204,7 +1204,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   #Local variables
   moves       = 0
   Finished    = 'N'
-  LevelCount  = 1
+  LevelCount  = 0
   Playerh     = 0
   Playerv     = 0
   SleepTime   = LED.MainSleep / 4
@@ -1369,6 +1369,13 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
     InvaderH = LED.HatWidth - LED.SmallInvader.width
     InvaderV = LED.HatHeight - LED.SmallInvader.height - ScoreSprite.height - 2
     
+    LevelString = str(LevelCount)
+    LevelSprite = LED.CreateBannerSprite('L' + LevelString)
+    LevelH      = LED.HatWidth  - LevelSprite.width
+    LevelV      = 8
+    LevelSprite.r = 125
+    LevelSprite.g = 75
+    LevelSprite.b = 0
     
     # Main timing loop
     while (LevelFinished == 'N' and PlayerShip.alive == 1):
@@ -1405,8 +1412,12 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         HighScoreSprite.g = 100
         HighScoreSprite.b = 100
         HighScoreSprite.EraseWholeSprite(HighScoreH,HighScoreV)
-        HighScoreSprite.Display(HighScoreH,0)
-      
+        HighScoreSprite.Display(HighScoreH,HighScoreV)
+
+        LevelSprite.EraseWholeSprite(LevelH,LevelV)
+        LevelSprite.Display(LevelH,LevelV)
+
+
       #Spawn UFOShip
       m,r = divmod(moves,ChanceOfUFOShip)
       if (r == 0 and UFOShip.alive == 0):
@@ -1509,11 +1520,11 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
       if (UFOMissile1.exploding == 1 ):
         #print("------> UFOMissile1.exploding: ",UFOMissile1.exploding)
-        DotInvadersExplodeMissile(UFOMissile1,Playfield,5)
+        DotInvadersExplodeMissile(UFOMissile1,Playfield,1)
 
       if (UFOMissile2.exploding == 1 ):
         #print("------> UFOMissile2.exploding: ",UFOMissile2.exploding)
-        DotInvadersExplodeMissile(UFOMissile2,Playfield,5)
+        DotInvadersExplodeMissile(UFOMissile2,Playfield,1)
 
         
       #Display animation and clock every X seconds
