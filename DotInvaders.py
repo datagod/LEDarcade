@@ -1693,9 +1693,6 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
 def LaunchDotInvaders(GameMaxMinutes = 10000):
   
-    PlayDotInvaders(GameMaxMinutes)
-
-    #PlayDotInvaders(GameMaxMinutes)
 
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
@@ -1734,7 +1731,6 @@ def LaunchDotInvaders(GameMaxMinutes = 10000):
 
     PlayDotInvaders(GameMaxMinutes)
         
-
 
 
 
