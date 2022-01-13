@@ -10,7 +10,8 @@ https://github.com/datagod/LEDarcade
 
 Watch the Video: https://youtu.be/Z9uW0MQYcrE?t=10
 
-
+NEW!  Dot Invaders
+https://www.youtube.com/watch?v=3ekUMhRTu3E
 
 The Running Man
 [![Running Man](https://github.com/datagod/LEDarcade/blob/main/images/RunningMan.jpg)](https://www.youtube.com/watch?v=duzgGnZsffI)
@@ -72,4 +73,15 @@ Modify the test.py script to contain the messages you want to display.  Then exe
  I blog about my Raspberry Pi projects.
   https://datagod.hashnode.dev/ledarcade-upping-your-led-game
  
+ 
+ ## Retro Arcade Games
+ I have programmed 9 games on several sizes of LED matrixes using this library (in various forms).  As I convert the games to this final library I'll add them here.
+ 
+ # Dot Invaders
+ Dot Invaders is my take on the classic arcade game Space Invaders.
+ 
+~~~
+sudo python3 DotInvaders.py
+~~~
+
  

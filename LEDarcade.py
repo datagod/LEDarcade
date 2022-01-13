@@ -52,10 +52,14 @@ import inspect
 
 
 
-#RGB Matrix
+#RGB Matrix and graphics
 from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from PIL import Image, ImageDraw
 
+#URL
+import urllib.request
+import io
 
 
 
@@ -145,10 +149,22 @@ EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
 #Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
 Canvas = TheMatrix.CreateFrameCanvas()
 Canvas.Fill(0,0,0)
-   
+
+
+
+
 
 #Twitch specific
 TwitchTimerOn = False
+
+
+
+#-----------------------------
+# Arcade Games              --
+#-----------------------------
+DotInvadersHighScore   = 0
+DotInvadersGamesPlayed = 0
+
 
 
 #-----------------------------
@@ -1038,6 +1054,283 @@ def GetElapsedTime(StartTime,StopTime):
   
 
 
+# --------------------------
+# -- Dot and Ship Sprites --
+# --------------------------
+      
+      
+class Dot(object):
+  def __init__(self,h,v,r,g,b,direction,speed,alive,name,trail,score,maxtrail,erasespeed,HeadRGB=(100,100,100)):
+    self.h          = h 
+    self.v          = v
+    self.r          = r
+    self.g          = g
+    self.b          = b
+    self.direction  = direction
+    self.speed      = speed
+    self.alive      = 1
+    self.name       = name
+    self.trail      = [] # a list of tuples, holding hv coordinates of the dot trail
+    self.score      = 0
+    self.maxtrail   = 0
+    self.erasespeed = erasespeed #sleep time for the erase trail function
+    self.HeadRGB    = HeadRGB
+    self.score      = 0
+
+
+
+
+  def Display(self):
+    #print("hv rgb",self.h,self.v,"-",self.r,self.g,self.b)
+
+    TheMatrix.SetPixel(self.h,self.v,self.r,self.g,self.b)
+    ScreenArray[self.v][self.h] = (self.r,self.g,self.b)
+
+
+    #r,g,b = self.HeadRGB
+    #TheMatrix.SetPixel(self.h,self.v,r,g,b)
+    
+      
+  def EraseTrail(self,direction,flash):
+    r = self.r
+    g = self.g
+    b = self.b
+    
+    
+    #Turn trail bright, then gradually fade
+    if (flash == 'flash'):
+      for x in range(25):
+        newr = r + (100) - (2*x-1)
+        newg = g + (100) - (2*x-1)
+        newb = b + (100) - (2*x-1)
+        if (newr > 255):
+          newr = 255
+        if (newg > 255):
+          newg = 255
+        if (newb > 255):
+          newb = 255
+        if (newr < r):
+          newr = r 
+        if (newg < g):
+          newg = g
+        if (newb < b):
+          newb = b
+          
+        for i,dot in enumerate(self.trail):
+          h = dot[0]
+          v = dot[1]
+          TheMatrix.SetPixel(h,v,newr,newg,newb)
+          ScreenArray[v][h] = (newr,newg,newb)
+          
+
+      
+    #Erase 
+    if (direction == 'forward'):
+      #print ("Erasing Trail: forward")
+      #for i,dot in enumerate(self.trail):
+
+#--> we need a faster way to go through the trail
+
+      count = len(self.trail)
+      for i in range (0,count):
+        h = self.trail[i][0]
+        v = self.trail[i][1]
+                        
+        TheMatrix.SetPixel(h,v,255,255,255)
+        time.sleep(self.erasespeed)
+        TheMatrix.SetPixel(h,v,0,0,0)
+        ScreenArray[v][h] = (0,0,0)
+        
+
+      
+    else:
+      print ("Erasing Trail: backward")
+      count = len(self.trail)
+      for i in range (count-1,0,-1):
+        h = self.trail[i][0]
+        v = self.trail[i][1]
+
+
+      #for i,dot in reversed(list(enumerate(self.trail))):
+        #h = dot[0]
+        #v = dot[1]
+        TheMatrix.SetPixel(h,v,255,255,255)
+        
+        time.sleep(self.erasespeed)
+        TheMatrix.SetPixel(h,v,0,0,0)
+        ScreenArray[v][h] = (0,0,0)
+
+
+  def ReverseWorm(self):
+    self.h,self.v = self.trail[0]
+    self.trail.reverse()
+    self.direction = ReverseDirection(self.direction)
+    #ShowScreenArray()
+      
+  def ColorizeTrail(self,r,g,b):
+    print ("Colorize Trail: this loop seems wrong.  ")
+    for i,dot in enumerate(self.trail):
+      h = dot[0]
+      v = dot[1]
+      TheMatrix.SetPixel(h,v,r,g,b)
+      ScreenArray[v][h] = (r,g,b)
+
+    time.sleep(self.erasespeed * 1.5)
+    
+  def DisplayTrail(self):
+      count = len(self.trail)
+      print ("Displaying Trail:",count," dots")
+      for i in range (0,count):
+        h = self.trail[i][0]
+        v = self.trail[i][1]
+                        
+        TheMatrix.SetPixel(h,v,self.r,self.g,self.b)
+        ScreenArray[v][h] = (self.r,self.g,self.b)
+
+
+
+
+  def Resurrect(self):
+    #This function is used to bring a superworm back from the dead
+
+    #Find and empty spot
+    resurrected = 'N'
+    count       = 0
+    
+    while (resurrected == 'N' and count <= ResurrectionTries):
+      count = count + 1
+      h = random.randint(0,HatWidth-1)
+      v = random.randint(0,HatHeight-1)
+      r,g,b = getpixel(h,v)
+      if (r == 0 and g == 0 and b == 0):
+        resurrected = 'Y'
+        self.alive     = 1
+        self.h         = h
+        self.v         = v
+        self.direction = (random.randint(1,4))
+        self.trail     = []
+        self.trail     = [(h,v)]
+        self.maxtrail  = ResurrectedMaxTrail
+        self.speed     = StartSpeedLow
+      
+        print ("A holy resurrection!")
+
+
+    return
+
+
+  def IncreaseMaxTrailLength(self,length):
+    if (self.maxtrail < MaxTrailLength):
+      self.maxtrail = self.maxtrail + 1
+      
+
+  def SetStartingPoint(self):
+    done = 'N'
+    while (done == 'N'):
+      h = random.randint(SuperWormStartMinH,SuperWormStartMaxH)
+      v = random.randint(SuperWormStartMinV,SuperWormStartMaxV)
+      r,g,b = getpixel(h,v)
+
+      if (r == 0 and g == 0 and b == 0):
+        self.h         = h
+        self.v         = v
+        done = 'Y'
+
+
+  def TrimTrail(self):
+    if (len(self.trail) >= self.maxtrail):
+      h,v = self.trail[0]
+      setpixel(h,v,0,0,0)
+      del self.trail[0]
+
+
+  def Kill(self):
+    self.alive = 0
+    self.EraseTrail('forward','flash')
+    setpixel(self.h,self.v,0,0,0)
+
+
+
+      
+class Ship(object):
+  def __init__(self,h,v,r,g,b,direction,scandirection,speed,alive,lives,name,score,exploding):
+    self.h          = h 
+    self.v          = v
+    self.r          = r
+    self.g          = g
+    self.b          = b
+    self.direction  = direction
+    self.scandirection = scandirection
+    self.speed      = speed
+    self.alive      = alive
+    self.lives      = lives
+    self.name       = name
+    self.score      = 0
+    self.exploding  = 0
+    self.dropped    = 0
+    
+
+  def Display(self):
+    #print("display HV:", self.name, self.h,self.v)
+
+    if (self.alive == 1):
+      TheMatrix.SetPixel(self.h,self.v,self.r,self.g,self.b)
+      ScreenArray[self.v][self.h] = (self.r,self.g,self.b)
+      
+
+      
+      
+  def Erase(self):
+    if (CheckBoundary(self.h,self.v) == 0):
+      TheMatrix.SetPixel(self.h,self.v,0,0,0)
+      ScreenArray[self.v][self.h] = (0,0,0)
+    
+      
+  def Flash(self):
+    sleep = FlashSleep * 0.75
+    LowR  = int(self.r * 0.75)
+    LowG  = int(self.g * 0.75)
+    LowB  = int(self.b * 0.75)
+    HighR = int(self.r * 1.5)
+    HighG = int(self.g * 1.5)
+    HighB = int(self.b * 1.5)
+    
+    if (LowR < 0 ):
+      LowR = 0
+    if (LowG < 0 ):
+      LowG = 0
+    if (LowB < 0 ):
+      LowBB = 0
+    
+    if (HighR > 255):
+      HighR = 255
+    if (HighG > 255):
+      HighG = 255
+    if (HighB > 255):
+      HighB = 255
+      
+    TheMatrix.SetPixel(self.h,self.v,HighR,HighG,HighB)
+    #unicorn.show()
+    #SendBufferPacket(RemoteDisplay,HatHeight,HatWidth)
+    time.sleep(sleep)
+    TheMatrix.SetPixel(self.h,self.v,self.r,self.g,self.b)
+    #unicorn.show()
+    TheMatrix.SetPixel(self.h,self.v,LowR,LowG,LowB)
+    #unicorn.show()
+    time.sleep(sleep)
+    #unicorn.show()
+    TheMatrix.SetPixel(self.h,self.v,HighR,HighG,HighB)
+    #unicorn.show()
+    time.sleep(sleep)
+    TheMatrix.SetPixel(self.h,self.v,self.r,self.g,self.b)
+    #unicorn.show()
+    TheMatrix.SetPixel(self.h,self.v,LowR,LowG,LowB)
+    #unicorn.show()
+    time.sleep(sleep)
+    #unicorn.show()
+    #SendBufferPacket(RemoteDisplay,HatHeight,HatWidth)
+  
+
 
 
 
@@ -1190,6 +1483,18 @@ class Sprite(object):
         if (CheckBoundary(x+h1,y+v1) == 0):
           #TheMatrix.SetPixel(x+h1,y+v1,0,0,0)
           setpixel(x+h1,y+v1,0,0,0)
+
+
+  def EraseWholeSprite(self,h1,v1):
+    #This function draws a black rectangle the size of the sprite
+
+    x = 0
+    y = 0
+    for count in range (0,(self.width * self.height)):
+      y,x = divmod(count,self.width)
+      if (CheckBoundary(x+h1,y+v1) == 0):
+        setpixel(x+h1,y+v1,0,0,0)
+
 
 
   def HorizontalFlip(self):
@@ -2127,12 +2432,14 @@ class ColorAnimatedSprite(object):
       self.Float(h,HatWidth-1,"left",(HatWidth + self.height),ScrollSleep)
 
 
-  def Animate(self,h,v,direction,delay):
+  def Animate(self,h,v,direction,delay,StartFrame = 0):
    #print("CAS - Animate - HV delay ",h,v,delay,)
     x = 0,
     y = 0,
-    Buffer = copy.deepcopy(unicorn.get_pixels())
     
+    if(StartFrame >= 1):
+      self.currentframe = StartFrame
+
     if (direction == 'forward'):
       for f in range (0,self.frames):
         #erase old sprite
@@ -2155,7 +2462,6 @@ class ColorAnimatedSprite(object):
       for f in range (0,self.frames+1):
         #erase old sprite
         #setpixels(Buffer)
-        setpixels(Buffer)
         #draw new sprite
         #print ("CAS - Animate - currentframe: ",self.currentframe)
         self.Display(h,v)
@@ -3118,6 +3424,35 @@ UnderscoreSprite = Sprite(
 )
 
 
+# [
+LeftSquareBracketSprite = Sprite(
+  3,
+  3,
+  0,
+  0,
+  0,
+  [1,1,1,
+   1,0,0,
+   1,0,0,
+   1,0,0,
+   1,1,1]
+)
+
+# [
+RightSquareBracketSprite = Sprite(
+  3,
+  3,
+  0,
+  0,
+  0,
+  [1,1,1,
+   0,0,1,
+   0,0,1,
+   0,0,1,
+   1,1,1]
+)
+
+
 CursorSprite = Sprite(
   4,
   5,
@@ -3604,8 +3939,58 @@ ThreeBlueGhostSprite.grid.append(
 )
 
 
+#This one is a color animated object
+PacManSprite = ColorAnimatedSprite(h=0, v=0, name="PacDot", width=5, height=5, frames=5, framerate=1,grid=[])
+PacManSprite.grid.append(
+  [0,23,23,23,0,
+   23,23,23,0,0,
+   23,23,0,0,0,
+   23,23,23,0,0,
+   0,23,23,23,0]
+)
+
+PacManSprite.grid.append(
+  [0,23,23,23,0,
+   23,23,23,23,23,
+   23,23,0,0,0,
+   23,23,23,23,23,
+   0,23,23,23,0]
+)
 
 
+PacManSprite.grid.append(
+  [0,23,23,23,0,
+   23,23,23,23,23,
+   23,23,23,23,23,
+   23,23,23,23,23,
+   0,23,23,23,0]
+)
+PacManSprite.grid.append(
+  [0,23,23,23,0,
+   23,23,23,23,0,
+   23,23,23,0,0,
+   23,23,23,23,0,
+   0,23,23,23,0]
+)
+
+PacManSprite.grid.append(
+  [0,23,23,23,0,
+   23,23,0,0,0,
+   23,0,0,0,0,
+   23,23,0,0,0,
+   0,23,23,23,0]
+)
+
+# Make left and right facing pacmen
+PacManRightSprite  = copy.deepcopy(PacManSprite)
+PacManLeftSprite  = copy.deepcopy(PacManSprite)
+PacManLeftSprite.HorizontalFlip()
+
+
+
+
+
+#single color object (very old)
 PacDotAnimatedSprite = AnimatedSprite(5,5,YellowR,YellowG,YellowB,4,[])
 PacDotAnimatedSprite.grid.append(
   [0,1,1,1,0,
@@ -6700,6 +7085,35 @@ LightBikeMap.CopyMapToColorSprite(TheSprite=LightBike)
 
 
 
+DropShip = ColorAnimatedSprite(h=0, v=0, name="DropShip", width=5, height=8, frames=2, framerate=1,grid=[])
+DropShip.grid.append(
+  [
+    0, 0, 0, 0, 0,
+    0, 0,15, 0, 0,
+    0, 0,15, 0, 0,
+    0,14,15,14, 0,
+    0,14, 7,14, 0,
+    0, 0, 6, 0, 0,
+    0, 0, 5, 0, 0,
+    0, 0, 0, 0, 0,
+  ]
+)
+
+DropShip.grid.append(
+  [
+    0, 0, 0, 0, 0,
+    0, 0,15, 0, 0,
+    0, 0,15, 0, 0,
+    0,14,15,14, 0,
+    0,14, 6,14, 0,
+    0, 0, 5, 0, 0,
+    0, 0, 5, 0, 0,
+    0, 0, 0, 0, 0,
+  ]
+)
+
+
+
 
 SpaceInvader = ColorAnimatedSprite(h=0, v=0, name="SpaceInvader", width=13, height=8, frames=2, framerate=1,grid=[])
 SpaceInvader.grid.append(
@@ -8416,6 +8830,300 @@ ShipSprites.append(TinyInvader)
 
 
 
+
+PlayerShipExplosion = ColorAnimatedSprite(
+  h=0, v=0, name="Explosion", width=5, height=5, 
+  frames=14,
+  framerate=2,grid=[]
+)
+PlayerShipExplosion.grid.append(
+  [0,0,0,0,0,
+   0,0,0,0,0,
+   0,0,4,0,0,
+   0,0,0,0,0,
+   0,0,0,0,0
+   ]
+)
+
+PlayerShipExplosion.grid.append(
+   [0,0,0,0,0,
+    0, 0, 4, 0,0,
+    0, 4,18, 4,0,
+    0, 0, 4, 0,0,
+    0,0,0,0,0
+   ]
+)
+  
+PlayerShipExplosion.grid.append(
+   [ 0, 0, 4, 0, 0,
+     0,18,18,18, 0,
+     4,18,19,18, 4,
+     0,18,18,18, 0,
+     0, 0, 4, 0,0
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0,18,18,18, 0,
+    18,19,19,19,18,
+    18,18,20,19,18,
+    18,19,19,19,18,
+     0,18,18,18, 0
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0,19,19,19, 0,
+    19,20,20,20,19,
+    19,20,20,20,19,
+    19,20,20,20,19,
+     0,19,19,19, 0
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0,20,20,20, 0,
+    20,20,20,20,20,
+    20,20,20,20,20,
+    20,20,20,20,20,
+     0,20,20,20, 0
+   ]
+
+
+)
+PlayerShipExplosion.grid.append(
+   [00,20,20,20,00,
+    20,20,20,20,20,
+    20,20, 8,20,20,
+    20,20,20,20,20,
+    00,20,20,20,00
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0,20,20,20, 0,
+    20,20, 8,20,20,
+    20, 8, 7, 8,20,
+    20,20, 8,20,20,
+     0,20,20,20, 0
+   ]
+)  
+
+PlayerShipExplosion.grid.append(
+   [ 0,20, 8,20, 0,
+    20, 8, 7, 8,20,
+     8, 7, 6, 7, 8,
+    20, 8, 7, 8,20,
+     0,20, 8,20, 0
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0, 8, 7, 8, 0,
+     8, 7, 6, 7, 8,
+     7, 6, 5, 6, 7,
+     8, 7, 6, 7, 8,
+     0, 8, 7, 8, 0
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0, 7, 6, 7, 0,
+     7, 6, 0, 6, 7,
+     6, 5, 0, 5, 6,
+     7, 6, 0, 6, 7,
+     0, 7, 6, 7, 0
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0, 6, 5, 6, 0,
+     6, 5, 0, 5, 6,
+     5, 0, 0, 0, 5,
+     6, 5, 0, 5, 6,
+     0, 6, 5, 6, 0
+   ]
+)
+PlayerShipExplosion.grid.append(
+   [ 0, 5, 0, 5, 0,
+     5, 0, 0, 0, 5,
+     0, 0, 0, 0, 0,
+     5, 0, 0, 0, 5,
+     0, 5, 0, 5, 0
+   ]
+)  
+
+PlayerShipExplosion.grid.append(
+   [ 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0
+   ]
+)  
+
+
+
+
+BomberShipExplosion = ColorAnimatedSprite(
+  h = 0, 
+  v = 0,
+  name         = "Explosion", 
+  width        = 5, 
+  height       = 5, 
+  frames       = 9,
+  framerate    = 15, 
+  grid         = []
+)
+BomberShipExplosion.grid.append(
+   [ 0, 0, 0, 0, 0,
+     0, 0,45, 0, 0,
+     0,45,45,45, 0,
+     0, 0,45, 0, 0,
+     0, 0, 0, 0, 0
+   ]
+)
+
+BomberShipExplosion.grid.append(
+   [ 0, 0,45, 0, 0,
+     0,45,45,45, 0,
+    45,45,45,45,45,
+     0,45,45,45, 0,
+     0, 0,45, 0, 0
+   ]
+)
+
+BomberShipExplosion.grid.append(
+   [ 0, 0,42, 0, 0,
+     0,45,42,45, 0,
+    42,42,42,42,42,
+     0,45,42,45, 0,
+     0, 0,42, 0, 0
+   ]
+)
+
+
+BomberShipExplosion.grid.append(
+   [ 0, 0,42, 0, 0,
+     0, 2,20, 2, 0,
+    42,20,20,20,42,
+     0, 2,20, 2, 0,
+     0, 0,42, 0, 0
+   ]
+)
+
+
+BomberShipExplosion.grid.append(
+   [ 0, 0,20, 0, 0,
+     0, 1,20, 1, 0,
+    20,20,39,20,20,
+     0, 1,20, 1, 0,
+     0, 0,20, 0, 0
+   ]
+)
+
+BomberShipExplosion.grid.append(
+   [ 0, 0,39, 0, 0,
+     0, 1,39, 1, 0,
+    39,39,39,39,20,
+     0, 1,39, 1, 0,
+     0, 0,39, 0, 0
+   ]
+)
+
+BomberShipExplosion.grid.append(
+   [ 0, 0,39, 0, 0,
+     0, 1, 8, 1, 0,
+    39, 8, 6, 8,39,
+     0, 1, 8, 1, 0,
+     0, 0,39, 0, 0
+   ]
+)
+
+
+BomberShipExplosion.grid.append(
+   [ 0, 0, 0, 0, 0,
+     0, 0, 5, 0, 0,
+     0, 5, 5, 5, 0,
+     0, 0, 5, 0, 0,
+     0, 0, 0, 0, 0
+   ]
+)
+
+BomberShipExplosion.grid.append(
+   [ 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0
+   ]
+)
+
+
+
+
+
+SmallExplosion = ColorAnimatedSprite(
+  h=-1, v=-1, name="Explosion", width=3, height=3,
+  frames=7,
+  framerate = 2,grid=[])
+SmallExplosion.grid.append(
+  [
+   0, 0, 0,
+   0,29, 0,
+   0, 0, 0,
+   
+   ]
+)
+
+SmallExplosion.grid.append(
+   [ 
+     0,29, 0,
+    29,30,29,
+     0,29, 0, 
+   
+   ]
+)
+  
+SmallExplosion.grid.append(
+   [ 
+      0,30, 0,
+     30,31,30,
+      0,30, 0,
+     
+   ]
+)
+SmallExplosion.grid.append(
+   [
+     0,31, 0,
+    31,32,31,
+     0,31, 0,
+    
+   ]
+)
+
+SmallExplosion.grid.append(
+   [
+     0,32, 0,
+    32, 8,32,
+     0,32, 0
+   ]
+)
+   
+
+SmallExplosion.grid.append(
+   [
+     0,20, 0,
+    20, 0,20,
+     0,20, 0,
+    
+   ]
+)
+
+   
+SmallExplosion.grid.append(
+   [
+     0, 0, 0,
+     0, 0, 0,
+     0, 0, 0,
+    
+   ]
+)
+
+
   
 
 
@@ -8520,11 +9228,79 @@ AsteroidExplosion2.grid.append(
 
 
 
+BigGroundExplosion = ColorAnimatedSprite(
+  h            = -1, #this is important, it is used to indicate if the explosion is brand new.  I think.
+  v            = -1,  
+  name         = "Explosion", 
+  width        = 9, 
+  height       = 3, 
+  frames       = 6, 
+  framerate    = 150,
+  grid         = []
+)
+
+
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 4, 4, 4, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   0, 0, 4, 4, 4, 4, 4, 0, 0,
+   0, 0, 0, 0, 4, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   0, 4, 4, 4, 4, 4, 4, 4, 0,
+   0, 0, 0, 0, 4, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 4, 0, 0, 0, 0,
+   4, 4, 4, 0, 0, 0, 4, 4, 4,
+   0, 0, 0, 0, 4, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   4, 0, 0, 0, 0, 0, 0, 0, 4,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+BigGroundExplosion.grid.append(
+  [
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0
+   ]
+)
+
+
+
+
 #------------------------------------------------------------------------------
 # FUNCTIONS                                                                  --
 #                                                                            --
 #  These functions were created before classes were introduced.              --
 #------------------------------------------------------------------------------
+
+
 
   
 def ScrollSprite2(Sprite,h,v,direction,moves,r,g,b,delay):
@@ -8954,8 +9730,7 @@ def random_message(MessageFile):
     
 
 
-def SaveConfigData():
-  
+def SaveConfigData():  
   
    
   print (" ")
@@ -8974,21 +9749,25 @@ def SaveConfigData():
     print ("Config file not found.  Creating new one.")
     ConfigFile = SafeConfigParser()
     ConfigFile.read(ConfigFileName)
-    ConfigFile.add_section('main')
-    ConfigFile.add_section('pacdot')
-    ConfigFile.add_section('crypto')
+    ConfigFile.add_section('scores')
+    #ConfigFile.add_section('pacdot')
+    #ConfigFile.add_section('crypto')
 
     
-  print ("Time to save: ",AdjustedTime)
-  print ("Pacdot score:      " ,PacDotScore)
-  print ("Pacdot high score: " ,PacDotHighScore)
-  print ("Pacdot games played:",PacDotGamesPlayed)
-  print ("Crypto balance:    " ,CryptoBalance)
+  #print ("Time to save: ",AdjustedTime)
+  print ("DotInvaders high score:   " ,DotInvadersHighScore)
+  print ("DotInvaders games played: " ,DotInvadersGamesPlayed)
+  #print ("Pacdot score:      " ,PacDotScore)
+  #print ("Pacdot high score: " ,PacDotHighScore)
+  #print ("Pacdot games played:",PacDotGamesPlayed)
+  #print ("Crypto balance:    " ,CryptoBalance)
 
-  ConfigFile.set('main',   'CurrentTime',       AdjustedTime)
-  ConfigFile.set('pacdot', 'PacDotHighScore',   str(PacDotHighScore))
-  ConfigFile.set('pacdot', 'PacDotGamesPlayed', str(PacDotGamesPlayed))
-  ConfigFile.set('crypto', 'balance',           str(CryptoBalance))
+  #ConfigFile.set('main',   'CurrentTime',       AdjustedTime)
+  ConfigFile.set('scores',   'DotInvadersHighScore',   str(DotInvadersHighScore))
+  ConfigFile.set('scores',   'DotInvadersGamesPlayed', str(DotInvadersGamesPlayed))
+  #ConfigFile.set('pacdot', 'PacDotHighScore',   str(PacDotHighScore))
+  #ConfigFile.set('pacdot', 'PacDotGamesPlayed', str(PacDotGamesPlayed))
+  #ConfigFile.set('crypto', 'balance',           str(CryptoBalance))
 
 
   print ("Writing configuration file")
@@ -9000,10 +9779,11 @@ def SaveConfigData():
 
     
 def LoadConfigData():
-  
+  global DotInvadersHighScore
+  global DotInvadersGamesPlayed
 
   print ("--Load Config Data--")
-  print ("PacDotHighScore Before Load: ",PacDotHighScore)
+  #print ("PacDotHighScore Before Load: ",PacDotHighScore)
     
   if (os.path.exists(ConfigFileName)):
     print ("Config file (",ConfigFileName,"): already exists")
@@ -9011,20 +9791,27 @@ def LoadConfigData():
     ConfigFile.read(ConfigFileName)
 
     #Get and set time    
-    TheTime = ConfigFile.get("main","currenttime")
-    print ("Setting time: ",TheTime)
-    CMD = "sudo date --set " + TheTime
+    #TheTime = ConfigFile.get("main","currenttime")
+    #print ("Setting time: ",TheTime)
+    #CMD = "sudo date --set " + TheTime
     #os.system(CMD)
    
     #Get pacdot data
-    PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
-    PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
-    print ("PacDotHighScore: ",  PacDotHighScore)
-    print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
+    #PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
+    #PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
+    #print ("PacDotHighScore: ",  PacDotHighScore)
+    #print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
 
     #Get CryptoBalance
-    CryptoBalance = ConfigFile.get("crypto","balance")
-    print ("CryptoBalance:   ",CryptoBalance)
+    #CryptoBalance = ConfigFile.get("crypto","balance")
+    #print ("CryptoBalance:   ",CryptoBalance)
+
+    #Get DotInvadersHighScore
+    DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
+    DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
+    print ("DotInvadersHighScore: ",  DotInvadersHighScore)
+    print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
+
 
     
   else:
@@ -9856,6 +10643,11 @@ def CreateBannerSprite(TheMessage):
     elif (c == '_'):
       BannerSprite = JoinSprite(BannerSprite, UnderscoreSprite,0)
 
+    elif (c == '['):
+      BannerSprite = JoinSprite(BannerSprite, LeftSquareBracketSprite,0)
+
+    elif (c == ']'):
+      BannerSprite = JoinSprite(BannerSprite, RightSquareBracketSprite,0)
 
 
     elif (c == ' '):
@@ -10585,6 +11377,60 @@ def DrawClockSeconds():
 #--------------------------------------
 #  Transitions and Sequences         --
 #--------------------------------------
+
+
+def ShowDropShip(h,v,action,speed):
+
+  PlayerShipR = SDMedBlueR
+  PlayerShipG = SDMedBlueG
+  PlayerShipB = SDMedBlueB
+
+  print("ShowDropShip:",action)
+  setpixel(h,v,PlayerShipR,PlayerShipG,PlayerShipB)
+  #Canvas = unicorn.get_pixels()
+  setpixel(h,v,0,0,0)
+  #Buffer2 = unicorn.get_pixels()
+  setpixel(h,v,PlayerShipR,PlayerShipG,PlayerShipB)
+  
+  if (action == 'pickup'):
+    
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+
+    #print("Sleeping")
+    for y in range(v-5,-10,-1):
+      DropShip.Animate(h-2,y,'forward',speed)
+      DropShip.Animate(h-2,y,'forward',speed)
+      DropShip.Animate(h-2,y,'forward',speed)
+  else:
+    for y in range(-14,v-5):
+      DropShip.Animate(h-2,y,'forward',speed)
+      DropShip.Animate(h-2,y,'forward',speed)
+      DropShip.Animate(h-2,y,'forward',speed)
+
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    DropShip.Animate(h-2,v+1,'forward',speed)
+    
+    
+    for y in range(v-5,-10,-1):
+      DropShip.Animate(h-2,y,'forward',speed)
+      DropShip.Animate(h-2,y,'forward',speed)
+      DropShip.Animate(h-2,y,'forward',speed)
+
 
 
 
@@ -12003,6 +12849,69 @@ def MoveAnimatedSpriteAcrossScreenStepsPerFrame(TheSprite,Position='bottom',Vadj
 
 
 
+
+def TurnLeft(direction):
+  #print "ChangeDirection!"
+  #print "  old: ",direction
+  if direction == 1:
+    direction = 4
+  elif direction == 2:
+    direction = 1
+  elif direction == 3:
+    direction = 2
+  elif direction == 4:
+    direction = 3
+  #print "  new: ",direction
+  return direction;
+
+
+
+
+def TurnRight(direction):
+  if direction == 1:
+    direction = 2
+  elif direction == 2:
+    direction = 3
+  elif direction == 3:
+    direction = 4
+  elif direction == 4:
+    direction = 1
+  #print "  new: ",direction
+  return direction;
+    
+
+
+
+
+def CalculateDotMovement(h,v,Direction):
+  #1N 2E 3S 4W
+  if (Direction == 1):
+    v = v -1
+  if (Direction == 2):
+    h = h + 1
+  if (Direction == 3):
+    v = v + 1
+  if (Direction == 4):
+    h = h -1
+  return h,v;
+
+
+
+
+
+def ReverseDirection(direction):
+  if direction == 1:
+    direction = 3
+  elif direction == 2:
+    direction = 4
+  elif direction == 3:
+    direction = 1
+  elif direction == 4:
+    direction = 2
+  return direction;
+
+
+
 def CalculateDotMovement8Way(h,v,Direction):
   #1N 2NE 3E 4SE 5S 6SW 7W 8NW
   # 8 1 2
@@ -12087,6 +12996,15 @@ def ChanceOfTurning8Way(Direction,Chance):
       Direction = TurnRight8Way(Direction)
   return Direction;
 
+
+def ChanceOfTurning(Direction,Chance):
+  #print ("Chance of turning: ",Chance)
+  if Chance > randint(1,100):
+    if randint(0,1) == 0:
+      Direction = TurnLeft(Direction)
+    else:
+      Direction = TurnRight(Direction)
+  return Direction;
 
 
 
@@ -12942,8 +13860,8 @@ def DisplayDigitalClock(
 
     
 
-    #ClearBigLED()
-    #ClearBuffers()
+    ClearBigLED()
+    ClearBuffers()
     global ScreenArray
 
 
@@ -14170,7 +15088,8 @@ async def DisplayTwitchTimer(
 
         TimerSprite = UpdateTimerWithTransition(TimerSprite,BannerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
 
-        r = random.randint(1,11)
+        r = random.randint(1,13)
+        print("random animation:",r)
         if (r == 1):
           #ShowScreenArray(ScreenArray)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
@@ -14401,7 +15320,7 @@ async def DisplayTwitchTimer(
             Position      = 'bottom',
             direction     = "left",
             StepsPerFrame = 1,
-            ZoomFactor    = random.randint(2,3),
+            ZoomFactor    = random.randint(3,4),
             sleep         = 0.03
             )
         
@@ -14412,7 +15331,7 @@ async def DisplayTwitchTimer(
             Position      = 'bottom',
             direction     = "right",
             StepsPerFrame = 1,
-            ZoomFactor    = random.randint(2,3),
+            ZoomFactor    = random.randint(3,4),
             sleep         = 0.03
             )
 
@@ -14500,6 +15419,47 @@ async def DisplayTwitchTimer(
         
 
 
+        elif (r == 12):
+
+          r = random.randint(1,3)
+          MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+            ChickenRunning,
+            Position      = 'bottom',
+            Vadjust       = 1 * r,
+            direction     = "left",
+            StepsPerFrame = r,
+            ZoomFactor    = r,
+            sleep         = 0.03 / r
+            )
+          
+
+
+        elif (r == 13):
+
+          r = random.randint(1,4)
+          MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+            PacManRightSprite,
+            Position      = 'random',
+            Vadjust       = 1 * r,
+            direction     = "right",
+            StepsPerFrame = r,
+            ZoomFactor    = r,
+            sleep         = 0.03 / r
+            )
+
+          r = random.randint(1,3)
+          MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+            PacManLeftSprite,
+            Position      = 'random',
+            Vadjust       = 1 * r,
+            direction     = "left",
+            StepsPerFrame = r,
+            ZoomFactor    = r,
+            sleep         = 0.03 / r
+            )
+
+
+
       #This will end the while loop -- THIS SECTION NEEDS A REWRITE
       elapsed_h,m,s, HHMMSS = CalculateElapsedTime(StartDateTimeUTC)
       #h,m,s = GetElapsedTime(LastAnimation,time.time())
@@ -14537,7 +15497,7 @@ async def DisplayTwitchTimer(
 
 def DisplayRandomAnimation():
         
-  r = random.randint(1,11)
+  r = random.randint(1,13)
   if (r == 1):
 
     RunningMan2Sprite.ScrollAcrossScreen(20,15,'right', ScrollSleep )
@@ -14691,6 +15651,7 @@ def DisplayRandomAnimation():
 
 
 
+
   elif (r == 8):
 
     RunningMan3Sprite.ScrollAcrossScreen(20,15,'right', ScrollSleep )
@@ -14784,6 +15745,49 @@ def DisplayRandomAnimation():
         ZoomFactor    = 1,
         sleep         = 0
         )
+
+  elif (r == 12):
+
+    r = random.randint(1,3)
+    MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+      ChickenRunning,
+      Position      = 'bottom',
+      Vadjust       = 1 * r,
+      direction     = "left",
+      StepsPerFrame = r,
+      ZoomFactor    = r,
+      sleep         = 0.03 / r
+      )
+    
+
+
+  elif (r == 13):
+
+    r = random.randint(1,4)
+    MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+      PacManRightSprite,
+      Position      = 'random',
+      Vadjust       = 1 * r,
+      direction     = "right",
+      StepsPerFrame = r,
+      ZoomFactor    = r,
+      sleep         = 0.03 / r
+      )
+
+    r = random.randint(1,3)
+    MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+      PacManLeftSprite,
+      Position      = 'random',
+      Vadjust       = 1 * r,
+      direction     = "left",
+      StepsPerFrame = r,
+      ZoomFactor    = r,
+      sleep         = 0.03 / r
+      )
+
+
+
+
 
   else:
     MoveAnimatedSpriteAcrossScreenStepsPerFrame(
@@ -15023,3 +16027,138 @@ def CalculateElapsedTime(StartDateTimeUTC):
   
   return elapsed_hours, elapsed_minutes, elapsed_seconds, HHMMSS
   
+
+
+
+
+
+def ZoomImage(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
+  global Canvas
+
+  image = Image.open(ImageName)
+  image = image.convert('RGB')
+ 
+  ZoomFactor    = 0
+  
+  
+  draw = ImageDraw.Draw(image)  # Declare Draw instance before prims
+
+  
+  if (ZoomStart <= ZoomStop):
+    for ZoomFactor in range (ZoomStart,ZoomStop,Step):
+      ResizedImage = image.resize(size=(ZoomFactor,ZoomFactor))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(HatHeight/2 -(ZoomFactor/2)))
+      if (ZoomSleep > 0):
+        time.sleep(ZoomSleep)
+        
+  else:
+    #for ZoomFactor in reversed(range(ZoomStop, ZoomStart,-Step)):
+    for ZoomFactor in range(ZoomStart, ZoomStop,-Step):
+      #clear the screen as we zoom to remove leftovers
+      ResizedImage = image.resize(size=(ZoomFactor,ZoomFactor))
+      
+      #zooming out (shrinking the image) will leave artifacts unless we erase them
+      if(ZoomFactor < HatWidth or ZoomFactor < HatHeight):
+        Canvas.Fill(0,0,0)
+      Canvas.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(HatHeight/2 -(ZoomFactor/2)))
+      Canvas = TheMatrix.SwapOnVSync(Canvas)
+      
+      if (ZoomSleep > 0):
+        time.sleep(ZoomSleep)
+      
+        
+
+      
+      
+        #if ZoomFactor <= HatWidth:
+        #  draw.rectangle((0,0, ZoomFactor, ZoomFactor), fill=(0, 0, 0))
+
+        #TheMatrix.Clear()        
+
+
+
+
+
+def RotateAndZoomImage(ImageName):
+  #image = Image.open("/home/pi/LEDarcade/images/ninja64colors.png")
+  #image = Image.open("/home/pi/LEDarcade/images/ninja.png")
+  #image = Image.open("/home/pi/LEDarcade/images/BigNinjaLogo256.png")
+  image = Image.open(ImageName)
+  image = image.convert('RGB')
+
+  for x in range(1,100):    
+
+    for r in range(1,100,2):
+      ResizedImage = image.rotate(r).resize(size=(r,r))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(r/2)),(HatHeight/2 -(r/2)))
+      time.sleep(0.01)
+    TheMatrix.Clear()
+ 
+    for r in range(256,1,-2):
+      ResizedImage = image.resize(size=(r,r))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(r/2)),(HatHeight/2 -(r/2)))
+      time.sleep(0.01)
+      TheMatrix.Clear()
+
+
+
+    for r in range(1,256,2):
+      ResizedImage = image.rotate(r*6).resize(size=(r,r))
+      TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(r/2)),(HatHeight/2 -(r/2)))
+      time.sleep(0.01)
+    TheMatrix.Clear()
+
+
+  for i in range (0,359):
+    NewImage = ResizedImage.rotate(i)
+    TheMatrix.SetImage(NewImage, 64-r/2, -18)
+    time.sleep(0.001 )
+
+
+
+
+def GetImageFromURL(URL,SaveName):
+  print("")
+  print("-- Show GetImageFromURL --")
+  print("ImageLocation:",URL)
+  print("SaveName:",SaveName)
+
+  with urllib.request.urlopen(URL) as i:
+    byteImg = io.BytesIO(i.read())
+    image = Image.open(byteImg)
+    image.save(SaveName)
+
+
+def ShowImage(ImageLocation):
+  # Make image fit our screen.
+  print("")
+  print("-- Show Image --")
+  print("ImageLocation:",ImageLocation)
+  image = Image.open(ImageLocation)
+  image.thumbnail((64, 32), Image.ANTIALIAS)
+  image = image.convert('RGB')
+  TheMatrix.SetImage(image)
+  for n in range(-32, 63):  # Start off top-left, move off bottom-right
+      TheMatrix.Clear()
+      TheMatrix.SetImage(image, n, 0)
+      time.sleep(0.01)
+
+      
+
+
+def DrawSquare():
+
+  # RGB example w/graphics prims.
+  # Note, only "RGB" mode is supported currently.
+  image = Image.new("RGB", (64, 32))  # Can be larger than matrix if wanted!!
+  draw = ImageDraw.Draw(image)  # Declare Draw instance before prims
+  # Draw some shapes into image (no immediate effect on matrix)...
+  draw.rectangle((0, 0, 31, 31), fill=(0, 0, 0), outline=(0, 0, 255))
+  draw.line((0, 0, 31, 31), fill=(255, 0, 0))
+  draw.line((0, 31, 31, 0), fill=(0, 255, 0))
+
+  # Then scroll image across matrix...
+  for n in range(-32, 63):  # Start off top-left, move off bottom-right
+      TheMatrix.Clear()
+      TheMatrix.SetImage(image, n, n)
+      time.sleep(0.01)

@@ -36,6 +36,8 @@ import time
 from datetime import datetime, timezone
 
 
+#games
+import DotInvaders as DI
 
 
 
@@ -65,6 +67,8 @@ CHANNEL_LITTLE_TEXT = ''
 
 USER_ID           = ''
 BROADCASTER_ID    = ''
+PROFILE_IMAGE_URL = ''
+VIEW_COUNT        = ''
 BOT_CHANNEL       = ''
 BOT_ACCESS_TOKEN  = ''
 BOT_REFRESH_TOKEN = ''
@@ -103,15 +107,18 @@ HatHeight = 32
 HatWidth  = 64
 
 
-#Files
-KeyConfigFileName = "KeyConfig.ini" 
-MyConfigFileName  = "MyConfig.ini"
   
 
 #Configurations
 SHOW_VIEWERS   = True
 SHOW_FOLLOWERS = True
 SHOW_SUBS      = True
+SHOW_VIEWS     = True
+SHOW_CHATBOT_MESSAGES = True
+
+#Files
+KeyConfigFileName = "KeyConfig.ini" 
+MyConfigFileName  = "MyConfig.ini"
 
 
 
@@ -134,7 +141,7 @@ class Bot(commands.Bot):
     CursorV             = 0
     CursorRGB           = (0,255,0)
     CursorDarkRGB       = (0,50,0)
-    AnimationDelay      = 30
+    AnimationDelay      = 0
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
@@ -176,11 +183,6 @@ class Bot(commands.Bot):
 
     async def my_custom_startup(self):
 
-        
-        #TESTING A TASK
-        message = "Welcome to the jungle.  We got plenty of cake"
-        
-        #task = asyncio.create_task(self.DisplayTerminalMessage(message,TerminalRGB))
         
 
         await asyncio.sleep(1)
@@ -285,7 +287,7 @@ class Bot(commands.Bot):
 
             if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
               self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
-              time.sleep(5)
+              
 
 
           #If the stream is not live, display a regular clock 
@@ -582,6 +584,8 @@ class Bot(commands.Bot):
       if(LED.TwitchTimerOn == False):
         LED.TwitchTimerOn = True
             
+        LED.ClearBigLED()
+
         await LED.DisplayTwitchTimer(
           CenterHoriz = True,
           CenterVert  = False,
@@ -627,9 +631,19 @@ class Bot(commands.Bot):
 
 
 
-    #---------------------------------------
-    # B O T   C O M M A N D S             --
-    #---------------------------------------
+
+
+
+
+  #---------------------------------------
+  # B O T   C O M M A N D S             --
+  #---------------------------------------
+
+
+
+    #----------------------------------------
+    # Hello                                --
+    #----------------------------------------
 
     @commands.command()
     async def hello(self, ctx: commands.Context):
@@ -642,40 +656,50 @@ class Bot(commands.Bot):
         await ctx.send(f'Greetings! {ctx.author.name}!')
 
 
-
+    #----------------------------------------
+    # Viewers                              --
+    #----------------------------------------
     @commands.command()
     async def viewers(self, ctx: commands.Context):
       #SHOW VIEWERS
-      GetTwitchCounts()
+      
+      if(SHOW_VIEWERS == True):
+        GetTwitchCounts()
 
-      message = "There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount)
-      await self.Channel.send(message)
+        if(SHOW_CHATBOT_MESSAGES == True):
+          message = "There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount)
+          await self.Channel.send(message)
 
-      LED.ShowTitleScreen(
-        BigText             = str(ViewerCount),
-        BigTextRGB          = LED.MedPurple,
-        BigTextShadowRGB    = LED.ShadowPurple,
-        LittleText          = 'Viewers',
-        LittleTextRGB       = LED.MedRed,
-        LittleTextShadowRGB = LED.ShadowRed, 
-        ScrollText          = 'Now Playing: ' + GameName,
-        ScrollTextRGB       = LED.MedYellow,
-        ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-        DisplayTime         = 1,           # time in seconds to wait before exiting 
-        ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-        )
+        LED.ShowTitleScreen(
+          BigText             = str(ViewerCount),
+          BigTextRGB          = LED.MedPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
+          LittleText          = 'Viewers',
+          LittleTextRGB       = LED.MedRed,
+          LittleTextShadowRGB = LED.ShadowRed, 
+          ScrollText          = 'Now Playing: ' + GameName,
+          ScrollTextRGB       = LED.MedYellow,
+          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+          DisplayTime         = 1,           # time in seconds to wait before exiting 
+          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+          )
 
-      self.CursorH = 0
-    
+        self.CursorH = 0
+      
 
+    #----------------------------------------
+    # Follows / Followers                  --
+    #----------------------------------------
 
     @commands.command()
     async def follows(self, ctx: commands.Context):
       #SHOW FOLLOWS
       GetTwitchCounts()
 
-      message = "{} viewers follow this channel. Thanks for asking.".format(Followers)
-      await self.Channel.send(message)
+      print("SHOW_CHATBOT_MESSAGES:",SHOW_CHATBOT_MESSAGES)
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "{} viewers follow this channel. Thanks for asking.".format(Followers)
+        await self.Channel.send(message)
 
       LED.ShowTitleScreen(
         BigText             = str(Followers),
@@ -702,8 +726,10 @@ class Bot(commands.Bot):
       print("SHOW_FOLLOWERS:",SHOW_FOLLOWERS)
       if(SHOW_FOLLOWERS == True):
         GetTwitchCounts()
-        message = "{} viewers follow this channel. Gotta get those numbers up!".format(Followers)
-        await self.Channel.send(message)
+
+        if(SHOW_CHATBOT_MESSAGES == True):
+          message = "{} viewers follow this channel. Gotta get those numbers up!".format(Followers)
+          await self.Channel.send(message)
 
         LED.ShowTitleScreen(
           BigText             = str(Followers),
@@ -724,9 +750,15 @@ class Bot(commands.Bot):
 
 
       else:
-        message = "{} has decided to not show followers.".format(CHANNEL)
-        await self.Channel.send(message)
+        if(SHOW_CHATBOT_MESSAGES == True):
+          message = "{} has decided to not show followers.".format(CHANNEL)
+          await self.Channel.send(message)
 
+
+
+    #----------------------------------------
+    # Subs                                 --
+    #----------------------------------------
 
 
     @commands.command()
@@ -734,8 +766,9 @@ class Bot(commands.Bot):
       #SHOW SUBS
       if(SHOW_SUBS == True):
         GetTwitchCounts()
-        message = "This channel has {} subscribers. We can always use more.".format(Subs)
-        await self.Channel.send(message)
+        if(SHOW_CHATBOT_MESSAGES == True):
+          message = "This channel has {} subscribers. We can always use more.".format(Subs)
+          await self.Channel.send(message)
 
         LED.ShowTitleScreen(
           BigText             = str(Subs),
@@ -747,36 +780,147 @@ class Bot(commands.Bot):
           ScrollText          = '',
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-          DisplayTime         = 1,           # time in seconds to wait before exiting 
+          DisplayTime         = 5,           # time in seconds to wait before exiting 
           ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
           )
         self.CursorH = 0
 
       else:
-        message = "Well, you are viewing.  I am viewing.  {} is viewing.  That's at least three.  The rest is a mystery to me.".format(CHANNEL)
-        await self.Channel.send(message)
+        if(SHOW_CHATBOT_MESSAGES == True):
+          message = "Well, you are viewing.  I am viewing.  {} is viewing.  That's at least three.  The rest is a mystery to me.".format(CHANNEL)
+          await self.Channel.send(message)
 
 
+
+    #----------------------------------------
+    # Uptime                               --
+    #----------------------------------------
       
     @commands.command()
     async def uptime(self, ctx: commands.Context):
       #SHOW UPTIME
-      message = "{} has been streaming for {} HHMMSS".format(CHANNEL,StreamDurationHHMMSS)
-      await self.Channel.send(message)
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "{} has been streaming for {} HHMMSS".format(CHANNEL,StreamDurationHHMMSS)
+        await self.Channel.send(message)
+
       self.ChatTerminalOn = False
       self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
 
 
+    #----------------------------------------
+    # CHAT                                 --
+    #----------------------------------------
+
     @commands.command()
     async def chat(self, ctx: commands.Context):
-      #SHOW UPTIME
+      #SHOW CHAT
       self.ChatTerminalOn = True
       LED.TwitchTimerOn   = False
-      message = "The chat will now be displayed on the LEDarcade clock thingy.".format(CHANNEL,StreamDurationHHMMSS)
-      await self.Channel.send(message)
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "The chat will now be displayed on the LEDarcade clock thingy.".format(CHANNEL,StreamDurationHHMMSS)
+        await self.Channel.send(message)
       
 
+    #----------------------------------------
+    # Profile                              --
+    #----------------------------------------
+      
+    @commands.command()
+    async def profile(self, ctx: commands.Context):
+      #SHOW PROFILE
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Now displaying the profile pic for this channel."
+        await self.Channel.send(message)
 
+      LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
+      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
+      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
+      time.sleep(3)
+      LED.ClearBigLED()
+
+
+    #----------------------------------------
+    # VIEWS                                --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def views(self, ctx: commands.Context):
+      #SHOW VIEWS
+      if(SHOW_VIEWS == True):
+        GetTwitchCounts()
+        if(SHOW_CHATBOT_MESSAGES == True):
+          message = "This channel has been viewed {} times.". format(VIEW_COUNT)
+          await self.Channel.send(message)
+
+        LED.ShowTitleScreen(
+          BigText             = str(VIEW_COUNT),
+          BigTextRGB          = LED.MedRed,
+          BigTextShadowRGB    = LED.ShadowRed,
+          LittleText          = 'Views',
+          LittleTextRGB       = LED.MedPurple,
+          LittleTextShadowRGB = LED.ShadowPurple, 
+          ScrollText          = '',
+          ScrollTextRGB       = LED.MedYellow,
+          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+          DisplayTime         = 5,           # time in seconds to wait before exiting 
+          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+          )
+        self.CursorH = 0
+
+      else:
+        if(SHOW_CHATBOT_MESSAGES == True):
+          message = "Well, I viewed once or twice.  {} is viewing right now. That has to count for something.".format(CHANNEL)
+          await self.Channel.send(message)
+
+
+
+
+
+    #----------------------------------------
+    # ROBOT                                --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def robot(self, ctx: commands.Context):
+      #SHOW ROBOT
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Here is a big red robot for your amusement"
+        await self.Channel.send(message)
+
+        LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+          LED.BigRezonator2,
+          Position      = 'bottom',
+          direction     = "right",
+          StepsPerFrame = 2,
+          ZoomFactor    = 1,
+          sleep         = 0
+          )
+
+        self.CursorH = 0
+
+
+
+    #----------------------------------------
+    # DOT INVADERS                         --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def invaders(self, ctx: commands.Context):
+      #Play game DotInvaders
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Lets play a game of DotInvaders"
+        await self.Channel.send(message)
+        DI.LaunchDotInvaders(GameMaxMinutes = 5)
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
+
+
+       
 
 
 
@@ -847,25 +991,7 @@ def IRCStuff():
 
 
     
-    time.sleep(1)
-
-
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
 
 
 
@@ -997,6 +1123,9 @@ def GetBasicTwitchInfo():
     #User / Channel Info
     global GameName        
     global Title           
+    global PROFILE_IMAGE_URL
+    global VIEW_COUNT
+    
 
     #Stream Info
     global StreamStartedAt 
@@ -1022,7 +1151,7 @@ def GetBasicTwitchInfo():
     print ("--GetBasicTwitchInfo--")
 
     #----------------------------------------
-    # GET USER_ID
+    # GET CHANNEL INFO
     #----------------------------------------
     print("Get CHANNEL info")
     API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + CHANNEL
@@ -1041,8 +1170,10 @@ def GetBasicTwitchInfo():
       print("Data found.  Processing...")
 
       try:
-        USER_ID   = results['data'][0]['id']
-        BROADCASTER_ID = USER_ID
+        USER_ID           = results['data'][0]['id']
+        BROADCASTER_ID    = USER_ID
+        PROFILE_IMAGE_URL = results['data'][0]['profile_image_url']
+        VIEW_COUNT        = results['data'][0]['view_count']
 
       except Exception as ErrorMessage:
         TraceMessage = traceback.format_exc()
@@ -1089,7 +1220,7 @@ def GetBasicTwitchInfo():
     
     
     GetTwitchCounts()
-   
+    
 
     #----------------------------------------
     #Hype Train
@@ -1169,7 +1300,7 @@ def GetBasicTwitchInfo():
 
 
     
-
+    
 
 
 
@@ -1211,6 +1342,8 @@ def LoadConfigFiles():
   global SHOW_VIEWERS
   global SHOW_FOLLOWERS
   global SHOW_SUBS
+  global SHOW_VIEWS
+  global SHOW_CHATBOT_MESSAGES
   
 
   
@@ -1279,21 +1412,55 @@ def LoadConfigFiles():
     SHOW_VIEWERS   = MyConfigFile.get("SHOW","SHOW_VIEWERS")
     SHOW_FOLLOWERS = MyConfigFile.get("SHOW","SHOW_FOLLOWERS")
     SHOW_SUBS      = MyConfigFile.get("SHOW","SHOW_SUBS")
+   
+    SHOW_CHATBOT_MESSAGES = MyConfigFile.get("SHOW","SHOW_CHATBOT_MESSAGES")
+
+
+    #This one was created prior to initial release so we try to add the missing config items
+    try:
+      SHOW_VIEWS     = MyConfigFile.get("SHOW","SHOW_VIEWS")
+    except:
+      MyConfigFile = open(MyConfigFileName,'a+')
+      print("Adding entry to config file for SHOW_VIEWS")
+      MyConfigFile.write("  SHOW_VIEWS     = True\n")
+
 
     #The config file reads in True as 'True' (string)
     #we need to convert to True/False boolean
     if(SHOW_VIEWERS == 'True'):
       SHOW_VIEWERS = True
+    else:
+      SHOW_VIEWERS = False
+
     if(SHOW_FOLLOWERS == 'True'):
       SHOW_FOLLOWERS = True
+    else:
+      SHOW_FOLLOWERS = False
+
     if(SHOW_SUBS == 'True'):
       SHOW_SUBS = True
+    else:
+      SHOW_SUBS = False 
+
+
+    if(SHOW_VIEWS == 'True'):
+      SHOW_VIEWS = True
+    else:
+      SHOW_VIEWS = False 
+
+    if(SHOW_CHATBOT_MESSAGES == 'True'):
+      SHOW_CHATBOT_MESSAGES = True
+    else:
+      SHOW_CHATBOT_MESSAGES = False
+    
 
 
 
-    print("SHOW_VIEWERS:   ",SHOW_VIEWERS)   
-    print("SHOW_FOLLOWERS: ",SHOW_FOLLOWERS)   
-    print("SHOW_SUBS:      ",SHOW_SUBS)   
+    print("SHOW_VIEWERS:          ",SHOW_VIEWERS)   
+    print("SHOW_FOLLOWERS:        ",SHOW_FOLLOWERS)   
+    print("SHOW_SUBS:             ",SHOW_SUBS)   
+    print("SHOW_VIEWS:            ",SHOW_VIEWS)   
+    print("SHOW_CHATBOT_MESSAGES: ",SHOW_SUBS)   
 
 
   else:
@@ -1330,6 +1497,8 @@ def CheckConfigFiles():
       MyConfigFile.write("  SHOW_VIEWERS   = True\n")
       MyConfigFile.write("  SHOW_FOLLOWERS = True\n")
       MyConfigFile.write("  SHOW_SUBS      = True\n")
+      MyConfigFile.write("  SHOW_VIEWS     = True\n")
+      MyConfigFile.write("  SHOW_CHATBOT_MESSAGES = True\n")
 
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
@@ -1395,6 +1564,10 @@ def CheckConfigFiles():
 #------------------------------------------------------------------------------
 
 
+#LED.RotateAndZoomImage(PROFILE_IMAGE_URL)
+#LED.DrawSquare()
+
+
 #For testing purposes
 """
 LED.DisplayTwitchTimer(
@@ -1442,6 +1615,8 @@ print ("")
 
 CheckConfigFiles()
 LoadConfigFiles()
+#GetBasicTwitchInfo()
+
 
 
 #skip all this if running datagod
