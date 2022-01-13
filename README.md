@@ -74,3 +74,14 @@ Modify the test.py script to contain the messages you want to display.  Then exe
   https://datagod.hashnode.dev/ledarcade-upping-your-led-game
  
  
+ ## Retro Arcade Games
+ I have programmed 9 games on several sizes of LED matrixes using this library (in various forms).  As I convert the games to this final library I'll add them here.
+ 
+ # Dot Invaders
+ Dot Invaders is my take on the classic arcade game Space Invaders.
+ 
+~~~
+sudo python3 DotInvaders.py
+~~~
+
+ 
