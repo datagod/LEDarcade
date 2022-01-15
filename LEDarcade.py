@@ -164,6 +164,39 @@ TwitchTimerOn = False
 #-----------------------------
 DotInvadersHighScore   = 0
 DotInvadersGamesPlayed = 0
+OutbreakHighScore      = 0
+OutbreakGamesPlayed    = 0
+
+
+
+
+
+#-----------------------------
+# Used in all games         --
+#-----------------------------
+
+class EmptyObject(object):
+  def __init__(self,name='EmptyObject'):
+    self.name  = name
+    self.alive = 0
+    self.lives = 0
+    self.direction = 0
+    self.h          = -1 
+    self.v          = -1
+    self.r          = 0
+    self.g          = 0
+    self.b          = 0
+    self.scandirection = 0
+    self.speed      = 0
+    self.score      = 0
+    self.exploding  = 0
+    self.dropped    = 0
+
+EmptyObject = EmptyObject()
+
+
+
+
 
 
 
@@ -1020,14 +1053,14 @@ def SetBufferPixel(Buffer,x,y,r,g,b):
   
   
 def ClockTimer(seconds):
-  global start_time
-  elapsed_time = time.time() - start_time
+  global StartTime
+  elapsed_time = time.time() - StartTime
   elapsed_hours, rem = divmod(elapsed_time, 3600)
   elapsed_minutes, elapsed_seconds = divmod(rem, 60)
   #print("Elapsed Time: {:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds),end="\r")
 
   if (elapsed_seconds >= seconds ):
-    start_time = time.time()
+    StartTime = time.time()
     return 1
   else:
     return 0
@@ -1660,6 +1693,43 @@ class Sprite(object):
 
 
 
+
+
+class Wall(object):
+  def __init__(self,h,v,r,g,b,alive,lives,name):
+    self.h          = h 
+    self.v          = v
+    self.r          = r
+    self.g          = g
+    self.b          = b
+    self.alive      = 1
+    self.lives      = lives
+    self.name       = name
+    
+
+  def Display(self):
+    if (self.alive == 1):
+      gv.TheMatrix.SetPixel(self.h,self.v,self.r,self.g,self.b)
+
+
+      
+  def Erase(self):
+    gv.TheMatrix.SetPixel(self.h,self.v,0,0,0)
+
+      
+  def IncreaseBrightness(self,increment):
+      
+    self.r = (self.r + increment)
+    self.g = (self.g + increment)
+    self.b = (self.b + increment)
+    
+    if (self.r > 255):
+      self.r = 255
+    if (self.g > 255):
+      self.g = 255
+    if (self.b > 255):
+      self.b = 255
+    
 
 
 
@@ -9302,6 +9372,53 @@ BigGroundExplosion.grid.append(
 
 
 
+def PointTowardsObject8Way(SourceH,SourceV,TargetH,TargetV):
+
+  #   8 1 2
+  #   7 . 3
+  #   6 5 4
+
+  #d = GetDistanceBetweenDots(SourceH, SourceV, TargetH, TargetV):
+  
+  #source is upper left of target
+  if (SourceH < TargetH and SourceV < TargetV):
+    direction = 4
+
+  #source is directly above target
+  elif (SourceH == TargetH and SourceV < TargetV):
+    direction = 5
+
+  #source is upper right of target
+  elif (SourceH > TargetH and SourceV < TargetV):
+    direction = 6
+
+  #source is directly right of target
+  elif (SourceH > TargetH and SourceV == TargetV):
+    direction = 7
+
+  #source is lower right of target
+  elif (SourceH > TargetH and SourceV > TargetV):
+    direction = 8
+
+  #source is directly below target
+  elif (SourceH == TargetH and SourceV > TargetV):
+    direction = 1
+    
+  #source is lower left of target
+  elif (SourceH < TargetH and SourceV > TargetV):
+    direction = 2
+
+  #source is directly left of target
+  elif (SourceH < TargetH and SourceV == TargetV):
+    direction = 3
+
+  else: direction = random.randint(1,8)
+
+  return direction;
+
+
+
+
   
 def ScrollSprite2(Sprite,h,v,direction,moves,r,g,b,delay):
   x = 0
@@ -9757,6 +9874,8 @@ def SaveConfigData():
   #print ("Time to save: ",AdjustedTime)
   print ("DotInvaders high score:   " ,DotInvadersHighScore)
   print ("DotInvaders games played: " ,DotInvadersGamesPlayed)
+  print ("Outbreak high score:   " ,OutbreakHighScore)
+  print ("Outbreak games played: " ,OutbreakGamesPlayed)
   #print ("Pacdot score:      " ,PacDotScore)
   #print ("Pacdot high score: " ,PacDotHighScore)
   #print ("Pacdot games played:",PacDotGamesPlayed)
@@ -9765,6 +9884,8 @@ def SaveConfigData():
   #ConfigFile.set('main',   'CurrentTime',       AdjustedTime)
   ConfigFile.set('scores',   'DotInvadersHighScore',   str(DotInvadersHighScore))
   ConfigFile.set('scores',   'DotInvadersGamesPlayed', str(DotInvadersGamesPlayed))
+  ConfigFile.set('scores',   'OutbreakHighScore',   str(OutbreakHighScore))
+  ConfigFile.set('scores',   'OutbreakGamesPlayed', str(OutbreakGamesPlayed))
   #ConfigFile.set('pacdot', 'PacDotHighScore',   str(PacDotHighScore))
   #ConfigFile.set('pacdot', 'PacDotGamesPlayed', str(PacDotGamesPlayed))
   #ConfigFile.set('crypto', 'balance',           str(CryptoBalance))
@@ -9781,6 +9902,8 @@ def SaveConfigData():
 def LoadConfigData():
   global DotInvadersHighScore
   global DotInvadersGamesPlayed
+  global OutbreakHighScore
+  global OutbreakGamesPlayed
 
   print ("--Load Config Data--")
   #print ("PacDotHighScore Before Load: ",PacDotHighScore)
@@ -11019,8 +11142,30 @@ def LeftTrimSprite(Sprite1,Columns):
   return BufferSprite
     
   
- 
+
+
+
+#------------------------------------------------------------------------------
+# Keyboard Functions                                                         --
+#------------------------------------------------------------------------------
   
+
+def CheckElapsedTime(seconds):
+  global StartTime
+  elapsed_time = time.time() - StartTime
+  elapsed_hours, rem = divmod(elapsed_time, 3600)
+  elapsed_minutes, elapsed_seconds = divmod(rem, 60)
+
+
+  m,r = divmod(round(elapsed_seconds), seconds)
+  #print("Elapsed Time: {:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds)," CheckSeconds:",seconds," remainder:",r,end="\r")
+
+  #if (elapsed_seconds >= seconds ):
+    #StartTime = time.time()
+  if (r == 0):
+    return 1
+  else:
+    return 0
 
 
 
@@ -12847,6 +12992,40 @@ def MoveAnimatedSpriteAcrossScreenStepsPerFrame(TheSprite,Position='bottom',Vadj
         oldV = v
         h = h - 1
 
+
+def TurnLeftOrRight8Way(direction):
+  WhichWay = random.randint(1,4)
+  #print ("WhichWay:",WhichWay)
+  if (WhichWay == 1):
+    #print ("turning W")
+    direction = TurnLeft8Way(direction)
+    direction = TurnLeft8Way(direction)
+  elif (WhichWay == 2):
+    #print ("turning NW")
+    direction = TurnLeft8Way(direction)
+  elif (WhichWay == 3):
+    #print ("turning NE")
+    direction = TurnRight8Way(direction)
+  elif (WhichWay == 4):
+    #print ("turning E")
+    direction = TurnRight8Way(direction)
+    direction = TurnRight8Way(direction)
+    
+  return direction;
+
+
+      
+def TurnLeftOrRightTwice8Way(direction):
+  WhichWay = random.randint(1,2)
+  #print ("WhichWay:",WhichWay)
+  if (WhichWay == 1):
+    direction = TurnLeft8Way(direction)
+    direction = TurnLeft8Way(direction)
+  elif (WhichWay == 2):
+    direction = TurnRight8Way(direction)
+    direction = TurnRight8Way(direction)
+    
+  return direction;
 
 
 
