@@ -3149,9 +3149,6 @@ def PlayOutbreak(GameMaxMinutes):
 def LaunchOutbreak(GameMaxMinutes = 10000):
   
 
-    PlayOutbreak(GameMaxMinutes)
-
-
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
     #--------------------------------------
