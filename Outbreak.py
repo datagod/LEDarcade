@@ -74,8 +74,8 @@ start_time = time.time()
 # Outbreak Global Variables --
 #-----------------------------
 VirusTopSpeed     = 1
-VirusBottomSpeed  = 20
-VirusStartSpeed   = 8  #starting speed of the viruses
+VirusBottomSpeed  = 10
+VirusStartSpeed   = 5  #starting speed of the viruses
 MinBright         = 50
 MaxBright         = 255
 
@@ -1678,6 +1678,7 @@ def MoveVirus(Virus,Playfield):
 def CreateDinnerPlate(MapLevel):
   global mutationrate
   
+
   print ("CreateDinnerPlate Map: ",MapLevel)
 
 
@@ -2244,6 +2245,257 @@ def CreateDinnerPlate(MapLevel):
 
 
 
+
+  if (MapLevel == 9):
+    
+    DinnerPlate = VirusWorld(name='BigFood',
+                               width        = 66, #we want the playfield to be 1 pixel larger on all sides than the display
+                               height       = 34,
+                               Map          = [[]],
+                               Playfield    = [[]],
+                               CurrentRoomH = 1,
+                               CurrentRoomV = 1,
+                               DisplayH     = 1,
+                               DisplayV     = 1,
+                               mutationrate = mutationrate,
+                               replicationrate = replicationrate,
+                               mutationdeathrate = mutationdeathrate,
+                               VirusStartSpeed = VirusStartSpeed)
+
+
+    TheMap.ColorList = {
+      ' ' : (  0,  0,  0),
+      '-' : ( 10, 10, 10),  
+      '.' : ( 20, 20, 20),
+      'o' : ( 30, 30, 30),
+      'O' : ( 40, 40, 40),
+      '@' : ( 50, 60, 60),
+      '$' : ( 60, 60, 60),
+      'A' : ( 70, 70, 70),
+      'B' : ( 80, 80, 80),
+      'C' : ( 90, 90, 90),
+      'D' : (100,100,100),
+      'E' : (110,110,110),
+      'F' : (120,120,120),
+      'G' : (130,130,130),
+      'H' : (140,140,140),
+      'I' : (150,150,150),
+      'J' : (160,160,160),
+      'K' : (170,170,170),
+      'L' : (180,180,180),
+      '|' : (  0,  0,  0),
+      '*' : (  5,  5,  5),
+      '1' : (0  ,150,  0),
+      '2' : (150,  0,  0),
+      '3' : (150,100,  0),
+      '4' : (  0,  0,100),
+      '5' : (200,  0, 50),
+      '6' : (125,185,  0),
+      '7' : (200,  0,200),
+      '8' : ( 50,150, 75)
+    }
+
+    TheMap.TypeList = {
+      ' ' : 'EmptyObject',
+      '-' : 'wall',
+      '.' : 'wall',
+      'o' : 'wall',
+      'O' : 'wall',
+      '@' : 'wall',
+      '#' : 'wall',
+      '$' : 'wall',
+      '#' : 'wall',
+      '*' : 'wallbreakable',
+      'A' : 'wall',
+      'B' : 'wall',
+      'C' : 'wall',
+      'D' : 'wall',
+      'E' : 'wall',
+      'F' : 'wall',
+      'G' : 'wall',
+      'H' : 'wall',
+      'I' : 'wallbreakable',
+      'J' : 'wallbreakable',
+      'K' : 'wallbreakable',
+      'L' : 'wallbreakable',
+      '|' : 'wall',
+      '1' : 'virus',
+      '2' : 'virus',
+      '3' : 'virus',
+      '4' : 'virus',
+      '5' : 'virus',
+      '6' : 'virus',
+      '7' : 'virus',
+      '8' : 'virus'
+    }
+
+
+    TheMap.map= (
+      #0         1   ......2.........3.........4.........5.........6....65    
+      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
+      "O            |                                                   O",
+      "O            |   111                                   333       O",
+      "O            |   111                                   333       O",
+      "O            |   111                                   333       O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O", 
+      "O            |                   FGHIJ   JIHF                    O", 
+      "O            |                  EFGHIJ   JIHFE                   O", #10
+      "O            |                 DEFGHIJ   JIHFEFE                 O",
+      "O            |                CDEFGHIJ   JIHGFEDC                O",
+      "O            |        -.oO@$ABCDEFG         GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG I88888I GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG I88888I GFEDCBA$@Oo.-        O",    
+      "O            |        -.oO@$ABCDEFG I88888I GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O", 
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O", #20
+      "O            |                CDEFG         GFEDC                O",
+      "O            |                 DEFGHIJ   JIHGFED                 O",
+      "O            |                  EFGHIJ   JIHGFE                  O",
+      "O            |                   FGHIJ   JIHGF                   O",
+      "O            |                                                   O",
+      "O            |  22222222                          44444444       O",
+      "O            |  22222222                          44444444       O",
+      "O            |  22222222                          44444444       O",
+      "O            |                                                   O",
+      "O            |                                                   O", #30
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
+    )
+
+
+
+
+  if (MapLevel == 10):
+    
+    DinnerPlate = VirusWorld(name='BigFood',
+                               width        = 66, #we want the playfield to be 1 pixel larger on all sides than the display
+                               height       = 34,
+                               Map          = [[]],
+                               Playfield    = [[]],
+                               CurrentRoomH = 1,
+                               CurrentRoomV = 1,
+                               DisplayH     = 1,
+                               DisplayV     = 1,
+                               mutationrate = mutationrate,
+                               replicationrate = replicationrate,
+                               mutationdeathrate = mutationdeathrate,
+                               VirusStartSpeed = VirusStartSpeed)
+
+
+    TheMap.ColorList = {
+      ' ' : (  0,  0,  0),
+      '-' : ( 10, 10, 10),  
+      '.' : ( 20, 20, 20),
+      'o' : ( 30, 30, 30),
+      'O' : ( 40, 40, 40),
+      '@' : ( 50, 60, 60),
+      '$' : ( 60, 60, 60),
+      'A' : ( 70, 70, 70),
+      'B' : ( 80, 80, 80),
+      'C' : ( 90, 90, 90),
+      'D' : (100,100,100),
+      'E' : (110,110,110),
+      'F' : (120,120,120),
+      'G' : (130,130,130),
+      'H' : (140,140,140),
+      'I' : (150,150,150),
+      'J' : (160,160,160),
+      'K' : (170,170,170),
+      'L' : (180,180,180),
+      '|' : (  0,  0,  0),
+      '*' : (  5,  5,  5),
+      '1' : (0  ,150,  0),
+      '2' : (150,  0,  0),
+      '3' : (150,100,  0),
+      '4' : (  0,  0,100),
+      '5' : (200,  0, 50),
+      '6' : (125,185,  0),
+      '7' : (200,  0,200),
+      '8' : ( 50,150, 75)
+    }
+
+    TheMap.TypeList = {
+      ' ' : 'EmptyObject',
+      '-' : 'wall',
+      '.' : 'wall',
+      'o' : 'wall',
+      'O' : 'wall',
+      '@' : 'wall',
+      '#' : 'wall',
+      '$' : 'wall',
+      '#' : 'wall',
+      '*' : 'wallbreakable',
+      'A' : 'wallbreakable',
+      'B' : 'wallbreakable',
+      'C' : 'wallbreakable',
+      'D' : 'wallbreakable',
+      'E' : 'wallbreakable',
+      'F' : 'wallbreakable',
+      'G' : 'wallbreakable',
+      'H' : 'wallbreakable',
+      'I' : 'wallbreakable',
+      'J' : 'wallbreakable',
+      'K' : 'wallbreakable',
+      'L' : 'wallbreakable',
+      '|' : 'wall',
+      '1' : 'virus',
+      '2' : 'virus',
+      '3' : 'virus',
+      '4' : 'virus',
+      '5' : 'virus',
+      '6' : 'virus',
+      '7' : 'virus',
+      '8' : 'virus'
+    }
+
+
+    TheMap.map= (
+      #0         1   ......2.........3.........4.........5.........6....65    
+      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
+      "O            |                                                   O",
+      "O            |   1                                       2       O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O", 
+      "O            |                   FGHIJ   JIHF                    O", 
+      "O            |                  EFGHIJ   JIHFE                   O", #10
+      "O            |                 DEFGHIJ   JIHFEFE                 O",
+      "O            |                CDEFGHIJ   JIHGFEDC                O",
+      "O            |        -.oO@$ABCDEFG         GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG I88888I GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG I88888I GFEDCBA$@Oo.-        O",    
+      "O            |        -.oO@$ABCDEFG I88888I GFEDCBA$@Oo.-        O",
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O", 
+      "O            |        -.oO@$ABCDEFG IJKLKJI GFEDCBA$@Oo.-        O", #20
+      "O            |                CDEFG         GFEDC                O",
+      "O            |                 DEFGHIJ   JIHGFED                 O",
+      "O            |                  EFGHIJ   JIHGFE                  O",
+      "O            |                   FGHIJ   JIHGF                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O",
+      "O            |                                                   O", #30
+      "O            |   3                                       4       O",
+      "O            |                                                   O",
+      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
+    )
+
+
+
+
   DinnerPlate.CopyTextMapToPlayfield(TheMap)
 
   #we add random viruses to a plate of big food
@@ -2327,7 +2579,7 @@ def PlayOutbreak(GameMaxMinutes):
   finished      = 'N'
   VirusMoves = 0
   LevelCount    = 0
-  MaxLevel      = 8 #number of available mazes
+  MaxLevel      = 10 #number of available mazes
   NameCount     = 0
   Viruses       = []
   VirusCount    = 0
@@ -2717,7 +2969,7 @@ def PlayOutbreak(GameMaxMinutes):
         LED.ShowGlowingText(h = -1,v = 2,  Text = 'STRAIN', RGB = LED.HighYellow,ShadowRGB = LED.DarkYellow,ZoomFactor=2)
         LED.ShowGlowingText(h = -1,v = 14,  Text = 'SECURE', RGB = LED.HighYellow,ShadowRGB = LED.DarkYellow,ZoomFactor=2)
         time.sleep(1)
-        LED.ZoomScreen(ScreenArray,32,1,0.01)
+        LED.ZoomScreen(LED.ScreenArray,32,1,0.01)
         
 
 

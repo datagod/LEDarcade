@@ -9936,6 +9936,13 @@ def LoadConfigData():
     print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
+    #Get OutbreakHighScore
+    OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
+    OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
+    print ("OutbreakHighScore: ",  OutbreakHighScore)
+    print ("OutbreakGamesPlayed: ",OutbreakGamesPlayed)
+
+
     
   else:
     print ("Config file not found! Running with default values.")
