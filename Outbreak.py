@@ -11,14 +11,12 @@
 
 #------------------------------------------------------------------------------
 #                                                                            --
-#      _    ____   ____    _    ____  _____    ____ _     ___   ____ _  __   --
-#     / \  |  _ \ / ___|  / \  |  _ \| ____|  / ___| |   / _ \ / ___| |/ /   --
-#    / _ \ | |_) | |     / _ \ | | | |  _|   | |   | |  | | | | |   | ' /    --
-#   / ___ \|  _ <| |___ / ___ \| |_| | |___  | |___| |__| |_| | |___| . \    --
-#  /_/   \_\_| \_\\____/_/   \_\____/|_____|  \____|_____\___/ \____|_|\_\   --
+#    ___        _   _                    _                                   --
+#   / _ \ _   _| |_| |__  _ __ ___  __ _| | __                               --
+#  | | | | | | | __| '_ \| '__/ _ \/ _` | |/ /                               --
+#  | |_| | |_| | |_| |_) | | |  __/ (_| |   <                                --
+#   \___/ \__,_|\__|_.__/|_|  \___|\__,_|_|\_\                               --
 #                                                                            --
-#                                                                            --
-#  Main Programs                                                             --
 #                                                                            --
 #------------------------------------------------------------------------------
 
@@ -38,35 +36,9 @@
 #
 #------------------------------------------------------------------------------
 #   Version: 0.1                                                             --
-#   Date:    January 13, 2021                                                --
-#   Reason:  Converting PacDot to run on 64x32 panel                         --
+#   Date:    January 15, 2022                                                --
+#   Reason:  Converted to use LEDarcade                                      --
 #------------------------------------------------------------------------------
-#   Version: 0.2                                                             --
-#   Date:    January 13, 2021                                                --
-#   Reason:  Lots of cleanup                                                 --
-#------------------------------------------------------------------------------
-
-
-
-#NOTES
-
-#Future Work
-#revisit curses for reading keypress.  Only initialize once.
-
-
-#running PacDot automatically as background task (non interactive)
-# cd /etc
-# sudo nano rc.local
-# nohup sudo python /home/pi/Pimoroni/unicornhat/examples/PacDot.py 0.07 0.07 0.07 20 40 200 >/dev/null 2>&1 &
-
-#running PacDot after auto-loggin in
-#modify profile script to include call to bash file
-#cd /etc
-#sudo nano profile
-#cd pi
-#./go.sh
-
-
 
 
 
