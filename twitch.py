@@ -38,6 +38,7 @@ from datetime import datetime, timezone
 
 #games
 import DotInvaders as DI
+import Outbreak    as OB
 
 
 
@@ -919,6 +920,23 @@ class Bot(commands.Bot):
       CursorH = 0
       CursorV = 0
 
+
+
+    #----------------------------------------
+    # OUTBREAK                             --
+    #----------------------------------------
+
+    @commands.command()
+    async def invaders(self, ctx: commands.Context):
+      #Play game Outbreak
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Looks like you want to play some Outbreak..."
+        await self.Channel.send(message)
+        DI.LaunchOutbreak(GameMaxMinutes = 5)
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
 
        
 
