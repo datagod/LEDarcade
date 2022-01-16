@@ -142,7 +142,7 @@ class Bot(commands.Bot):
     CursorV             = 0
     CursorRGB           = (0,255,0)
     CursorDarkRGB       = (0,50,0)
-    AnimationDelay      = 0
+    AnimationDelay      = 30
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
@@ -927,12 +927,12 @@ class Bot(commands.Bot):
     #----------------------------------------
 
     @commands.command()
-    async def invaders(self, ctx: commands.Context):
+    async def outbreak(self, ctx: commands.Context):
       #Play game Outbreak
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Looks like you want to play some Outbreak..."
         await self.Channel.send(message)
-        DI.LaunchOutbreak(GameMaxMinutes = 5)
+        OB.LaunchOutbreak(GameMaxMinutes = 5)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0

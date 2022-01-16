@@ -3148,10 +3148,12 @@ def PlayOutbreak(GameMaxMinutes):
 
 def LaunchOutbreak(GameMaxMinutes = 10000):
   
-
+    
+    
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
     #--------------------------------------
+    LED.LoadConfigData()
 
     LED.ShowTitleScreen(
         BigText             = 'UTBR8K',
@@ -3195,9 +3197,9 @@ def LaunchOutbreak(GameMaxMinutes = 10000):
 
 
 
-while(1 == 1):
-  #execute if this script is called direction
-  if __name__ == "__main__" :
+#execute if this script is called direction
+if __name__ == "__main__" :
+  while(1==1):
     LED.LoadConfigData()
     LED.SaveConfigData()
     LaunchOutbreak(100000)        
