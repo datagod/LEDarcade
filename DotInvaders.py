@@ -441,12 +441,12 @@ def CreateSpecialArmada(ShowTime=True):
             Armada[V][H].alive = 1
             Armada[V][H].name = 'ArmadaShip'
             Armada[V][H].h = H
-            Armada[V][H].v = V - ZoomFactor
+            Armada[V][H].v = V - (ZoomFactor * 2)
           else:
             Armada[V][H].alive = 0
             Armada[V][H].name  = 'Empty'
             Armada[V][H].h = H
-            Armada[V][H].v = V - ZoomFactor
+            Armada[V][H].v = V - (ZoomFactor *2)
       
     
     return Armada,ArmadaHeight,ArmadaWidth;
@@ -1640,8 +1640,8 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
       
       #End game after X seconds
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
-      #print("mm:ss",m,s)
       if(m > GameMaxMinutes):
+        print("Elapsed Time:  mm:ss",m,s)
         LED.SaveConfigData()
         print("Ending game after",m," minutes")
         ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
@@ -1683,13 +1683,18 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
       
       
 
+#--------------------------------------
+# M A I N   P R O C E S S I N G      --
+#--------------------------------------
 
 def LaunchDotInvaders(GameMaxMinutes = 10000):
   
+    global start_time
 
-    #--------------------------------------
-    # M A I N   P R O C E S S I N G      --
-    #--------------------------------------
+
+    start_time = time.time()
+    LED.LoadConfigData()
+
 
     LED.ShowTitleScreen(
         BigText             = 'ALERT!',
@@ -1730,9 +1735,10 @@ def LaunchDotInvaders(GameMaxMinutes = 10000):
 
 
 
-while(1 == 1):
-  #execute if this script is called direction
-  if __name__ == "__main__" :
+
+#execute if this script is called directly
+if __name__ == "__main__" :
+  while(1==1):
     LED.LoadConfigData()
     LED.SaveConfigData()
     LaunchDotInvaders(100000)        
