@@ -2623,8 +2623,16 @@ def PlayOutbreak(GameMaxMinutes):
   #----------------------
   #-- Prepare Level    --
   #----------------------
-  LED.OutbreakGamesPLayed = LED.OutbreakGamesPlayed + 1
+  print("")
+  print("")
+  print("*****************************************************")
+  print("Before OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
+  LED.OutbreakGamesPlayed = LED.OutbreakGamesPlayed + 1
+  print("Before SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
+  
   LED.SaveConfigData()
+  print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
+  print("*****************************************************")
 
   LevelCount = random.randint(1,MaxLevel)
 
@@ -3103,7 +3111,7 @@ def PlayOutbreak(GameMaxMinutes):
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,200,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.OutbreakGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"QUARNTINE STILL ACTIVE... OR IS IT?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"QUARANTINE STILL ACTIVE... OR IS IT?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
   
@@ -3184,7 +3192,7 @@ def LaunchOutbreak(GameMaxMinutes = 10000):
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.OutbreakGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING LOCKDOWN PROTOCOLS!!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING LOCKDOWN PROTOCOLS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
@@ -3202,6 +3210,7 @@ if __name__ == "__main__" :
   while(1==1):
     LED.LoadConfigData()
     LED.SaveConfigData()
+    print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
     LaunchOutbreak(100000)        
 
 

@@ -14074,9 +14074,9 @@ def DisplayDigitalClock(
       DayOfMonthSprite    = CreateDayOfMonthSprite()
    
 
-      DayOfWeekV  = DayOfWeekV  + ZoomFactor + 1
-      MonthV      = MonthV      + ZoomFactor + 1
-      DayOfMonthV = DayOfMonthV + ZoomFactor + 1
+      NewDayOfWeekV  = DayOfWeekV  + ZoomFactor + 1
+      NewMonthV      = MonthV      + ZoomFactor + 1
+      NewDayOfMonthV = DayOfMonthV + ZoomFactor + 1
  
   
 
@@ -14103,9 +14103,9 @@ def DisplayDigitalClock(
       
       
       #Show Custom Sprite
-      CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
-      CopySpriteToPixelsZoom(MonthSprite,      MonthH,      MonthV,      MonthRGB,       SpriteFillerRGB,1)
-      CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
+      CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  NewDayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
+      CopySpriteToPixelsZoom(MonthSprite,      MonthH,      NewMonthV,      MonthRGB,       SpriteFillerRGB,1)
+      CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, NewDayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
 
       
       #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
