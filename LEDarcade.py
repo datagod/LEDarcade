@@ -212,10 +212,10 @@ StartTime = time.time()
 
 #Sprite display locations
 ClockH,      ClockV,      ClockRGB      = 0,0,  (0,150,0)
-DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB  = 8,14,  (125,20,20)
-MonthH,      MonthV,      MonthRGB      = 28,14, (125,30,0)
-DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 47,14, (115,40,10)
-CurrencyH,   CurrencyV,   CurrencyRGB   = 54,14, (0,150,0)
+DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB  = 10,18,  (125,20,20)
+MonthH,      MonthV,      MonthRGB      = 30,18, (125,30,0)
+DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 49,18, (115,40,10)
+CurrencyH,   CurrencyV,   CurrencyRGB   = 56,18, (0,150,0)
 
 #Sprite filler tuple
 SpriteFillerRGB = (0,4,0)
@@ -14074,12 +14074,6 @@ def DisplayDigitalClock(
       DayOfMonthSprite    = CreateDayOfMonthSprite()
    
 
-      NewDayOfWeekV  = DayOfWeekV  + ZoomFactor + 1
-      NewMonthV      = MonthV      + ZoomFactor + 1
-      NewDayOfMonthV = DayOfMonthV + ZoomFactor + 1
- 
-  
-
 
   
     # Clock at top, random scrolling animations
@@ -14103,9 +14097,9 @@ def DisplayDigitalClock(
       
       
       #Show Custom Sprite
-      CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  NewDayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
-      CopySpriteToPixelsZoom(MonthSprite,      MonthH,      NewMonthV,      MonthRGB,       SpriteFillerRGB,1)
-      CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, NewDayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
+      CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
+      CopySpriteToPixelsZoom(MonthSprite,      MonthH,      MonthV,      MonthRGB,       SpriteFillerRGB,1)
+      CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
 
       
       #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
@@ -14590,7 +14584,7 @@ def DisplayDigitalClock(
 
           ClockSprite = CreateClockSprite(hh)
           ScreenArray2 = CopySpriteToScreenArrayZoom(ClockSprite,h=h,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
-          TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
+          TransitionBetweenScreenArrays(ScreenArray1,ScreenArray2,TransitionType=2)
 
 
 
@@ -14645,7 +14639,7 @@ def DisplayDigitalClock(
 
           ClockSprite = CreateClockSprite(hh)
           ScreenArray2 = CopySpriteToScreenArrayZoom(ClockSprite,h=h,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
-          TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
+          TransitionBetweenScreenArrays(ScreenArray1,ScreenArray2,TransitionType=2)
 
 
 
@@ -14704,7 +14698,7 @@ def DisplayDigitalClock(
 
           ClockSprite = CreateClockSprite(hh)
           ScreenArray2 = CopySpriteToScreenArrayZoom(ClockSprite,h=h,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
-          TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
+          TransitionBetweenScreenArrays(ScreenArray1,ScreenArray2,TransitionType=2)
 
 
 
@@ -14913,7 +14907,7 @@ def DisplayDigitalClock(
 
           ClockSprite = CreateClockSprite(hh)
           ScreenArray2 = CopySpriteToScreenArrayZoom(ClockSprite,h=h,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
-          TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
+          TransitionBetweenScreenArrays(ScreenArray1,ScreenArray2,TransitionType=2)
 
 
 
