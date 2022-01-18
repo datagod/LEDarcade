@@ -38,6 +38,7 @@ from datetime import datetime, timezone
 
 #games
 import DotInvaders as DI
+import Outbreak    as OB
 
 
 
@@ -141,7 +142,7 @@ class Bot(commands.Bot):
     CursorV             = 0
     CursorRGB           = (0,255,0)
     CursorDarkRGB       = (0,50,0)
-    AnimationDelay      = 0
+    AnimationDelay      = 30
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
@@ -919,6 +920,23 @@ class Bot(commands.Bot):
       CursorH = 0
       CursorV = 0
 
+
+
+    #----------------------------------------
+    # OUTBREAK                             --
+    #----------------------------------------
+
+    @commands.command()
+    async def outbreak(self, ctx: commands.Context):
+      #Play game Outbreak
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Looks like you want to play some Outbreak..."
+        await self.Channel.send(message)
+        OB.LaunchOutbreak(GameMaxMinutes = 5)
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
 
        
 

@@ -45,25 +45,6 @@
 #------------------------------------------------------------------------------
 
 
-
-#NOTES
-
-#Future Work
-#revisit curses for reading keypress.  Only initialize once.
-
-
-#running PacDot automatically as background task (non interactive)
-# cd /etc
-# sudo nano rc.local
-# nohup sudo python /home/pi/Pimoroni/unicornhat/examples/PacDot.py 0.07 0.07 0.07 20 40 200 >/dev/null 2>&1 &
-
-#running PacDot after auto-loggin in
-#modify profile script to include call to bash file
-#cd /etc
-#sudo nano profile
-#cd pi
-#./go.sh
-
 import LEDarcade as LED
 import copy
 import random
@@ -105,7 +86,7 @@ ArmadaWidth     = 0
 ArmadaHighestV  = 0
 ArmadaLowestV   = 0
 CondenseArmadaChance = 1000
-
+ArmadaSpeedOffset = 50
 
 #UFO
 UFOMissileSpeed = 75
@@ -460,12 +441,12 @@ def CreateSpecialArmada(ShowTime=True):
             Armada[V][H].alive = 1
             Armada[V][H].name = 'ArmadaShip'
             Armada[V][H].h = H
-            Armada[V][H].v = V - ZoomFactor
+            Armada[V][H].v = V - (ZoomFactor * 2)
           else:
             Armada[V][H].alive = 0
             Armada[V][H].name  = 'Empty'
             Armada[V][H].h = H
-            Armada[V][H].v = V - ZoomFactor
+            Armada[V][H].v = V - (ZoomFactor *2)
       
     
     return Armada,ArmadaHeight,ArmadaWidth;
@@ -694,6 +675,10 @@ def MoveArmada(Armada,ArmadaHeight,ArmadaWidth,Playfield):
     UFOMissile2.h = h
     UFOMissile2.v = LowestV + 1
     UFOMissile2.alive = 1
+  elif (UFOMissile3.alive == 0 and UFOMissile3.exploding == 0 and ArmadaCount > 5):
+    UFOMissile3.h = h
+    UFOMissile3.v = LowestV + 1
+    UFOMissile3.alive = 1
 
   
   ArmadaLowestV  = LowestV + 1
@@ -1321,6 +1306,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
     UFOShip.alive   = 0
     UFOMissile1.alive = 0
     UFOMissile2.alive = 0
+    UFOMissile3.alive = 0
     UFOShip.speed   = random.randint (UFOShipMaxSpeed,UFOShipMinSpeed)
     
     #ShowDropShip(PlayerShip.h,PlayerShip.v,'dropoff',LED.ScrollSleep * 0.25)
@@ -1333,6 +1319,9 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
     UFOMissile2.r = PlayerMissileR
     UFOMissile2.g = PlayerMissileG
     UFOMissile2.b = PlayerMissileB
+    UFOMissile3.r = PlayerMissileR
+    UFOMissile3.g = PlayerMissileG
+    UFOMissile3.b = PlayerMissileB
     PlayerMissile1.r     = PlayerMissileR
     PlayerMissile1.g     = PlayerMissileG
     PlayerMissile1.b     = PlayerMissileB
@@ -1519,13 +1508,13 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
 
       if (UFOMissile1.exploding == 1 ):
-        #print("------> UFOMissile1.exploding: ",UFOMissile1.exploding)
         DotInvadersExplodeMissile(UFOMissile1,Playfield,1)
 
       if (UFOMissile2.exploding == 1 ):
-        #print("------> UFOMissile2.exploding: ",UFOMissile2.exploding)
         DotInvadersExplodeMissile(UFOMissile2,Playfield,1)
 
+      if (UFOMissile3.exploding == 1 ):
+        DotInvadersExplodeMissile(UFOMissile3,Playfield,1)
         
       #Display animation and clock every X seconds
       #if (CheckElapsedTime(CheckTime) == 1):
@@ -1546,7 +1535,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
             if (Armada[y][x].v > ArmadaLevel):
               ArmadaLevel = Armada[y][x].v
       #print ("M - Armada AliveCount ArmadaLevel: ",ArmadaCount,ArmadaLevel)
-      ArmadaSpeed = ArmadaCount * 10 + 50
+      ArmadaSpeed = ArmadaCount * 5 + (ArmadaSpeedOffset - LevelCount)
         
 
       if (ArmadaCount == 0):
@@ -1556,6 +1545,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
         LED.setpixel(PlayerMissile1.h,PlayerMissile1.v,0,0,0)
         LED.setpixel(UFOMissile1.h,UFOMissile1.v,0,0,0)
         LED.setpixel(UFOMissile2.h,UFOMissile2.v,0,0,0)
+        LED.setpixel(UFOMissile3.h,UFOMissile2.v,0,0,0)
         PlayerShip.Display()
 
         FireworksExplosion.Animate(UFOShip.h,UFOShip.v,'forward',0.01,1)        
@@ -1572,6 +1562,9 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 
         FireworksExplosion.Animate(UFOMissile2.h,UFOMissile2.v,'forward',0.01,1)        
         FireworksExplosion.EraseLocation(UFOMissile2.h,UFOMissile2.v)       
+
+        FireworksExplosion.Animate(UFOMissile3.h,UFOMissile3.v,'forward',0.01,1)        
+        FireworksExplosion.EraseLocation(UFOMissile3.h,UFOMissile3.v)       
 
         FireworksExplosion.Animate(UFOShip.h,UFOShip.v,'forward',0.01,1)        
         FireworksExplosion.EraseLocation(UFOShip.h,UFOShip.v)       
@@ -1647,8 +1640,8 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
       
       #End game after X seconds
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
-      #print("mm:ss",m,s)
       if(m > GameMaxMinutes):
+        print("Elapsed Time:  mm:ss",m,s)
         LED.SaveConfigData()
         print("Ending game after",m," minutes")
         ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
@@ -1690,13 +1683,18 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
       
       
 
+#--------------------------------------
+# M A I N   P R O C E S S I N G      --
+#--------------------------------------
 
 def LaunchDotInvaders(GameMaxMinutes = 10000):
   
+    global start_time
 
-    #--------------------------------------
-    # M A I N   P R O C E S S I N G      --
-    #--------------------------------------
+
+    start_time = time.time()
+    LED.LoadConfigData()
+
 
     LED.ShowTitleScreen(
         BigText             = 'ALERT!',
@@ -1737,9 +1735,10 @@ def LaunchDotInvaders(GameMaxMinutes = 10000):
 
 
 
-while(1 == 1):
-  #execute if this script is called direction
-  if __name__ == "__main__" :
+
+#execute if this script is called directly
+if __name__ == "__main__" :
+  while(1==1):
     LED.LoadConfigData()
     LED.SaveConfigData()
     LaunchDotInvaders(100000)        
