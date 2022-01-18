@@ -26,9 +26,6 @@ print ("")
 
 
 
-#LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=0, RunMinutes = 5 )
-
-
 
 
 #--------------------------------------
@@ -68,11 +65,11 @@ while 1==1:
       hh  = 24,
       RGB = LED.LowGreen,
       ShadowRGB     = LED.ShadowGreen,
-      ZoomFactor    = 2,
-      AnimationDelay= 10,
-      RunMinutes = 5 )
+      ZoomFactor    = 3,
+      AnimationDelay= 30,
+      RunMinutes = 30 )
 
-    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 5 )
+    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 15 )
 
 
 
