@@ -112,9 +112,9 @@ UFOShipMaxSpeed = 100
 
 #HomingMissile 
 UFOFrameRate               = 50  #random animated homing missiles
-HomingMissileFrameRate     = 250  
-HomingMissileInitialSpeed  = 2500
-HomingMissileLives         = 25
+HomingMissileFrameRate     = 50  
+HomingMissileInitialSpeed  = 125
+HomingMissileLives         = 15
 HomingMissileSprites       = 12    #number of different sprites tLED.Hat can be homing missiles
 HomingMissileDescentChance = 3     #chance of homing missile  not descending, lower number greater chance of being slow
 ChanceOfHomingMissile      = 10000  #chance of a homing missile appearing
@@ -247,7 +247,7 @@ class AsteroidWave(object):
         )
         self.Asteroids[i].alive       = 1
         self.Asteroids[i].Droppeded   = 0
-        self.Asteroids[i].Explosion   = copy.deepcopy(self.Explosion)      
+        self.Asteroids[i].Explosion   = self.Explosion
         self.Asteroids[i].Explosion.h = -1
         self.Asteroids[i].Explosion.v = -1
         self.Asteroids[i].Explosion.alive     = 0
@@ -499,6 +499,7 @@ HomingMissileSprite.lives = HomingMissileLives
 HomingMissileSprite.name  = "HomingMissile"
 HomingMissileSprite.score = 0
 HomingMissileSprite.exploding = 0
+HomingMissileSprite.framerate = HomingMissileFrameRate
 
 
 
@@ -948,6 +949,7 @@ def HitBomber(BomberShip):
     if (h+2 > 0 and h+2 <= LED.HatWidth-1):
       Playfield[v][h+2] = Empty
     BomberShip.Erase()
+
 
 def HitHomingMissile(HomingMissileShip,HomingMissileSprite):
   global SpaceDotScore
@@ -1662,6 +1664,8 @@ def PlaySpaceDot(GameMaxMinutes = 5):
   
   HomingMissileShip    = LED.Ship(SpaceDotMinH,SpaceDotMaxV - 1,PlayerShipR,PlayerShipG,PlayerShipB,4,1,8,1,3,'HomingMissile', 0,0)
   HomingMissileSprite  = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
+  HomingMissileSprite.framerate = HomingMissileFrameRate
+
 
   #Explosion Sprites
   PlayerShip.Explosion = copy.deepcopy(LED.PlayerShipExplosion)  
@@ -1909,6 +1913,8 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           HomingMissileShip.alive = 1
           HomingMissileSprite.v   = 0
           HomingMissileSprite     = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
+          HomingMissileSprite.framerate = HomingMissileFrameRate
+                         
 
       
 #      print ("=================================================")
@@ -2202,7 +2208,11 @@ def PlaySpaceDot(GameMaxMinutes = 5):
 
           Wave.Asteroids[i].h                      = -1
           Wave.Asteroids[i].v                      = -1
-          Playfield[Wave.Asteroids[i].v][Wave.Asteroids[i].h] = TheGround[i]
+          
+          
+          
+          #this is broken
+          #Playfield[Wave.Asteroids[i].v][Wave.Asteroids[i].h] = TheGround[i]
 
 #handle points somewhere else.
 
