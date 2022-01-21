@@ -2074,7 +2074,7 @@ class ColorAnimatedSprite(object):
     self.width  = width
     self.height = height
     self.frames = frames
-    self.currentframe = 0
+    self.currentframe = 1
     self.framerate    = framerate #how many ticks per frame of animation, higher the number the slower the animation
     self.grid         = [[]]      #holds numbers that indicate color of the pixel
     self.ticks        = 0         #internal calculation of how many times a frame has been displayed.  
