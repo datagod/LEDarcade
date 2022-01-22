@@ -13075,7 +13075,12 @@ def ShowTitleScreen(
   ScrollSleep    = 0.05,    #how long to wait between each frame of scrolling
   DisplayTime    = 5,       #how long to wait before exiting
   ExitEffect     = 0,
-  LittleTextZoom = 1
+  LittleTextZoom = 1,
+
+  BigText2          = '',
+  BigText2RGB       = HighBlue,
+  BigText2ShadowRGB = ShadowBlue
+
   ):
 
 
@@ -13094,6 +13099,7 @@ def ShowTitleScreen(
   #contains the values last written to the screen.
 
   BigText    = BigText.upper()
+  BigText2   = BigText2.upper()
   LittleText = LittleText.upper()
   ScrollText = ScrollText.upper()
 
@@ -13120,16 +13126,18 @@ def ShowTitleScreen(
   ShowGlowingText(CenterHoriz=True,CenterVert=False,h=0,v=1,Text=BigText,RGB=BigTextRGB,ShadowRGB=BigTextShadowRGB,ZoomFactor= 3,GlowLevels=0,DropShadow=False)
   TheMatrix.Clear()
   ClearBuffers() #We do this to erase our ScreenArray (which we draw to manually because we cannot read the matrix as a whole)
-  ShowGlowingText(CenterHoriz=True,CenterVert=False,h=0,v=1,Text=BigText,RGB=BigTextRGB,ShadowRGB=BigTextShadowRGB,ZoomFactor= 2,GlowLevels=0,DropShadow=True)
+  ShowGlowingText(CenterHoriz=True, CenterVert=False, h=0, v=1, Text=BigText, RGB=BigTextRGB, ShadowRGB=BigTextShadowRGB,ZoomFactor= 2,GlowLevels=0,DropShadow=True)
   
 
   time.sleep(0.5)
 
-  #Little Text
-  #BrightRGB, ShadowRGB = GetBrightAndShadowRGB()
-  ShowGlowingText(CenterHoriz=True,h=0,v=14,Text=LittleText,RGB=LittleTextRGB,ShadowRGB=LittleTextShadowRGB,ZoomFactor= LittleTextZoom,GlowLevels=100,DropShadow=True)
+  if (BigText2 == ''):
+    #Little Text
+    ShowGlowingText(CenterHoriz=True,h=0,v=14,Text=LittleText,RGB=LittleTextRGB,ShadowRGB=LittleTextShadowRGB,ZoomFactor= LittleTextZoom,GlowLevels=100,DropShadow=True)
+  else:
+    #BigText2
+    ShowGlowingText(CenterHoriz = True,h = 0 ,v = 12,  Text = BigText2,  RGB = BigText2RGB,     ShadowRGB = BigText2ShadowRGB,    ZoomFactor = 2,GlowLevels=50,DropShadow=True)
 
-  
 
   #Scrolling Message
   EraseMessageArea(LinesFromBottom=6)
