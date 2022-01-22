@@ -89,8 +89,8 @@ GroundV = SpaceDotMaxV - 1
 moves   = 1
 
 #Player
-PlayerShipSpeed       = 200
-PlayerShipMinSpeed    = 50
+PlayerShipSpeed       = 250
+PlayerShipMinSpeed    = 25
 PlayerShipAbsoluteMinSpeed = 10
 MaxPlayerMissiles     = 5
 PlayerMissileCount    = 2
@@ -101,23 +101,26 @@ PlayerShipLives       = 3
 
 #BomberShip
 BomberShipSpeed       = 80
-ChanceOfBomberShip    = 2000  #chance of a bomberhsip appearing
-BomberRockSpeed       = 30   #how fast the bomber dropped asteroid falls
+ChanceOfBomberShip    = 5000  #chance of a bomberhsip appearing
+BomberRockSpeed       = 30    #how fast the bomber dropped asteroid falls
+BomberShipLives       = 3     #takes 3 hits before exploding
 
 #UFO
 UFOMissileSpeed = 50
 UFOShipSpeed    = 50  #also known as the EnemeyShip
 UFOShipMinSpeed = 25
 UFOShipMaxSpeed = 100
+UFOLives    = 1
+ChanceOfUFO = 8000
 
 #HomingMissile 
 UFOFrameRate               = 50  #random animated homing missiles
 HomingMissileFrameRate     = 50  
 HomingMissileInitialSpeed  = 125
-HomingMissileLives         = 15
+HomingMissileLives         = 5
 HomingMissileSprites       = 12    #number of different sprites tLED.Hat can be homing missiles
 HomingMissileDescentChance = 3     #chance of homing missile  not descending, lower number greater chance of being slow
-ChanceOfHomingMissile      = 10000  #chance of a homing missile appearing
+ChanceOfHomingMissile      = 12000  #chance of a homing missile appearing
 
 
 
@@ -134,10 +137,10 @@ AsteroidPoints       = 5
 WaveStartV           = -5
 WaveMinSpeed         = 5     #The fastest the wave of asteroids can fall
 WaveSpeedRange       = 60    #how much variance in the wave speed min and max
-AsteroidMinSpeed     = 30    #lower the number the faster the movement (based on ticks)
-AsteroidMaxSpeed     = 60  
+AsteroidMinSpeed     = 40    #lower the number the faster the movement (based on ticks)
+AsteroidMaxSpeed     = 80  
 AsteroidSpawnChance  = 100  #lower the number the greater the chance
-WaveDropSpeed        = 550  #how often the next chunk of the wave is dropped
+WaveDropSpeed        = 2000  #how often the next chunk of the wave is dropped
 MovesBetweenWaves    = 2000
 AsteroidsInWaveMax   = 200
 AsteroidsInWaveMin   = 5 
@@ -393,7 +396,7 @@ BomberShip = LED.Ship(
   v=0,
   r=0,g=0,b=0,
   direction=2,scandirection=3,
-  speed=BomberShipSpeed,alive=0,lives=3,name="BomberShip",score=0,exploding=0
+  speed=BomberShipSpeed,alive=0,lives=BomberShipLives,name="BomberShip",score=0,exploding=0
 ) 
 
 
@@ -1631,7 +1634,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
   Playerh     = 0
   Playerv     = 0
   SleepTime   = MainSleep / 4
-  ChanceOfUFO = 200
+  
   
 
   #Timers / Clock display
@@ -1654,6 +1657,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
   
 
   EnemyShip  = LED.Ship(SpaceDotMinH,0,LED.SDMedPurpleR,LED.SDMedPurpleG,LED.SDMedPurpleB,4,3,UFOShipSpeed,0,3,'UFO', 0,0)
+  EnemyShip.lives = UFOLives
   Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
    
   BomberShip.h = -2 + SpaceDotMinH
@@ -1833,7 +1837,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
     UFOMissile3.g = PlayerMissileG
     UFOMissile3.b = PlayerMissileB
     BomberShip.alive = 0
-    BomberShip.lives = 3
+    BomberShip.lives = BomberShipLives
     HomingMissileShip.alive = 0
     HomingMissileShip.lives = HomingMissileLives
     
@@ -1909,7 +1913,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           Playfield            = HomingMissileSprite.EraseSpriteFromPlayfield(Playfield)
           HomingMissileShip.h     = 32
           HomingMissileShip.v     = 0
-          HomingMissileShip.lives = 10
+          HomingMissileShip.lives = HomingMissileLives
           HomingMissileShip.alive = 1
           HomingMissileSprite.v   = 0
           HomingMissileSprite     = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
@@ -2085,6 +2089,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
       if (r == 0 and EnemyShip.alive == 0):
         #print ("Spawning UFO")
         EnemyShip.alive = 1
+        EnemyShip.lives = UFOLives
         EnemyShip.direction = LED.ReverseDirection(EnemyShip.direction)
         if (EnemyShip.direction == 2):
           EnemyShip.h = SpaceDotMinH
@@ -2466,7 +2471,6 @@ def PlaySpaceDot(GameMaxMinutes = 5):
 
 def LaunchSpaceDot(GameMaxMinutes = 10000):
   
-    PlaySpaceDot(GameMaxMinutes)
     
     
     #--------------------------------------
@@ -2476,7 +2480,7 @@ def LaunchSpaceDot(GameMaxMinutes = 10000):
 
     LED.ShowTitleScreen(
         BigText             = 'ASTRO',
-        BigTextRGB          = LED.HighRed,
+        BigTextRGB          = LED.HighBlue,
         BigTextShadowRGB    = LED.ShadowRed,
         LittleText          = 'SMASH',
         LittleTextRGB       = LED.MedGreen,
@@ -2485,7 +2489,11 @@ def LaunchSpaceDot(GameMaxMinutes = 10000):
         ScrollTextRGB       = LED.MedYellow,
         ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
         DisplayTime         = 1,           # time in seconds to wait before exiting 
-        ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        ExitEffect          = 0,            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        BigText2            = 'SMASH',
+        BigText2RGB         = LED.HighBlue,
+        BigText2ShadowRGB   = LED.ShadowRed,
+
         )
 
 
@@ -2493,9 +2501,9 @@ def LaunchSpaceDot(GameMaxMinutes = 10000):
     LED.ClearBuffers()
     CursorH = 0
     CursorV = 0
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"ALIEN INVASION FORCE DETECTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"MASS DRIVERS DETECTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"ARMING PLANETARY DEFENCE SYSTEM",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"ALIEN SHIPS AND ASTEROIDS ARE HURTLING TOWARDS THE EARTH",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
     #LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"HIGH SCORE: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     #LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(LED.OutbreakHighScore),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)

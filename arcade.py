@@ -12,6 +12,7 @@
 import LEDarcade   as LED
 import DotInvaders as DI
 import Outbreak    as OB
+import SpaceDot    as SD
 import time
       
 
@@ -69,6 +70,7 @@ def LaunchArcade(GameMaxMinutes = 10000):
 
     DI.LaunchDotInvaders(GameMaxMinutes)
     OB.LaunchOutbreak(GameMaxMinutes)
+    SD.LaunchSpaceDot(GameMaxMinutes)
         
 
 
