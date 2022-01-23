@@ -10,13 +10,7 @@
 
 
 #------------------------------------------------------------------------------
-#                                                                            --
-#    ___        _   _                    _                                   --
-#   / _ \ _   _| |_| |__  _ __ ___  __ _| | __                               --
-#  | | | | | | | __| '_ \| '__/ _ \/ _` | |/ /                               --
-#  | |_| | |_| | |_| |_) | | |  __/ (_| |   <                                --
-#   \___/ \__,_|\__|_.__/|_|  \___|\__,_|_|\_\                               --
-#                                                                            --
+#  SPACEDOT                                                                  --
 #                                                                            --
 #------------------------------------------------------------------------------
 
@@ -66,7 +60,7 @@ start_time = time.time()
 #-- GLOBAL VARIABLES       --
 #----------------------------
 SpaceDotWallLives   = 50
-SpaceDotGroundLives = 25
+SpaceDotGroundLives = 1
 PlanetSurfaceSleep  = 1000
 DebrisCleanupSleep  = 2000 #make sure empty cells on playfield are displayed as empty (0,0,0) 
 
@@ -101,9 +95,9 @@ PlayerShipLives       = 3
 
 #BomberShip
 BomberShipSpeed       = 80
-ChanceOfBomberShip    = 5000  #chance of a bomberhsip appearing
+ChanceOfBomberShip    = 50000  #chance of a bomberhsip appearing
 BomberRockSpeed       = 30    #how fast the bomber dropped asteroid falls
-BomberShipLives       = 3     #takes 3 hits before exploding
+BomberShipLives       = 3     #takes X hits before exploding
 
 #UFO
 UFOMissileSpeed = 50
@@ -111,16 +105,16 @@ UFOShipSpeed    = 50  #also known as the EnemeyShip
 UFOShipMinSpeed = 25
 UFOShipMaxSpeed = 100
 UFOLives    = 1
-ChanceOfUFO = 8000
+ChanceOfUFO = 30000
 
 #HomingMissile 
 UFOFrameRate               = 50  #random animated homing missiles
-HomingMissileFrameRate     = 50  
-HomingMissileInitialSpeed  = 125
-HomingMissileLives         = 5
-HomingMissileSprites       = 12    #number of different sprites tLED.Hat can be homing missiles
-HomingMissileDescentChance = 3     #chance of homing missile  not descending, lower number greater chance of being slow
-ChanceOfHomingMissile      = 12000  #chance of a homing missile appearing
+HomingMissileFrameRate     = 100  
+HomingMissileInitialSpeed  = 75
+HomingMissileLives         = 35
+HomingMissileSprites       = 12     #number of different sprites tLED.Hat can be homing missiles
+HomingMissileDescentChance = 3      #chance of homing missile  not descending, lower number greater chance of being slow
+ChanceOfHomingMissile      = 75000  #chance of a homing missile appearing
 
 
 
@@ -137,15 +131,15 @@ AsteroidPoints       = 5
 WaveStartV           = -5
 WaveMinSpeed         = 5     #The fastest the wave of asteroids can fall
 WaveSpeedRange       = 60    #how much variance in the wave speed min and max
-AsteroidMinSpeed     = 40    #lower the number the faster the movement (based on ticks)
+AsteroidMinSpeed     = 20    #lower the number the faster the movement (based on ticks)
 AsteroidMaxSpeed     = 80  
-AsteroidSpawnChance  = 100  #lower the number the greater the chance
-WaveDropSpeed        = 2000  #how often the next chunk of the wave is dropped
-MovesBetweenWaves    = 2000
+AsteroidSpawnChance  = 100   #lower the number the greater the chance
+WaveDropSpeed        = 1000  #how often the next chunk of the wave is dropped
+MovesBetweenWaves    = 1000
 AsteroidsInWaveMax   = 200
 AsteroidsInWaveMin   = 5 
-AsteroidsToDropMin   = 1     #Number of asteroids to drop at a time
-AsteroidsToDropMax   = 5   #Number of asteroids to drop at a time
+AsteroidsToDropMin   = 3     #Number of asteroids to drop at a time
+AsteroidsToDropMax   = 15   #Number of asteroids to drop at a time
 
 
 ScrollSleep         = 0.025
@@ -945,10 +939,15 @@ def HitBomber(BomberShip):
     SpaceDotScore = SpaceDotScore + BomberPoints
 
     #Erase playfield (ship is 3 dots across)
+    if (h-1 > 0 and h-1 <= LED.HatWidth-1):
+      Playfield[v][h-1] = Empty
+
     if (h > 0 and h <= LED.HatWidth-1):
       Playfield[v][h] = Empty
+
     if (h+1 > 0 and h+1 <= LED.HatWidth-1):
       Playfield[v][h+1] = Empty
+
     if (h+2 > 0 and h+2 <= LED.HatWidth-1):
       Playfield[v][h+2] = Empty
     BomberShip.Erase()
@@ -1623,6 +1622,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
   global SpaceDotMinV
   global SpaceDotMaxV
   global SpaceDotScore
+  
 
   LED.ClearBigLED()
   SpaceDotScore = 0
@@ -1786,7 +1786,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
   LED.CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB,  SpriteFillerRGB,1)
 
 
-
+  LED.SpaceDotGamesPlayed = LED.SpaceDotGamesPlayed + 1
   
   
 
@@ -1911,13 +1911,14 @@ def PlaySpaceDot(GameMaxMinutes = 5):
 
         elif (Key == 'n'):
           Playfield            = HomingMissileSprite.EraseSpriteFromPlayfield(Playfield)
+          HomingMissileSprite     = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
           HomingMissileShip.h     = 32
           HomingMissileShip.v     = 0
           HomingMissileShip.lives = HomingMissileLives
           HomingMissileShip.alive = 1
           HomingMissileSprite.v   = 0
-          HomingMissileSprite     = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
           HomingMissileSprite.framerate = HomingMissileFrameRate
+          HomingMissileShip.speed = HomingMissileInitialSpeed
                          
 
       
@@ -2292,6 +2293,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
         PlayerShip.Explosion.h = PlayerShip.h
         PlayerShip.Explosion.v = PlayerShip.v
         PlayerShip.Explosion.DisplayAnimated()
+        LED.SaveConfigData()
 
         #Kill PlayerShip after explosion animation is complete
         if (PlayerShip.Explosion.currentframe >= LED.PlayerShipExplosion.frames):
@@ -2386,6 +2388,8 @@ def PlaySpaceDot(GameMaxMinutes = 5):
       # Display Score
       #-------------------------------------
       LED.DisplayScore(SpaceDotScore,LED.MedGreen)
+      if(SpaceDotScore > LED.SpaceDotHighScore):
+        LED.SpaceDotHighScore = SpaceDotScore
 
 
      
@@ -2402,7 +2406,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           print("--End of Wave--")
           MovesSinceWaveStop = 0
           Wave.Alive  = True
-
+          LED.SaveConfigData()
 
           PlayerMissileCount = PlayerMissileCount + 1
           if (PlayerMissileCount >= MaxPlayerMissiles):
@@ -2442,7 +2446,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           if(AsteroidMaxSpeed < WaveMinSpeed + WaveSpeedRange ):
             AsteroidMaxSpeed = WaveMinSpeed + WaveSpeedRange
 
-          #LED.DisplayLevel(Wave.WaveCount,LED.MedBlue)
+          LED.DisplayLevel(Wave.WaveCount,LED.MedBlue)
 
 
           #launch next wave of asteroids, maybe show some fancy graphics here
@@ -2463,7 +2467,27 @@ def PlaySpaceDot(GameMaxMinutes = 5):
       #time.sleep(MainSleep / 25)
       
       
+  LED.ClearBigLED()
+  LED.ClearBuffers()
+  CursorH = 0
+  CursorV = 0
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"THE PLANET SURFACE IS DESTROYED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"YOUR EFFORTS WERE VALIANT BUT INSUFFICIENT",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
+  LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"HIGH SCORE: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(LED.SpaceDotHighScore),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.SpaceDotGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"UNTIL NEXT TIME...",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,0,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
+
+  return
 
 
 
@@ -2527,7 +2551,6 @@ def LaunchSpaceDot(GameMaxMinutes = 10000):
 #execute if this script is called direction
 if __name__ == "__main__" :
   while(1==1):
-    LED.LoadConfigData()
     #print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
     LaunchSpaceDot(100000)        
 
