@@ -86,7 +86,7 @@ moves   = 1
 PlayerShipSpeed       = 250
 PlayerShipMinSpeed    = 25
 PlayerShipAbsoluteMinSpeed = 10
-MaxPlayerMissiles     = 5
+MaxPlayerMissiles     = 3
 PlayerMissileCount    = 2
 PlayerMissileSpeed    = 25
 PlayerMissileMinSpeed = 8
@@ -128,18 +128,21 @@ AsteroidLandedPoints = 1
 AsteroidPoints       = 5
 
 #Asteroids
-WaveStartV           = -5
+WaveStartV           = -15
 WaveMinSpeed         = 5     #The fastest the wave of asteroids can fall
-WaveSpeedRange       = 60    #how much variance in the wave speed min and max
+WaveSpeedRange       = 80    #how much variance in the wave speed min and max
 AsteroidMinSpeed     = 20    #lower the number the faster the movement (based on ticks)
 AsteroidMaxSpeed     = 80  
 AsteroidSpawnChance  = 100   #lower the number the greater the chance
-WaveDropSpeed        = 1000  #how often the next chunk of the wave is dropped
-MovesBetweenWaves    = 1000
+WaveDropSpeed        = 200   #how often the next chunk of the wave is dropped
+MovesBetweenWaves    = 500
 AsteroidsInWaveMax   = 200
 AsteroidsInWaveMin   = 5 
 AsteroidsToDropMin   = 3     #Number of asteroids to drop at a time
-AsteroidsToDropMax   = 15   #Number of asteroids to drop at a time
+AsteroidsToDropMax   = 5   #Number of asteroids to drop at a time
+
+#Ground
+GroundDamageLimit    = 10
 
 
 ScrollSleep         = 0.025
@@ -302,7 +305,7 @@ class AsteroidWave(object):
     if (self.TotalAlive <= AsteroidsToDrop):
       AsteroidsToDrop = self.TotalAlive
 
-    print("AsteroidsToDrop:",AsteroidsToDrop,"Asteroids in wave:",self.AsteroidCount)
+    #print("AsteroidsToDrop:",AsteroidsToDrop,"Asteroids in wave:",self.AsteroidCount)
 
 
     #Place asteroids to drop on the playfield
@@ -311,7 +314,7 @@ class AsteroidWave(object):
       if (self.Asteroids[i].alive == 1 and self.Asteroids[i].dropped == 0):
         StartV = 0
         StartH = random.randint(SpaceDotMinH,SpaceDotMaxH)
-        print("Drop Asteroid i:",i)
+        #print("Drop Asteroid i:",i)
         #find unoccupied spot
         while (Playfield[StartV][StartH].name != 'EmptyObject' and tries <= 255):
           tries = tries + 1
@@ -1013,7 +1016,7 @@ def HitGround(Ground):
   Playfield[v][h].g = Ground.g
   Playfield[v][h].b = Ground.b
 
-  print("Ground hit hv:",Ground.h,Ground.v," rgb",Ground.r,Ground.g,Ground.b,' lives:',Ground.lives)
+  #print("Ground hit hv:",Ground.h,Ground.v," rgb",Ground.r,Ground.g,Ground.b,' lives:',Ground.lives)
 
   #calculate score
   SpaceDotScore = SpaceDotScore - AsteroidLandedPoints
@@ -1436,8 +1439,8 @@ def MoveMissile(Missile):
 
 
 
-  if(ScanV == GroundV):
-    print ('missile at ground.  name:',Missile.name,' item:',Item,ScanH,ScanV)
+  #if(ScanV == GroundV):
+    #print ('missile at ground.  name:',Missile.name,' item:',Item,ScanH,ScanV)
     #LED.FlashDot(ScanH,ScanV,0.05)
   
   #BomberShip is special
@@ -1475,7 +1478,7 @@ def MoveMissile(Missile):
 
 
   elif(Item == 'Asteroid' and Missile.name != 'Asteroid'):
-    print('Adding points:',SpaceDotScore,AsteroidPoints)
+    #print('Adding points:',SpaceDotScore,AsteroidPoints)
     SpaceDotScore = SpaceDotScore + AsteroidPoints
 
 
@@ -1579,6 +1582,41 @@ def MoveMissile(Missile):
 
 
 
+def ShowFireworks(FireworksExplosion,count,speed):
+  x = 0
+  h = 0
+  v = 0
+
+  #FireworksExplosion  = copy.deepcopy(LED.PlayerShipExplosion)  
+  
+  for x in range(1,count):
+    h = random.randint(2,LED.HatWidth)
+    v = random.randint(2,LED.HatHeight / 2)
+    FireworksExplosion.Animate(h,v,'forward',speed,StartFrame = 1) 
+    FireworksExplosion.EraseLocation(h,v)       
+
+
+
+
+
+def ExplodeGround(count,speed):
+  x = 0
+  h = 0
+  v = GroundV
+  
+  GroundExplosion = []
+  GroundExplosion.append(LED.BigShipExplosion)
+  GroundExplosion.append(LED.PlayerShipExplosion)
+  GroundExplosion.append(LED.BomberShipExplosion)
+  
+
+  
+  for x in range(1,count):
+    h = random.randint(SpaceDotMinH,SpaceDotMaxH)
+    i = random.randint(0,2)
+    GroundExplosion[i].Animate(h,v,'forward',speed,StartFrame = 1) 
+    #GroundExplosion[i].EraseLocation(h,v)       
+
 
 
 
@@ -1587,9 +1625,24 @@ def RedrawGround(TheGround):
   GroundCount = 0
   for i in range (SpaceDotMinH,SpaceDotMaxH):
     Playfield[GroundV][i] = TheGround[GroundCount]
-    Playfield[GroundV][i].Display()
+    if(Playfield[GroundV][i].r < 255):
+      Playfield[GroundV][i].Display()
     GroundCount = GroundCount + 1
   return
+
+
+def CheckGroundDamage(TheGround):
+  DamageCount = 0
+  for i in range (SpaceDotMinH,SpaceDotMaxH):
+    if (Playfield[GroundV][i].r == 255):
+      DamageCount = DamageCount + 1
+  print ("Ground Damage:",DamageCount)
+
+  if(DamageCount >= GroundDamageLimit):
+    print ("*** PLANET CRUST DESTROYED ***")
+    ExplodeGround(25,0.01)
+  return
+
 
 
 
@@ -1674,6 +1727,9 @@ def PlaySpaceDot(GameMaxMinutes = 5):
   #Explosion Sprites
   PlayerShip.Explosion = copy.deepcopy(LED.PlayerShipExplosion)  
   BomberShip.Explosion = copy.deepcopy(LED.BomberShipExplosion)  
+  
+  
+
 
   BomberShip.Explosion.framerate = 10
   BomberRock.Explosion           = copy.deepcopy(LED.PlayerShipExplosion)  
@@ -1887,6 +1943,9 @@ def PlaySpaceDot(GameMaxMinutes = 5):
       m,r = divmod(moves,PlanetSurfaceSleep)  
       if (r == 0):
         RedrawGround(TheGround)
+        CheckGroundDamage(TheGround)
+
+
 
       #Cleanup debris (leftover pixels from explosions)
       m,r = divmod(moves,DebrisCleanupSleep)
@@ -2406,7 +2465,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           print("--End of Wave--")
           MovesSinceWaveStop = 0
           Wave.Alive  = True
-          LED.SaveConfigData()
+                   
 
           PlayerMissileCount = PlayerMissileCount + 1
           if (PlayerMissileCount >= MaxPlayerMissiles):
@@ -2459,6 +2518,11 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           Wave.CreateAsteroidWave()
           Wave.Alive        = True
           
+
+          m,r = divmod(Wave.WaveCount, 5)
+          if(r == 0):
+            LED.SaveConfigData()
+
           print ("Wave:",Wave.WaveCount,"Asteroids in wave:",Wave.AsteroidCount)
           print("----")
           
@@ -2497,6 +2561,10 @@ def LaunchSpaceDot(GameMaxMinutes = 10000):
   
     
     
+    
+    PlaySpaceDot(GameMaxMinutes)
+
+
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
     #--------------------------------------
