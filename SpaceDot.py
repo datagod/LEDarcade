@@ -86,7 +86,7 @@ moves   = 1
 PlayerShipSpeed       = 250
 PlayerShipMinSpeed    = 25
 PlayerShipAbsoluteMinSpeed = 10
-MaxPlayerMissiles     = 3
+MaxPlayerMissiles     = 5
 PlayerMissileCount    = 2
 PlayerMissileSpeed    = 25
 PlayerMissileMinSpeed = 8
@@ -134,16 +134,18 @@ WaveSpeedRange       = 80    #how much variance in the wave speed min and max
 AsteroidMinSpeed     = 20    #lower the number the faster the movement (based on ticks)
 AsteroidMaxSpeed     = 80  
 AsteroidSpawnChance  = 100   #lower the number the greater the chance
-WaveDropSpeed        = 200   #how often the next chunk of the wave is dropped
+WaveDropSpeed        = 500   #how often the next chunk of the wave is dropped
 MovesBetweenWaves    = 500
 AsteroidsInWaveMax   = 200
 AsteroidsInWaveMin   = 5 
-AsteroidsToDropMin   = 3     #Number of asteroids to drop at a time
+AsteroidsToDropMin   = 3    #Number of asteroids to drop at a time
 AsteroidsToDropMax   = 5   #Number of asteroids to drop at a time
 
 #Ground
 GroundDamageLimit    = 10
-
+GroundExplosions     = 25
+DamageR              = 50
+DamageG              = 5
 
 ScrollSleep         = 0.025
 MainSleep           = 0.05
@@ -160,6 +162,188 @@ MonthH,      MonthV,      MonthRGB      = 0,12, (0,20,200)
 DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 2,18, (100,100,0)
 SpriteFillerRGB = (0,4,0)
 CheckClockSpeed = 50
+
+
+
+
+
+
+#------------------------------
+#-- Ship and Missile objects --
+#------------------------------
+
+
+PlayerShipR = LED.SDMedBlueR
+PlayerShipG = LED.SDMedBlueG
+PlayerShipB = LED.SDMedBlueB
+PlayerMissileR = LED.SDMedWhiteR
+PlayerMissileG = LED.SDMedWhiteG
+PlayerMissileB = LED.SDMedWhiteB
+
+
+#def __init__(h,v,r,g,b,direction,scandirection,speed,alive,lives,name,score,exploding):
+Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
+
+
+#define objects
+#def __init__(self,h,v,r,g,b,direction,scandirection,speed,alive,lifes,name,score,exploding):
+PlayerShip = LED.Ship(3 + SpaceDotMinH,SpaceDotMaxV - 2,PlayerShipR,PlayerShipG,PlayerShipB,4,1,PlayerShipSpeed,1,3,'Player1', 0,0)
+PlayerShip.lives = PlayerShipLives
+
+
+EnemyShip  = LED.Ship(SpaceDotMinH,0,LED.SDMedPurpleR,LED.SDMedPurpleG,LED.SDMedPurpleB,4,3,UFOShipSpeed,0,3,'UFO', 0,0)
+EnemyShip.lives = UFOLives
+Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
+  
+
+
+#Make a bomber rock
+BomberRock = LED.Ship(-1,-1,200,0,0,3,3,15,0,1,'BomberRock', 0,0)
+BomberRock.alive = 0
+BomberRock.speed = BomberRockSpeed
+BomberRock.exploding = 0
+
+
+
+UFOMissile1   = LED.Ship(-1,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,3,3,UFOMissileSpeed,0,0,'UFOMissile',0,0)
+UFOMissile2   = LED.Ship(-1,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,3,3,UFOMissileSpeed,0,0,'UFOMissile',0,0)
+UFOMissile3   = LED.Ship(-1,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,3,3,UFOMissileSpeed,0,0,'UFOMissile',0,0)
+
+UFOMissile1.Explosion = copy.deepcopy(LED.AsteroidExplosion)
+UFOMissile2.Explosion = copy.deepcopy(LED.AsteroidExplosion)
+UFOMissile3.Explosion = copy.deepcopy(LED.AsteroidExplosion)
+
+
+
+# BomberShip records the location and status
+# BomberSprite is the color animated sprite of the ship
+
+#(self,h,v,name,width,height,frames,currentframe,framerate,grid):
+BomberSprite = LED.ColorAnimatedSprite(h=0, v=0, name="BomberShip", width=3, height=1, frames=4, framerate=25,grid=[])
+BomberSprite.grid.append(
+  [ 9, 9, 9 ]
+)
+BomberSprite.grid.append(
+  [ 9,10, 9 ]
+)
+BomberSprite.grid.append(
+  [ 9,11, 9 ]
+)
+BomberSprite.grid.append(
+  [ 9,10, 9 ]
+)
+
+BomberShip = LED.Ship(
+  h=0,
+  v=0,
+  r=0,g=0,b=0,
+  direction=2,scandirection=3,
+  speed=BomberShipSpeed,alive=0,lives=BomberShipLives,name="BomberShip",score=0,exploding=0
+) 
+
+
+
+BomberShip.h = -2 + SpaceDotMinH
+BomberShip.v =  SpaceDotMinV
+BomberShip.alive = 0
+#HomingMissileShip.h =  SpaceDotMinH + (int(SpaceDotMinH / 2))
+#HomingMissileShip.v =  SpaceDotMinV
+
+
+
+#Explosion Sprites
+PlayerShip.Explosion = copy.deepcopy(LED.PlayerShipExplosion)  
+BomberShip.Explosion = copy.deepcopy(LED.BomberShipExplosion)  
+
+
+
+
+BomberShip.Explosion.framerate = 10
+BomberRock.Explosion           = copy.deepcopy(LED.PlayerShipExplosion)  
+BomberRock.Explosion.framerate = 2
+BomberRock.Explosion.h         = -1
+BomberRock.Explosion.v         = -1
+
+#HomingMissileShipExplosion    = copy.deepcopy(PlayerShipExplosion)  
+HomingMissileShipExplosion    = copy.deepcopy(LED.BigShipExplosion)  
+
+
+
+
+
+#Custom Sprite List
+HomingMissileSpriteList = []
+
+
+#HomingMissileSpriteList.append(ChickenRunning) #chicken needs work
+HomingMissileSpriteList.append(LED.SatelliteSprite)
+HomingMissileSpriteList.append(LED.SatelliteSprite2)
+HomingMissileSpriteList.append(LED.SatelliteSprite3)
+HomingMissileSpriteList.append(LED.SatelliteSprite4)
+HomingMissileSpriteList.append(LED.SatelliteSprite5)
+HomingMissileSpriteList.append(LED.SatelliteSprite6)
+HomingMissileSpriteList.append(LED.SatelliteSprite7)
+HomingMissileSpriteList.append(LED.SmallUFOSprite)
+HomingMissileSpriteList.append(LED.SmallUFOSprite2)
+HomingMissileSpriteList.append(LED.SmallUFOSprite3)
+HomingMissileSpriteList.append(LED.SmallUFOSprite4)
+HomingMissileSpriteList.append(LED.SmallUFOSprite5)
+HomingMissileSpriteList.append(LED.SmallUFOSprite6)
+HomingMissileSpriteList.append(LED.SmallUFOSprite7)
+HomingMissileSpriteList.append(LED.MediumUFOSprite)
+HomingMissileSpriteList.append(LED.MediumUFOSprite2)
+HomingMissileSpriteList.append(LED.MediumUFOSprite3)
+HomingMissileSpriteList.append(LED.MediumUFOSprite4)
+HomingMissileSpriteList.append(LED.LargeUFOSprite1)
+HomingMissileSpriteList.append(LED.LargeUFOSprite2)
+HomingMissileSpriteList.append(LED.LargeUFOSprite3)
+HomingMissileSpriteList.append(LED.LargeUFOSprite4)
+HomingMissileSpriteList.append(LED.LargeUFOSprite5)
+HomingMissileSpriteList.append(LED.LargeUFOSprite6)
+HomingMissileSpriteList.append(LED.WideUFOSprite1)
+HomingMissileSprites = len(HomingMissileSpriteList)
+
+HomingMissileShip    = LED.Ship(SpaceDotMinH,SpaceDotMaxV - 1,PlayerShipR,PlayerShipG,PlayerShipB,4,1,8,1,3,'HomingMissile', 0,0)
+HomingMissileSprite  = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
+HomingMissileSprite.framerate = HomingMissileFrameRate
+
+
+HomingMissileSprite   = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
+HomingMissileSprite.h = -1
+HomingMissileSprite.v = -1
+HomingMissileSprite.direction     = 5
+HomingMissileSprite.scandirection = 3
+HomingMissileSprite.speed = HomingMissileInitialSpeed
+HomingMissileSprite.alive = 0
+HomingMissileSprite.lives = HomingMissileLives
+HomingMissileSprite.name  = "HomingMissile"
+HomingMissileSprite.score = 0
+HomingMissileSprite.exploding = 0
+HomingMissileSprite.framerate = HomingMissileFrameRate
+
+
+
+
+
+
+
+#Make an array of PlayerMissiles
+PlayerMissiles = []
+for i in range(0,PlayerMissileCount):
+  print ("Making PlayerMissile:",i)
+  r,g,b = (200,200,200)
+  PlayerMissiles.append(LED.Ship(-1,-1,PlayerMissileR,PlayerMissileG,PlayerMissileB,1,1,5,0,1,'PlayerMissile', 0,0))
+  PlayerMissiles[i].alive = 0
+  PlayerMissiles[i].exploding = 0
+  PlayerMissiles[i].Explosion = copy.deepcopy(LED.SmallExplosion)
+  PlayerMissiles[i].Explosion.alive = 0
+  PlayerMissiles[i].Explosion.exploding = 0
+  PlayerMissiles[i].speed = PlayerMissileSpeed
+  PlayerMissiles[i].h = -1
+  PlayerMissiles[i].v = -1
+
+
+
 
 
 
@@ -350,51 +534,6 @@ def CleanupDebris(StartH,EndH,StartV,EndV,Playfield):
   
 
 
-PlayerShipR = LED.SDMedBlueR
-PlayerShipG = LED.SDMedBlueG
-PlayerShipB = LED.SDMedBlueB
-PlayerMissileR = LED.SDMedWhiteR
-PlayerMissileG = LED.SDMedWhiteG
-PlayerMissileB = LED.SDMedWhiteB
-
-
-#def __init__(h,v,r,g,b,direction,scandirection,speed,alive,lives,name,score,exploding):
-Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
-
-
-UFOMissile1   = LED.Ship(-1,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,3,3,UFOMissileSpeed,0,0,'UFOMissile',0,0)
-UFOMissile2   = LED.Ship(-1,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,3,3,UFOMissileSpeed,0,0,'UFOMissile',0,0)
-UFOMissile3   = LED.Ship(-1,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,3,3,UFOMissileSpeed,0,0,'UFOMissile',0,0)
-#PlayerMissile1 = LED.Ship(-0,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,1,1,5,0,0,'PlayerMissile', 0,0)
-#PlayerMissile2 = LED.Ship(-0,-0,PlayerMissileR,PlayerMissileG,PlayerMissileB,1,1,5,0,0,'PlayerMissile', 0,0)
-
-
-
-# BomberShip records the location and status
-# BomberSprite is the color animated sprite of the ship
-
-#(self,h,v,name,width,height,frames,currentframe,framerate,grid):
-BomberSprite = LED.ColorAnimatedSprite(h=0, v=0, name="BomberShip", width=3, height=1, frames=4, framerate=25,grid=[])
-BomberSprite.grid.append(
-  [ 9, 9, 9 ]
-)
-BomberSprite.grid.append(
-  [ 9,10, 9 ]
-)
-BomberSprite.grid.append(
-  [ 9,11, 9 ]
-)
-BomberSprite.grid.append(
-  [ 9,10, 9 ]
-)
-
-BomberShip = LED.Ship(
-  h=0,
-  v=0,
-  r=0,g=0,b=0,
-  direction=2,scandirection=3,
-  speed=BomberShipSpeed,alive=0,lives=BomberShipLives,name="BomberShip",score=0,exploding=0
-) 
 
 
 
@@ -417,89 +556,7 @@ BomberShip = LED.Ship(
 
 
 
-#Make a bomber rock
-BomberRock = LED.Ship(-1,-1,200,0,0,3,3,15,0,1,'BomberRock', 0,0)
-BomberRock.alive = 0
-BomberRock.speed = BomberRockSpeed
-BomberRock.exploding = 0
 
-
-#Make UFOMissile 
-UFOMissile1.Explosion = copy.deepcopy(LED.AsteroidExplosion)
-UFOMissile2.Explosion = copy.deepcopy(LED.AsteroidExplosion)
-UFOMissile3.Explosion = copy.deepcopy(LED.AsteroidExplosion)
-
-
-
-#Make an array of PlayerMissiles
-PlayerMissiles = []
-for i in range(0,PlayerMissileCount):
-  print ("Making PlayerMissile:",i)
-  r,g,b = (200,200,200)
-  PlayerMissiles.append(LED.Ship(-1,-1,PlayerMissileR,PlayerMissileG,PlayerMissileB,1,1,5,0,1,'PlayerMissile', 0,0))
-  PlayerMissiles[i].alive = 0
-  PlayerMissiles[i].exploding = 0
-  PlayerMissiles[i].Explosion = copy.deepcopy(LED.SmallExplosion)
-  PlayerMissiles[i].Explosion.alive = 0
-  PlayerMissiles[i].Explosion.exploding = 0
-  PlayerMissiles[i].speed = PlayerMissileSpeed
-  PlayerMissiles[i].h = -1
-  PlayerMissiles[i].v = -1
-
-
-
-
-
-#Custom Sprite List
-HomingMissileSpriteList = []
-#HomingMissileSpriteList.append(FrogSprite)
-#HomingMissileSpriteList.append(DropShip)
-#HomingMissileSpriteList.append(SpaceInvader)
-
-#ChickenRunning.framerate = 25
-
-#HomingMissileSpriteList.append(ChickenRunning) #chicken needs work
-HomingMissileSpriteList.append(LED.SatelliteSprite)
-HomingMissileSpriteList.append(LED.SatelliteSprite2)
-HomingMissileSpriteList.append(LED.SatelliteSprite3)
-HomingMissileSpriteList.append(LED.SatelliteSprite4)
-HomingMissileSpriteList.append(LED.SatelliteSprite5)
-HomingMissileSpriteList.append(LED.SatelliteSprite6)
-HomingMissileSpriteList.append(LED.SatelliteSprite7)
-HomingMissileSpriteList.append(LED.SmallUFOSprite)
-HomingMissileSpriteList.append(LED.SmallUFOSprite2)
-HomingMissileSpriteList.append(LED.SmallUFOSprite3)
-HomingMissileSpriteList.append(LED.SmallUFOSprite4)
-HomingMissileSpriteList.append(LED.SmallUFOSprite5)
-HomingMissileSpriteList.append(LED.SmallUFOSprite6)
-HomingMissileSpriteList.append(LED.SmallUFOSprite7)
-HomingMissileSpriteList.append(LED.MediumUFOSprite)
-HomingMissileSpriteList.append(LED.MediumUFOSprite2)
-HomingMissileSpriteList.append(LED.MediumUFOSprite3)
-HomingMissileSpriteList.append(LED.MediumUFOSprite4)
-HomingMissileSpriteList.append(LED.LargeUFOSprite1)
-HomingMissileSpriteList.append(LED.LargeUFOSprite2)
-HomingMissileSpriteList.append(LED.LargeUFOSprite3)
-HomingMissileSpriteList.append(LED.LargeUFOSprite4)
-HomingMissileSpriteList.append(LED.LargeUFOSprite5)
-HomingMissileSpriteList.append(LED.LargeUFOSprite6)
-HomingMissileSpriteList.append(LED.WideUFOSprite1)
-HomingMissileSprites = len(HomingMissileSpriteList)
-
-
-
-HomingMissileSprite   = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
-HomingMissileSprite.h = -1
-HomingMissileSprite.v = -1
-HomingMissileSprite.direction     = 5
-HomingMissileSprite.scandirection = 3
-HomingMissileSprite.speed = HomingMissileInitialSpeed
-HomingMissileSprite.alive = 0
-HomingMissileSprite.lives = HomingMissileLives
-HomingMissileSprite.name  = "HomingMissile"
-HomingMissileSprite.score = 0
-HomingMissileSprite.exploding = 0
-HomingMissileSprite.framerate = HomingMissileFrameRate
 
 
 
@@ -981,8 +1038,9 @@ def HitHomingMissile(HomingMissileShip,HomingMissileSprite):
 def HitPlayerShip(PlayerShip):
   if (PlayerShip.lives > 0):
     PlayerShip.lives = PlayerShip.lives - 1
+    PlayerShip.exploding = 1
 
-  if (PlayerShip.lives == 0):
+  else:
     PlayerShip.exploding = 1
     PlayerShip.alive     = 0
     #Playfield[Playership.v][Playership.h] = EmptyObject()
@@ -1001,13 +1059,13 @@ def HitGround(Ground):
 
   #if (Ground.lives > 0):
   #  Ground.lives = Ground.lives - 1
-  Ground.r = Ground.r +25
-  Ground.g = Ground.g +5
+  Ground.r = Ground.r + DamageR
+  Ground.g = Ground.g + DamageG
   Ground.b = Ground.b = 0
 
   if (Ground.r >= 255):
     Ground.r = 255
-  if (Ground.g >= 255):
+  if (Ground.g >= 150):
     Ground.g = 0
 
 
@@ -1608,7 +1666,6 @@ def ExplodeGround(count,speed):
   GroundExplosion.append(LED.BigShipExplosion)
   GroundExplosion.append(LED.PlayerShipExplosion)
   GroundExplosion.append(LED.BomberShipExplosion)
-  
 
   
   for x in range(1,count):
@@ -1632,6 +1689,8 @@ def RedrawGround(TheGround):
 
 
 def CheckGroundDamage(TheGround):
+  global PlayerShip
+  
   DamageCount = 0
   for i in range (SpaceDotMinH,SpaceDotMaxH):
     if (Playfield[GroundV][i].r == 255):
@@ -1640,7 +1699,9 @@ def CheckGroundDamage(TheGround):
 
   if(DamageCount >= GroundDamageLimit):
     print ("*** PLANET CRUST DESTROYED ***")
-    ExplodeGround(25,0.01)
+    ExplodeGround(GroundExplosions,0.01)
+    PlayerShip.alive = 0
+    PlayerShip.lives = 0
   return
 
 
@@ -1659,6 +1720,9 @@ def CenterSpriteOnShip(Sprite,Ship):
 def PlaySpaceDot(GameMaxMinutes = 5):
   
   
+  global PlayerShip
+  global EnemyShip
+  global BomberShip
   global PlayerShipSpeed
   global Playfield
   global PlayerMissiles
@@ -1669,6 +1733,8 @@ def PlaySpaceDot(GameMaxMinutes = 5):
   global PlayerShipMaxSpeed
   global AsteroidMinSpeed
   global AsteroidMaxSpeed
+  global HomingMissileSpriteList
+  global HomingMissileSprite
 
   global SpaceDotMinH
   global SpaceDotMaxH
@@ -1703,43 +1769,9 @@ def PlaySpaceDot(GameMaxMinutes = 5):
 
 
 
-  #define objects
-  #def __init__(self,h,v,r,g,b,direction,scandirection,speed,alive,lifes,name,score,exploding):
-  PlayerShip = LED.Ship(3 + SpaceDotMinH,SpaceDotMaxV - 2,PlayerShipR,PlayerShipG,PlayerShipB,4,1,PlayerShipSpeed,1,3,'Player1', 0,0)
-  PlayerShip.lives = PlayerShipLives
-  
-
-  EnemyShip  = LED.Ship(SpaceDotMinH,0,LED.SDMedPurpleR,LED.SDMedPurpleG,LED.SDMedPurpleB,4,3,UFOShipSpeed,0,3,'UFO', 0,0)
-  EnemyShip.lives = UFOLives
-  Empty      = LED.Ship(-1,-1,0,0,0,0,1,0,0,0,'EmptyObject',0,0)
-   
-  BomberShip.h = -2 + SpaceDotMinH
-  BomberShip.v =  SpaceDotMinV
-  BomberShip.alive = 0
-  #HomingMissileShip.h =  SpaceDotMinH + (int(SpaceDotMinH / 2))
-  #HomingMissileShip.v =  SpaceDotMinV
-  
-  HomingMissileShip    = LED.Ship(SpaceDotMinH,SpaceDotMaxV - 1,PlayerShipR,PlayerShipG,PlayerShipB,4,1,8,1,3,'HomingMissile', 0,0)
-  HomingMissileSprite  = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
-  HomingMissileSprite.framerate = HomingMissileFrameRate
-
-
-  #Explosion Sprites
-  PlayerShip.Explosion = copy.deepcopy(LED.PlayerShipExplosion)  
-  BomberShip.Explosion = copy.deepcopy(LED.BomberShipExplosion)  
   
   
-
-
-  BomberShip.Explosion.framerate = 10
-  BomberRock.Explosion           = copy.deepcopy(LED.PlayerShipExplosion)  
-  BomberRock.Explosion.framerate = 2
-  BomberRock.Explosion.h         = -1
-  BomberRock.Explosion.v         = -1
-
-  #HomingMissileShipExplosion    = copy.deepcopy(PlayerShipExplosion)  
-  HomingMissileShipExplosion    = copy.deepcopy(LED.BigShipExplosion)  
-
+  
   CenterSpriteOnShip(HomingMissileShipExplosion,HomingMissileShip)
   #HomingMissileShipExplosion.h  = -1
   #HomingMissileShipExplosion.v  = -1
@@ -1969,7 +2001,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           time.sleep(2)
 
         elif (Key == 'n'):
-          Playfield            = HomingMissileSprite.EraseSpriteFromPlayfield(Playfield)
+          Playfield               = HomingMissileSprite.EraseSpriteFromPlayfield(Playfield)
           HomingMissileSprite     = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
           HomingMissileShip.h     = 32
           HomingMissileShip.v     = 0
@@ -2562,7 +2594,7 @@ def LaunchSpaceDot(GameMaxMinutes = 10000):
     
     
     
-    PlaySpaceDot(GameMaxMinutes)
+    #PlaySpaceDot(GameMaxMinutes)
 
 
     #--------------------------------------
