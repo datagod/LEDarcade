@@ -10214,9 +10214,6 @@ def CheckBoundary(h,v):
 
 
 
-
-
-
   
 
 
@@ -10737,6 +10734,94 @@ def FlashDot7(h,v):
 
 
   
+def DebugPlayfield(Playfield,width,height):
+  #Show contents of playfield - in text window, for debugging purposes
+    
+  print ("Map width height:",width,height)
+
+  
+  print ("=======================================")
+
+  for V in range(0,height):
+    for H in range (0,width):
+       
+      name = Playfield[V][H].name
+      #print ("Display: ",name,V,H)
+      if (name == 'EmptyObject'):
+        print ('--',end='')
+
+      #draw border walls
+      elif (V == 0 or V == height-1):
+        print(' _',end='')
+      
+      #draw border walls
+      elif (H == 0 or H == width-1):
+        print(' |',end='')
+        
+      #draw interior
+      elif (name == 'Wall'):
+        print (' #',end='')
+
+      elif (name == 'Ground'):
+        print (' G',end='')
+
+      #draw asteroid
+      elif (name == 'Asteroid'):
+        if (Playfield[V][H].alive == 1):
+          print (' A',end='')
+        else:
+          print ('*a')
+        
+        FlashDot(H,V,0.01)
+
+
+      #draw asteroid
+      elif (name == 'UFO'):
+        print (' U',end='')
+
+      #draw asteroid
+      elif (name == 'BomberShip'):
+        print (' B',end='')
+
+      #draw UFOMissile
+      elif (name == 'UFOMissile'):
+        print (' m',end='')
+
+      #draw UFOMissile
+      elif (name == 'PlayerMissile'):
+        print (' p',end='')
+
+      #draw UFOMissile
+      elif (name == 'Explosion'):
+        print (' E',end='')
+
+      #draw HomingMissile
+      elif (name == 'HomingMissile'):
+        print (' H',end='')
+
+
+
+      #draw interior
+      elif (name == 'WallBreakable'):
+        print (' o',end='')
+
+      elif (Playfield[V][H].alive == 1):
+        print (' ?',end='')
+        #print ("Name?:",name," alive:",Playfield[V][H].alive)
+      elif (Playfield[V][H].alive == 0):
+        print (' !',end='')
+        #print ("Name!:",name," alive:",Playfield[V][H].alive)
+      else:
+        print (' X',end='')
+        #print ("NameX:",name," alive:",Playfield[V][H].alive)
+
+    print('')
+  print ("=============================================")
+  time.sleep(1)
+
+  return
+
+
 
   
 
