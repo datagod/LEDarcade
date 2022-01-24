@@ -1301,6 +1301,10 @@ def LaunchTron(GameMaxMinutes = 10000):
   LED.LoadConfigData()
 
 
+  Message1 = LED.TronGetRandomMessage(MessageType = 'SHORTGAME')
+  Message2 = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
+
+
   LED.ClearBigLED()
   LED.ClearBuffers()
   CursorH = 0
@@ -1352,11 +1356,6 @@ def LaunchTron(GameMaxMinutes = 10000):
 
 
 
-
-
-
-  #Message1 = LED.TronGetRandomMessage(MessageType = 'SHORTGAME')
-  #Message2 = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
     
 
 
