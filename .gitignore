@@ -129,8 +129,9 @@ dmypy.json
 .pyre/
 
 #LEDArcade Stuff
+ClockConfig.ini
 KeyConfig.ini
 go2.sh
 MyConfig.ini
-ClockConfig.ini
+ClockConfig2.ini
 ClockConfig.ini

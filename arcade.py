@@ -80,7 +80,7 @@ def LaunchArcade(GameMaxMinutes = 10000):
       ShadowRGB     = LED.ShadowGreen,
       ZoomFactor    = 3,
       AnimationDelay= 30,
-      RunMinutes = 30 )
+      RunMinutes = 5 )
 
     DI.LaunchDotInvaders(GameMaxMinutes)
 
@@ -97,7 +97,7 @@ def LaunchArcade(GameMaxMinutes = 10000):
       ShadowRGB     = LED.ShadowGreen,
       ZoomFactor    = 3,
       AnimationDelay= 30,
-      RunMinutes = 30 )
+      RunMinutes = 5 )
 
 
     SD.LaunchSpaceDot(GameMaxMinutes)
