@@ -13,6 +13,7 @@ import LEDarcade   as LED
 import DotInvaders as DI
 import Outbreak    as OB
 import SpaceDot    as SD
+import Tron        as TR
 import time
       
 
@@ -68,9 +69,40 @@ def LaunchArcade(GameMaxMinutes = 10000):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
+    TR.LaunchTron(GameMaxMinutes)
+
+    LED.DisplayDigitalClock(
+      ClockStyle = 1,
+      CenterHoriz = True,
+      v   = 1, 
+      hh  = 24,
+      RGB = LED.LowGreen,
+      ShadowRGB     = LED.ShadowGreen,
+      ZoomFactor    = 3,
+      AnimationDelay= 30,
+      RunMinutes = 30 )
+
     DI.LaunchDotInvaders(GameMaxMinutes)
+
+    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
+
     OB.LaunchOutbreak(GameMaxMinutes)
+
+    LED.DisplayDigitalClock(
+      ClockStyle = 1,
+      CenterHoriz = True,
+      v   = 1, 
+      hh  = 24,
+      RGB = LED.LowGreen,
+      ShadowRGB     = LED.ShadowGreen,
+      ZoomFactor    = 3,
+      AnimationDelay= 30,
+      RunMinutes = 30 )
+
+
     SD.LaunchSpaceDot(GameMaxMinutes)
+
+    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
         
 
 
