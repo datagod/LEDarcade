@@ -150,6 +150,7 @@ EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
 Canvas = TheMatrix.CreateFrameCanvas()
 Canvas.Fill(0,0,0)
 
+DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
 
 
 
@@ -190,6 +191,28 @@ AsteroidsInWaveMin   = 5
 
 
 
+
+#----------------------------
+#-- SuperWorms             --
+#----------------------------
+SuperWormSleep = 0.015
+EraseSpeed     = 0.001
+SpeedUpSpeed   = 75              #The lower the number, the more often a speedup is applied  (e.g. every 1 out of 200 ticks)
+StartSpeedHigh =  1              #the lower the number, the faster it goes (e.g. move every X ticks)
+StartSpeedLow  =  7              #the lower the number, the faster it goes (e.g. move every X ticks)
+ResurrectionChance  = 100000     #what is chance of new worm being added (1 in X)
+ResurrectionTries   = 20         #maximum number of tries when trying to find an empty location for the resurrected superworm
+MinSleepTime        = 0.001
+ResurrectedMaxTrail = 3          #when resurected, you get this for the trail length
+StartMaxTrail       = 50         #Trail length at the start of the round
+IncreaseTrailLengthSpeed = 10    #how often to increase length of trail (1 in X chance)
+MaxTrailLength           = 2048  #Maximum length of the trail
+SuperWormCount           = 8     #maximum number of worms in the worm array
+SuperWormStartMinH = 25
+SuperWormStartMaxH = 63
+SuperWormStartMinV = 0
+SuperWormStartMaxV = 25
+SuperWormLevels    = 3           #number of levels
 
 
 
@@ -2665,6 +2688,81 @@ class ColorAnimatedSprite(object):
 
 
 
+
+class Maze(object):
+  def __init__(self, h,v, width, height):
+    self.h         = h
+    self.v         = v
+    self.width     = width
+    self.height    = height
+    self.ColorList = {}
+    self.TypeList  = {}
+    self.map       = []
+    self.StartHV   = []   #Start positions for creatures (e.g. ghosts, pacdot)
+    
+
+                 
+  def LoadMap(self):
+    mapchar = ""
+    RGB     = (0,0,0)
+    dottype = ""
+    NumDots = 0
+    r       = 0
+    g       = 0
+    b       = 0
+
+
+    for y in range (0,self.height):
+      print ("PacMaze.map[",y,"] =",self.map[y])
+
+
+    #read the map string and process one character at a time
+    #decode the color and type of dot to place
+    for y in range (0,self.height):
+      for x in range (0,self.width):
+        mapchar = self.map[y][x]
+        RGB     =  self.ColorList.get(mapchar)
+        dottype =  self.TypeList.get(mapchar)
+        setpixelRGB(self.h+x,self.v+y,RGB)
+        #print ("RGB",RGB)
+        r,g,b = RGB
+        
+
+        if (dottype == "dot"):
+          NumDots = NumDots + 1
+          DotMatrix[self.h + x][self.v + y] = 1
+          #FlashDot5(self.h + x,self.v + y,0.01)
+        elif (dottype == "pill"):
+          NumDots = NumDots + 1
+          DotMatrix[self.h + x][self.v + y] = 2
+          #FlashDot5(self.h + x,self.v + y,0.01)
+
+      
+    return DotMatrix, NumDots;  
+
+  def GetStartingPositions(self):
+    #Start pacdot in middle of bottom row, ghosts in middle
+    PacHV = (0,0)
+    Ghost1HV = (0,0)
+    Ghost2HV = (0,0)
+    Ghost3HV = (0,0)
+    Ghost4HV = (0,0)
+
+    PacHV    = self.h + (self.width // 2)   , self.v + (self.height   -2),
+    Ghost1HV = self.h + (self.width // 2) -2, self.v + (self.height // 2),
+    Ghost2HV = self.h + (self.width // 2) -1, self.v + (self.height // 2),
+    Ghost3HV = self.h + (self.width // 2)   , self.v + (self.height // 2),
+    Ghost4HV = self.h + (self.width // 2) +1, self.v + (self.height // 2)
+
+    #print (PacHV)
+
+    return (PacHV, Ghost1HV,Ghost2HV,Ghost3HV,Ghost4HV)
+           
+      
+    
+
+
+  
 
 
 
@@ -13585,6 +13683,19 @@ def TurnRight(direction):
   #print "  new: ",direction
   return direction;
     
+
+def TurnLeftOrRight(direction):
+  WhichWay = random.randint(1,2)
+  #print ("WhichWay:",WhichWay)
+  if (WhichWay == 1):
+    #print ("turning left")
+    direction = TurnLeft(direction)
+  else:
+    #print ("turning right")
+    direction = TurnRight(direction)
+    
+  return direction;
+
 
 
 
