@@ -87,7 +87,7 @@ OriginalReplicationRate   = 5000
 replicationrate           = OriginalReplicationRate
 FreakoutReplicationRate   = 10     #new replication rate when a virus freaksout
 MaxVirusMoves             = 100000 #after this many moves the level is over
-FreakoutMoves             = 25000  #after this many moves, the viruses will replicate and mutate at a much greater rate
+FreakoutMoves             = 10000  #after this many moves, the viruses will replicate and mutate at a much greater rate
 VirusMoves                = 0      #used to count how many times the viruses have moved
 ClumpingSpeed             = 10     #This modifies the speed of viruses that contact each other
 ReplicationSpeed          = 5      #When a virus replicates, it will be a bit slower.  This number is added to current speed.
@@ -107,15 +107,15 @@ ChanceOfTurningIntoFood   = 5      #Random chance of a dying mutating virus to t
 ChanceOfTurningIntoWall   = 5      #Random chance of a dying mutating virus to turn into food
 VirusFoodWallLives        = 5      #Lives of food before it gets eaten and disappears
 AuditSpeed                = 100    #Every X tick, an audit text window is displayed for debugging purposes
-EatingSpeedAdjustment     = -10    #When a virus eats, it gets full and slows down             
+EatingSpeedAdjustment     = -1     #When a virus eats, it gets full and slows down             
 SpeedIncrements           = 50     #how many chunks the speed range is cut up into, for increasing gradually
-FoodBrightnessSteps       = 5      #each time a food loses life, it gets brighter by this many units
+FoodBrightnessSteps       = 25     #each time a food loses life, it gets brighter by this many units
 ChanceToStopEating        = 100    #chance that a virus decides to stop eating and carry on with life
-ChanceOfRandomFood        = 10000  #chance that random food will show up, which will draw the viruses to it
+ChanceOfRandomFood        = 750000  #chance that random food will show up, which will draw the viruses to it
 MapOffset                 = 20     #how many pixels from the left screen does the map really start (so we don't overwrite clocks and other things)
-BigFoodLives              = 1000   #lives for the big food particle
+BigFoodLives              = 500    #lives for the big food particle
 BigFoodRGB                = (255,0,0)
-MaxRandomViruses          = 5      #maximum number of random viruses to place on big food maps
+MaxRandomViruses          = 10     #maximum number of random viruses to place on big food maps
 VirusMaxCount             = 1000   #maximum number of unique virus strains allowed
 
 
@@ -500,13 +500,13 @@ class VirusWorld(object):
       for Z in range (Z1,Z2):
         LED.TheMatrix.Clear()
         self.DisplayWindow(h,v,Z)
-        time.sleep(ZoomSleep)
+        #time.sleep(ZoomSleep)
         
     else:
       for Z in reversed(range(Z2,Z1)):
         LED.TheMatrix.Clear()        
         self.DisplayWindow(h,v,Z)
-        time.sleep(ZoomSleep)
+        #time.sleep(ZoomSleep)
         
 
 
@@ -1678,6 +1678,7 @@ def MoveVirus(Virus,Playfield):
 def CreateDinnerPlate(MapLevel):
   global mutationrate
   
+  MapLevel = 11
 
   print ("CreateDinnerPlate Map: ",MapLevel)
 
@@ -2495,6 +2496,103 @@ def CreateDinnerPlate(MapLevel):
 
 
 
+
+
+  if (MapLevel == 11):
+    
+    DinnerPlate = VirusWorld(name='BigFood',
+                               width        = 66, #we want the playfield to be 1 pixel larger on all sides than the display
+                               height       = 34,
+                               Map          = [[]],
+                               Playfield    = [[]],
+                               CurrentRoomH = 1,
+                               CurrentRoomV = 1,
+                               DisplayH     = 1,
+                               DisplayV     = 1,
+                               mutationrate = mutationrate,
+                               replicationrate = replicationrate,
+                               mutationdeathrate = mutationdeathrate,
+                               VirusStartSpeed = VirusStartSpeed)
+
+
+    TheMap.ColorList = {
+      ' ' : (  0,  0,  0),
+      '-' : ( 10, 10, 10),  
+      '.' : ( 40, 40, 40),
+      'o' : ( 70, 70, 70),
+      'O' : ( 100,100,100),
+      '|' : (  0,  0,  0),
+      '*' : (  5,  5,  5),
+      '1' : (0  ,150,  0),
+      '2' : (150,  0,  0),
+      '3' : (150,100,  0),
+      '4' : (  0,  0,100),
+      '5' : (200,  0, 50),
+      '6' : (125,185,  0),
+      '7' : (200,  0,200),
+      '8' : ( 50,150, 75)
+    }
+
+    TheMap.TypeList = {
+      ' ' : 'EmptyObject',
+      '-' : 'wall',
+      '.' : 'wall',
+      'o' : 'wall',
+      'O' : 'wall',
+      '@' : 'wall',
+      '#' : 'wall',
+      '$' : 'wall',
+      '#' : 'wall',
+      '*' : 'wallbreakable',
+      '|' : 'wall',
+      '1' : 'virus',
+      '2' : 'virus',
+      '3' : 'virus',
+      '4' : 'virus',
+      '5' : 'virus',
+      '6' : 'virus',
+      '7' : 'virus',
+      '8' : 'virus'
+    }
+
+
+    TheMap.map= (
+      #0         1   ......2.........3.........4.........5.........6....65    
+      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
+      "O            |111111111                                2222222222O",
+      "O            |11111111                                  222222222O",
+      "O            |1111111                                    22222222O",
+      "O            |111111                                      2222222O",
+      "O            |11111                                        222222O",
+      "O            |1111    ************************************* 22222O",
+      "O            |111     *-----------------------------------*  2222O",
+      "O            |11      *-.................................-*   222O", 
+      "O            |1       *-.ooooooooooooooooooooooooooooooo.-*    22O", 
+      "O            |        *-.o.............................o.-*     2O", 
+      "O            |        *-.o.---------------------------.o.-*      O",
+      "O            |        *-.o.-  5555555555555555555    -.o.-*      O", 
+      "O            |        *-.o.-  5555555555555555555    -.o.-*      O",
+      "O            |        *-.o.-----------****------------.o.-*      O", 
+      "O            |        *-.o...........-****-............o.-*      O",
+      "O            |        *-.ooooooooooo.-****-.oooooooooooo.-*      O",
+      "O            |        *-.............-****-..............-*      O",
+      "O            |        *---------------****----------------*      O",
+      "O            |        *************************************      O",
+      "O            |        *************************************      O",
+      "O            |        *************************************      O",
+      "O            |        *-----------------------------------*      O",
+      "O            |        *-.................................-*      O", 
+      "O            |        *-.ooooooooooooooooooooooooooooooo.-*     4O",
+      "O            |3       *-.................................-*    44O",
+      "O            |33      *-----------------------------------*   444O",
+      "O            |333     *************************************  4444O",
+      "O            |3333                                          44444O",
+      "O            |33333                                        444444O",
+      "O            |333333                                      4444444O", #30
+      "O            |3333333                                    44444444O",
+      "O            |33333333                                  444444444O",
+      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
+    )
 
   DinnerPlate.CopyTextMapToPlayfield(TheMap)
 
