@@ -1678,7 +1678,7 @@ def MoveVirus(Virus,Playfield):
 def CreateDinnerPlate(MapLevel):
   global mutationrate
   
-  MapLevel = 11
+  #MapLevel = 11
 
   print ("CreateDinnerPlate Map: ",MapLevel)
 
@@ -1754,7 +1754,7 @@ def CreateDinnerPlate(MapLevel):
       #0         1  .......2.........3.........4.........5.........6....65    
       "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
       "O            -ooo.***********************************************O",
-      "O            -OOo.****..oo***o***********************************O",
+      "O            -OOo.****..*****************************************O",
       "O            -@Oo.****..ooo**ooooooo*****************************O",
       "O            -3Oo.****..oooo**OOOOOooooo*************************O",
       "O            -OOo.***...oOOOO*****OOOOOooooo*********************O",
