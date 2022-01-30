@@ -92,14 +92,14 @@ VirusMoves                = 0      #used to count how many times the viruses hav
 ClumpingSpeed             = 10     #This modifies the speed of viruses that contact each other
 ReplicationSpeed          = 5      #When a virus replicates, it will be a bit slower.  This number is added to current speed.
 ChanceOfSpeedup           = 10     #determines how often a lone virus will spontaneously speed up
-SlowTurnMinMoves          = 2      #number of moves a mutated virus moves before turning
+SlowTurnMinMoves          = 1      #number of moves a mutated virus moves before turning
 SlowTurnMaxMoves          = 40     #number of moves a mutated virus moves before turning
 MaxReplications           = 5      #Maximum number of replications, if surpassed the virus dies
 InfectionChance           = 20     #Chance of one virus infecting another, lower the number greater the chance
 DominanceMaxCount         = 5000   #how many ticks with there being only one virus, when reached level over
 VirusNameSpeedupCount     = 500    #when this many virus strains are on the board, speed them up
-ChanceOfDying             = 1000   #random chance of a virus dying
-GreatChanceOfDying        = 300    #random chance of a virus dying when too many straings are alive
+ChanceOfDying             = 2000   #random chance of a virus dying
+GreatChanceOfDying        = 500    #random chance of a virus dying when too many straings are alive
 ChanceOfHeadingToHV       = 50000  #random chance of all viruses being interested in the same location
 ChanceOfHeadingToFood     = 50     #random chance of a virus heading towards the nearest food
 FoodCheckRadius           = 5      #radius around the virus when looking for food
@@ -115,9 +115,9 @@ ChanceOfRandomFood        = 750000  #chance that random food will show up, which
 MapOffset                 = 20     #how many pixels from the left screen does the map really start (so we don't overwrite clocks and other things)
 BigFoodLives              = 500    #lives for the big food particle
 BigFoodRGB                = (255,0,0)
-MaxRandomViruses          = 10     #maximum number of random viruses to place on big food maps
+MaxRandomViruses          = 50     #maximum number of random viruses to place on big food maps
 VirusMaxCount             = 1000   #maximum number of unique virus strains allowed
-
+MaxLevelsPlayed           = 5      #quit after 5 maps are played
 
 #Sprite display locations
 ClockH,      ClockV,      ClockRGB      = 0,0,  (0,150,0)
@@ -1864,14 +1864,14 @@ def CreateDinnerPlate(MapLevel):
       "O            ..oO11*****OooooooooooooOO*********3OOo.............O",
       "O            ..oO1*******************************3Oo.............O",
       "O            ...oO1*****OooooooooooO*************3Oo.............O",
-      "O            ....oOOOOOOo.........oO*************3Oo.............O",
-      "O            .....oooooo...........oO444*********3Oo.............O", #10
-      "O            ......................oO444*********3Oo.............O",
-      "O            .......................oOOOO*******3Oo..............O",
-      "O            ..oooooooo..............ooooOOO**OOOo...............O",
-      "O            .ooOOOOOOOo.................ooO**Ooo................O",
-      "O            ooO5555555Oo.................oO**Oo.....ooooo.......O",
-      "O            oO555555***Oo................oO**Oo....oOOOOOo......O",
+      "O            ....oO**OOOo.........oO*************3Oo.............O",
+      "O            .....o**ooo...........oO444*********3Oo.............O", #10
+      "O            ......**..............oO444*********3Oo.............O",
+      "O            ......**...............oOOOO*******3Oo..............O",
+      "O            ..oooo**oo..............ooooOOO**OOOo...............O",
+      "O            .ooOOO**OOo.................ooO**Ooo................O",
+      "O            ooO555**55Oo.................oO**Oo.....ooooo.......O",
+      "O            oO5555*****Oo................oO**Oo....oOOOOOo......O",
       "O            oO555*******Oo...............oO**Oo...oO*****Ooo....O",
       "O            oO55********Oo...............oO**Oo..oO*******OOo...O",
       "O            oO55********Oo...............oO**Oo.oO*********Oo...O",
@@ -2677,7 +2677,7 @@ def PlayOutbreak(GameMaxMinutes):
   finished      = 'N'
   VirusMoves = 0
   LevelCount    = 0
-  MaxLevel      = 10 #number of available mazes
+  MaxLevel      = 11 #number of available mazes
   NameCount     = 0
   Viruses       = []
   VirusCount    = 0
@@ -2756,9 +2756,6 @@ def PlayOutbreak(GameMaxMinutes):
 
   NameCount = 1
 
-
-
-
   
 
   #Show Custom sprites
@@ -2766,8 +2763,6 @@ def PlayOutbreak(GameMaxMinutes):
   DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
   DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
   DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
-  if(ShowCrypto == 'Y'):
-    DinnerPlate.CopySpriteToPlayfield(CurrencySprite,   CurrencyH+1,   CurrencyV+1,   CurrencyRGB,    ObjectType = 'Wall',  Filler = 'DarkWall')
 
 
 
@@ -2776,8 +2771,9 @@ def PlayOutbreak(GameMaxMinutes):
   DinnerPlate.DisplayWindowZoom(CameraH,CameraV,96,32,0)
 
 
+  LevelsPlayed = 1
 
-  while (finished == "N" and VirusMoves < MaxVirusMoves):
+  while (finished == "N" and VirusMoves < MaxVirusMoves and LevelsPlayed <= MaxLevelsPlayed and VirusCount > 0):
     VirusMoves = VirusMoves + 1
 
     if(VirusMoves > LED.OutbreakHighScore):
@@ -2824,6 +2820,10 @@ def PlayOutbreak(GameMaxMinutes):
     #--------------------------------
     #-- Virus actions              --
     #--------------------------------
+
+    VirusCount = len(DinnerPlate.Viruses)
+    #print("VirusCount: ",VirusCount)
+
 
     firstname = DinnerPlate.Viruses[0].name
     NameCount = 1
@@ -3129,13 +3129,6 @@ def PlayOutbreak(GameMaxMinutes):
     # increment clock location if it is time to do so
 
 
-
-    if(ShowCrypto == 'Y'):
-      m,r = divmod(VirusMoves,CheckCurrencySpeed)
-      if (r == 0):  
-        CurrencySprite = CreateCurrencySprite()
-        DinnerPlate.CopySpriteToPlayfield(CurrencySprite,   CurrencyH+1,   CurrencyV+1,   CurrencyRGB,    ObjectType = 'Wall', Filler = 'DarkWall')
-
     
     m,r = divmod(VirusMoves,CheckClockSpeed)
     if (r == 0):  
@@ -3182,7 +3175,7 @@ def PlayOutbreak(GameMaxMinutes):
       
     #End game if all viruses dead
     VirusCount = len(DinnerPlate.Viruses)
-    if (VirusCount == 0):
+    if (VirusCount == 0 and LevelsPlayed >= MaxLevelsPlayed):
       finished = "Y"
 
 
@@ -3201,25 +3194,56 @@ def PlayOutbreak(GameMaxMinutes):
     LED.ClearBuffers()
     CursorH = 0
     CursorV = 0
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL OUTBREAK HALTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,175,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL LOAD: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(VirusMoves),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,200,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.OutbreakGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"QUARANTINE STILL ACTIVE... OR IS IT?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"LEVEL " + str(LevelsPlayed) + " CLEARED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,175,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
+    LevelsPlayed = LevelsPlayed +1
   
-  
-  else:
-    LED.ShowScrollingBanner2("danger! pandemic protocols initiated",(LED.HighRed),ScrollSleep *0.8)
-    LED.ShowScrollingBanner2("game over",(LED.HighYellow),ScrollSleep *0.8)
+
+    #End game after X minutes
+    h,m,s    = LED.GetElapsedTime(start_time,time.time())
+    if(m > GameMaxMinutes):
+      print("Elapsed Time:  mm:ss",m,s)
+      LED.SaveConfigData()
+      print("Ending game after",m," minutes")
+      ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
+
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
+      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRUS SUCCESSFULLY QUARANTINED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+      LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"IMMUNITY BOOSTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+      LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+        
+      return();
 
 
-  LED.ClearBigLED()
+    #Continue game by loading next level
+    print("Loading next level")
+    LED.OutbreakGamesPlayed = LED.OutbreakGamesPlayed + 1
+    LED.SaveConfigData()
+    LevelCount = random.randint(1,MaxLevel)
+    DinnerPlate = CreateDinnerPlate(LevelCount)
+    VirusCount = len(DinnerPlate.Viruses)
+    print("VirusCount: ",VirusCount)
+    DominanceCount = 0
+    CameraH        = DinnerPlate.DisplayH
+    CameraV        = DinnerPlate.DisplayV
+    NameCount = 1
+    #Show Custom sprites
+    DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV+1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+    DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
+    DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+    DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
+    #Zoom out, just a little bit too much then zoom back in.  Nice effect.
+    DinnerPlate.DisplayWindowZoom(CameraH,CameraV,2,96,0)
+    DinnerPlate.DisplayWindowZoom(CameraH,CameraV,96,32,0)
+
+    finished = "N"
+    print(finished, VirusMoves, MaxVirusMoves, LevelsPlayed, MaxLevelsPlayed, VirusCount)
+
 
   return
 
@@ -3297,6 +3321,20 @@ def LaunchOutbreak(GameMaxMinutes = 10000):
     PlayOutbreak(GameMaxMinutes)
         
 
+    LED.ClearBigLED()
+    LED.ClearBuffers()
+    CursorH = 0
+    CursorV = 0
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL OUTBREAK HALTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,175,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL LOAD: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(VirusMoves),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,200,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.OutbreakGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"QUARANTINE STILL ACTIVE... OR IS IT?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
 
