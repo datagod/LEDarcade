@@ -10368,12 +10368,12 @@ def SaveConfigData():
 
     
   #print ("Time to save: ",AdjustedTime)
-  print ("DotInvaders high score:   " ,DotInvadersHighScore)
-  print ("DotInvaders games played: " ,DotInvadersGamesPlayed)
-  print ("Outbreak high score:      " ,OutbreakHighScore)
-  print ("Outbreak games played:    " ,OutbreakGamesPlayed)
-  print ("SpaceDot high score:      " ,SpaceDotHighScore)
-  print ("SpaceDot games played:    " ,SpaceDotGamesPlayed)
+  #print ("DotInvaders high score:   " ,DotInvadersHighScore)
+  #print ("DotInvaders games played: " ,DotInvadersGamesPlayed)
+  #print ("Outbreak high score:      " ,OutbreakHighScore)
+  #print ("Outbreak games played:    " ,OutbreakGamesPlayed)
+  #print ("SpaceDot high score:      " ,SpaceDotHighScore)
+  #print ("SpaceDot games played:    " ,SpaceDotGamesPlayed)
 
   #ConfigFile.set('main',   'CurrentTime',       AdjustedTime)
   ConfigFile.set('scores',   'DotInvadersHighScore',   str(DotInvadersHighScore))
