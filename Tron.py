@@ -1294,7 +1294,7 @@ def PlaySuperWorms():
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
 
-def LaunchTron(GameMaxMinutes = 10000):
+def LaunchTron(GameMaxMinutes = 10000,ShowIntro="N"):
   
   global start_time
   start_time = time.time()
@@ -1305,49 +1305,50 @@ def LaunchTron(GameMaxMinutes = 10000):
   Message2 = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
 
 
-  LED.ClearBigLED()
-  LED.ClearBuffers()
-  CursorH = 0
-  CursorV = 0
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"DIALING FLYNNS ARCADE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO SPACE PARANOIDS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,Message2,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,0,255),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+  if(ShowIntro = "Y"):
+    LED.ClearBigLED()
+    LED.ClearBuffers()
+    CursorH = 0
+    CursorV = 0
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"DIALING FLYNNS ARCADE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO SPACE PARANOIDS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,Message2,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,0,255),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
 
-  LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 8,GlowLevels=0,DropShadow=False)
-  LED.TheMatrix.Clear()
-  LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 7,GlowLevels=0,DropShadow=False)
-  LED.TheMatrix.Clear()
-  LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 6,GlowLevels=0,DropShadow=False)
-  LED.TheMatrix.Clear()
-  LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 5,GlowLevels=0,DropShadow=False)
-  LED.TheMatrix.Clear()
-  LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 4,GlowLevels=0,DropShadow=False)
-  LED.TheMatrix.Clear()
-  LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 3,GlowLevels=0,DropShadow=False)
+    LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 8,GlowLevels=0,DropShadow=False)
+    LED.TheMatrix.Clear()
+    LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 7,GlowLevels=0,DropShadow=False)
+    LED.TheMatrix.Clear()
+    LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 6,GlowLevels=0,DropShadow=False)
+    LED.TheMatrix.Clear()
+    LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 5,GlowLevels=0,DropShadow=False)
+    LED.TheMatrix.Clear()
+    LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 4,GlowLevels=0,DropShadow=False)
+    LED.TheMatrix.Clear()
+    LED.ShowGlowingText(CenterHoriz = True,h = -8,v = 0,   Text = 'TRON', RGB = LED.HighBlue, ShadowRGB = LED.ShadowBlue, ZoomFactor = 3,GlowLevels=0,DropShadow=False)
 
-  LED.TheMatrix.Clear()
-  LED.ClearBuffers()
-  LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 0,   Text = 'TRON',       RGB = LED.HighBlue,   ShadowRGB = LED.ShadowBlue,   ZoomFactor = 2,GlowLevels=50, DropShadow=True)
-  LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 16,  Text = 'LIGHT CYCLE',RGB = LED.HighRed,    ShadowRGB = LED.ShadowRed,    ZoomFactor = 1,GlowLevels=200,DropShadow=True)
+    LED.TheMatrix.Clear()
+    LED.ClearBuffers()
+    LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 0,   Text = 'TRON',       RGB = LED.HighBlue,   ShadowRGB = LED.ShadowBlue,   ZoomFactor = 2,GlowLevels=50, DropShadow=True)
+    LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 16,  Text = 'LIGHT CYCLE',RGB = LED.HighRed,    ShadowRGB = LED.ShadowRed,    ZoomFactor = 1,GlowLevels=200,DropShadow=True)
 
-  
-  BrightRGB, ShadowRGB = LED.GetBrightAndShadowRGB()
-  Message = LED.TronGetRandomMessage(MessageType = 'SHORTGAME')
-  LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 26,  Text = Message, RGB = BrightRGB,  ShadowRGB = ShadowRGB,  ZoomFactor = 1,GlowLevels=200,DropShadow=True,FadeLevels=200)
-  LED.EraseMessageArea(LinesFromBottom=6)
-  BrightRGB, ShadowRGB = LED.GetBrightAndShadowRGB()
-  Message = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
-  LED.ShowScrollingBanner2(Message,BrightRGB,ScrollSleep,26)
+    
+    BrightRGB, ShadowRGB = LED.GetBrightAndShadowRGB()
+    Message = LED.TronGetRandomMessage(MessageType = 'SHORTGAME')
+    LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 26,  Text = Message, RGB = BrightRGB,  ShadowRGB = ShadowRGB,  ZoomFactor = 1,GlowLevels=200,DropShadow=True,FadeLevels=200)
+    LED.EraseMessageArea(LinesFromBottom=6)
+    BrightRGB, ShadowRGB = LED.GetBrightAndShadowRGB()
+    Message = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
+    LED.ShowScrollingBanner2(Message,BrightRGB,ScrollSleep,26)
 
-  LED.TheMatrix.Clear()
-  LED.Canvas.Clear()
-  LED.ZoomScreen(LED.ScreenArray,32,256,0,Fade=True)
-  LED.TheMatrix.Clear()
+    LED.TheMatrix.Clear()
+    LED.Canvas.Clear()
+    LED.ZoomScreen(LED.ScreenArray,32,256,0,Fade=True)
+    LED.TheMatrix.Clear()
 
 
   PlaySuperWorms()

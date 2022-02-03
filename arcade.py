@@ -70,39 +70,17 @@ def LaunchArcade(GameMaxMinutes = 10000):
 
 
     TR.LaunchTron(GameMaxMinutes)
-
-    LED.DisplayDigitalClock(
-      ClockStyle = 1,
-      CenterHoriz = True,
-      v   = 1, 
-      hh  = 24,
-      RGB = LED.LowGreen,
-      ShadowRGB     = LED.ShadowGreen,
-      ZoomFactor    = 3,
-      AnimationDelay= 30,
-      RunMinutes = 5 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
     DI.LaunchDotInvaders(GameMaxMinutes)
-
-    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
     OB.LaunchOutbreak(GameMaxMinutes)
-
-    LED.DisplayDigitalClock(
-      ClockStyle = 1,
-      CenterHoriz = True,
-      v   = 1, 
-      hh  = 24,
-      RGB = LED.LowGreen,
-      ShadowRGB     = LED.ShadowGreen,
-      ZoomFactor    = 3,
-      AnimationDelay= 30,
-      RunMinutes = 5 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 15 )
 
 
     SD.LaunchSpaceDot(GameMaxMinutes)
-
-    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 15 )
         
 
 
