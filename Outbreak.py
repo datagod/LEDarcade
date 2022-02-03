@@ -75,7 +75,7 @@ start_time = time.time()
 #-----------------------------
 VirusTopSpeed     = 1
 VirusBottomSpeed  = 25
-VirusStartSpeed   = 7  #starting speed of the viruses
+VirusStartSpeed   = 10  #starting speed of the viruses
 MinBright         = 50
 MaxBright         = 255
 
@@ -89,7 +89,7 @@ FreakoutReplicationRate   = 10     #new replication rate when a virus freaksout
 MaxVirusMoves             = 100000 #after this many moves the level is over
 FreakoutMoves             = 10000  #after this many moves, the viruses will replicate and mutate at a much greater rate
 VirusMoves                = 0      #used to count how many times the viruses have moved
-ClumpingSpeed             = 15     #This modifies the speed of viruses that contact each other
+ClumpingSpeed             = 25     #This modifies the speed of viruses that contact each other
 ReplicationSpeed          = 5      #When a virus replicates, it will be a bit slower.  This number is added to current speed.
 ChanceOfSpeedup           = 10     #determines how often a lone virus will spontaneously speed up
 SlowTurnMinMoves          = 1      #number of moves a mutated virus moves before turning
@@ -3268,12 +3268,6 @@ def LaunchOutbreak(GameMaxMinutes = 10000):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"COLLECTING VIRUS SAMPLES",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"HIGH SCORE: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(LED.OutbreakHighScore),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.OutbreakGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING LOCKDOWN PROTOCOLS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
