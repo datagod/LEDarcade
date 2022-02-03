@@ -1305,7 +1305,7 @@ def LaunchTron(GameMaxMinutes = 10000,ShowIntro="N"):
   Message2 = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
 
 
-  if(ShowIntro = "Y"):
+  if(ShowIntro == "Y"):
     LED.ClearBigLED()
     LED.ClearBuffers()
     CursorH = 0
