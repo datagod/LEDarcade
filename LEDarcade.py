@@ -2234,6 +2234,59 @@ class ColorAnimatedSprite(object):
    
 
 
+  def PaintAnimatedToCanvas(self,h1 = -1, v1 = -1,Canvas=Canvas):
+    #Treat black pixels in sprite as transparent
+    x = 0
+    y = 0
+    r = 0
+    g = 0
+    b = 0
+    
+    if (h1 < 0):
+      h1 = self.h
+    if (v1 < 0):
+      v1 = self.v
+
+    
+    #print("name:",self.name," currentframe:",self.currentframe," Frames:",self.frames)
+
+    self.ticks = self.ticks + 1
+    #NOTE: This usage of ticks is different than in ScrollWithFrames
+    if (self.ticks == self.framerate):
+      self.currentframe = self.currentframe + 1
+      self.ticks        = 0
+
+    if (self.currentframe > self.frames or self.currentframe == 0):
+      self.currentframe = 1
+
+    for count in range (0,(self.width * self.height)):
+      y,x = divmod(count,self.width)
+      
+      
+      try:
+        if (CheckBoundary((x+h1),y+v1) == 0):
+          #print("Count:",count)
+          #print("CurrentFrame:",self.currentframe," self.grid[]:",self.grid[self.currentframe][count])
+          r,g,b =  ColorList[self.grid[self.currentframe][count]]
+          if(r > 0 or g > 0 or b > 0):
+            Canvas.SetPixel(x+h1,y+v1,r,g,b)
+      except:
+
+        print("Something wrong...")
+        print("Name:",self.name)
+        print("Count:",count)
+        print("CurrentFrame:",self.currentframe)
+        print("self.grid[]:",self.grid[self.currentframe][count])
+       
+
+    
+    return Canvas
+   
+
+
+
+
+
   def Erase(self):
     #This function draws a black sprite, erasing the sprite.  This may be useful for
     #a future "floating over the screen" type of sprite motion
@@ -2760,6 +2813,59 @@ class Maze(object):
            
       
     
+class Layer(object):
+  def __init__(
+      self,
+      name,
+      width,
+      height,
+      h,
+      v
+    ):  
+
+    self.name   = name,
+    self.width  = width
+    self.height = height
+    self.h      = h
+    self.v      = v
+    self.map    = [[0 for i in range(self.width)] for i in range(self.height)]
+    self.starchance = 20
+
+
+  def CreateStars(self,r,g,b,starchance):
+    for x in range (0,self.width):
+      for y in range (0,self.height):
+        if(random.randint(0,starchance) == 1):
+          self.map[y][x] = (random.randint(0,r),random.randint(0,g),random.randint(0,b))
+          #print(y,x,self.width,self.height)
+        else:
+          self.map[y][x] = (0,0,0)
+
+
+
+  def PaintOnCanvas(self,h,v,Canvas):
+    width = self.width
+    for x in range (0,HatWidth-1):
+      for y in range (0,HatHeight):
+
+        if(x+h >= width):
+          PosX = x
+        else:
+          PosX = x+h
+
+        try:
+          r,g,b = rgb = self.map[v+y][PosX]
+        except:
+          print("PosX x h:",PosX, x, h)
+          time.sleep(1)
+
+
+        #if the pixel is not black, set the canvas
+        if (rgb != (0,0,0)):
+          Canvas.SetPixel(x,y,r,g,b)
+    
+    return Canvas
+  
 
 
   
@@ -12794,6 +12900,67 @@ def CopySpriteToPixelsZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,
   return;
 
 
+
+def CopySpriteToCanvasZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-1,-1),ZoomFactor = 1,Fill=True,Canvas=Canvas):
+  #Copy a regular sprite to the LED 
+  #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
+  #print ("Copying sprite to playfield:",TheSprite.name, ObjectType, Filler)
+  #if Fill = False, don't write anything for filler, that way we can leave existing lights on LED
+
+  width   = TheSprite.width 
+  height  = TheSprite.height
+
+  
+  if (ColorTuple == (-1,-1,-1)):
+    r = TheSprite.r
+    g = TheSprite.g
+    b = TheSprite.b
+  else:
+    r,g,b   = ColorTuple
+  
+  if (FillerTuple == (-1,-1,-1)):
+    fr = 0
+    fg = 0
+    fb = 0
+  else:
+    fr,fg,fb   = FillerTuple
+
+
+  #Copy sprite to Canvas
+  for count in range (0,(TheSprite.width * TheSprite.height) ):
+    y,x = divmod(count,TheSprite.width)
+
+    y = y * ZoomFactor
+    x = x * ZoomFactor
+
+
+    if (ZoomFactor >= 1):
+      for zv in range (0,ZoomFactor):
+        for zh in range (0,ZoomFactor):
+          H = x+h+zh
+          V = y+v+zv
+         
+          if(CheckBoundary(H,V) == 0):
+
+            #draw the sprite portion
+            if TheSprite.grid[count] != 0:
+              Canvas.SetPixel(H,V,r,g,b)
+              #ScreenArray[V][H]=(r,g,b)
+              #setpixel(H,V,r,g,b)
+            # if the sprite portion is a 0
+            else:
+              if (Fill == True):
+                Canvas.SetPixel(H,V,fr,fg,fb)
+                #ScreenArray[V][H]=(fr,fg,fb)
+                #setpixel(H,V,fr,fg,fb)
+              #else:
+              #  setpixel(H,V,0,0,0)
+
+  return Canvas;
+
+
+
+
 def CopySpriteToScreenArrayZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-1,-1),ZoomFactor = 1,Fill=True,InputScreenArray=None):
   #Copy a regular sprite to the ScreenArray buffer
   #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
@@ -15760,6 +15927,106 @@ def DisplayDigitalClock(
 
 
 
+
+
+    #Starry Night Clock
+    elif (ClockStyle == 3):
+
+
+      ClockH = HatWidth - (ClockSprite.width * 2)
+      ClockSprite = CreateClockSprite(hh)
+      #we need to make a fake sprite to take the place of the clock which is zoomed)
+      ClockAreaSprite = Sprite((ClockSprite.width*2)+3,(ClockSprite.height*2),0,0,0,[])
+      ClockAreaSprite.h = ClockH -3
+      ClockAreaSprite.v = 1
+      #CopySpriteToScreenArrayZoom(ClockSprite,h=ClockH,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
+
+      #--------------------------------
+      #-- Create Layers              --
+      #--------------------------------
+
+      Background   = Layer(name="backround", width=512, height=32,h=0,v=0)
+      Middleground = Layer(name="backround", width=512, height=32,h=0,v=0)
+      Foreground   = Layer(name="backround", width=512, height=32,h=0,v=0)
+
+      Background.CreateStars(0,0,50,50)
+      Middleground.CreateStars(0,0,100,100)
+      Foreground.CreateStars(0,0,150,200)
+
+      Canvas = TheMatrix.CreateFrameCanvas()
+      Canvas.Clear()
+      Canvas = TheMatrix.SwapOnVSync(Canvas)
+
+     
+      count  = 0
+      bx     = 0
+      mx     = 0
+      fx     = 0
+      bwidth = Background.width    - HatWidth
+      mwidth = Middleground.width  - HatWidth
+      fwidth = Foreground.width    - HatWidth
+      brate  = 4
+      mrate  = 2
+      frate  = 1
+
+  
+      while (Done == False):
+
+        if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
+          ClockSprite = CreateClockSprite(hh)
+          #ScreenArray = CopySpriteToScreenArrayZoom(ClockSprite,45,0,(150,0,0),(0,0,0),1,Fill=True)
+  
+        x = 0
+
+        #main counter
+        count = count + 1
+        Canvas.Clear()
+      
+        #Background
+        m,r = divmod(count,brate)
+        if(r == 0):
+          bx = bx + 1
+          if(bx > bwidth):
+            bx = 0
+        Canvas = Background.PaintOnCanvas(bx,0,Canvas)
+
+
+        #Middleground
+        m,r = divmod(count,mrate)
+        if(r == 0):
+          mx = mx + 1
+          if(mx > mwidth):
+            mx = 0
+        Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
+
+          
+        #foreground
+        m,r = divmod(count,frate)
+        if(r == 0):
+          fx = fx + 1
+          if(fx > fwidth):
+            fx = 0
+        Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
+
+        #LED.RunningMan3Sprite.DisplayAnimated(10,10)
+        Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(-2,10,Canvas)
+        Canvas = CopySpriteToCanvasZoom(ClockSprite,28,14,(0,100,0),(0,5,0),2,False,Canvas)
+      
+
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+        
+
+        
+        if(random.randint(0,1000) == 1):
+          #This will end the while loop
+          elapsed_time = time.time() - StartTime
+          elapsed_hours, rem = divmod(elapsed_time, 3600)
+          elapsed_minutes, elapsed_seconds = divmod(rem, 60)
+
+          #print ("StartTime:    ",StartTime, " Now:",time.time())
+          print("ElapsedMinues: ",elapsed_minutes)
+          if elapsed_minutes >= RunMinutes:
+            Done = True
 
 
 
