@@ -17,9 +17,6 @@ The Running Man
 ![Running Man](https://github.com/datagod/LEDarcade/blob/main/images/RunningMan.jpg)](https://www.youtube.com/watch?v=duzgGnZsffI)
 
 
-Starry Night Clock
-![Starry Night](https://github.com/datagod/LEDarcade/blob/main/images/RunningMan.jpg)](https://youtu.be/q6Cl8fxm45s)
-
 
 
 
