@@ -2828,7 +2828,7 @@ class Layer(object):
     self.height = height
     self.h      = h
     self.v      = v
-    self.map    = [[0 for i in range(self.width)] for i in range(self.height)]
+    self.map    = [[(0,0,0) for i in range(self.width)] for i in range(self.height)]
     self.starchance = 20
 
 
@@ -2836,10 +2836,48 @@ class Layer(object):
     for x in range (0,self.width):
       for y in range (0,self.height):
         if(random.randint(0,starchance) == 1):
-          self.map[y][x] = (random.randint(0,r),random.randint(0,g),random.randint(0,b))
-          #print(y,x,self.width,self.height)
+          
+          #make the last screen of stars dim so we don't notice a transition
+          if(x <= self.width -HatWidth):
+            self.map[y][x] = (random.randint(0,round(r/3)),random.randint(0,round(g/3)),random.randint(0,round(b/3)))
+          else:
+            self.map[y][x] = (random.randint(0,r),random.randint(0,g),random.randint(0,b))
+
         else:
           self.map[y][x] = (0,0,0)
+
+
+
+  def CreateMountains(self,r,g,b,maxheight=31):
+    mh     = HatWidth -1
+    mv     = 31
+
+    chance = 10
+    length = 1
+
+    for x in range (0,self.width):
+      if(random.randint(0,chance) == 1):
+        mv = mv - 1
+      elif(random.randint(0,chance) == 2):
+        mv = mv + 1
+
+      #stay within bounds
+      if(mv > HatHeight-1):
+        mv = HatHeight-1
+      if(mv < HatHeight - maxheight):
+        mv = HatHeight - maxheight
+      
+      #print("mv x:",mv,x)
+      for y in range (mv,HatHeight):
+        self.map[y][x] = (0,(abs(y - 35)),0)
+      self.map[mv][x] = (r,g,b)
+
+
+    #copy first HatWidth to the end for seamless scrolling
+    for x in range (1,HatWidth):
+      for y in range(0,HatHeight-1):
+        self.map[y][self.width - x] = self.map[y][x]
+        
 
 
 
@@ -2868,6 +2906,47 @@ class Layer(object):
   
 
 
+def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
+  
+  Canvas.Clear()
+  
+  for x in range (0,HatWidth-1):
+    for y in range (0,HatHeight):
+
+      r,g,b = rgb = Foreground.map[y][x+fh]
+      if(rgb == (0,0,0)):
+        r,g,b = rgb = Middleground.map[y][x+mh]
+        if(rgb == (0,0,0)):
+          r,g,b = rgb = Background.map[y][x+bh]
+
+      #if the pixel is not black, set the canvas
+      if (rgb != (0,0,0)):
+        Canvas.SetPixel(x,y,r,g,b)
+  
+  return Canvas
+  
+
+
+def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
+  
+  Canvas.Clear()
+  
+  for x in range (0,HatWidth-1):
+    for y in range (0,HatHeight):
+
+      r,g,b = rgb = Ground.map[y][x+gh]
+      if(rgb == (0,0,0)):
+        r,g,b = rgb = Foreground.map[y][x+fh]
+        if(rgb == (0,0,0)):
+          r,g,b = rgb = Middleground.map[y][x+mh]
+          if(rgb == (0,0,0)):
+            r,g,b = rgb = Background.map[y][x+bh]
+
+        #if the pixel is not black, set the canvas
+      if (rgb != (0,0,0)):
+        Canvas.SetPixel(x,y,r,g,b)
+  
+  return Canvas
   
 
 
@@ -9969,6 +10048,74 @@ BigGroundExplosion.grid.append(
 
 
 
+
+Defender = ColorAnimatedSprite(
+  h=0, 
+  v=0, 
+  name="Defender", 
+  width  = 7, 
+  height = 4, 
+  framerate=1,
+  grid=[]  )
+
+                 
+
+DefenderMap = TextMap(
+  h      = 1,
+  v      = 1,
+  width  = Defender.width, 
+  height = Defender.height
+  )
+
+
+DefenderMap.ColorList = {
+  ' ' : 0,
+  '-' : 29, #dark pink
+  '.' : 2, 
+  'o' : 1, 
+  'O' : 32,
+  '#' : 5,
+  '@' : 8,
+  
+
+}
+
+
+DefenderMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "  -    ",
+  " #...o ",
+  "       "
+  
+  
+  )
+
+
+DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
+
+
+
+DefenderMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "  -    ",
+  " @...o ",
+  "       "
+  
+  
+  )
+
+
+DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
+
+
+
+
+
+
+
+
 #------------------------------------------------------------------------------
 # FUNCTIONS                                                                  --
 #                                                                            --
@@ -15945,13 +16092,13 @@ def DisplayDigitalClock(
       #-- Create Layers              --
       #--------------------------------
 
-      Background   = Layer(name="backround", width=512, height=32,h=0,v=0)
-      Middleground = Layer(name="backround", width=512, height=32,h=0,v=0)
-      Foreground   = Layer(name="backround", width=512, height=32,h=0,v=0)
+      Background   = Layer(name="backround", width=2024, height=32,h=0,v=0)
+      Middleground = Layer(name="backround", width=2024, height=32,h=0,v=0)
+      Foreground   = Layer(name="backround", width=2024, height=32,h=0,v=0)
 
       Background.CreateStars(0,0,50,50)
       Middleground.CreateStars(0,0,100,100)
-      Foreground.CreateStars(0,0,150,200)
+      Foreground.CreateStars(0,0,200,200)
 
       Canvas = TheMatrix.CreateFrameCanvas()
       Canvas.Clear()
@@ -16017,6 +16164,116 @@ def DisplayDigitalClock(
         
 
         
+        if(random.randint(0,1000) == 1):
+          #This will end the while loop
+          elapsed_time = time.time() - StartTime
+          elapsed_hours, rem = divmod(elapsed_time, 3600)
+          elapsed_minutes, elapsed_seconds = divmod(rem, 60)
+
+          #print ("StartTime:    ",StartTime, " Now:",time.time())
+          print("ElapsedMinues: ",elapsed_minutes)
+          if elapsed_minutes >= RunMinutes:
+            Done = True
+
+
+
+
+    #Planet Run
+    elif (ClockStyle == 4):
+
+
+      ClockH = HatWidth - (ClockSprite.width * 2)
+      ClockSprite = CreateClockSprite(hh)
+      #we need to make a fake sprite to take the place of the clock which is zoomed)
+      ClockAreaSprite = Sprite((ClockSprite.width*2)+3,(ClockSprite.height*2),0,0,0,[])
+      ClockAreaSprite.h = ClockH -3
+      ClockAreaSprite.v = 1
+      #CopySpriteToScreenArrayZoom(ClockSprite,h=ClockH,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
+
+      #--------------------------------
+      #-- Create Layers              --
+      #--------------------------------
+
+      Background   = Layer(name="backround", width=2048, height=32,h=0,v=0)
+      Middleground = Layer(name="backround", width=2048, height=32,h=0,v=0)
+      Foreground   = Layer(name="backround", width=2048, height=32,h=0,v=0)
+      Ground       = Layer(name="ground",    width=4048, height=32,h=0,v=0)
+
+      Background.CreateStars(15,0,50,50)
+      Middleground.CreateStars(0,0,150,100)
+      Foreground.CreateStars(0,0,250,200)
+      Ground.CreateMountains(0,32,0,maxheight=16)
+
+      Canvas = TheMatrix.CreateFrameCanvas()
+      Canvas.Clear()
+      Canvas = TheMatrix.SwapOnVSync(Canvas)
+
+     
+      count  = 0
+      bx     = 0
+      mx     = 0
+      fx     = 0
+      gx     = 0
+      bwidth = Background.width    - HatWidth
+      mwidth = Middleground.width  - HatWidth
+      fwidth = Foreground.width    - HatWidth
+      gwidth = Ground.width        - HatWidth
+      brate  = 6
+      mrate  = 4
+      frate  = 2
+      grate  = 1
+
+      while(1==1):
+        #main counter
+        count = count + 1
+            
+        #check the time once in a while
+        if(random.randint(0,500) == 1):
+          if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
+            ClockSprite = CreateClockSprite(hh)
+      
+
+
+        #Background
+        m,r = divmod(count,brate)
+        if(r == 0):
+          bx = bx + 1
+          if(bx > bwidth):
+            bx = 0
+        #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
+
+
+        #Middleground
+        m,r = divmod(count,mrate)
+        if(r == 0):
+          mx = mx + 1
+          if(mx > mwidth):
+            mx = 0
+        #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
+
+          
+        #foreground
+        m,r = divmod(count,frate)
+        if(r == 0):
+          fx = fx + 1
+          if(fx > fwidth):
+            fx = 0
+        #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
+
+
+        #ground
+        m,r = divmod(count,grate)
+        if(r == 0):
+          gx = gx + 1
+          if(gx > fwidth):
+            gx = 0
+        #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
+        Canvas = PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
+        Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
+        Canvas = CopySpriteToCanvasZoom(ClockSprite,30,2,(0,100,0),(0,5,0),2,False,Canvas)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+        
+              
         if(random.randint(0,1000) == 1):
           #This will end the while loop
           elapsed_time = time.time() - StartTime

@@ -53,6 +53,7 @@ import random
 import time
 import numpy
 import math
+from datetime import datetime, timedelta
 
 
 #For displaying crypto currency
@@ -110,90 +111,6 @@ start_time = time.time()
 # DefenderWorld                      --
 #--------------------------------------
 
-class Layer(object):
-  def __init__(
-      self,
-      name,
-      width,
-      height,
-      h,
-      v
-    ):  
-
-    self.name   = name,
-    self.width  = width
-    self.height = height
-    self.h      = h
-    self.v      = v
-    self.map    = [[0 for i in range(self.width)] for i in range(self.height)]
-    self.starchance = 20
-
-
-  def CreateStars(self,r,g,b,starchance):
-    for x in range (0,self.width):
-      for y in range (0,self.height):
-        if(random.randint(0,starchance) == 1):
-          self.map[y][x] = (random.randint(0,r),random.randint(0,g),random.randint(0,b))
-          #print(y,x,self.width,self.height)
-        else:
-          self.map[y][x] = (0,0,0)
-
-
-
-  def PaintOnCanvas(self,h,v,Canvas):
-    width = self.width
-    for x in range (0,LED.HatWidth-1):
-      for y in range (0,LED.HatHeight):
-
-        if(x+h >= width):
-          PosX = x
-        else:
-          PosX = x+h
-
-        try:
-          r,g,b = rgb = self.map[v+y][PosX]
-        except:
-          print("PosX x h:",PosX, x, h)
-          time.sleep(1)
-
-
-        #if the pixel is not black, set the canvas
-        if (rgb != (0,0,0)):
-          Canvas.SetPixel(x,y,r,g,b)
-    
-    return Canvas
-  
-
-
-  #This is a fast method to process a 2D array of pixels to display
-  def DisplayWindow(self,h,v):
-    
-    #Clear the canvas
-    LED.Canvas.Clear()
-    width = self.width -1
-
-    for x in range (0,LED.HatWidth):
-      for y in range (0,LED.HatHeight):
-
-        if(x+h > width):
-          PosX = x+h - width
-        else:
-          PosX = x+h
-
-
-        try:
-          r,g,b = rgb = self.map[v+y][PosX]
-        except:
-          print("PosX x h:",PosX, x, h)
-
-        #if the pixel is not black, set the canvas
-        if (rgb != (0,0,0)):
-          LED.Canvas.SetPixel(x,y,r,g,b)
-    
-    #swap the canvas with the main display
-    LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
-    #time.sleep(0.01)
-          
 
 class DefenderWorld(object):
   def __init__(self,name,width,height,Map,Playfield,CurrentRoomH,CurrentRoomV,DisplayH, DisplayV, mutationrate, replicationrate,mutationdeathrate,VirusStartSpeed):
@@ -372,52 +289,6 @@ class DefenderWorld(object):
 
 
 
-  def DebugPlayfield(self):
-    #Show contents of playfield - in text window, for debugging purposes
-    
-    width   = self.width 
-    height  = self.height
-    print ("Map width height:",width,height)
-  
-    x = 0
-    y = 0
-    
-    for V in range(0,height):
-      for H in range (0,width):
-         
-        name = self.Playfield[V][H].name
-        #print ("Display: ",name,V,H)
-        if (name == 'EmptyObject'):
-          print ('  ',end='')
-
-        #draw border walls
-        elif (name == 'Wall' and (V == 0 or V == height-1)):
-          print(' _',end='')
-        
-        #draw border walls
-        elif (name == 'Wall' and (H == 0 or H == width-1)):
-          print(' |',end='')
-          
-        #draw interior
-        elif (name == 'Wall'):
-          print (' #',end='')
-
-        #draw interior
-        elif (name == 'WallBreakable'):
-          print (' o',end='')
-
-        elif (self.Playfield[V][H].alive == 1):
-          print (' .',end='')
-        else:
-          print (' X',end='')
-          #print ("Name:",name," alive:",self.Playfield[V][H].alive)
-
-          #time.sleep(1)
-
-      print('')
-
-
-
 
 
   def FindClosestObject(self,SourceH,SourceV, Radius = 10, ObjectType = 'WallBreakable'):
@@ -505,7 +376,7 @@ def PlayDefender(GameMaxMinutes):
   finished      = 'N'
   LevelCount    = 0
 
-  ClockSprite         = LED.CreateClockSprite(12)
+  ClockSprite         = LED.CreateClockSprite(24)
   DayOfWeekSprite     = LED.CreateDayOfWeekSprite()
   MonthSprite         = LED.CreateMonthSprite()
   DayOfMonthSprite    = LED.CreateDayOfMonthSprite()
@@ -544,13 +415,15 @@ def PlayDefender(GameMaxMinutes):
   #-- Create Layers              --
   #--------------------------------
 
-  Background =   Layer(name="backround", width=512, height=32,h=0,v=0)
-  Middleground = Layer(name="backround", width=512, height=32,h=0,v=0)
-  Foreground   = Layer(name="backround", width=512, height=32,h=0,v=0)
+  Background   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
+  Middleground = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
+  Foreground   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
+  Ground       = LED.Layer(name="ground",    width=4048, height=32,h=0,v=0)
 
-  Background.CreateStars(0,0,50,50)
-  Middleground.CreateStars(0,0,100,100)
-  Foreground.CreateStars(0,0,150,200)
+  Background.CreateStars(15,0,50,50)
+  Middleground.CreateStars(0,0,150,100)
+  Foreground.CreateStars(0,0,250,200)
+  Ground.CreateMountains(0,32,0,maxheight=16)
   
   
   
@@ -580,27 +453,35 @@ def PlayDefender(GameMaxMinutes):
     bx     = 0
     mx     = 0
     fx     = 0
+    gx     = 0
     bwidth = Background.width    - LED.HatWidth
     mwidth = Middleground.width  - LED.HatWidth
     fwidth = Foreground.width    - LED.HatWidth
-    brate  = 4
-    mrate  = 2
-    frate  = 1
+    gwidth = Ground.width        - LED.HatWidth
+    brate  = 6
+    mrate  = 4
+    frate  = 2
+    grate  = 1
+    DefenderV = 20
 
     while(1==1):
       #main counter
       count = count + 1
-      
-      
-      Canvas.Clear()
+           
+      #check the time once in a while
+      if(random.randint(0,500) == 1):
+        if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
+          ClockSprite = LED.CreateClockSprite(24)
     
+
+
       #Background
       m,r = divmod(count,brate)
       if(r == 0):
         bx = bx + 1
         if(bx > bwidth):
           bx = 0
-      Canvas = Background.PaintOnCanvas(bx,0,Canvas)
+      #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
 
 
       #Middleground
@@ -609,7 +490,7 @@ def PlayDefender(GameMaxMinutes):
         mx = mx + 1
         if(mx > mwidth):
           mx = 0
-      Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
+      #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
 
         
       #foreground
@@ -618,39 +499,42 @@ def PlayDefender(GameMaxMinutes):
         fx = fx + 1
         if(fx > fwidth):
           fx = 0
-      Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
+      #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
 
-      #LED.RunningMan3Sprite.DisplayAnimated(10,10)
-      Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-2,10,Canvas)
-      Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,35,14,(0,100,0),(0,5,0),2,False,Canvas)
+
+      #ground
+      m,r = divmod(count,grate)
+      if(r == 0):
+        gx = gx + 1
+        if(gx > fwidth):
+          gx = 0
+      #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
+
+
+      #Canvas = LED.PaintThreeLayerCanvas(bx,mx,fx,Background,Middleground,Ground,Canvas)
+      Canvas = LED.PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
+
+
+      
+      #Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
+
+      
+      if(Ground.map[DefenderV + 5][gx + 10] != (0,0,0)): 
+        if(random.randint(0,5) == 1):
+          DefenderV = DefenderV - 1
+      else:
+        if(random.randint(0,15) == 1):
+          DefenderV = DefenderV + 1
+      
+      Canvas = LED.Defender.PaintAnimatedToCanvas(5,DefenderV,Canvas)
+      Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,30,2,(0,100,0),(0,5,0),2,False,Canvas)
      
-
       Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
       
     
     
 
 
-
-    for x in range (0,Foreground.width):
-      Foreground.DisplayWindow(x,0)
-      LED.RunningMan2Sprite.DisplayAnimated(10,10)
-      #LED.RunningMan3Sprite.DisplayAnimated(10,10)
-      time.sleep(0.005)
-
-
-    for x in range (0,Background.width):
-      Background.DisplayWindow(x,0)
-      LED.RunningMan2Sprite.DisplayAnimated(10,10)
-      #LED.RunningMan3Sprite.DisplayAnimated(10,10)
-      time.sleep(0.005)
-
-    for x in range (0,Middleground.width):
-      Middleground.DisplayWindow(x,0)
-      LED.RunningMan3Sprite.DisplayAnimated(10,10)
-      time.sleep(0.005)
-  
-    
 
 
   #let the display show the final results before clearing
@@ -688,7 +572,7 @@ def PlayDefender(GameMaxMinutes):
 
 
 
-def LaunchOutbreak(GameMaxMinutes = 10000):
+def LaunchDefender(GameMaxMinutes = 10000):
   
     PlayDefender(GameMaxMinutes)
     
@@ -744,7 +628,7 @@ if __name__ == "__main__" :
     #LED.LoadConfigData()
     #LED.SaveConfigData()
     print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
-    LaunchOutbreak(100000)        
+    LaunchDefender(100000)        
 
 
 
