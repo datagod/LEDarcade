@@ -60,6 +60,7 @@ while 1==1:
     #This allows you to create a title screen with different size text
     #some scrolling text, an animation and even a nice fade to black
 
+    LED.DisplayDigitalClock(ClockStyle=4,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 15 )
     LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 15 )
 
 
