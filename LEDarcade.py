@@ -2838,7 +2838,7 @@ class Layer(object):
         if(random.randint(0,starchance) == 1):
           
           #make the last screen of stars dim so we don't notice a transition
-          if(x <= self.width -HatWidth):
+          if(x >= self.width -HatWidth):
             self.map[y][x] = (random.randint(0,round(r/3)),random.randint(0,round(g/3)),random.randint(0,round(b/3)))
           else:
             self.map[y][x] = (random.randint(0,r),random.randint(0,g),random.randint(0,b))
@@ -2955,19 +2955,20 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
 
       #wrap around the ground
       if(x+gh >= Ground.width):
-        r,g,b = rgb = Ground.map[y][(x + gh) - Ground.width ]
+        rgb = Ground.map[y][(x + gh) - Ground.width ]
       else:
-        r,g,b = rgb = Ground.map[y][x+gh]
+        rgb = Ground.map[y][x+gh]
 
       if(rgb == (0,0,0)):
-        r,g,b = rgb = Foreground.map[y][x+fh]
+        rgb = Foreground.map[y][x+fh]
         if(rgb == (0,0,0)):
-          r,g,b = rgb = Middleground.map[y][x+mh]
+          rgb = Middleground.map[y][x+mh]
           if(rgb == (0,0,0)):
-            r,g,b = rgb = Background.map[y][x+bh]
+           rgb = Background.map[y][x+bh]
 
         #if the pixel is not black, set the canvas
       if (rgb != (0,0,0)):
+        r,g,b = rgb
         Canvas.SetPixel(x,y,r,g,b)
   
   return Canvas
@@ -16276,6 +16277,7 @@ def DisplayDigitalClock(
       mrate  = 4
       frate  = 2
       grate  = 1
+      DefenderV = 20
 
       while(1==1):
         #main counter
@@ -16319,11 +16321,24 @@ def DisplayDigitalClock(
         m,r = divmod(count,grate)
         if(r == 0):
           gx = gx + 1
-          if(gx > fwidth):
+          if(gx >= gwidth + HatWidth ):
             gx = 0
         #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
+
+
+        #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
         Canvas = PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
-        Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
+
+        if(Ground.map[DefenderV + 5][gx ] != (0,0,0)): 
+          if(random.randint(0,5) == 1):
+            DefenderV = DefenderV - 1
+        else:
+          if(random.randint(0,15) == 1):
+            DefenderV = DefenderV + 1
+      
+        Canvas = Defender.PaintAnimatedToCanvas(5,DefenderV,Canvas)
+
+
         Canvas = CopySpriteToCanvasZoom(ClockSprite,30,2,(0,100,0),(0,5,0),2,False,Canvas)
         Canvas = TheMatrix.SwapOnVSync(Canvas)
         
