@@ -418,7 +418,7 @@ def PlayDefender(GameMaxMinutes):
   Background   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
   Middleground = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
   Foreground   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
-  Ground       = LED.Layer(name="ground",    width=4048, height=32,h=0,v=0)
+  Ground       = LED.Layer(name="ground",    width=2048, height=32,h=0,v=0)
 
   Background.CreateStars(15,0,50,50)
   Middleground.CreateStars(0,0,150,100)
@@ -453,7 +453,7 @@ def PlayDefender(GameMaxMinutes):
     bx     = 0
     mx     = 0
     fx     = 0
-    gx     = 0
+    gx     = -1
     bwidth = Background.width    - LED.HatWidth
     mwidth = Middleground.width  - LED.HatWidth
     fwidth = Foreground.width    - LED.HatWidth
@@ -506,7 +506,7 @@ def PlayDefender(GameMaxMinutes):
       m,r = divmod(count,grate)
       if(r == 0):
         gx = gx + 1
-        if(gx > fwidth):
+        if(gx >= gwidth + LED.HatWidth ):
           gx = 0
       #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
 
@@ -519,7 +519,7 @@ def PlayDefender(GameMaxMinutes):
       #Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
 
       
-      if(Ground.map[DefenderV + 5][gx + 10] != (0,0,0)): 
+      if(Ground.map[DefenderV + 5][gx ] != (0,0,0)): 
         if(random.randint(0,5) == 1):
           DefenderV = DefenderV - 1
       else:
@@ -531,7 +531,6 @@ def PlayDefender(GameMaxMinutes):
      
       Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
       
-    
     
 
 
