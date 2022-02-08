@@ -2855,7 +2855,10 @@ class Layer(object):
     chance = 10
     length = 1
 
-    for x in range (0,self.width):
+    HalfWidth = round(self.width / 2)
+
+    #draw first half randomly, then copy in reverse for the second half
+    for x in range (0,HalfWidth):
       if(random.randint(0,chance) == 1):
         mv = mv - 1
       elif(random.randint(0,chance) == 2):
@@ -2866,19 +2869,34 @@ class Layer(object):
         mv = HatHeight-1
       if(mv < HatHeight - maxheight):
         mv = HatHeight - maxheight
+
       
       #print("mv x:",mv,x)
       for y in range (mv,HatHeight):
         self.map[y][x] = (0,(abs(y - 35)),0)
       self.map[mv][x] = (r,g,b)
 
+      #draw box
+      if(random.randint(0,50) == 1):
+        self.map[mv-1][x]   = (100,100,0)
+        self.map[mv-1][x-1] = (100,100,0)
+        self.map[mv][x-1]   = (100,100,0)
+        self.map[mv][x]   = (100,100,0)
 
-    #copy first HatWidth to the end for seamless scrolling
-    for x in range (1,HatWidth):
-      for y in range(0,HatHeight-1):
-        self.map[y][self.width - x] = self.map[y][x]
-        
 
+    #copy second half
+    for x in range (0,HalfWidth):
+      for y in range (0,HatHeight):
+        self.map[y][x+HalfWidth] = self.map[y][HalfWidth -1 - x]
+
+
+    self.map[16][self.width-1]   = (100,100,255)
+    self.map[17][self.width-2]   = (100,100,255)
+    self.map[18][self.width-3]   = (100,100,255)
+    self.map[19][self.width-4]   = (100,100,255)
+    self.map[20][self.width-5]   = (100,100,255)
+    self.map[21][self.width-6]   = (100,100,255)
+    self.map[22][self.width-7]   = (100,100,255)
 
 
   def PaintOnCanvas(self,h,v,Canvas):
@@ -2931,10 +2949,16 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   
   Canvas.Clear()
   
-  for x in range (0,HatWidth-1):
+  for x in range (0,HatWidth):
     for y in range (0,HatHeight):
 
-      r,g,b = rgb = Ground.map[y][x+gh]
+
+      #wrap around the ground
+      if(x+gh >= Ground.width):
+        r,g,b = rgb = Ground.map[y][(x + gh) - Ground.width ]
+      else:
+        r,g,b = rgb = Ground.map[y][x+gh]
+
       if(rgb == (0,0,0)):
         r,g,b = rgb = Foreground.map[y][x+fh]
         if(rgb == (0,0,0)):
@@ -10075,7 +10099,9 @@ DefenderMap.ColorList = {
   'o' : 1, 
   'O' : 32,
   '#' : 5,
-  '@' : 8,
+  '@' : 6,
+  '6' : 7,
+  '7' : 8,
   
 
 }
@@ -10111,6 +10137,34 @@ DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
 
 
 
+
+
+DefenderMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "  -    ",
+  " 6...o ",
+  "       "
+  
+  
+  )
+
+
+DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
+
+
+DefenderMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "  -    ",
+  " 7...o ",
+  "       "
+  
+  
+  )
+
+
+DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
 
 
 
