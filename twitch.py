@@ -657,6 +657,16 @@ class Bot(commands.Bot):
         await ctx.send(f'Greetings! {ctx.author.name}!')
 
 
+
+    #----------------------------------------
+    # commands                             --
+    #----------------------------------------
+
+    @commands.command()
+    async def help(self, ctx: commands.Context):
+        await ctx.send('Available commands: ?hello ?viwers ?follows ?subs ?uptime ?chat ?profile ?robot ?invaders ?outbreak')
+
+
     #----------------------------------------
     # Viewers                              --
     #----------------------------------------

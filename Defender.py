@@ -421,8 +421,8 @@ def PlayDefender(GameMaxMinutes):
   Ground       = LED.Layer(name="ground",    width=2048, height=32,h=0,v=0)
 
   Background.CreateStars(15,0,50,50)
-  Middleground.CreateStars(0,0,150,100)
-  Foreground.CreateStars(0,0,250,200)
+  Middleground.CreateStars(0,0,100,100)
+  Foreground.CreateStars(0,0,250,150)
   Ground.CreateMountains(0,32,0,maxheight=16)
   
   
