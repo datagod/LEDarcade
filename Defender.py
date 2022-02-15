@@ -85,6 +85,11 @@ CurrencyH,   CurrencyV,   CurrencyRGB   = 0,27, (0,150,0)
 SpriteFillerRGB = (0,4,0)
 
 
+DefenderWorldWidth = 2048
+HumanCount         = 20
+EnemyShipCount     = 30
+
+
 #---------------------------------------
 #Variable declaration section
 #---------------------------------------
@@ -107,264 +112,117 @@ start_time = time.time()
 
 
 
-#--------------------------------------
-# DefenderWorld                      --
-#--------------------------------------
 
 
-class DefenderWorld(object):
-  def __init__(self,name,width,height,Map,Playfield,CurrentRoomH,CurrentRoomV,DisplayH, DisplayV, mutationrate, replicationrate,mutationdeathrate,VirusStartSpeed):
-    self.name      = name
-    self.width     = width
-    self.height    = height
-    self.Foreground   = Layer()
-    self.Middleground = Layer()
-    self.Background   = Layer()
-    self.Playfield    = ([[]])
-    self.DisplayH     = DisplayH
-    self.DisplayV     = DisplayV
+#------------------------------
+# Sprites, Arrays, Functions --
+#------------------------------
 
-    self.Map             = [[0 for i in range(self.width)] for i in range(self.height)]
-    self.Playfield       = [[LED.EmptyObject for i in range(self.width)] for i in range(self.height)]
+
+
+  
+
+
+
+def ScanInFrontOfDefender(Defender,DefenderPlayfield):
+
+  
+  ScanDirection = 2
+  ScanH         = Defender.h + Defender.width  #start in front of ship
+  ScanV         = Defender.v
+    
+  Item          = ''
+  ItemList      = ['NULL']
+  RadarRange    = 50
+  
+  # x 1234567890...50
+  
+
+  for x in range(0,RadarRange):
+    ScanH, ScanV = LED.CalculateDotMovement(ScanH,ScanV,ScanDirection)
+    Item = DefenderPlayfield.map[ScanV][ScanH].name
+    ItemList.append(Item)
+      
+    #LED.setpixel(ScanH,ScanV+2,255,0,0)
+    #LED.setpixel(ScanH-1,ScanV+2,0,0,0)
+
+  return ItemList
+
+
+
+
+
+def LookForTargets(Defender, DefenderPlayfield):
+  ItemList = ScanInFrontOfDefender(Defender,DefenderPlayfield)
+    
+  EnemyTargets = ['Human','EnemyShip']
+
+  #If Enemy is detected, avoid
+  if ( any(item in EnemyTargets for item in ItemList)):
+    Defender.v = Defender.v -1    
+    print("EnemySpotted")
+
+ 
+
+
+
+def DebugPlayfield(Playfield,h,v,width,height):
+  #Show contents of playfield - in text window, for debugging purposes
+    
+  print ("Map width height:",width,height)
+
+  
+  print ("===============================================================")
+
+  for V in range(0,height):
+    for H in range (0,width):
+       
+      name = Playfield[V+v][H+h].name
+      #print ("Display: ",name,V,H)
+      if (name == 'EmptyObject'):
+        print ('  ',end='')
+
+      #draw border walls
+        
+      #draw interior
+      elif (name == 'Wall'):
+        print (' #',end='')
+
+      elif (name == 'Ground'):
+        print (' G',end='')
 
         
-      
 
-  def CopySpriteToPlayfield(self,TheSprite,h,v, ColorTuple=(-1,-1,-1),ObjectType = 'Wall',Filler='EmptyObject'):
-    #Copy a regular sprite to the Playfield.  Sprite will be treated as a wall.
+      #draw Human
+      elif (name == 'Human'):
+        print (' H',end='')
 
-    #print ("Copying sprite to playfield:",TheSprite.name, ObjectType, Filler)
+      #draw EnemyShip
+      elif (name == 'EnemyShip'):
+        print ('**',end='')
 
-    width   = self.width 
-    height  = self.height
-    
-    if (ColorTuple == (-1,-1,-1)):
-      r = TheSprite.r
-      g = TheSprite.g
-      b - TheSprite.b
-    else:
-      r,g,b   = ColorTuple
 
-    #Copy sprite to map 
-    for count in range (0,(TheSprite.width * TheSprite.height)):
-      y,x = divmod(count,TheSprite.width)
 
-    #check the sprite grid at location[count] to see if it has a 1 or zero.  Remember the grid is a simple array.
-    #I was young and new when I first wrote the first sprite functions, and did not understand arrays in python.  :)
-      if TheSprite.grid[count] != 0:
-        if (ObjectType == 'Wall'):
-          self.Playfield[y+v][x+h] = LED.Wall(x,y,r,g,b,1,1,'Wall')
-        elif(ObjectType == 'WallBreakable'):
-          self.Playfield[y+v][x+h] = LED.Wall(x,y,r,g,b,1,1,'WallBreakable')
-        elif(ObjectType == 'Virus'):
-          self.Playfield[y+v][x+h] = Virus(x,y,x,y,r,g,b,1,1, self.VirusStartSpeed   ,1,10,'?',0,0,10,'West',0,self.mutationrate,0,self.replicationrate,self.mutationdeathrate)
+
+      #draw interior
+      elif (name == 'WallBreakable'):
+        print (' o',end='')
+
+      elif (Playfield[V][H].alive == 1):
+        print (' ?',end='')
+        #print ("Name?:",name," alive:",Playfield[V][H].alive)
+      elif (Playfield[V][H].alive == 0):
+        print (' !',end='')
+        #print ("Name!:",name," alive:",Playfield[V][H].alive)
       else:
-        if (Filler == 'EmptyObject'):
-          self.Playfield[y+v][x+h] = LED.EmptyObject
-        elif (Filler == 'DarkWall'):
-          #dark wall
-          self.Playfield[y+v][x+h] = LED.Wall(x,y,5,5,5,1,1,'Wall')
-        else:
-          self.Playfield[y+v][x+h] = LED.EmptyObject
+        print (' X',end='')
+        #print ("NameX:",name," alive:",Playfield[V][H].alive)
 
-           
-    return;
+    print('')
+  print ("=============================================")
+  time.sleep(1)
 
-
-
-
-  def DisplayWindow(self,h,v,ZoomFactor = 0):
-    #This function accepts h,v coordinates for the entire map (e.g. 1,8  20,20,  64,64)    
-    #Displays what is on the playfield currently, including walls, cars, etc.
-    #Zoom factor is used to shrink/expand the display
-    r = 0
-    g = 0
-    b = 0
-    count = 0
-    H_modifier = 0
-    V_modifier = 0
-    
-    HIndentFactor = 0    
-    VIndentFactor = 0    
-
-
-
-    if (ZoomFactor > 1):
-      H_modifier = (1 / LED.HatWidth ) * ZoomFactor * 2  #BigLED is 2 times wider than tall. Hardcoding now, will fix later. 
-      V_modifier = (1 / LED.HatHeight ) * ZoomFactor
-      NewHeight = round(LED.HatHeight * V_modifier)
-      NewWidth  = round(LED.HatWidth * H_modifier)
-
-
-      HIndentFactor = (LED.HatWidth / 2)  - (NewWidth /2)
-      VIndentFactor = (LED.HatHeight / 2) - (NewHeight /2)
-    else:
-      IndentFactor = 0
-
-    #print("LED.HatWidth",LED.HatWidth," NewWidth",NewWidth," ZoomFactor:",ZoomFactor,"HV_modifier",HV_modifier, "IndentFactor:",IndentFactor)
-
-    for V in range(0,LED.HatHeight):
-      for H in range (0,LED.HatWidth):
-        #print ("DisplayWindow hv HV: ",h,v,H,V) 
-        name = self.Playfield[v+V][h+H].name
-        #print ("Display: ",name,V,H)
-        if (name == 'EmptyObject'):
-          r = 0
-          g = 0
-          b = 0          
-
-        else:
-          r = self.Playfield[v+V][h+H].r
-          g = self.Playfield[v+V][h+H].g
-          b = self.Playfield[v+V][h+H].b
-          
-        #Our map is an array V of array H  [V][1,2,3,4...etc]
-        if (ZoomFactor > 0):
-          LED.TheMatrix.SetPixel((H * H_modifier) + HIndentFactor ,(V * V_modifier) + VIndentFactor,r,g,b)
-        
-    
-
-        else:
-          LED.TheMatrix.SetPixel(H,V,r,g,b)
-    
-    #unicorn.show()
-    #SendBufferPacket(RemoteDisplay,LED.HatHeight,LED.HatWidth)
-
-
-
-  def DisplayWindowZoom(self,h,v,Z1=8,Z2=1,ZoomSleep=0.05):
-    #uses playfield to display items
-
-    if (Z1 <= Z2):
-      for Z in range (Z1,Z2):
-        LED.TheMatrix.Clear()
-        self.DisplayWindow(h,v,Z)
-        #time.sleep(ZoomSleep)
-        
-    else:
-      for Z in reversed(range(Z2,Z1)):
-        LED.TheMatrix.Clear()        
-        self.DisplayWindow(h,v,Z)
-        #time.sleep(ZoomSleep)
-        
-
-
-            
-  def DisplayWindowWithSprite(self,h,v,ClockSprite):
-    #This function accepts h,v coordinates for the entire map (e.g. 1,8  20,20,  64,64)    
-    #Displays what is on the playfield currently, including walls, cars, etc.
-    r = 0
-    g = 0
-    b = 0
-    count = 0
-        
-
-    for V in range(0,LED.HatWidth):
-      for H in range (0,LED.HatHeight):
-         
-        name = self.Playfield[v+V][h+H].name
-        #print ("Display: ",name,V,H)
-        if (name == 'EmptyObject'):
-          r = 0
-          g = 0
-          b = 0          
-
-        else:
-          r = self.Playfield[v+V][h+H].r
-          g = self.Playfield[v+V][h+H].g
-          b = self.Playfield[v+V][h+H].b
-          
-        #Our map is an array of arrays [v][h] but we draw h,v
-        LED.TheMatrix.SetPixel(H,V,r,g,b)
-
-    #Display clock at current location
-    #Clock hv will allow external functions to slide clock all over screen
-
-    #print ("Clock info  hv on: ",ClockSprite.h,ClockSprite.v,ClockSprite.on)
-    ClockSprite.CopySpriteToBuffer(ClockSprite.h,ClockSprite.v)
-        
-    #unicorn.show()
-    #SendBufferPacket(RemoteDisplay,LED.HatHeight,LED.HatWidth)
-
-
-
-
-
-
-  def FindClosestObject(self,SourceH,SourceV, Radius = 10, ObjectType = 'WallBreakable'):
-    #Find the HV co-ordinates of the closest playfield object
-    #
-    #print("Searching for nearby food SourceH SourceV Radius ObjectType",SourceH, SourceV, Radius, ObjectType)
-    #Prepare co-ordinates for search grid
-    StartX = SourceH - Radius
-    StopX  = SourceH + Radius
-    StartY = SourceV - Radius
-    StopY  = SourceV + Radius
-    
-    
-    ClosestX     = -1
-    ClosestY     = -1
-    MinDistance  = 9999
-    Distance     = 0
-
-    #Check boundaries
-    if (StartX < 0):
-      StartX = 0
-    if (StartX > LED.HatWidth-1):
-      StartX = LED.HatWidth-1
-    if (StartY < 0):
-      StartY = 0
-    if (StartY > LED.HatHeight-1):
-      StartY = LED.HatHeight-1
-
-    if (StopX < 0):
-      StopX = 0
-    if (StopX > LED.HatWidth-1):
-      StopX = LED.HatWidth-1
-    if (StopY < 0):
-      StopY = 0
-    if (StopY > LED.HatHeight-1):
-      StopY = LED.HatHeight-1
-        
-
-    #print("Start XY Stop XY",StartX,StartY, StopX, StopY)
-    
-    for x in range(StartX,StopX):
-      for y in range(StartY, StopY):
-        #Look for object on the playfield
-        #print ("searching xy: ",x,y, " found ",self.Playfield[y][x].name)
-
-        #remember playfield coordinates are swapped
-        if (self.Playfield[y][x].name == ObjectType):
-          Distance = GetDistanceBetweenDots(SourceH,SourceV,x,y)
-          #print ("Distance: ",Distance, " MinDistance:",MinDistance, "xy:",x,y)
-          if (Distance <= MinDistance):
-            MinDistance = Distance
-            ClosestX = x
-            ClosestY = y
-      
-    #FlashDot5(ClosestX,ClosestY,0.003)
-    return ClosestX,ClosestY;
-
-
-
-
-
-
-#-----------------------------
-# Outbreak Global Variables --
-#-----------------------------
-InstabilityFactor = 50
-ScrollSpeedLong   = 500
-ScrollSpeedShort  = 5
-MinBright         = 100
-MaxBright         = 255
-
-
-
-
-
-
+  return
 
     
 
@@ -382,6 +240,16 @@ def PlayDefender(GameMaxMinutes):
   DayOfMonthSprite    = LED.CreateDayOfMonthSprite()
 
   ClockSprite.on      = 0
+
+
+  DefenderPlayfield = LED.PlayField(
+      name   = "DefenderWorld",
+      width  = DefenderWorldWidth,
+      height = LED.HatHeight,
+      h      = 0,
+      v      = 0
+    )
+
 
 
 
@@ -418,15 +286,57 @@ def PlayDefender(GameMaxMinutes):
   Background   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
   Middleground = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
   Foreground   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
-  Ground       = LED.Layer(name="ground",    width=2048, height=32,h=0,v=0)
+  Ground       = LED.Layer(name="ground",    width=DefenderWorldWidth, height=32,h=0,v=0)
 
-  Background.CreateStars(15,0,50,50)
+
+
+  Background.CreateStars(5,0,50,50)
   Middleground.CreateStars(0,0,100,100)
-  Foreground.CreateStars(0,0,250,150)
+  Foreground.CreateStars(0,0,200,200)
   Ground.CreateMountains(0,32,0,maxheight=16)
   
   
   
+  #--------------------------------
+  #-- Create Enemies             --
+  #--------------------------------
+
+
+  Humans = []
+
+  #humans must be located at least HatWidth from the start
+  for count in range (0,HumanCount):
+    LED.HumanSprite.framerate = random.randint(15,50)
+    Humans.append(copy.deepcopy(LED.HumanSprite))
+    Humans[count].h = random.randint(64,DefenderWorldWidth)
+    Humans[count].v = random.randint(16,LED.HatHeight-1)
+    
+    print("Placing humans:",count)
+    DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[count].h,Humans[count].v,Humans[count])
+    
+
+  EnemyShips = []
+  for count in range (0,EnemyShipCount):
+    NewSprite = copy.deepcopy(LED.ShipSprites[random.randint(20,27)])
+    NewSprite.framerate = random.randint(2,12)
+    NewSprite.name = "EnemyShip"
+    EnemyShips.append(NewSprite)
+
+    Finished = False
+    while (Finished == False):
+      #Find a spot in the sky for the ship
+      h = random.randint(64,DefenderWorldWidth)
+      v = random.randint(1,LED.HatHeight-1)
+
+      if(Ground.map[v][h] == (0,0,0)):
+        EnemyShips[count].h = h
+        EnemyShips[count].v = v
+        
+        Finished = True
+        print("Placing EnemyShips:",count)
+        DefenderPlayfield.CopyAnimatedSpriteToPlayfield(EnemyShips[count].h,EnemyShips[count].v,EnemyShips[count])
+
+
 
 
   #--------------------------------
@@ -462,17 +372,46 @@ def PlayDefender(GameMaxMinutes):
     mrate  = 4
     frate  = 2
     grate  = 1
-    DefenderV = 20
+    DisplayH  = 0
+    DiosplayV = 0
+
+    Defender = copy.deepcopy(LED.Defender)
+    Defender.h = 5
+    Defender.v = 20
+
+
 
     while(1==1):
       #main counter
       count = count + 1
-           
+
+      
       #check the time once in a while
-      if(random.randint(0,500) == 1):
+      if(random.randint(0,1000) == 1):
         if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
           ClockSprite = LED.CreateClockSprite(24)
     
+        #End game after X seconds
+        h,m,s    = LED.GetElapsedTime(start_time,time.time())
+        if(m > GameMaxMinutes):
+          print("Elapsed Time:  mm:ss",m,s)
+          LED.SaveConfigData()
+          print("Ending game after",m," minutes")
+
+          LED.ClearBigLED()
+          LED.ClearBuffers()
+          CursorH = 0
+          CursorV = 0
+          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"ALIEN MUTANTS ARE VANQUISHED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+          LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"LIVE TO FIGHT ANOTHER DAY",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+          LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+          
+          return();
+
+
+
+
 
 
       #Background
@@ -502,36 +441,86 @@ def PlayDefender(GameMaxMinutes):
       #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
 
 
-      #ground
+      #ground / display
       m,r = divmod(count,grate)
       if(r == 0):
         gx = gx + 1
         if(gx >= gwidth + LED.HatWidth ):
           gx = 0
+        DisplayH = gx
       #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
 
 
-      #Canvas = LED.PaintThreeLayerCanvas(bx,mx,fx,Background,Middleground,Ground,Canvas)
+
+
       Canvas = LED.PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
-
-
-      
       #Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
 
+
+      #paint humans on Canvas 
+      for i in range (0,HumanCount):
+        hH = Humans[i].h
+        hV = Humans[i].v
+        #check if human is in currently displayed area
+        if(DisplayH <=  hH  <= (DisplayH + LED.HatWidth)):
+          Canvas = Humans[i].PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
+
+
+
+      #paint EnemyShip on Canvas
+      for i in range (0,EnemyShipCount):
+        H = EnemyShips[i].h 
+        V = EnemyShips[i].v 
+        #check if EnemyShip is in currently displayed area
+        if((DisplayH <=  H  <= (DisplayH + LED.HatWidth)) or
+          (DisplayH <=  H + EnemyShips[i].width  <= (DisplayH + LED.HatWidth))):
+          Canvas = EnemyShips[i].PaintAnimatedToCanvas(H-DisplayH,V,Canvas)
       
-      if(Ground.map[DefenderV + 5][gx ] != (0,0,0)): 
-        if(random.randint(0,5) == 1):
-          DefenderV = DefenderV - 1
-      else:
-        if(random.randint(0,15) == 1):
-          DefenderV = DefenderV + 1
+
+
       
-      Canvas = LED.Defender.PaintAnimatedToCanvas(5,DefenderV,Canvas)
+      #--------------------------------
+      #-- Move Defender              --
+      #--------------------------------
+
+      #defender needs to avoid the ground
+      #shoot enemies
+      #pick up humans
+      
+
+
+      
+      #if(Ground.map[Defender.v + 5][gx] != (0,0,0)): 
+      #  if(random.randint(0,20) == 1):
+      #    Defender.v = Defender.v - 1
+      #else:
+      #  if(random.randint(0,15) == 1):
+      #    Defender.v = Defender.v + 1
+
+      LookForTargets(Defender,DefenderPlayfield)
+
+
+      Canvas = LED.Defender.PaintAnimatedToCanvas(5,Defender.v,Canvas)
+
+
+
+      
+
+
       Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,30,2,(0,100,0),(0,5,0),2,False,Canvas)
-     
       Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
       
     
+
+      #print playfield
+      #for x in range (gx,gx+63):
+      #  for y in range (0,31):
+      #    if(DefenderPlayfield.map[y][x].name != 'EmptyObject'):
+      #      print (x,y,DefenderPlayfield.map[y][x].name)
+
+
+      #if(random.randint(0,100) == 1):
+      #  DebugPlayfield(DefenderPlayfield.map,gx,0,64,32)
 
 
 
