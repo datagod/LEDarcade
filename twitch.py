@@ -39,7 +39,8 @@ from datetime import datetime, timezone
 #games
 import DotInvaders as DI
 import Outbreak    as OB
-
+import Defender    as DE
+import Tron        as TR
 
 
 
@@ -664,7 +665,7 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def help(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viwers ?follows ?subs ?uptime ?chat ?profile ?robot ?invaders ?outbreak')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?robot ?invaders ?outbreak ?defender ?tron ?starrynight')
 
 
     #----------------------------------------
@@ -948,7 +949,64 @@ class Bot(commands.Bot):
       CursorH = 0
       CursorV = 0
 
-       
+    #----------------------------------------
+    # DEFENDER                             --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def defender(self, ctx: commands.Context):
+      #Play game Defender
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Time to shoot some mutants"
+        await self.Channel.send(message)
+        DE.LaunchDefender(GameMaxMinutes = 5)
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
+
+
+    #----------------------------------------
+    # TRON                                 --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def tron(self, ctx: commands.Context):
+      #Play game Defender
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Time to shoot some mutants"
+        await self.Channel.send(message)
+        TR.LaunchTron(GameMaxMinutes = 5)
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
+
+
+    #----------------------------------------
+    # STARRY NIGHT CLOCK                   --
+    #----------------------------------------
+
+
+    @commands.command()
+    async def starrynight(self, ctx: commands.Context):
+      #Play game Defender
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Enjoy the peaceful starry sky while staring at a clock"
+        await self.Channel.send(message)
+
+
+      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 2 )
+
+
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
+
+
 
 
 

@@ -232,6 +232,7 @@ class EmptyObject(object):
     self.r          = 0
     self.g          = 0
     self.b          = 0
+    self.rgb        = (0,0,0)
     self.scandirection = 0
     self.speed      = 0
     self.score      = 0
@@ -2242,10 +2243,10 @@ class ColorAnimatedSprite(object):
     g = 0
     b = 0
     
-    if (h1 < 0):
-      h1 = self.h
-    if (v1 < 0):
-      v1 = self.v
+    #if (h1 < 0):
+    #  h1 = self.h
+    #if (v1 < 0):
+    #  v1 = self.v
 
     
     #print("name:",self.name," currentframe:",self.currentframe," Frames:",self.frames)
@@ -2877,11 +2878,11 @@ class Layer(object):
       self.map[mv][x] = (r,g,b)
 
       #draw box
-      if(random.randint(0,50) == 1):
-        self.map[mv-1][x]   = (100,100,0)
-        self.map[mv-1][x-1] = (100,100,0)
-        self.map[mv][x-1]   = (100,100,0)
-        self.map[mv][x]   = (100,100,0)
+      #if(random.randint(0,50) == 1):
+      #  self.map[mv-1][x]   = (100,100,0)
+      #  self.map[mv-1][x-1] = (100,100,0)
+      #  self.map[mv][x-1]   = (100,100,0)
+      #  self.map[mv][x]   = (100,100,0)
 
 
     #copy second half
@@ -2890,6 +2891,7 @@ class Layer(object):
         self.map[y][x+HalfWidth] = self.map[y][HalfWidth -1 - x]
 
 
+    #just a temporary drawing
     self.map[16][self.width-1]   = (100,100,255)
     self.map[17][self.width-2]   = (100,100,255)
     self.map[18][self.width-3]   = (100,100,255)
@@ -2897,6 +2899,8 @@ class Layer(object):
     self.map[20][self.width-5]   = (100,100,255)
     self.map[21][self.width-6]   = (100,100,255)
     self.map[22][self.width-7]   = (100,100,255)
+
+
 
 
   def PaintOnCanvas(self,h,v,Canvas):
@@ -2948,14 +2952,14 @@ def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
 def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
   
   Canvas.Clear()
-  
+  gwidth = Ground.width
   for x in range (0,HatWidth):
     for y in range (0,HatHeight):
 
 
       #wrap around the ground
-      if(x+gh >= Ground.width):
-        rgb = Ground.map[y][(x + gh) - Ground.width ]
+      if(x+gh >= gwidth):
+        rgb = Ground.map[y][(x + gh) - gwidth ]
       else:
         rgb = Ground.map[y][x+gh]
 
@@ -2973,6 +2977,58 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   
   return Canvas
   
+
+
+class PlayField(object):
+  def __init__(
+      self,
+      name,
+      width,
+      height,
+      h,
+      v
+    ):  
+
+    self.name   = name,
+    self.width  = width
+    self.height = height
+    self.h      = h
+    self.v      = v
+    self.map    = [[EmptyObject for i in range(self.width)] for i in range(self.height)]
+
+
+  def CopyPlayfieldToCanvas(self,h,v,canvas):
+
+    for x in range (0,HatWidth):
+      for y in range (0,HatHeight):
+        if(self.map[y+v][x+h].name != 'EmptyObject'):
+          canvas.SetPixel(x,y,50,75,100)
+    return canvas
+
+
+
+  def CopyAnimatedSpriteToPlayfield(self,h,v, TheObject):
+    #Copy an object (e.g. animated sprite) to the Playfield. 
+    #To keep things simple, we will copy the shape of the sprite
+    #and treat it as a hitbox
+    #Each spot on the playfield will contain a reference to the objecttype e.g. a ship
+
+    width   = TheObject.width 
+    height  = TheObject.height
+    
+    #Copy sprite to playfield
+    for count in range (0,(width * height)):
+      y,x = divmod(count,width)
+      #print("Playfield HV:",x+h,y+v)
+
+      if((y+v < self.height) and (x+h < self.width)):
+        self.map[y+v][x+h] = TheObject
+           
+    return
+
+
+
+
 
 
 
@@ -10171,6 +10227,88 @@ DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
 
 
 
+
+
+
+
+
+
+HumanSprite = ColorAnimatedSprite(
+  h=0, 
+  v=0, 
+  name="Human", 
+  width  = 2, 
+  height = 2, 
+  framerate=random.randint(2,12),
+  grid=[]  )
+
+                 
+
+HumanMap = TextMap(
+  h      = 1,
+  v      = 1,
+  width  = HumanSprite.width, 
+  height = HumanSprite.height
+  )
+
+
+HumanMap.ColorList = {
+  ' ' : 0,
+  '-' : 30, #pink
+  '.' : 17, #orange 
+  'o' : 18, 
+  'O' : 19,
+  '#' : 5,
+  '@' : 6,
+  '6' : 7,
+  '7' : 8,
+  
+
+}
+
+
+HumanMap.map= (
+  #0.........1.........2.........3.........4....
+  "- ",
+  ". ",
+  )
+HumanMap.CopyMapToColorSprite(TheSprite=HumanSprite)
+
+HumanMap.map= (
+  #0.........1.........2.........3.........4....
+  "- ",
+  " .",
+  )
+HumanMap.CopyMapToColorSprite(TheSprite=HumanSprite)
+
+HumanMap.map= (
+  #0.........1.........2.........3.........4....
+  " -",
+  " .",
+  )
+HumanMap.CopyMapToColorSprite(TheSprite=HumanSprite)
+
+HumanMap.map= (
+  #0.........1.........2.........3.........4....
+  " -",
+  ". ",
+  )
+HumanMap.CopyMapToColorSprite(TheSprite=HumanSprite)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #------------------------------------------------------------------------------
 # FUNCTIONS                                                                  --
 #                                                                            --
@@ -13159,6 +13297,30 @@ def CopySpriteToCanvasZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,
               #  setpixel(H,V,0,0,0)
 
   return Canvas;
+
+
+
+
+
+
+
+
+#def CopyPlayfieldToCanvas(Playfield,h,v,Canvas=Canvas):
+#  #Copy a section of the Playfield to the canvas
+#
+#  #Copy sprite to Canvas
+#  for x in range (0,HatWidth ):
+#    for y in range (0,HatHeight):
+#      rgb = Playfield[y+v][x+h] 
+#    
+#  return Canvas;
+
+
+
+
+
+
+
 
 
 
@@ -17548,3 +17710,7 @@ def DrawSquare():
       TheMatrix.Clear()
       TheMatrix.SetImage(image, n, n)
       time.sleep(0.01)
+
+
+
+      
