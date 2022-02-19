@@ -483,7 +483,7 @@ class Bot(commands.Bot):
         except:
           LED.ShowScrollingBanner2('ERROR! INVALID CHARACTER',(200,0,0),ScrollSleep=0.005,v=25)
 
-        print("subtract")
+        
         self.MesageCount = self.MessageCount -1
 
 
