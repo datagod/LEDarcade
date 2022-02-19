@@ -225,6 +225,7 @@ class Bot(commands.Bot):
     #---------------------------------------
     # check to see if the stream is live or not
     async def CheckStream(self):
+      print("Checking if stream is active")
       GetBasicTwitchInfo()
       self.LastStreamCheckTime = time.time()
       #Show title info if Main stream is active
