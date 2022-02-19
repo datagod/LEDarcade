@@ -87,7 +87,7 @@ SpriteFillerRGB = (0,4,0)
 
 DefenderWorldWidth = 2048
 HumanCount         = 20
-EnemyShipCount     = 30
+EnemyShipCount     = 50
 
 
 #---------------------------------------
@@ -124,7 +124,7 @@ start_time = time.time()
 
 
 
-def ScanInFrontOfDefender(Defender,DefenderPlayfield):
+def ScanInFrontOfDefender(H,V,Defender,DefenderPlayfield):
 
   
   ScanDirection = 2
@@ -138,13 +138,20 @@ def ScanInFrontOfDefender(Defender,DefenderPlayfield):
   # x 1234567890...50
   
 
-  for x in range(0,RadarRange):
-    ScanH, ScanV = LED.CalculateDotMovement(ScanH,ScanV,ScanDirection)
-    Item = DefenderPlayfield.map[ScanV][ScanH].name
-    ItemList.append(Item)
-      
-    #LED.setpixel(ScanH,ScanV+2,255,0,0)
-    #LED.setpixel(ScanH-1,ScanV+2,0,0,0)
+  
+  try:
+
+    for x in range(0,RadarRange):
+      ScanH, ScanV = LED.CalculateDotMovement(ScanH,ScanV,ScanDirection)
+      if(ScanH + H < DefenderPlayfield.width):
+        
+        Item = DefenderPlayfield.map[ScanV + V][ScanH + H].name
+        ItemList.append(Item)
+  except:
+    print("ERROR at location:",ScanV + V, ScanH + H)
+  
+
+    
 
   return ItemList
 
@@ -152,18 +159,47 @@ def ScanInFrontOfDefender(Defender,DefenderPlayfield):
 
 
 
-def LookForTargets(Defender, DefenderPlayfield):
-  ItemList = ScanInFrontOfDefender(Defender,DefenderPlayfield)
-    
-  EnemyTargets = ['Human','EnemyShip']
+def LookForTargets(H,V,Defender, DefenderPlayfield):
+
+  # Old method using scanning
+  #ItemList = ScanInFrontOfDefender(H,V,Defender,DefenderPlayfield)
+  #  
+  #EnemyTargets = ['Human','EnemyShip']
 
   #If Enemy is detected, avoid
-  if ( any(item in EnemyTargets for item in ItemList)):
-    Defender.v = Defender.v -1    
-    print("EnemySpotted")
-
+  #if ( any(item in EnemyTargets for item in ItemList)):
+  #  print("EnemySpotted")
+  #  for x in range (0,45):
+  #    LED.setpixel(Defender.h + 5 + x,Defender.v + 2,255,0,0)
+      
  
 
+  try:
+
+    #Look at furthest part of the screen and start checking for enemies
+    x = 0
+    y = 0
+    
+    if (LED.HatWidth + H >= DefenderPlayfield.width):
+      StartX =  LED.HatWidth - (LED.HatWidth + H -DefenderPlayfield.width)
+    else:
+      StartX = LED.HatWidth -1
+
+    for x in range (StartX,0,-1):
+      #print(DefenderPlayfield.map[y][x].name)
+      for y in range(0,LED.HatHeight-1):
+
+        if(DefenderPlayfield.map[y][x + H].name != 'EmptyObject'):
+          if(DefenderPlayfield.map[y][x + H].v < Defender.v):
+            Defender.v = Defender.v - 1
+            break
+          elif(DefenderPlayfield.map[y][x + H].v > Defender.v):
+            Defender.v = Defender.v + 1
+            break
+          
+  except:
+    print("ERROR at location:",x,y)
+    print("A stupid error has occurred when finding targets.  Please fix this soon.")
 
 
 def DebugPlayfield(Playfield,h,v,width,height):
@@ -220,7 +256,7 @@ def DebugPlayfield(Playfield,h,v,width,height):
 
     print('')
   print ("=============================================")
-  time.sleep(1)
+
 
   return
 
@@ -317,7 +353,7 @@ def PlayDefender(GameMaxMinutes):
 
   EnemyShips = []
   for count in range (0,EnemyShipCount):
-    NewSprite = copy.deepcopy(LED.ShipSprites[random.randint(20,27)])
+    NewSprite = copy.deepcopy(LED.ShipSprites[random.randint(0,27)])
     NewSprite.framerate = random.randint(2,12)
     NewSprite.name = "EnemyShip"
     EnemyShips.append(NewSprite)
@@ -459,8 +495,16 @@ def PlayDefender(GameMaxMinutes):
 
       #paint humans on Canvas 
       for i in range (0,HumanCount):
+
+        if(random.randint(0,5) == 1):
+          #move human
+          Humans[i].h = Humans[i].h + 1
+          if Humans[i].h > DefenderPlayfield.width:
+            Humans[i].h = 0
+        
         hH = Humans[i].h
         hV = Humans[i].v
+       
         #check if human is in currently displayed area
         if(DisplayH <=  hH  <= (DisplayH + LED.HatWidth)):
           Canvas = Humans[i].PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
@@ -490,14 +534,19 @@ def PlayDefender(GameMaxMinutes):
 
 
       
-      #if(Ground.map[Defender.v + 5][gx] != (0,0,0)): 
-      #  if(random.randint(0,20) == 1):
-      #    Defender.v = Defender.v - 1
-      #else:
-      #  if(random.randint(0,15) == 1):
-      #    Defender.v = Defender.v + 1
+      ScanV = Defender.v + 5
+      if(ScanV > LED.HatHeight -2):
+        ScanV = LED.HatHeight -2
 
-      LookForTargets(Defender,DefenderPlayfield)
+      
+      if(Ground.map[ScanV][gx] != (0,0,0)): 
+        if(random.randint(0,20) == 1):
+          Defender.v = Defender.v - 1
+      else:
+        if(random.randint(0,15) == 1):
+          Defender.v = Defender.v + 1
+
+      LookForTargets(gx,0, Defender,DefenderPlayfield)
 
 
       Canvas = LED.Defender.PaintAnimatedToCanvas(5,Defender.v,Canvas)
@@ -512,14 +561,9 @@ def PlayDefender(GameMaxMinutes):
       
     
 
-      #print playfield
-      #for x in range (gx,gx+63):
-      #  for y in range (0,31):
-      #    if(DefenderPlayfield.map[y][x].name != 'EmptyObject'):
-      #      print (x,y,DefenderPlayfield.map[y][x].name)
 
 
-      #if(random.randint(0,100) == 1):
+      #if(random.randint(0,50) == 1):
       #  DebugPlayfield(DefenderPlayfield.map,gx,0,64,32)
 
 

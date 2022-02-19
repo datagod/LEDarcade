@@ -2285,6 +2285,53 @@ class ColorAnimatedSprite(object):
    
 
 
+  def PaintAnimatedExplosionToCanvas(self,h1 = -1, v1 = -1,Canvas=Canvas):
+    #Treat black pixels in sprite as transparent
+    x = 0
+    y = 0
+    r = 0
+    g = 0
+    b = 0
+    
+    #if (h1 < 0):
+    #  h1 = self.h
+    #if (v1 < 0):
+    #  v1 = self.v
+
+    
+    #print("name:",self.name," currentframe:",self.currentframe," Frames:",self.frames)
+
+    self.ticks = self.ticks + 1
+    #NOTE: This usage of ticks is different than in ScrollWithFrames
+    if (self.ticks == self.framerate):
+      self.currentframe = self.currentframe + 1
+      self.ticks        = 0
+
+    if (self.currentframe > self.frames or self.currentframe == 0):
+      self.currentframe = 1
+
+    for count in range (0,(self.width * self.height)):
+      y,x = divmod(count,self.width)
+      
+      
+      try:
+        if (CheckBoundary((x+h1),y+v1) == 0):
+          #print("Count:",count)
+          #print("CurrentFrame:",self.currentframe," self.grid[]:",self.grid[self.currentframe][count])
+          r,g,b =  ColorList[self.grid[self.currentframe][count]]
+          if(r > 0 or g > 0 or b > 0):
+            Canvas.SetPixel(x+h1,y+v1,255,0,0)
+      except:
+
+        print("Something wrong...")
+        print("Name:",self.name)
+        print("Count:",count)
+        print("CurrentFrame:",self.currentframe)
+        print("self.grid[]:",self.grid[self.currentframe][count])
+       
+
+    
+    return Canvas
 
 
 
