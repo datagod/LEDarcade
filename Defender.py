@@ -54,11 +54,8 @@ import time
 import numpy
 import math
 from datetime import datetime, timedelta
+from rgbmatrix import graphics
 
-
-#For displaying crypto currency
-#from pycoingecko import CoinGeckoAPI
-#price = CoinGeckoAPI().get_price(ids='bitcoin', vs_currencies='usd')
 
 
 
@@ -125,7 +122,6 @@ start_time = time.time()
 
 
 def ScanInFrontOfDefender(H,V,Defender,DefenderPlayfield):
-
   
   ScanDirection = 2
   ScanH         = Defender.h + Defender.width  #start in front of ship
@@ -157,22 +153,43 @@ def ScanInFrontOfDefender(H,V,Defender,DefenderPlayfield):
 
 
 
-
-
-def LookForTargets(H,V,Defender, DefenderPlayfield):
-
-  # Old method using scanning
-  #ItemList = ScanInFrontOfDefender(H,V,Defender,DefenderPlayfield)
-  #  
-  #EnemyTargets = ['Human','EnemyShip']
-
-  #If Enemy is detected, avoid
-  #if ( any(item in EnemyTargets for item in ItemList)):
-  #  print("EnemySpotted")
-  #  for x in range (0,45):
-  #    LED.setpixel(Defender.h + 5 + x,Defender.v + 2,255,0,0)
-      
+def ScanFarAway(H,V,Defender,DefenderPlayfield):
+  #HV are the current upper left hand corner of the displayed playfield window
+  ScanDirection = 2
+  ScanH         = Defender.h + Defender.width  #start in front of ship
+  ScanV         = Defender.v
+  Item          = ''
+  ItemList      = [('EmptyObject',0,0)]
+  RadarStart    = 20
+  RadarStop     = 50
+  
+  # x 20...50
+  
  
+  try:
+
+    for x in range(RadarStart,RadarStop):
+      ScanH, ScanV = LED.CalculateDotMovement(ScanH,ScanV,ScanDirection)
+      if(ScanH + H < DefenderPlayfield.width):
+        
+        if(DefenderPlayfield.map[ScanV + V][ScanH + H].alive == True):
+          Item = DefenderPlayfield.map[ScanV + V][ScanH + H].name
+          ItemList.append((Item,ScanH,ScanV))
+  except:
+    print("ERROR at location:",ScanV + V, ScanH + H)
+
+  return ItemList
+
+
+
+def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
+  #HV are the current upper left hand corner of the displayed playfield window
+  EnemyName = 'EmptyObject'
+  EnemyH    = -1
+  EnemyV    = -1
+  StartX    = 64
+  StopX     = 40
+
 
   try:
 
@@ -185,22 +202,72 @@ def LookForTargets(H,V,Defender, DefenderPlayfield):
     else:
       StartX = LED.HatWidth -1
 
-    for x in range (StartX,0,-1):
+    #If an enemy is on screen, take note and exit the loops
+    #sprites are usually bigger than a dot, so we use range step of 2 to increase speed
+    Found = False
+    for x in range (StartX,0,-2):
       #print(DefenderPlayfield.map[y][x].name)
-      for y in range(0,LED.HatHeight-1):
+      for y in range(0,LED.HatHeight-1,2):
 
-        if(DefenderPlayfield.map[y][x + H].name != 'EmptyObject'):
-          if(DefenderPlayfield.map[y][x + H].v < Defender.v):
-            Defender.v = Defender.v - 1
-            break
-          elif(DefenderPlayfield.map[y][x + H].v > Defender.v):
-            Defender.v = Defender.v + 1
-            break
+        if(DefenderPlayfield.map[y][x + H - 1].name == TargetName and DefenderPlayfield.map[y][x + H - 1].alive == True):
           
+          if(DefenderPlayfield.map[y][x + H - 1].v < Defender.v):
+            #we do randint to stop the jitteriness of ship moving up and down
+            if(random.randint(0,10) == 1):
+              Defender.v = Defender.v - 1
+            Found = True
+            break
+          elif(DefenderPlayfield.map[y][x + H -1].v > Defender.v):
+            if(random.randint(0,10) == 1):
+              Defender.v = Defender.v + 1
+            Found = True
+            break
+      if(Found == True):
+        break
+
+
   except:
-    print("ERROR at location:",x,y)
+    print("ERROR at location: xy H StartX x+H",x,y,StartX,x+H)
     print("A stupid error has occurred when finding targets.  Please fix this soon.")
 
+  
+  #If an target was found, scan to see if it is in firing range
+  if(Found == True):
+    ItemList = ScanFarAway(H,V,Defender,DefenderPlayfield)
+    EnemyTargets = ['Human','EnemyShip']
+
+    
+    #print(ItemList)
+    
+    for i in range (0,len(ItemList)):
+      EnemyName,EnemyH, EnemyV = ItemList[i]
+      if(EnemyName in EnemyTargets):
+        break
+    
+
+  return EnemyName,EnemyH, EnemyV
+      
+
+    #if ( any(item in EnemyTargets for item,h,v in ItemList)):
+      #for x in range (0,45):
+      #  LED.setpixel(Defender.h + 5 + x,Defender.v + 2,255,0,0)
+
+
+
+
+def ShootTarget(PlayfieldH, PlayfieldV, TargetName, TargetH,TargetV,Defender, DefenderPlayfield,Canvas):\
+  #PlayfieldH is the upper left hand corner of the playfield window being displayed
+  #TargetH and TargetV are on screen co-ordinates (64x32)
+  print("TargetName:",TargetName)
+  print("Shooting:",DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].name)
+  graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2, TargetH, TargetV +2, graphics.Color(255,0,0))
+  DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].alive = False
+  DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].EraseSpriteFromPlayfield(DefenderPlayfield)
+
+
+  return DefenderPlayfield 
+
+  
 
 def DebugPlayfield(Playfield,h,v,width,height):
   #Show contents of playfield - in text window, for debugging purposes
@@ -495,30 +562,31 @@ def PlayDefender(GameMaxMinutes):
 
       #paint humans on Canvas 
       for i in range (0,HumanCount):
-
-        if(random.randint(0,5) == 1):
-          #move human
-          Humans[i].h = Humans[i].h + 1
-          if Humans[i].h > DefenderPlayfield.width:
-            Humans[i].h = 0
+        if(EnemyShips[i].alive == True):
+          if(random.randint(0,5) == 1):
+            #move human
+            Humans[i].h = Humans[i].h + 1
+            if Humans[i].h > DefenderPlayfield.width:
+              Humans[i].h = 0
+          
+          hH = Humans[i].h
+          hV = Humans[i].v
         
-        hH = Humans[i].h
-        hV = Humans[i].v
-       
-        #check if human is in currently displayed area
-        if(DisplayH <=  hH  <= (DisplayH + LED.HatWidth)):
-          Canvas = Humans[i].PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
+          #check if human is in currently displayed area
+          if(DisplayH <=  hH  <= (DisplayH + LED.HatWidth)):
+            Canvas = Humans[i].PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
 
 
 
       #paint EnemyShip on Canvas
       for i in range (0,EnemyShipCount):
-        H = EnemyShips[i].h 
-        V = EnemyShips[i].v 
-        #check if EnemyShip is in currently displayed area
-        if((DisplayH <=  H  <= (DisplayH + LED.HatWidth)) or
-          (DisplayH <=  H + EnemyShips[i].width  <= (DisplayH + LED.HatWidth))):
-          Canvas = EnemyShips[i].PaintAnimatedToCanvas(H-DisplayH,V,Canvas)
+        if(EnemyShips[i].alive == True):
+          H = EnemyShips[i].h 
+          V = EnemyShips[i].v 
+          #check if EnemyShip is in currently displayed area
+          if((DisplayH <=  H  <= (DisplayH + LED.HatWidth)) or
+            (DisplayH <=  H + EnemyShips[i].width  <= (DisplayH + LED.HatWidth))):
+            Canvas = EnemyShips[i].PaintAnimatedToCanvas(H-DisplayH,V,Canvas)
       
 
 
@@ -546,8 +614,12 @@ def PlayDefender(GameMaxMinutes):
         if(random.randint(0,15) == 1):
           Defender.v = Defender.v + 1
 
-      LookForTargets(gx,0, Defender,DefenderPlayfield)
-
+      #Find targets and start blasting
+      EnemyName, EnemyH, EnemyV = LookForTargets(gx,0, 'EnemyShip',Defender,DefenderPlayfield,Canvas)
+      if(EnemyName == 'EnemyShip'):
+        #print("Shooting:",EnemyName, EnemyH ,EnemyV)
+        DefenderPlayfield = ShootTarget(gx, 0, EnemyName,EnemyH, EnemyV, Defender,DefenderPlayfield,Canvas)
+        #graphics.DrawLine(Canvas,Defender.h + 5, Defender.v + 2, Defender.h + 40, Defender.v + 2, graphics.Color(255,0,0));
 
       Canvas = LED.Defender.PaintAnimatedToCanvas(5,Defender.v,Canvas)
 

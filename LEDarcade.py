@@ -1348,6 +1348,8 @@ class Ship(object):
     self.score      = 0
     self.exploding  = 0
     self.dropped    = 0
+    self.velocityH   = 0
+    self.velocityV   = 0
     
 
   def Display(self):
@@ -2110,6 +2112,8 @@ class ColorAnimatedSprite(object):
     self.velocityV   = 0
     self.speed       = 0
     self.exploding   = 0
+    self.Particles   = []  #holds dot objects for each pixel in a particular frame, used for animating explosions
+    self.alive       = True
 
   def IncrementFrame(self):
     self.ticks = self.ticks + 1
@@ -2285,6 +2289,10 @@ class ColorAnimatedSprite(object):
    
 
 
+
+
+
+
   def PaintAnimatedExplosionToCanvas(self,h1 = -1, v1 = -1,Canvas=Canvas):
     #Treat black pixels in sprite as transparent
     x = 0
@@ -2332,6 +2340,9 @@ class ColorAnimatedSprite(object):
 
     
     return Canvas
+
+
+
 
 
 
@@ -2464,6 +2475,7 @@ class ColorAnimatedSprite(object):
     h       = self.h
     v       = self.v
     frame   = self.currentframe
+    self.alive = False
   
 
 
@@ -2751,7 +2763,7 @@ class ColorAnimatedSprite(object):
 
 
 
-    #unicorn.show() 
+    
 
   def CopyAnimatedSpriteToPlayfield(self,Playfield, TheObject):
     #Copy an animated sprite to the Playfield. 
@@ -2785,6 +2797,66 @@ class ColorAnimatedSprite(object):
 
            
     return Playfield;
+
+
+
+
+
+
+  def ConvertSpriteToParticles(self):
+    #Treat black pixels in sprite as transparent
+    x = 0
+    y = 0
+    r = 0
+    g = 0
+    b = 0
+    
+    self.ticks = self.ticks + 1
+    #NOTE: This usage of ticks is different than in ScrollWithFrames
+    if (self.ticks == self.framerate):
+      self.currentframe = self.currentframe + 1
+      self.ticks        = 0
+
+    if (self.currentframe > self.frames or self.currentframe == 0):
+      self.currentframe = 1
+
+    for count in range (0,(self.width * self.height)):
+      y,x = divmod(count,self.width)
+      
+      
+      try:
+        r,g,b =  ColorList[self.grid[self.currentframe][count]]
+        if(r > 0 or g > 0 or b > 0):
+          self.Particles.append(Ship())
+          self.Particles[:-1].h = x
+          self.Particles[:-1].v = y
+          self.Particles[:-1].r = r
+          self.Particles[:-1].g = g
+          self.Particles[:-1].b = b
+          self.Particles[:-1].alive = 1
+          self.Particles[:-1].lives = 1
+          self.Particles[:-1].velocityH = 1
+          self.Particles[:-1].velocityV = 0
+
+      except:
+
+        print("Something wrong...")
+        print("Name:",self.name)
+        print("Count:",count)
+        print("CurrentFrame:",self.currentframe)
+        print("self.grid[]:",self.grid[self.currentframe][count])
+       
+
+    
+    return 
+   
+
+
+
+
+
+
+
 
 
 
@@ -17760,4 +17832,4 @@ def DrawSquare():
 
 
 
-      
+
