@@ -83,9 +83,8 @@ SpriteFillerRGB = (0,4,0)
 
 
 DefenderWorldWidth = 2048
-HumanCount         = 20
+HumanCount         = 5
 EnemyShipCount     = 50
-
 
 #---------------------------------------
 #Variable declaration section
@@ -187,9 +186,9 @@ def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
   EnemyName = 'EmptyObject'
   EnemyH    = -1
   EnemyV    = -1
-  StartX    = 64
-  StopX     = 40
-
+  StartX    = 200
+  StopX     = 50
+  ScanStep  = 3
 
   try:
 
@@ -205,9 +204,9 @@ def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
     #If an enemy is on screen, take note and exit the loops
     #sprites are usually bigger than a dot, so we use range step of 2 to increase speed
     Found = False
-    for x in range (StartX,0,-2):
+    for x in range (StartX,0,-ScanStep):
       #print(DefenderPlayfield.map[y][x].name)
-      for y in range(0,LED.HatHeight-1,2):
+      for y in range(0,LED.HatHeight-1,ScanStep):
 
         if(DefenderPlayfield.map[y][x + H - 1].name == TargetName and DefenderPlayfield.map[y][x + H - 1].alive == True):
           
@@ -258,11 +257,13 @@ def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
 def ShootTarget(PlayfieldH, PlayfieldV, TargetName, TargetH,TargetV,Defender, DefenderPlayfield,Canvas):\
   #PlayfieldH is the upper left hand corner of the playfield window being displayed
   #TargetH and TargetV are on screen co-ordinates (64x32)
-  print("TargetName:",TargetName)
-  print("Shooting:",DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].name)
+  #print("TargetName:",TargetName)
+  #print("Shooting:",DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].name)
   graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2, TargetH, TargetV +2, graphics.Color(255,0,0))
   DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].alive = False
   DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].EraseSpriteFromPlayfield(DefenderPlayfield)
+  #print("Convert to particles")
+  DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].ConvertSpriteToParticles()
 
 
   return DefenderPlayfield 
@@ -332,10 +333,12 @@ def DebugPlayfield(Playfield,h,v,width,height):
 
 def PlayDefender(GameMaxMinutes):      
  
+  global EnemyShipCount
 
-
-  finished      = 'N'
-  LevelCount    = 0
+  finished           = 'N'
+  LevelCount         = 0
+  EnemyAliveCount    = 0
+  OldEnemyAliveCount = 0
 
   ClockSprite         = LED.CreateClockSprite(24)
   DayOfWeekSprite     = LED.CreateDayOfWeekSprite()
@@ -396,7 +399,7 @@ def PlayDefender(GameMaxMinutes):
   Background.CreateStars(5,0,50,50)
   Middleground.CreateStars(0,0,100,100)
   Foreground.CreateStars(0,0,200,200)
-  Ground.CreateMountains(0,32,0,maxheight=16)
+  Ground.CreateMountains(0,24,0,maxheight=16)
   
   
   
@@ -420,10 +423,12 @@ def PlayDefender(GameMaxMinutes):
 
   EnemyShips = []
   for count in range (0,EnemyShipCount):
-    NewSprite = copy.deepcopy(LED.ShipSprites[random.randint(0,27)])
+    NewSprite = copy.deepcopy(LED.ShipSprites[random.randint(0
+    ,27)])
     NewSprite.framerate = random.randint(2,12)
     NewSprite.name = "EnemyShip"
     EnemyShips.append(NewSprite)
+    #EnemyShips[count].ConvertSpriteToParticles()
 
     Finished = False
     while (Finished == False):
@@ -431,15 +436,18 @@ def PlayDefender(GameMaxMinutes):
       h = random.randint(64,DefenderWorldWidth)
       v = random.randint(1,LED.HatHeight-1)
 
-      if(Ground.map[v][h] == (0,0,0)):
-        EnemyShips[count].h = h
-        EnemyShips[count].v = v
-        
-        Finished = True
-        print("Placing EnemyShips:",count)
-        DefenderPlayfield.CopyAnimatedSpriteToPlayfield(EnemyShips[count].h,EnemyShips[count].v,EnemyShips[count])
+      try:
 
+        if(Ground.map[v][h] == (0,0,0)):
+          EnemyShips[count].h = h
+          EnemyShips[count].v = v
+          
+          Finished = True
+          print("Placing EnemyShips:",count)
+          DefenderPlayfield.CopyAnimatedSpriteToPlayfield(EnemyShips[count].h,EnemyShips[count].v,EnemyShips[count])
 
+      except:
+        print("Error placing ship HV",h,v)
 
 
   #--------------------------------
@@ -554,16 +562,14 @@ def PlayDefender(GameMaxMinutes):
       #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
 
 
-
-
       Canvas = LED.PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
       #Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
 
 
       #paint humans on Canvas 
       for i in range (0,HumanCount):
-        if(EnemyShips[i].alive == True):
-          if(random.randint(0,5) == 1):
+        if(Humans[i].alive == True):
+          if(random.randint(0,2) == 1):
             #move human
             Humans[i].h = Humans[i].h + 1
             if Humans[i].h > DefenderPlayfield.width:
@@ -579,15 +585,41 @@ def PlayDefender(GameMaxMinutes):
 
 
       #paint EnemyShip on Canvas
+      DisplayMaxH = DisplayH + LED.HatWidth
+
       for i in range (0,EnemyShipCount):
+        H = EnemyShips[i].h 
+        V = EnemyShips[i].v 
+
         if(EnemyShips[i].alive == True):
-          H = EnemyShips[i].h 
-          V = EnemyShips[i].v 
           #check if EnemyShip is in currently displayed area
-          if((DisplayH <=  H  <= (DisplayH + LED.HatWidth)) or
-            (DisplayH <=  H + EnemyShips[i].width  <= (DisplayH + LED.HatWidth))):
+          if((DisplayH <=  H  <= DisplayMaxH) or
+            (DisplayH <=  H + EnemyShips[i].width  <= DisplayMaxH)):
             Canvas = EnemyShips[i].PaintAnimatedToCanvas(H-DisplayH,V,Canvas)
-      
+        else:
+          #Show particles
+            
+            for j in range (0, (len(EnemyShips[i].Particles))):
+
+              #MoveParticles
+              if (EnemyShips[i].Particles[j].alive == 1):
+                EnemyShips[i].Particles[j].UpdateLocationWithGravity()
+                ph = EnemyShips[i].Particles[j].h
+                pv = EnemyShips[i].Particles[j].v
+
+                #only display particles on screen
+                if(DisplayH <=  ph  <= DisplayMaxH):
+                  r  = EnemyShips[i].Particles[j].r
+                  g  = EnemyShips[i].Particles[j].g
+                  b  = EnemyShips[i].Particles[j].b
+                  #print("Ship Particle:",i,j)  
+                  #Canvas.SetPixel(H - DisplayH + random.randint(-3,3),V + random.randint(-3,3),r,g,b)
+                  Canvas.SetPixel(ph - DisplayH,pv,r,g,b)
+                
+                #kill the particle if the go off the screen
+                else:
+                  EnemyShips[i].Particles[j].alive == 0
+                
 
 
       
@@ -608,10 +640,10 @@ def PlayDefender(GameMaxMinutes):
 
       
       if(Ground.map[ScanV][gx] != (0,0,0)): 
-        if(random.randint(0,20) == 1):
+        if(random.randint(0,10) == 1):
           Defender.v = Defender.v - 1
       else:
-        if(random.randint(0,15) == 1):
+        if(random.randint(0,200) == 1):
           Defender.v = Defender.v + 1
 
       #Find targets and start blasting
@@ -625,13 +657,74 @@ def PlayDefender(GameMaxMinutes):
 
 
 
-      
+      #--------------------------------
+      #-- Numerical Displays         --
+      #--------------------------------
 
-
+      #Add clock
       Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,30,2,(0,100,0),(0,5,0),2,False,Canvas)
+
+
+      #Add display
+      OldEnemyAliveCount = EnemyAliveCount
+      EnemyAliveCount = 0
+      for i in range(0,len(EnemyShips)):
+        if(EnemyShips[i].alive == True):
+          EnemyAliveCount = EnemyAliveCount + 1
+      
+      #Oncly calculate if the count changes
+      if(OldEnemyAliveCount != EnemyAliveCount):
+        EnemyAliveCountSprite = LED.CreateBannerSprite(str(EnemyAliveCount))
+      Canvas = LED.CopySpriteToCanvasZoom(EnemyAliveCountSprite,1,2,(0,0,150),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+
+
+
+
+
+
+
+
+
+
+
+
+      #--------------------------------
+      #-- Display canvas             --
+      #--------------------------------
+
       Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
       
     
+      #--------------------------------
+      #-- Cleanup the debris         --
+      #--------------------------------
+      
+      #to reduce the amount of objects being tracked we remove old
+      #ships, if they are far enough off the screen to not have any
+      #particles still bouncing
+
+      NewEnemyShipCount = EnemyShipCount
+      if(random.randint(0,100) == 1):
+        for i in range (0,EnemyShipCount):
+          H = EnemyShips[i].h 
+          V = EnemyShips[i].v 
+          
+          #if enemy is dead and is off screen, nuke them
+          if(EnemyShips[i].alive == False):
+            #check if EnemyShip is in currently NOT in displayed area
+            
+            if((H < DisplayH - LED.HatWidth) or (H > DisplayMaxH + LED.HatWidth)):
+            
+              print("Garbage cleanup")
+              del EnemyShips[i]
+              NewEnemyShipCount = EnemyShipCount - 1
+              break
+        #I did it this way to avoid changing the variable used in a for loop
+        EnemyShipCount = NewEnemyShipCount
+              
+
+
+
 
 
 

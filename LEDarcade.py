@@ -1329,7 +1329,7 @@ class Dot(object):
     self.EraseTrail('forward','flash')
     setpixel(self.h,self.v,0,0,0)
 
-
+ 
 
       
 class Ship(object):
@@ -1414,6 +1414,73 @@ class Ship(object):
   
 
 
+
+
+
+
+  def UpdateLocationWithGravity(self):
+  #keep all the info inside the sprite object if possible
+
+    GRAVITY  = 0.0198
+    FRICTION = 0.50
+    CEILING  = -5
+    FLOOR    = HatHeight
+    WESTWALL = 0
+    EASTWALL = HatWidth
+    
+
+
+    #initial co-ordinates for ship
+    x     = self.h
+    y     = self.v
+    oldx  = x
+    oldy  = y
+    nextx = 0
+    nexty = 0
+
+    # intiial velocities
+    velocityX = self.velocityH
+    velocityY = self.velocityV
+    
+
+    
+    # calculate new position based on velocity  
+    next_y = y + velocityY
+    next_x = x + velocityX
+
+
+    # Bounce off floor
+    if (next_y >= (FLOOR)):
+      #velocityY = -velocityY * FRICTION
+      velocityY = -velocityY * FRICTION
+      velocityX =  velocityX * FRICTION
+      next_y = FLOOR
+
+    # Bounce of ceiling
+    #if (next_y <= CEILING):
+    #  #velocityY = -velocityY * FRICTION
+    #  velocityY = -velocityY * FRICTION
+    #  velocityX =  velocityX * FRICTION
+    #  next_y = CEILING    
+
+    # Bounce of side walls
+    #if (next_x  > (EASTWALL)):
+    #  velocityX = -velocityX * FRICTION
+    #  next_x = EASTWALL
+
+    # Bounce of side walls
+    #if (next_x  < WESTWALL):
+    #  velocityX = -velocityX * FRICTION
+    #  next_x = WESTWALL
+
+    #Calculate new vertical velocity (based on gravity)
+    velocityY = velocityY +GRAVITY
+
+    #Update location info
+    self.h = next_x
+    self.v = next_y
+    self.velocityH = velocityX
+    self.velocityV = velocityY
 
 
 
@@ -2276,7 +2343,7 @@ class ColorAnimatedSprite(object):
           if(r > 0 or g > 0 or b > 0):
             Canvas.SetPixel(x+h1,y+v1,r,g,b)
       except:
-
+        print("Error PaintAnimatedToCanvas")
         print("Something wrong...")
         print("Name:",self.name)
         print("Count:",count)
@@ -2288,7 +2355,8 @@ class ColorAnimatedSprite(object):
     return Canvas
    
 
-
+  #def ActivateParticles(self):
+  #  for j in (0,len(self.Particles)):
 
 
 
@@ -2330,7 +2398,7 @@ class ColorAnimatedSprite(object):
           if(r > 0 or g > 0 or b > 0):
             Canvas.SetPixel(x+h1,y+v1,255,0,0)
       except:
-
+        print("Error PaintAnimatedExplosionToCanvas")
         print("Something wrong...")
         print("Name:",self.name)
         print("Count:",count)
@@ -2810,16 +2878,9 @@ class ColorAnimatedSprite(object):
     r = 0
     g = 0
     b = 0
+    #print('Self HV:',self.h,self.v)
+    self.currentframe = 1
     
-    self.ticks = self.ticks + 1
-    #NOTE: This usage of ticks is different than in ScrollWithFrames
-    if (self.ticks == self.framerate):
-      self.currentframe = self.currentframe + 1
-      self.ticks        = 0
-
-    if (self.currentframe > self.frames or self.currentframe == 0):
-      self.currentframe = 1
-
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
       
@@ -2827,31 +2888,23 @@ class ColorAnimatedSprite(object):
       try:
         r,g,b =  ColorList[self.grid[self.currentframe][count]]
         if(r > 0 or g > 0 or b > 0):
-          self.Particles.append(Ship())
-          self.Particles[:-1].h = x
-          self.Particles[:-1].v = y
-          self.Particles[:-1].r = r
-          self.Particles[:-1].g = g
-          self.Particles[:-1].b = b
-          self.Particles[:-1].alive = 1
-          self.Particles[:-1].lives = 1
-          self.Particles[:-1].velocityH = 1
-          self.Particles[:-1].velocityV = 0
-
+          NewParticle = Ship(x + self.h, y + self.v,r,g,b,2,2,2,1,1,'particle',0,0)
+          NewParticle.velocityH = random.random() * (random.randint(0,1) *2 -1)
+          NewParticle.velocityV = random.random() * (random.randint(0,1) *2 -1)
+          self.Particles.append(NewParticle)
+          #print("NewParticle hv:",x + self.h, y + self.v)
+       
       except:
-
+        print("Error ConvertSpriteToParticles")
         print("Something wrong...")
         print("Name:",self.name)
         print("Count:",count)
         print("CurrentFrame:",self.currentframe)
         print("self.grid[]:",self.grid[self.currentframe][count])
-       
-
-    
+     
+    print("=============================")
     return 
    
-
-
 
 
 
@@ -2993,7 +3046,7 @@ class Layer(object):
       
       #print("mv x:",mv,x)
       for y in range (mv,HatHeight):
-        self.map[y][x] = (0,(abs(y - 35)),0)
+        self.map[y][x] = (0,(abs(y -34 )),0)
       self.map[mv][x] = (r,g,b)
 
       #draw box
