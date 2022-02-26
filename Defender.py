@@ -159,14 +159,14 @@ def ScanFarAway(H,V,Defender,DefenderPlayfield):
   ScanV         = Defender.v
   Item          = ''
   ItemList      = [('EmptyObject',0,0)]
-  RadarStart    = 20
+  RadarStart    = 10
   RadarStop     = 50
   
   # x 20...50
   
  
   try:
-
+    found = False
     for x in range(RadarStart,RadarStop):
       ScanH, ScanV = LED.CalculateDotMovement(ScanH,ScanV,ScanDirection)
       if(ScanH + H < DefenderPlayfield.width):
@@ -174,6 +174,9 @@ def ScanFarAway(H,V,Defender,DefenderPlayfield):
         if(DefenderPlayfield.map[ScanV + V][ScanH + H].alive == True):
           Item = DefenderPlayfield.map[ScanV + V][ScanH + H].name
           ItemList.append((Item,ScanH,ScanV))
+          found = True
+          break
+
   except:
     print("ERROR at location:",ScanV + V, ScanH + H)
 
@@ -186,8 +189,8 @@ def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
   EnemyName = 'EmptyObject'
   EnemyH    = -1
   EnemyV    = -1
-  StartX    = 200
-  StopX     = 50
+  StartX    = 64
+  StopX     = 30
   ScanStep  = 3
 
   try:
@@ -331,6 +334,42 @@ def DebugPlayfield(Playfield,h,v,width,height):
     
 
 
+def CreateEnemyWave(ShipCount,Ground,DefenderPlayfield):
+  global EnemyShipCount
+
+  EnemyShipCount = ShipCount
+  EnemyShips = []
+  ShipType = random.randint(0,27)
+  for count in range (0,ShipCount):
+    NewSprite = copy.deepcopy(LED.ShipSprites[ShipType])
+    NewSprite.framerate = random.randint(2,12)
+    NewSprite.name = "EnemyShip"
+    EnemyShips.append(NewSprite)
+    #EnemyShips[count].ConvertSpriteToParticles()
+
+    Finished = False
+    while (Finished == False):
+      #Find a spot in the sky for the ship
+      h = random.randint(64,DefenderWorldWidth)
+      v = random.randint(1,LED.HatHeight-1)
+
+      try:
+
+        if(Ground.map[v][h] == (0,0,0)):
+          EnemyShips[count].h = h
+          EnemyShips[count].v = v
+          
+          Finished = True
+          print("Placing EnemyShips:",count)
+          DefenderPlayfield.CopyAnimatedSpriteToPlayfield(EnemyShips[count].h,EnemyShips[count].v,EnemyShips[count])
+
+      except:
+        print("Error placing ship HV",h,v)
+
+  return EnemyShips,DefenderPlayfield
+
+
+
 def PlayDefender(GameMaxMinutes):      
  
   global EnemyShipCount
@@ -412,43 +451,21 @@ def PlayDefender(GameMaxMinutes):
 
   #humans must be located at least HatWidth from the start
   for count in range (0,HumanCount):
-    LED.HumanSprite.framerate = random.randint(15,50)
-    Humans.append(copy.deepcopy(LED.HumanSprite))
-    Humans[count].h = random.randint(64,DefenderWorldWidth)
-    Humans[count].v = random.randint(16,LED.HatHeight-1)
+    
+    #LED.HumanSprite.framerate = random.randint(15,50)
+    
+    TheSprite = LED.HumanSprite
+    TheSprite.h = random.randint(63,DefenderWorldWidth)
+    TheSprite.v = random.randint(16,LED.HatHeight-1)
+    Humans.append(copy.deepcopy(TheSprite))
     
     print("Placing humans:",count)
     DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[count].h,Humans[count].v,Humans[count])
     
 
-  EnemyShips = []
-  for count in range (0,EnemyShipCount):
-    NewSprite = copy.deepcopy(LED.ShipSprites[random.randint(0
-    ,27)])
-    NewSprite.framerate = random.randint(2,12)
-    NewSprite.name = "EnemyShip"
-    EnemyShips.append(NewSprite)
-    #EnemyShips[count].ConvertSpriteToParticles()
 
-    Finished = False
-    while (Finished == False):
-      #Find a spot in the sky for the ship
-      h = random.randint(64,DefenderWorldWidth)
-      v = random.randint(1,LED.HatHeight-1)
 
-      try:
-
-        if(Ground.map[v][h] == (0,0,0)):
-          EnemyShips[count].h = h
-          EnemyShips[count].v = v
-          
-          Finished = True
-          print("Placing EnemyShips:",count)
-          DefenderPlayfield.CopyAnimatedSpriteToPlayfield(EnemyShips[count].h,EnemyShips[count].v,EnemyShips[count])
-
-      except:
-        print("Error placing ship HV",h,v)
-
+  EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipCount=100, Ground=Ground,DefenderPlayfield=DefenderPlayfield )
 
   #--------------------------------
   #-- Main timing loop           --
@@ -703,24 +720,32 @@ def PlayDefender(GameMaxMinutes):
       #ships, if they are far enough off the screen to not have any
       #particles still bouncing
 
-      NewEnemyShipCount = EnemyShipCount
+      DeletedShips = 0
+      j = 0
       if(random.randint(0,100) == 1):
         for i in range (0,EnemyShipCount):
-          H = EnemyShips[i].h 
-          V = EnemyShips[i].v 
+          
+          #print("i j EnemyShipCount LenEnemyShip:",i,j,EnemyShipCount,len(EnemyShips))
+          H = EnemyShips[j].h 
+          V = EnemyShips[j].v 
           
           #if enemy is dead and is off screen, nuke them
-          if(EnemyShips[i].alive == False):
+          if(EnemyShips[j].alive == False):
             #check if EnemyShip is in currently NOT in displayed area
             
             if((H < DisplayH - LED.HatWidth) or (H > DisplayMaxH + LED.HatWidth)):
             
-              print("Garbage cleanup")
-              del EnemyShips[i]
-              NewEnemyShipCount = EnemyShipCount - 1
-              break
+              del EnemyShips[j]
+              DeletedShips = DeletedShips + 1
+              j = j - 1
+          
+          j = j + 1
+              
+              #break
         #I did it this way to avoid changing the variable used in a for loop
-        EnemyShipCount = NewEnemyShipCount
+        EnemyShipCount = EnemyShipCount - DeletedShips
+        print("Garbage cleanup EnemyShipCount:",EnemyShipCount)
+        
               
 
 

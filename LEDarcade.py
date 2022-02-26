@@ -2902,7 +2902,6 @@ class ColorAnimatedSprite(object):
         print("CurrentFrame:",self.currentframe)
         print("self.grid[]:",self.grid[self.currentframe][count])
      
-    print("=============================")
     return 
    
 
