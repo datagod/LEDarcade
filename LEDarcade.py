@@ -1418,10 +1418,10 @@ class Ship(object):
 
 
 
-  def UpdateLocationWithGravity(self):
+  def UpdateLocationWithGravity(self,Gravity):
   #keep all the info inside the sprite object if possible
 
-    GRAVITY  = 0.0198
+    GRAVITY  = Gravity
     FRICTION = 0.50
     CEILING  = -5
     FLOOR    = HatHeight
@@ -2181,6 +2181,7 @@ class ColorAnimatedSprite(object):
     self.exploding   = 0
     self.Particles   = []  #holds dot objects for each pixel in a particular frame, used for animating explosions
     self.alive       = True
+    self.counter     = 0
 
   def IncrementFrame(self):
     self.ticks = self.ticks + 1
@@ -2904,6 +2905,54 @@ class ColorAnimatedSprite(object):
      
     return 
    
+
+
+  def UpdateLocationWithGravity(self):
+  #keep all the info inside the sprite object if possible
+
+    GRAVITY  = 0.0098
+    FRICTION = 0.50
+    CEILING  = -5
+    FLOOR    = HatHeight
+    WESTWALL = 0
+    EASTWALL = HatWidth
+    
+
+
+    #initial co-ordinates for ship
+    x     = self.h
+    y     = self.v
+    oldx  = x
+    oldy  = y
+    nextx = 0
+    nexty = 0
+
+    # intiial velocities
+    velocityX = self.velocityH
+    velocityY = self.velocityV
+    
+    
+    # calculate new position based on velocity  
+    next_y = y + velocityY
+    next_x = x + velocityX
+
+
+    # Bounce off floor
+    if (next_y >= (FLOOR)):
+      #velocityY = -velocityY * FRICTION
+      velocityY = -velocityY * FRICTION
+      velocityX =  velocityX * FRICTION
+      next_y = FLOOR
+
+    #Calculate new vertical velocity (based on gravity)
+    velocityY = velocityY +GRAVITY
+
+    #Update location info
+    self.h = next_x
+    self.v = next_y
+    self.velocityH = velocityX
+    self.velocityV = velocityY
+
 
 
 
@@ -10394,6 +10443,57 @@ DefenderMap.map= (
 
 DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
 
+
+
+
+
+
+BombSprite = ColorAnimatedSprite(
+  h=0, 
+  v=0, 
+  name="Bomb", 
+  width  = 1, 
+  height = 1, 
+  framerate=5,
+  grid=[]  )
+
+                 
+
+BombMap = TextMap(
+  h      = 1,
+  v      = 1,
+  width  = BombSprite.width, 
+  height = BombSprite.height
+  )
+
+
+BombMap.ColorList = {
+  ' ' : 0,
+  '-' : 29, #dark pink
+  '.' : 4,  #bright white
+  'o' : 1, 
+  'O' : 32,
+  '#' : 5,
+  '@' : 6,
+  '6' : 7,
+  '7' : 8,  #Bright Red
+  
+
+}
+
+
+BombMap.map= (
+  #0.........1.........2.........3.........4....
+  "."
+  )
+BombMap.CopyMapToColorSprite(TheSprite=BombSprite)
+
+
+BombMap.map= (
+  #0.........1.........2.........3.........4....
+  "7"
+  )
+BombMap.CopyMapToColorSprite(TheSprite=BombSprite)
 
 
 
