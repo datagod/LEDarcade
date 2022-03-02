@@ -926,7 +926,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
-      DI.LaunchDotInvaders(GameMaxMinutes = 5)
+      DI.LaunchDotInvaders(GameMaxMinutes = 1)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -944,7 +944,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Looks like you want to play some Outbreak..."
         await self.Channel.send(message)
-      OB.LaunchOutbreak(GameMaxMinutes = 5)
+      OB.LaunchOutbreak(GameMaxMinutes = 1)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -961,7 +961,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-      DE.LaunchDefender(GameMaxMinutes = 5)
+      DE.LaunchDefender(GameMaxMinutes = 1)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -979,7 +979,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-      TR.LaunchTron(GameMaxMinutes = 5)
+      TR.LaunchTron(GameMaxMinutes = 1)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
