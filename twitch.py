@@ -116,7 +116,7 @@ SHOW_VIEWERS   = True
 SHOW_FOLLOWERS = True
 SHOW_SUBS      = True
 SHOW_VIEWS     = True
-SHOW_CHATBOT_MESSAGES = True
+SHOW_CHATBOT_MESSAGES = False
 
 #Files
 KeyConfigFileName = "KeyConfig.ini" 
@@ -194,7 +194,7 @@ class Bot(commands.Bot):
         #Check Twitch advanced info 
         await self.CheckStream()
 
-        if(StreamActive == True):
+        if(StreamActive == True and SHOW_CHATBOT_MESSAGES == True):
           self.ChatTerminalOn = True
         else:
           #Explain the main intro is not live
