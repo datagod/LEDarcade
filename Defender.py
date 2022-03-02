@@ -1007,7 +1007,7 @@ def PlayDefender(GameMaxMinutes):
       #--------------------------------
       #-- Move Defender Bomb         --
       #--------------------------------
-      MoveGroundParticles (GroundParticles,Canvas):
+      MoveGroundParticles (GroundParticles,Canvas)
 
 
 
