@@ -902,16 +902,16 @@ class Bot(commands.Bot):
         message = "Here is a big red robot for your amusement"
         await self.Channel.send(message)
 
-        LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
-          LED.BigRezonator2,
-          Position      = 'bottom',
-          direction     = "right",
-          StepsPerFrame = 2,
-          ZoomFactor    = 1,
-          sleep         = 0
-          )
+      LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+        LED.BigRezonator2,
+        Position      = 'bottom',
+        direction     = "right",
+        StepsPerFrame = 2,
+        ZoomFactor    = 1,
+        sleep         = 0
+        )
 
-        self.CursorH = 0
+      self.CursorH = 0
 
 
 
@@ -926,7 +926,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
-        DI.LaunchDotInvaders(GameMaxMinutes = 5)
+      DI.LaunchDotInvaders(GameMaxMinutes = 5)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -944,7 +944,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Looks like you want to play some Outbreak..."
         await self.Channel.send(message)
-        OB.LaunchOutbreak(GameMaxMinutes = 5)
+      OB.LaunchOutbreak(GameMaxMinutes = 5)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -961,7 +961,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-        DE.LaunchDefender(GameMaxMinutes = 5)
+      DE.LaunchDefender(GameMaxMinutes = 5)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -979,7 +979,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-        TR.LaunchTron(GameMaxMinutes = 5)
+      TR.LaunchTron(GameMaxMinutes = 5)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -999,7 +999,7 @@ class Bot(commands.Bot):
         await self.Channel.send(message)
 
 
-      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 2 )
+      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 1 )
 
 
       LED.ClearBigLED()
@@ -1667,7 +1667,7 @@ LED.DisplayTwitchTimer(
   ShadowRGB        = LED.ShadowGreen,
   ZoomFactor       = 3,
   AnimationDelay   = 0,
-  RunMinutes       = 2,
+  RunMinutes       = 1,
   StartDateTimeUTC = datetime.utcnow(),
   HHMMSS           = '00:44:00'
   )
