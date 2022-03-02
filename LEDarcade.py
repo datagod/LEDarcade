@@ -3094,7 +3094,7 @@ class Layer(object):
       
       #print("mv x:",mv,x)
       for y in range (mv,HatHeight):
-        self.map[y][x] = (0,(abs(y -34 )),0)
+        self.map[y][x] = (0,(abs(y -34  )),0)
       self.map[mv][x] = (r,g,b)
 
       #draw box
