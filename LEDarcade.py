@@ -3067,14 +3067,18 @@ class Layer(object):
         else:
           self.map[y][x] = (0,0,0)
 
+  
 
 
-  def CreateMountains(self,r,g,b,maxheight=31):
+  def CreateMountains(self,GroundRGB,SurfaceRGB,maxheight=31):
     mh     = HatWidth -1
     mv     = 31
 
     chance = 10
     length = 1
+
+    GroundR, GroundG, GroundB    = GroundRGB
+    SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
 
     HalfWidth = round(self.width / 2)
 
@@ -3092,10 +3096,17 @@ class Layer(object):
         mv = HatHeight - maxheight
 
       
-      #print("mv x:",mv,x)
+
+
+      #Start with dark, as the mountain grows it gets brighter
+      GroundR, GroundG, GroundB = AdjustBrightnessRGB(GroundRGB,-32)
+
       for y in range (mv,HatHeight):
-        self.map[y][x] = (0,(abs(y -34  )),0)
-      self.map[mv][x] = (r,g,b)
+        #Ground is brighter near top of screen, darker near bottom
+        GroundR, GroundG, GroundB = AdjustBrightnessRGB(GroundRGB,1)
+
+        #self.map[y][x] = (0,(abs(y -34  )),0)
+      self.map[mv][x] = (SurfaceR, SurfaceG, SurfaceB)
 
       #draw box
       #if(random.randint(0,50) == 1):
@@ -16666,127 +16677,7 @@ def DisplayDigitalClock(
 
 
 
-    #Planet Run
-    elif (ClockStyle == 4):
-
-
-      ClockH = HatWidth - (ClockSprite.width * 2)
-      ClockSprite = CreateClockSprite(hh)
-      #we need to make a fake sprite to take the place of the clock which is zoomed)
-      ClockAreaSprite = Sprite((ClockSprite.width*2)+3,(ClockSprite.height*2),0,0,0,[])
-      ClockAreaSprite.h = ClockH -3
-      ClockAreaSprite.v = 1
-      #CopySpriteToScreenArrayZoom(ClockSprite,h=ClockH,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
-
-      #--------------------------------
-      #-- Create Layers              --
-      #--------------------------------
-
-      Background   = Layer(name="backround", width=2048, height=32,h=0,v=0)
-      Middleground = Layer(name="backround", width=2048, height=32,h=0,v=0)
-      Foreground   = Layer(name="backround", width=2048, height=32,h=0,v=0)
-      Ground       = Layer(name="ground",    width=4048, height=32,h=0,v=0)
-
-      Background.CreateStars(15,0,50,50)
-      Middleground.CreateStars(0,0,150,100)
-      Foreground.CreateStars(0,0,250,200)
-      Ground.CreateMountains(0,32,0,maxheight=16)
-
-      Canvas = TheMatrix.CreateFrameCanvas()
-      Canvas.Clear()
-      Canvas = TheMatrix.SwapOnVSync(Canvas)
-
-     
-      count  = 0
-      bx     = 0
-      mx     = 0
-      fx     = 0
-      gx     = 0
-      bwidth = Background.width    - HatWidth
-      mwidth = Middleground.width  - HatWidth
-      fwidth = Foreground.width    - HatWidth
-      gwidth = Ground.width        - HatWidth
-      brate  = 6
-      mrate  = 4
-      frate  = 2
-      grate  = 1
-      DefenderV = 20
-
-      while(1==1):
-        #main counter
-        count = count + 1
-            
-        #check the time once in a while
-        if(random.randint(0,500) == 1):
-          if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
-            ClockSprite = CreateClockSprite(hh)
-      
-
-
-        #Background
-        m,r = divmod(count,brate)
-        if(r == 0):
-          bx = bx + 1
-          if(bx > bwidth):
-            bx = 0
-        #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
-
-
-        #Middleground
-        m,r = divmod(count,mrate)
-        if(r == 0):
-          mx = mx + 1
-          if(mx > mwidth):
-            mx = 0
-        #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
-
-          
-        #foreground
-        m,r = divmod(count,frate)
-        if(r == 0):
-          fx = fx + 1
-          if(fx > fwidth):
-            fx = 0
-        #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
-
-
-        #ground
-        m,r = divmod(count,grate)
-        if(r == 0):
-          gx = gx + 1
-          if(gx >= gwidth + HatWidth ):
-            gx = 0
-        #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
-
-
-        #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
-        Canvas = PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
-
-        if(Ground.map[DefenderV + 5][gx ] != (0,0,0)): 
-          if(random.randint(0,5) == 1):
-            DefenderV = DefenderV - 1
-        else:
-          if(random.randint(0,15) == 1):
-            DefenderV = DefenderV + 1
-      
-        Canvas = Defender.PaintAnimatedToCanvas(5,DefenderV,Canvas)
-
-
-        Canvas = CopySpriteToCanvasZoom(ClockSprite,30,2,(0,100,0),(0,5,0),2,False,Canvas)
-        Canvas = TheMatrix.SwapOnVSync(Canvas)
-        
-              
-        if(random.randint(0,1000) == 1):
-          #This will end the while loop
-          elapsed_time = time.time() - StartTime
-          elapsed_hours, rem = divmod(elapsed_time, 3600)
-          elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-
-          #print ("StartTime:    ",StartTime, " Now:",time.time())
-          print("ElapsedMinues: ",elapsed_minutes)
-          if elapsed_minutes >= RunMinutes:
-            Done = True
-
+    
 
 
 
@@ -17984,4 +17875,24 @@ def DrawSquare():
 
 
 
+def AdjustBrightnessRGB(rgb,step):
+  r,g,b = rgb
+    
+  r = r + step
+  if r < 0:
+    r = 0
+  elif r > 255:
+    r = 255
 
+  if g < 0:
+    g = 0
+  elif g > 255:
+    g = 255
+  
+  b = b + step
+  if b < 0:
+    b = 0
+  elif b > 255:
+    b = 255
+
+  return r,g,b
