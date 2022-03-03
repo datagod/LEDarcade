@@ -1190,28 +1190,28 @@ def PlayDefender(GameMaxMinutes):
 
 
 
-def LaunchDefender(GameMaxMinutes = 10000):
+def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
   
-    PlayDefender(GameMaxMinutes)
-    
-    #--------------------------------------
-    # M A I N   P R O C E S S I N G      --
-    #--------------------------------------
+  #--------------------------------------
+  # M A I N   P R O C E S S I N G      --
+  #--------------------------------------
 
-    LED.ShowTitleScreen(
-        BigText             = 'SPACE',
-        BigTextRGB          = LED.HighRed,
-        BigTextShadowRGB    = LED.ShadowRed,
-        LittleText          = 'DEFENDER',
-        LittleTextRGB       = LED.MedGreen,
-        LittleTextShadowRGB = (0,10,0), 
-        ScrollText          = 'BRING ON THE MUTANTS',
-        ScrollTextRGB       = LED.MedYellow,
-        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-        DisplayTime         = 1,           # time in seconds to wait before exiting 
-        ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-        )
+  LED.ShowTitleScreen(
+      BigText             = 'SPACE',
+      BigTextRGB          = LED.HighRed,
+      BigTextShadowRGB    = LED.ShadowRed,
+      LittleText          = 'OFFENDER',
+      LittleTextRGB       = LED.MedGreen,
+      LittleTextShadowRGB = (0,10,0), 
+      ScrollText          = 'TIME FOR PAYBACK',
+      ScrollTextRGB       = LED.MedYellow,
+      ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+      DisplayTime         = 1,           # time in seconds to wait before exiting 
+      ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+      )
 
+
+  if(ShowIntro == True):
 
     LED.ClearBigLED()
     LED.ClearBuffers()
@@ -1225,15 +1225,15 @@ def LaunchDefender(GameMaxMinutes = 10000):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-    PlayDefender(GameMaxMinutes)
-        
+  PlayDefender(GameMaxMinutes)
+      
 
-    LED.ClearBigLED()
-    LED.ClearBuffers()
-    CursorH = 0
-    CursorV = 0
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"MISSION COMPLETE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,175,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+  LED.ClearBigLED()
+  LED.ClearBuffers()
+  CursorH = 0
+  CursorV = 0
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"MISSION COMPLETE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,175,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
 

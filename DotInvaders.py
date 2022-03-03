@@ -1687,29 +1687,31 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
 
-def LaunchDotInvaders(GameMaxMinutes = 10000):
+def LaunchDotInvaders(GameMaxMinutes = 10000, ShowIntro = True):
   
-    global start_time
+  global start_time
 
 
-    start_time = time.time()
-    LED.LoadConfigData()
+  start_time = time.time()
+  LED.LoadConfigData()
 
 
-    LED.ShowTitleScreen(
-        BigText             = 'ALERT!',
-        BigTextRGB          = LED.HighRed,
-        BigTextShadowRGB    = LED.ShadowRed,
-        LittleText          = 'DOT INVADERS',
-        LittleTextRGB       = LED.MedGreen,
-        LittleTextShadowRGB = (0,10,0), 
-        ScrollText          = 'DEFEND YOUR PLANET!',
-        ScrollTextRGB       = LED.MedYellow,
-        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-        DisplayTime         = 1,           # time in seconds to wait before exiting 
-        ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-        )
 
+  LED.ShowTitleScreen(
+      BigText             = 'ALERT!',
+      BigTextRGB          = LED.HighRed,
+      BigTextShadowRGB    = LED.ShadowRed,
+      LittleText          = 'DOT INVADERS',
+      LittleTextRGB       = LED.MedGreen,
+      LittleTextShadowRGB = (0,10,0), 
+      ScrollText          = 'DEFEND YOUR PLANET!',
+      ScrollTextRGB       = LED.MedYellow,
+      ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+      DisplayTime         = 1,           # time in seconds to wait before exiting 
+      ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+      )
+
+  if(ShowIntro == True):
 
     LED.ClearBigLED()
     LED.ClearBuffers()
@@ -1727,7 +1729,7 @@ def LaunchDotInvaders(GameMaxMinutes = 10000):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-    PlayDotInvaders(GameMaxMinutes)
+  PlayDotInvaders(GameMaxMinutes)
         
 
 
