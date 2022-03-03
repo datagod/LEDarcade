@@ -82,7 +82,21 @@ CurrencyH,   CurrencyV,   CurrencyRGB   = 0,27, (0,150,0)
 SpriteFillerRGB = (0,4,0)
 
 #GroundRGB = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
-GroundRGB = (0,24,0)
+DirtGreen     = (0,24,0)
+SurfaceGreen  = (0,50,0)
+DirtYellow    = (24,24,0)
+SurfaceYellow = (24,24,0)
+DirtPurple    = (20,0,20)
+SurfacePurple = (20,0,20)
+DirtOrange    = (30,10,0)
+SurfaceOrange = (50,30,0)
+
+GroundColorList = [(DirtGreen,SurfaceGreen),
+                   (DirtYellow,SurfaceYellow),
+                   (DirtPurple,SurfacePurple),
+                   (DirtOrange,SurfaceOrange)
+                  ]
+
 
 DefenderWorldWidth = 2048
 HumanCount         = 25
@@ -530,7 +544,7 @@ def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Defen
   if(Ground.map[bv][bh+PlayfieldH] != (0,0,0)):
 
     #r,g,b = (random.randint(50,255),0,0)
-    r,g,b = GroundRGB
+
 
     
     #destroy ground
@@ -569,7 +583,7 @@ def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Defen
 
     #Explode Ground
     for i in range(0,BlastStrength):
-      GroundParticles = AddGroundParticles(bh,bv,r,g,255,GroundParticles)
+      GroundParticles = AddGroundParticles(bh,bv,sr,sg,sb,GroundParticles)
 
     
     DefenderBomb.alive = False
@@ -679,8 +693,15 @@ def PlayDefender(GameMaxMinutes):
   Background.CreateStars(5,0,50,50)
   Middleground.CreateStars(0,0,100,100)
   Foreground.CreateStars(0,0,200,200)
-  r,g,b = GroundRGB
-  Ground.CreateMountains(r,g,b,maxheight=16)
+
+  
+  i = random(0,len(GroundColorList)-1)
+  GroundRGB, SurfaceRGB      = GroundColorList[i]
+  GroundR,GroundG,GroundB    = GroundRGB
+  SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
+
+    
+  Ground.CreateMountains(GroundR,GroundG,GroundB,maxheight=16)
   
   
   
