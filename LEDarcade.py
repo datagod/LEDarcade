@@ -2325,7 +2325,7 @@ class ColorAnimatedSprite(object):
 
     self.ticks = self.ticks + 1
     #NOTE: This usage of ticks is different than in ScrollWithFrames
-    if (self.ticks == self.framerate):
+    if (self.ticks >= self.framerate):
       self.currentframe = self.currentframe + 1
       self.ticks        = 0
 

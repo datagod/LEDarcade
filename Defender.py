@@ -91,11 +91,12 @@ SurfacePurple = (20,0,20)
 DirtOrange    = (30,10,0)
 SurfaceOrange = (50,30,0)
 
-GroundColorList = [(DirtGreen,SurfaceGreen),
+GroundColorList = ((DirtGreen,SurfaceGreen),
                    (DirtYellow,SurfaceYellow),
                    (DirtPurple,SurfacePurple),
                    (DirtOrange,SurfaceOrange)
-                  ]
+                  )
+GroundColorCount = 4
 
 
 DefenderWorldWidth = 2048
@@ -695,13 +696,13 @@ def PlayDefender(GameMaxMinutes):
   Foreground.CreateStars(0,0,200,200)
 
   
-  i = random(0,len(GroundColorList)-1)
+  i = random.randint(0,GroundColorCount -1)
   GroundRGB, SurfaceRGB      = GroundColorList[i]
   GroundR,GroundG,GroundB    = GroundRGB
   SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
 
     
-  Ground.CreateMountains(GroundR,GroundG,GroundB,maxheight=16)
+  Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=16)
   
   
   
