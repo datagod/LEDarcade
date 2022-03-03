@@ -926,7 +926,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
-      DI.LaunchDotInvaders(GameMaxMinutes = 1)
+      DI.LaunchDotInvaders(GameMaxMinutes = 1,ShowIntro=False) 
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -944,7 +944,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Looks like you want to play some Outbreak..."
         await self.Channel.send(message)
-      OB.LaunchOutbreak(GameMaxMinutes = 1)
+      OB.LaunchOutbreak(GameMaxMinutes = 1,ShowIntro = False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -961,7 +961,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-      DE.LaunchDefender(GameMaxMinutes = 1)
+      DE.LaunchDefender(GameMaxMinutes = 1,ShowIntro=False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -975,11 +975,11 @@ class Bot(commands.Bot):
 
     @commands.command()
     async def tron(self, ctx: commands.Context):
-      #Play game Defender
+      #Play game Tron
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-      TR.LaunchTron(GameMaxMinutes = 1)
+      TR.LaunchTron(GameMaxMinutes = 1,ShowIntro=False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -990,10 +990,8 @@ class Bot(commands.Bot):
     # STARRY NIGHT CLOCK                   --
     #----------------------------------------
 
-
     @commands.command()
     async def starrynight(self, ctx: commands.Context):
-      #Play game Defender
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Enjoy the peaceful starry sky while staring at a clock"
         await self.Channel.send(message)

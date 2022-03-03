@@ -1294,7 +1294,7 @@ def PlaySuperWorms():
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
 
-def LaunchTron(GameMaxMinutes = 10000,ShowIntro="N"):
+def LaunchTron(GameMaxMinutes = 10000,ShowIntro=True):
   
   global start_time
   start_time = time.time()
@@ -1305,7 +1305,7 @@ def LaunchTron(GameMaxMinutes = 10000,ShowIntro="N"):
   Message2 = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
 
 
-  if(ShowIntro == "Y"):
+  if(ShowIntro == True):
     LED.ClearBigLED()
     LED.ClearBuffers()
     CursorH = 0
