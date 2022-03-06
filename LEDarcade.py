@@ -3075,19 +3075,21 @@ class Layer(object):
     mv     = 31
 
     chance = 10
-    length = 1
+    Step   = random.randint(1,3)
 
     GroundR, GroundG, GroundB    = GroundRGB
     SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
+    print("GroundRGB:",GroundRGB)
+
 
     HalfWidth = round(self.width / 2)
 
     #draw first half randomly, then copy in reverse for the second half
     for x in range (0,HalfWidth):
       if(random.randint(0,chance) == 1):
-        mv = mv - 1
+        mv = mv - Step
       elif(random.randint(0,chance) == 2):
-        mv = mv + 1
+        mv = mv + Step
 
       #stay within bounds
       if(mv > HatHeight-1):
@@ -3104,7 +3106,7 @@ class Layer(object):
       for y in range (mv,HatHeight):
         #Ground is brighter near top of screen, darker near bottom
         GroundR, GroundG, GroundB = AdjustBrightnessRGB(GroundRGB,1)
-
+        self.map[y][x] = (GroundR,GroundG,GroundB)  
         #self.map[y][x] = (0,(abs(y -34  )),0)
       self.map[mv][x] = (SurfaceR, SurfaceG, SurfaceB)
 
@@ -3226,6 +3228,8 @@ class PlayField(object):
     self.h      = h
     self.v      = v
     self.map    = [[EmptyObject for i in range(self.width)] for i in range(self.height)]
+    DisplayH    = 0 #upper left hand corner of the playfield currently being displayed
+    DisplayV    = 0 #upper left hand corner of the playfield currently being displayed 
 
 
   def CopyPlayfieldToCanvas(self,h,v,canvas):
@@ -17883,7 +17887,7 @@ def AdjustBrightnessRGB(rgb,step):
     r = 0
   elif r > 255:
     r = 255
-
+  g = g + step
   if g < 0:
     g = 0
   elif g > 255:

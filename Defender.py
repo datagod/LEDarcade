@@ -84,10 +84,13 @@ SpriteFillerRGB = (0,4,0)
 #GroundRGB = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
 DirtGreen     = (0,24,0)
 SurfaceGreen  = (0,50,0)
+
 DirtYellow    = (24,24,0)
-SurfaceYellow = (24,24,0)
+SurfaceYellow = (54,54,0)
+
 DirtPurple    = (20,0,20)
-SurfacePurple = (20,0,20)
+SurfacePurple = (50,0,50)
+
 DirtOrange    = (30,10,0)
 SurfaceOrange = (50,30,0)
 
@@ -98,11 +101,14 @@ GroundColorList = ((DirtGreen,SurfaceGreen),
                   )
 GroundColorCount = 4
 
+ExplosionBrightnessModifier = 100  #used to increase brightness of particles
 
 DefenderWorldWidth = 2048
-HumanCount         = 25
-EnemyShipCount     = 20
-SpawnNewEnemiesTargetCount = 10
+HumanCount         = 10
+EnemyShipCount     = 150
+SpawnNewEnemiesTargetCount = 5
+SpawnNewHumansTargetCount = 5
+
 
 #Movement
 DefenderMoveUpRate   = 3
@@ -111,6 +117,7 @@ HumanMoveChance      = 2
 
 #Gravity
 GroundParticleGravity  = 0.05
+HumanParticleGravity   = 0.05
 EnemyParticleGravity   = 0.0198
 BombGravity            = 0.0198
 
@@ -119,6 +126,19 @@ BombGravity            = 0.0198
 #Bomb
 DefenderBombVelocityH =  0.4
 DefenderBombVelocityV = -0.2
+BlastStrengthMin      = 2
+BlastStrengthMax      = 10
+
+#Human
+HumanCountH = 20
+HumanCountV = 0
+HumanCountRGB = (100,0,200)
+
+#Enemy
+EnemyCountH = 10
+EnemyCountV = 0
+EnemyCountRGB = (10,0,200)
+
 
 
 #---------------------------------------
@@ -311,8 +331,6 @@ def ShootTarget(PlayfieldH, PlayfieldV, TargetName, TargetH,TargetV,Defender, De
   DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].EraseSpriteFromPlayfield(DefenderPlayfield)
   #print("Convert to particles")
   DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].ConvertSpriteToParticles()
-
-
   return DefenderPlayfield 
 
 
@@ -422,11 +440,13 @@ def CreateHumans(HumanCount,Ground,DefenderPlayfield):
     Humans.append(copy.deepcopy(TheSprite))
     print("Placing humans:",count)
     DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[count].h,Humans[count].v,Humans[count])
-  
+ 
+
+
   return Humans, DefenderPlayfield
 
 
-def CreateEnemyWave(ShipCount,Ground,DefenderPlayfield,Canvas):
+def CreateEnemyWave(ShipCount,Ground,DefenderPlayfield):
   global EnemyShipCount
 
   EnemyShipCount = ShipCount
@@ -439,11 +459,8 @@ def CreateEnemyWave(ShipCount,Ground,DefenderPlayfield,Canvas):
     EnemyShips.append(NewSprite)
     #EnemyShips[count].ConvertSpriteToParticles()
 
-    EnemyAliveCountSprite = LED.CreateBannerSprite(str(len(EnemyShips)))
-    Canvas = LED.CopySpriteToCanvasZoom(EnemyAliveCountSprite,1,2,(0,0,150),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
-    Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
 
-
+    
     Finished = False
     while (Finished == False):
       #Find a spot in the sky for the ship
@@ -467,7 +484,7 @@ def CreateEnemyWave(ShipCount,Ground,DefenderPlayfield,Canvas):
 
 
 
-def AddEnemyShips(EnemyShips,ShipCount,Ground,DefenderPlayfield,Canvas):
+def AddEnemyShips(EnemyShips,ShipCount,Ground,DefenderPlayfield):
   global EnemyShipCount
 
     
@@ -478,11 +495,6 @@ def AddEnemyShips(EnemyShips,ShipCount,Ground,DefenderPlayfield,Canvas):
     NewSprite.name = "EnemyShip"
     EnemyShips.append(NewSprite)
     #EnemyShips[count].ConvertSpriteToParticles()
-
-    EnemyAliveCountSprite = LED.CreateBannerSprite(str(len(EnemyShips)))
-    Canvas = LED.CopySpriteToCanvasZoom(EnemyAliveCountSprite,1,2,(0,0,150),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
-    Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
-
 
 
     Finished = False
@@ -505,9 +517,64 @@ def AddEnemyShips(EnemyShips,ShipCount,Ground,DefenderPlayfield,Canvas):
         print("Error placing ship HV",h,v)
     
     #Update total enemy count
-    EnemyShipCount = len(EnemyShips)
+    EnemyShipCount = sum(1 for e in EnemyShips if e.alive == 1)
+    
+  return EnemyShips, EnemyShipCount, DefenderPlayfield
 
-  return EnemyShips, DefenderPlayfield
+
+
+
+
+
+
+def AddHumans(Humans,NewHumanCount,Ground,DefenderPlayfield):
+  global HumanCount
+
+  #humans must be located at least HatWidth from the start
+  for count in range (0,NewHumanCount):
+    
+    #LED.HumanSprite.framerate = random.randint(15,50)
+    
+    TheSprite   = LED.HumanSprite
+    TheSprite.h = random.randint(63,DefenderWorldWidth)
+    TheSprite.v = random.randint(16,LED.HatHeight-1)
+    
+    if(random.randint(0,1) == 1):
+      TheSprite.direction = 1
+    else:
+      TheSprite.direction = -1
+    
+    Humans.append(copy.deepcopy(TheSprite))
+    DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[count].h,Humans[count].v,Humans[count])
+  
+    #HumanCount = len(Humans)
+    HumanCount = sum(1 for h in Humans if h.alive == 1)
+
+  return Humans,HumanCount, DefenderPlayfield,HumanCountSprite
+
+
+
+def DropPilot(H,V,Humans,DefenderPlayfield):
+  global HumanCount
+
+  #humans must be located at least HatWidth from the start
+  TheSprite   = LED.HumanSprite
+  TheSprite.h = H
+  TheSprite.v = V
+  TheSprite.alive = 1
+    
+  if(random.randint(0,1) == 1):
+    TheSprite.direction = 1
+  else:
+    TheSprite.direction = -1
+
+  HumanCount = HumanCount + 1
+  Humans.append(copy.deepcopy(TheSprite))
+  DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[-1].h,Humans[-1].v,Humans[-1])
+  
+  return Humans, HumanCount, DefenderPlayfield
+
+
 
 
 def AddGroundParticles(h,v,r,g,b,GroundParticles):
@@ -515,25 +582,94 @@ def AddGroundParticles(h,v,r,g,b,GroundParticles):
     #they are HV co-ordinates that match the display, not the playfield
     NewParticle = LED.Ship(h, v,r,g,b,2,2,2,1,1,'ground',0,0)
     #NewParticle.velocityH = random.random() * (random.randint(0,1) *2 -1) / 5
-    NewParticle.velocityH = random.random() * -2 
-    NewParticle.velocityV = random.random() * -2
+    NewParticle.velocityH = random.random() * -1 
+    NewParticle.velocityV = random.random() * -1
     NewParticle.alive = True
     GroundParticles.append(NewParticle)
     return GroundParticles
     
 
+def AddHumanParticles(h,v,r,g,b,HumanParticles):
+    #particles don't interact with anything other than the ground so
+    #they are HV co-ordinates that match the display, not the playfield
+    NewParticle = LED.Ship(h,v,r,g,b,2,2,2,1,1,'human',0,0)
+    NewParticle.velocityH = random.random() * -2 
+    NewParticle.velocityV = random.random() * -2
+    NewParticle.alive = True
+    HumanParticles.append(NewParticle)
+    print('AddHumanParticles HV:',h,v)
+    return HumanParticles
 
-def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,DefenderPlayfield,Canvas):
+
+
+def KillHumansInBlastZone(bh,bv,BlastStrength, Humans, HumanParticles,DefenderPlayfield):
+
+  #Define hitbox
+  DisplayH = DefenderPlayfield.DisplayH
+  
+
+  h1 = bh - BlastStrength + DisplayH
+  h2 = bh + BlastStrength + DisplayH
+  v1 = bv - BlastStrength
+  v2 = bv + BlastStrength
+  ph = 0
+  pv = 0
+
+  if(v1 <= 0):
+    v1 = 0
+  if(v2 >= LED.HatHeight-1):
+    v2 = LED.HatHeight-1
+  
+  #print("Kill Humans Blast Zone DisplayH:",DisplayH)
+  #print("Blast Zone h1 v1 h2 v2",h1,v1,h2,v2)
+
+  HumanCount = len(Humans)
+  for i in range (0,HumanCount):
+    if(Humans[i].alive == 1 and (h1 <= Humans[i].h <= h2) and (v1 <= Humans[i].v <= v2)):
+
+      Humans[i].alive = 0
+      #print("*******************************************************************")
+      #print("")
+      #print("i alive hv:",i, Humans[i].alive, Humans[i].h,Humans[i].v)
+      #print("")
+      
+      for j in range (0,4):
+        ph = Humans[i].h - DisplayH
+        pv = Humans[i].v
+        #print("ph pv:",ph,pv)
+        HumanParticles = AddHumanParticles((Humans[i].h + j -DisplayH),Humans[i].v,255,0,0,HumanParticles)
+    
+
+  return Humans, HumanParticles
+
+ #This might be slow, trying searching the whole human list instead
+ # for x in (h1,h2):
+ #   for y in (v1,v2):
+      #if(DefenderPlayfield.map[y][DisplayH + x].name == 'Human' and DefenderPlayfield.map[y][DisplayH + x].alive == 1):
+      #  DefenderPlayfield.map[y][DisplayH + x].alive == 0
+      #  for i in (0,1):
+      #    HumanParticles = AddHumanParticles(x,y,random.randint(100,255),0,0,HumanParticles)
+ 
+  return HumanParticles, DefenderPlayfield
+
+
+def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Humans,HumanParticles,DefenderPlayfield,Canvas,GroundRGB, SurfaceRGB):
 
   # PlayfieldH, PlayfieldV = upper left hand corner of the window being displayed
 
   bh = round(DefenderBomb.h)
   bv = round(DefenderBomb.v)
-  BlastStrength = random.randint(4,10)
+  
+  #the further the bomb travelles, the more power it gains
+  BlastStrength = round(DefenderBomb.h / 6)
 
 
-  if(bv >= LED.HatHeight -2):
-    bv = LED.HatHeight -2
+  SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
+  GroundR, GroundG, GroundB    = GroundRGB
+  ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
+
+  if(bv >= LED.HatHeight -4):
+    bv = LED.HatHeight -4
   if(bh + PlayfieldH >= DefenderPlayfield.width -1):
     bh = 0
 
@@ -542,7 +678,7 @@ def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Defen
   #Blow up bomb if it touches ground
   #try:
   #blow up pieces of ground
-  if(Ground.map[bv][bh+PlayfieldH] != (0,0,0)):
+  if(Ground.map[bv][bh+PlayfieldH] != (0,0,0) or bv >= LED.HatHeight-4):
 
     #r,g,b = (random.randint(50,255),0,0)
 
@@ -551,7 +687,7 @@ def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Defen
     #destroy ground
     gv = bv
     gh = bh+PlayfieldH
-    for j in range (-2,BlastStrength):
+    for j in range (-4,BlastStrength):
       for i in range (-BlastStrength + j ,BlastStrength - j   ):
 
         #near to the blast gets erased
@@ -565,10 +701,10 @@ def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Defen
       if (j >= 0):         
         if(gv + j < LED.HatHeight and (gh + BlastStrength + j) < Ground.width):
           if(Ground.map[gv +j][gh - BlastStrength +j - 1] != (0,0,0)):
-            Ground.map[gv +j][gh - BlastStrength +j - 1] = (0,25,0)
+            Ground.map[gv +j][gh - BlastStrength +j - 1] = (SurfaceR,SurfaceG,SurfaceB)
           
           if(Ground.map[gv +j][gh + BlastStrength -j ] != (0,0,0)):
-            Ground.map[gv +j][gh + BlastStrength -j ] = (0,25,0)
+            Ground.map[gv +j][gh + BlastStrength -j ] = (SurfaceR,SurfaceG,SurfaceB)
           
       
 
@@ -583,17 +719,20 @@ def DetonateBomb(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Defen
       graphics.DrawCircle(Canvas,bh,bv,i,graphics.Color(255,255,255))
 
     #Explode Ground
-    for i in range(0,BlastStrength):
-      GroundParticles = AddGroundParticles(bh,bv,sr,sg,sb,GroundParticles)
+    for i in range(0,round(BlastStrength / 2)):
+      GroundParticles = AddGroundParticles(bh,bv,ExplosionR, ExplosionG, ExplosionB,GroundParticles)
+
+    Humans, HumanParticles = KillHumansInBlastZone(bh,bv,BlastStrength, Humans, HumanParticles,DefenderPlayfield)
 
     
     DefenderBomb.alive = False
     #print ("Bomb Dead.",DefenderBomb.alive)
 
+
   #except:
   #  print("Error detonating bomb HV velocityV: ",bh+PlayfieldH,bv,DefenderBomb.velocityV)
                 
-  return DefenderBomb, GroundParticles, Ground, DefenderPlayfield
+  return DefenderBomb, GroundParticles, Humans, HumanParticles, Ground, DefenderPlayfield
 
 
 def MoveGroundParticles (GroundParticles,Canvas):
@@ -608,7 +747,7 @@ def MoveGroundParticles (GroundParticles,Canvas):
         gph = GroundParticles[i].h
         gpv = GroundParticles[i].v
         
-        #print("Particle location:",gph,gpv)
+        #print("GROUNDParticle location:",gph,gpv)
     
         #only display particles on screen
         r  = GroundParticles[i].r
@@ -623,14 +762,47 @@ def MoveGroundParticles (GroundParticles,Canvas):
 
 
 
+def MoveHumanParticles (HumanParticles,Canvas):
+  
+  ParticleCount = len(HumanParticles)
+  if(ParticleCount > 0):
+    for i in range (0,ParticleCount):
+      
+      #print("HumanParticle:",i," alive:",HumanParticles[i].alive)
+
+      if(HumanParticles[i].alive == True):
+        HumanParticles[i].UpdateLocationWithGravity(HumanParticleGravity)
+        hph = HumanParticles[i].h
+        hpv = HumanParticles[i].v
+        
+            
+        #only display particles on screen
+        r  = HumanParticles[i].r
+        g  = HumanParticles[i].g
+        b  = HumanParticles[i].b
+        Canvas.SetPixel(hph,hpv,r,g,b)
+          
+
+def DisplayCount(h,v,RGB, Count,Canvas):
+  CountSprite = LED.CreateBannerSprite(str(Count))
+  Canvas = LED.CopySpriteToCanvasZoom(CountSprite,h,v,(RGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+  #Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
+  return Canvas, CountSprite
+
+
+
+
 def PlayDefender(GameMaxMinutes):      
  
   global EnemyShipCount
+  global HumanCount
 
-  finished           = 'N'
-  LevelCount         = 0
-  EnemyAliveCount    = 0
-  OldEnemyAliveCount = 0
+  finished            = 'N'
+  LevelCount          = 0
+  EnemyAliveCount     = 0
+  OldEnemyAliveCount  = 0
+  OldHumanCount       = 0
+  
 
   ClockSprite         = LED.CreateClockSprite(24)
   DayOfWeekSprite     = LED.CreateDayOfWeekSprite()
@@ -647,8 +819,8 @@ def PlayDefender(GameMaxMinutes):
       h      = 0,
       v      = 0
     )
-
-
+  DefenderPlayfield.DisplayH = 0
+  DefenderPlayfield.DisplayV = 0
 
 
   LED.TheMatrix.Clear()
@@ -713,15 +885,24 @@ def PlayDefender(GameMaxMinutes):
 
     
 
-  Humans,     DefenderPlayfield = CreateHumans(HumanCount=HumanCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield )
-  EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipCount=EnemyShipCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield, Canvas = Canvas)
+  Humans,     DefenderPlayfield = CreateHumans(HumanCount=HumanCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+  HumanCountSprite = LED.CreateBannerSprite(str(HumanCount))
+  Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,HumanCount,Canvas)
+    
+
+  EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipCount=EnemyShipCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+  EnemyShipCountSprite = LED.CreateBannerSprite(str(EnemyShipCount))
+  Canvas, EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,EnemyShipCount,Canvas)
   
+
+
   DefenderBomb = LED.BombSprite
   DefenderBomb.alive = False
   DefenderBomb.velocityH = 0
   DefenderBomb.velocityV = 0
 
   GroundParticles = []
+  HumanParticles = []
 
 
   #--------------------------------
@@ -836,10 +1017,14 @@ def PlayDefender(GameMaxMinutes):
       #Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
 
 
-
+      OldH = 0
+      OldV = 0
       #MoveHumans
       for i in range (0,HumanCount):
         if(Humans[i].alive == True):
+          OldH = Humans[i].h
+          OldV = Humans[i].v
+
           if(random.randint(0,HumanMoveChance) == 1):
             
             #move human, but follow ground
@@ -887,6 +1072,13 @@ def PlayDefender(GameMaxMinutes):
           #check if human is in currently displayed area
           if(DisplayH <=  hH  <= (DisplayH + LED.HatWidth)):
             Canvas = Humans[i].PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
+
+          #Place Human on playfield
+          
+          #for some reason when we erase the sprite, it doesn't draw anymore on the canvas
+          #DefenderPlayfield = Humans[i].EraseSpriteFromPlayfield(DefenderPlayfield)
+          #DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[i].h,Humans[i].v,Humans[i])
+
 
 
 
@@ -968,6 +1160,7 @@ def PlayDefender(GameMaxMinutes):
       if(EnemyName == 'EnemyShip'):
         #print("Shooting:",EnemyName, EnemyH ,EnemyV)
         DefenderPlayfield = ShootTarget(gx, 0, EnemyName,EnemyH, EnemyV, Defender,DefenderPlayfield,Canvas)
+        Humans, HumanCount, DefenderPlayfield = DropPilot(EnemyH + gx, EnemyV, Humans, DefenderPlayfield)
         #graphics.DrawLine(Canvas,Defender.h + 5, Defender.v + 2, Defender.h + 40, Defender.v + 2, graphics.Color(255,0,0));
 
       #Strafe Ground
@@ -980,43 +1173,50 @@ def PlayDefender(GameMaxMinutes):
       #-- Move Defender Bomb         --
       #--------------------------------
 
-      if(random.randint(0,25) == 1 and DefenderBomb.alive == False):
-        #print ("Making Bomb alive",DefenderBomb.alive,DefenderBomb.h,DefenderBomb.v)
-        DefenderBomb.alive = True
-        DefenderBomb.h = Defender.h + 3
-        DefenderBomb.v = Defender.v + 1
-        DefenderBomb.velocityH = DefenderBombVelocityH
-        DefenderBomb.velocityV = DefenderBombVelocityV
+      if(EnemyShipCount <= 5):
+        if(random.randint(0,25) == 1 and DefenderBomb.alive == False):
+          #print ("Making Bomb alive",DefenderBomb.alive,DefenderBomb.h,DefenderBomb.v)
+          DefenderBomb.alive = True
+          DefenderBomb.h = Defender.h + 3
+          DefenderBomb.v = Defender.v + 1
+          DefenderBomb.velocityH = DefenderBombVelocityH
+          DefenderBomb.velocityV = DefenderBombVelocityV
 
-      
-      if(DefenderBomb.alive == True):
-        #print ("Bomb alive")
-        #Move bomb
-        DefenderBomb.UpdateLocationWithGravity()
         
-        bh = round(DefenderBomb.h)
-        bv = round(DefenderBomb.v)
+        if(DefenderBomb.alive == True):
+          #print ("Bomb alive")
+          #Move bomb
+          DefenderBomb.UpdateLocationWithGravity()
+          
+          bh = round(DefenderBomb.h)
+          bv = round(DefenderBomb.v)
 
-        if(bv >= LED.HatHeight -1):
-          bv = LED.HatHeight -1
-        if(bh + gx >= DefenderPlayfield.width -1):
-          bh = 0
-        Canvas = DefenderBomb.PaintAnimatedToCanvas(bh,bv,Canvas)
+          if(bv >= LED.HatHeight -1):
+            bv = LED.HatHeight -1
+          if(bh + gx >= DefenderPlayfield.width -1):
+            bh = 0
+          Canvas = DefenderBomb.PaintAnimatedToCanvas(bh,bv,Canvas)
 
 
-        #Detonate Bomb if at target
-        (DefenderBomb, 
-         GroundParticles, 
-         Ground, 
-         DefenderPlayfield
-         )  = DetonateBomb(DisplayH,
-                           0,
-                           DefenderBomb,
-                           Ground,
-                           GroundParticles,
-                           DefenderPlayfield,
-                           Canvas
-                           )
+          #Detonate Bomb if at target
+          (DefenderBomb, 
+          GroundParticles, 
+          Humans,
+          HumanParticles,
+          Ground, 
+          DefenderPlayfield
+          )  = DetonateBomb(DisplayH,
+                            0,
+                            DefenderBomb,
+                            Ground,
+                            GroundParticles,
+                            Humans,
+                            HumanParticles,
+                            DefenderPlayfield,
+                            Canvas,
+                            GroundRGB,
+                            SurfaceRGB
+                            )
 
 
 
@@ -1027,9 +1227,10 @@ def PlayDefender(GameMaxMinutes):
 
 
       #--------------------------------
-      #-- Move Defender Bomb         --
+      #-- Move Particles             --
       #--------------------------------
-      MoveGroundParticles (GroundParticles,Canvas)
+      MoveGroundParticles(GroundParticles,Canvas)
+      MoveHumanParticles(HumanParticles,Canvas)
 
 
 
@@ -1042,35 +1243,52 @@ def PlayDefender(GameMaxMinutes):
       #--------------------------------
 
       #Add clock
-      Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,(LED.HatWidth - ClockSprite.width -2),2,(0,100,0),(0,5,0),1,False,Canvas)
+      Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,(LED.HatWidth - ClockSprite.width -2),0,(0,100,0),(0,5,0),1,False,Canvas)
 
 
       #Add display
-      OldEnemyAliveCount = EnemyAliveCount
-      EnemyAliveCount = 0
-      for i in range(0,len(EnemyShips)):
-        if(EnemyShips[i].alive == True):
-          EnemyAliveCount = EnemyAliveCount + 1
+      EnemyAliveCount = sum(1 for e in EnemyShips if e.alive == 1)
       
-      #Oncly calculate if the count changes
+      #Only change display sprite if the count changes
       if(OldEnemyAliveCount != EnemyAliveCount):
-        EnemyAliveCountSprite = LED.CreateBannerSprite(str(EnemyAliveCount))
-      Canvas = LED.CopySpriteToCanvasZoom(EnemyAliveCountSprite,1,2,(0,0,150),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+        Canvas,EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,EnemyAliveCount,Canvas)
+        OldEnemyAliveCount = EnemyAliveCount
+      else:
+        Canvas = LED.CopySpriteToCanvasZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
 
 
 
+
+      #Human counts
+      HumanCount = sum(1 for h in Humans if h.alive == 1)
+      #Only change display if the count changes
+      if(OldHumanCount != HumanCount):
+        Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,HumanCount,Canvas)
+        OldHumanCount = HumanCount
+
+      else:
+        Canvas = LED.CopySpriteToCanvasZoom(HumanCountSprite,HumanCountH,HumanCountV,(HumanCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+
+
+    
+    
 
 
 
 
 
       #--------------------------------
-      #-- Add more ships             --
+      #-- Add more enemies           --
       #--------------------------------
 
-      if(EnemyShipCount < SpawnNewEnemiesTargetCount):
-        EnemyShips, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipCount=20, Ground=Ground,DefenderPlayfield=DefenderPlayfield ,Canvas=Canvas)
-        
+      if(EnemyShipCount <= SpawnNewEnemiesTargetCount):
+        EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipCount=20, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+
+
+
+
+      if(HumanCount <= SpawnNewHumansTargetCount):
+        Humans, HumanCount, DefenderPlayfield = AddHumans(Humans, NewHumanCount=20, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
 
 
       #--------------------------------
@@ -1079,6 +1297,9 @@ def PlayDefender(GameMaxMinutes):
 
       Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
       
+      DefenderPlayfield.DisplayH = DisplayH
+      DefenderPlayfield.DisplayV = DisplayV
+
     
       #--------------------------------
       #-- Cleanup the debris         --
@@ -1114,7 +1335,6 @@ def PlayDefender(GameMaxMinutes):
               #break
         #I did it this way to avoid changing the variable used in a for loop
         EnemyShipCount = EnemyShipCount - DeletedShips
-        print("Garbage cleanup EnemyShipCount:",EnemyShipCount)
         
               
       #delete ground particles
@@ -1143,6 +1363,61 @@ def PlayDefender(GameMaxMinutes):
           
           
 
+
+
+      #humans and their particles
+      DeletedHumans = 0
+      j = 0
+      if(random.randint(0,100) == 1):
+        for i in range (0,HumanCount):
+          
+          
+          H = Humans[j].h 
+          V = Humans[j].v 
+          
+          DeleteH = DisplayH - LED.HatWidth
+          
+          #if enemy is dead and is off screen, nuke them
+          if(Humans[j].alive == False):
+            #check if EnemyShip is in currently NOT in displayed area
+            
+            if(H < DeleteH):
+              del Humans[j]
+              DeletedHumans = DeletedHumans + 1
+              j = j - 1
+          
+          j = j + 1
+              
+              #break
+        #I did it this way to avoid changing the variable used in a for loop
+        HumanCount = HumanCount - DeletedHumans
+        
+
+      #delete human particles
+      j = 0
+      if(random.randint(0,50) == 1):
+        HumanParticleCount = len(HumanParticles)
+        if(HumanParticleCount >= 1):
+
+          for i in range (0,HumanParticleCount):
+            H = HumanParticles[j].h 
+            V = HumanParticles[j].v 
+            
+            DeleteH = DisplayH -1
+            
+            #if enemy is dead and is off screen, nuke them
+            if(H < DeleteH):
+              del HumanParticles[j]
+              j = j - 1
+            
+            j = j + 1
+
+
+
+
+
+        print("Garbage cleanup EnemyShipCount:",EnemyShipCount," HumanCount:",HumanCount)
+      
 
 
 
@@ -1196,23 +1471,25 @@ def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
   # M A I N   P R O C E S S I N G      --
   #--------------------------------------
 
-  LED.ShowTitleScreen(
-      BigText             = 'SPACE',
-      BigTextRGB          = LED.HighRed,
-      BigTextShadowRGB    = LED.ShadowRed,
-      LittleText          = 'OFFENDER',
-      LittleTextRGB       = LED.MedGreen,
-      LittleTextShadowRGB = (0,10,0), 
-      ScrollText          = 'TIME FOR PAYBACK',
-      ScrollTextRGB       = LED.MedYellow,
-      ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-      DisplayTime         = 1,           # time in seconds to wait before exiting 
-      ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-      )
-
-
   if(ShowIntro == True):
 
+
+    LED.ShowTitleScreen(
+        BigText             = 'SPACE',
+        BigTextRGB          = LED.HighRed,
+        BigTextShadowRGB    = LED.ShadowRed,
+        LittleText          = 'OFFENDER',
+        LittleTextRGB       = LED.MedGreen,
+        LittleTextShadowRGB = (0,10,0), 
+        ScrollText          = 'TIME FOR PAYBACK',
+        ScrollTextRGB       = LED.MedYellow,
+        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+        DisplayTime         = 1,           # time in seconds to wait before exiting 
+        ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        )
+
+
+  
     LED.ClearBigLED()
     LED.ClearBuffers()
     CursorH = 0
@@ -1240,13 +1517,13 @@ def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
 
 
 
-#execute if this script is called direction
+#execute if this script is called directly
 if __name__ == "__main__" :
   while(1==1):
     #LED.LoadConfigData()
     #LED.SaveConfigData()
     print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
-    LaunchDefender(100000)        
+    LaunchDefender(100000,False)        
 
 
 
