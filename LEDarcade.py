@@ -2182,6 +2182,7 @@ class ColorAnimatedSprite(object):
     self.Particles   = []  #holds dot objects for each pixel in a particular frame, used for animating explosions
     self.alive       = True
     self.counter     = 0
+    self.afraid      = False  #when afraid, it will flee 
 
   def IncrementFrame(self):
     self.ticks = self.ticks + 1
@@ -2538,7 +2539,6 @@ class ColorAnimatedSprite(object):
     y     = 0
     count = 0
 
-
     width   = self.width 
     height  = self.height
     h       = self.h
@@ -2547,13 +2547,35 @@ class ColorAnimatedSprite(object):
     self.alive = False
   
 
-
     for count in range (0,(width * height)):
       y,x = divmod(count,width)
 
       if (CheckBoundary(x+h,y+v) == 0):
         TheMatrix.SetPixel(x+h,y+v,0,0,0)
         Playfield[y+v][x+h] = EmptyObject
+    return Playfield
+
+
+
+  def EraseSpriteFromPlayfield2(self,Playfield):
+    #This version is used by Defender 
+    #Erase the sprite by writing 'EmptyObject' to every spot on the playfield occupied by the sprite
+    x     = 0
+    y     = 0
+    count = 0
+
+    width   = self.width 
+    height  = self.height
+    h       = self.h
+    v       = self.v
+    frame   = self.currentframe
+    
+
+    for count in range (0,(width * height)):
+      y,x = divmod(count,width)
+
+      if (CheckBoundary(x+h,y+v) == 0):
+        Playfield.map[y+v][x+h] = EmptyObject
     return Playfield
 
 
@@ -2866,6 +2888,9 @@ class ColorAnimatedSprite(object):
 
            
     return Playfield;
+
+
+
 
 
 
@@ -3212,6 +3237,77 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   
 
 
+
+
+
+
+def CopySpriteToLayerZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-1,-1),ZoomFactor = 1,Fill=True,Layer=Layer):
+  #Copy a regular sprite to the LED 
+  #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
+  #print ("Copying sprite to playfield:",TheSprite.name, ObjectType, Filler)
+  #if Fill = False, don't write anything for filler, that way we can leave existing lights on LED
+
+  width   = TheSprite.width 
+  height  = TheSprite.height
+
+  
+  if (ColorTuple == (-1,-1,-1)):
+    r = TheSprite.r
+    g = TheSprite.g
+    b = TheSprite.b
+  else:
+    r,g,b   = ColorTuple
+  
+  if (FillerTuple == (-1,-1,-1)):
+    fr = 0
+    fg = 0
+    fb = 0
+  else:
+    fr,fg,fb   = FillerTuple
+
+
+  #Copy sprite to Canvas
+  for count in range (0,(TheSprite.width * TheSprite.height) ):
+    y,x = divmod(count,TheSprite.width)
+
+    y = y * ZoomFactor
+    x = x * ZoomFactor
+
+
+    if (ZoomFactor >= 1):
+      for zv in range (0,ZoomFactor):
+        for zh in range (0,ZoomFactor):
+          H = x+h+zh
+          V = y+v+zv
+         
+          if(CheckBoundary(H,V) == 0):
+
+            #draw the sprite portion
+            if TheSprite.grid[count] != 0:
+              Layer.map[V][H] = (r,g,b)
+            # if the sprite portion is a 0
+            else:
+              if (Fill == True):
+                Layer.map[V][H] = (fr,fg,fb)
+
+  return Layer;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class PlayField(object):
   def __init__(
       self,
@@ -3256,11 +3352,27 @@ class PlayField(object):
       y,x = divmod(count,width)
       #print("Playfield HV:",x+h,y+v)
 
-      if((y+v < self.height) and (x+h < self.width)):
+      if((y+v < self.height-1) and (x+h < self.width-1)):
         self.map[y+v][x+h] = TheObject
            
     return
 
+
+  def EraseAnimatedSpriteFromPlayfield(self,h,v, TheObject):
+    #overwrite the previous sprite info with EmptyObject
+
+    width   = TheObject.width 
+    height  = TheObject.height
+    
+    #Copy sprite to playfield
+    for count in range (0,(width * height)):
+      y,x = divmod(count,width)
+      #print("Playfield HV:",x+h,y+v)
+
+      if((y+v < self.height-1) and (x+h < self.width-1)):
+        self.map[y+v][x+h] = EmptyObject
+           
+    return
 
 
 
@@ -10648,6 +10760,53 @@ def PointTowardsObject8Way(SourceH,SourceV,TargetH,TargetV):
   return direction;
 
 
+def PointAwayFromObject8Way(SourceH,SourceV,TargetH,TargetV):
+
+  #   8 1 2
+  #   7 . 3
+  #   6 5 4
+
+  #d = GetDistanceBetweenDots(SourceH, SourceV, TargetH, TargetV):
+  
+  #source is upper left of target
+  if (SourceH < TargetH and SourceV < TargetV):
+    direction = 8
+
+  #source is directly above target
+  elif (SourceH == TargetH and SourceV < TargetV):
+    direction = 1
+
+  #source is upper right of target
+  elif (SourceH > TargetH and SourceV < TargetV):
+    direction = 2
+
+  #source is directly right of target
+  elif (SourceH > TargetH and SourceV == TargetV):
+    direction = 3
+
+  #source is lower right of target
+  elif (SourceH > TargetH and SourceV > TargetV):
+    direction = 4
+
+  #source is directly below target
+  elif (SourceH == TargetH and SourceV > TargetV):
+    direction = 5
+    
+  #source is lower left of target
+  elif (SourceH < TargetH and SourceV > TargetV):
+    direction = 6
+
+  #source is directly left of target
+  elif (SourceH < TargetH and SourceV == TargetV):
+    direction = 7
+
+  else: direction = random.randint(1,8)
+
+  return direction;
+
+
+
+
 
 
   
@@ -17860,7 +18019,7 @@ def ShowImage(ImageLocation):
       
 
 
-def DrawSquare():
+def DrawSquare2():
 
   # RGB example w/graphics prims.
   # Note, only "RGB" mode is supported currently.
@@ -17876,6 +18035,15 @@ def DrawSquare():
       TheMatrix.Clear()
       TheMatrix.SetImage(image, n, n)
       time.sleep(0.01)
+
+
+def DrawSquare(h1,v1,h2,v2,FillRGB,BorderRGB):
+  image = Image.new("RGB", (64, 32))  # Can be larger than matrix if wanted!!
+  draw = ImageDraw.Draw(image)  # Declare Draw instance before prims
+  # Draw some shapes into image (no immediate effect on matrix)...
+  draw.rectangle((h1, v1, h2, v2), fill=FillRGB, outline=BorderRGB)
+  TheMatrix.SetImage(image, h1, v1)
+  time.sleep(1)
 
 
 
