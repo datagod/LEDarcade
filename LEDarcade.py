@@ -2940,7 +2940,7 @@ class ColorAnimatedSprite(object):
     CEILING  = -5
     FLOOR    = HatHeight
     WESTWALL = 0
-    EASTWALL = HatWidth
+    EASTWALL = HatWidth -1
     
 
 
@@ -2964,10 +2964,23 @@ class ColorAnimatedSprite(object):
 
     # Bounce off floor
     if (next_y >= (FLOOR)):
-      #velocityY = -velocityY * FRICTION
       velocityY = -velocityY * FRICTION
       velocityX =  velocityX * FRICTION
       next_y = FLOOR
+
+
+    # Bounce off WestWall
+    if (next_x <= WESTWALL):
+      velocityY = velocityY * FRICTION
+      velocityX = -velocityX * FRICTION
+      next_x = WESTWALL
+
+
+    if (next_x >= EASTWALL):
+      velocityY = velocityY * FRICTION
+      velocityX = -velocityX * FRICTION
+      next_x = EASTWALL
+
 
     #Calculate new vertical velocity (based on gravity)
     velocityY = velocityY +GRAVITY
