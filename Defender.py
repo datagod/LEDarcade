@@ -1,7 +1,7 @@
 
 #Standardize alive = True/False not 1/0
 #change enemyship garbage collection to the same as human
-
+#have some enemies fligh away from defender fast
 
 #!/usr/bin/env python
 #print("moves:",moves,end='\r', flush=True)
@@ -958,6 +958,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
   Floor = LED.HatHeight
   DetonateVelocity = 0.04
+  Finished = False
   
   BlastH = round(DefenderBomb.h)
   BlastV = round(DefenderBomb.v)
@@ -999,6 +1000,9 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
       #r,g,b = (random.randint(50,255),0,0)
 
+      #Keep blast on the screen
+      #if(BlastV >= LED.HatHeight):
+      #  BlastV  =  LED.HatHeight -1
 
       
       #destroy ground
@@ -1011,18 +1015,21 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
           if(gv + j < LED.HatHeight and gh + i < Ground.width):
             Ground.map[gv +j][gh +i] = (0,0,0)
           else:
+            gv = gv -1
+            Finished = True
             break
         
         #set ground outside the blast zone to different color
 
-        if (j >= 0):         
-          if(gv + j < LED.HatHeight and (gh + BlastStrength + j) < Ground.width):
-            if(Ground.map[gv +j][gh - BlastStrength +j - 1] != (0,0,0)):
-              Ground.map[gv +j][gh - BlastStrength +j - 1] = (SurfaceR,SurfaceG,SurfaceB)
-            
-            if(Ground.map[gv +j][gh + BlastStrength -j ] != (0,0,0)):
-              Ground.map[gv +j][gh + BlastStrength -j ] = (SurfaceR,SurfaceG,SurfaceB)
-         
+        if(Finished == False):
+          if (j >= 0):         
+            if(gv + j < LED.HatHeight and (gh + BlastStrength + j) < Ground.width):
+              if(Ground.map[gv +j][gh - BlastStrength +j - 1] != (0,0,0)):
+                Ground.map[gv +j][gh - BlastStrength +j - 1] = (SurfaceR,SurfaceG,SurfaceB)
+              
+              if(Ground.map[gv +j][gh + BlastStrength -j ] != (0,0,0)):
+                Ground.map[gv +j][gh + BlastStrength -j ] = (SurfaceR,SurfaceG,SurfaceB)
+          
 
       #beside blast gets colored green
           
@@ -1047,7 +1054,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
 
   except:
-    print("Bomb error:",BlastV, BlastH ,PlayfieldH)      
+    print("Bomb error BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
 
 
   #except:
