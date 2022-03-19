@@ -956,7 +956,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   #Defenderbomb.h is relative to the  64x32 display
   #BlastHV is relative to the  64x32 display
 
-  Floor = LED.HatHeight -1
+  #Floor = LED.HatHeight -1
   DetonateVelocity = 0.04
   
   BlastH = round(DefenderBomb.h)
@@ -975,14 +975,14 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
 
   #Keep blast on the screen
-  if(BlastV > Floor):
-    BlastV = Floor 
+  #if(BlastV > Floor):
+  #  BlastV = Floor 
 
-  if(BlastH > LED.HatWidth -1):
-    BlashtH = LED.HatWidth -1
+  #if(BlastH > LED.HatWidth -1):
+  #  BlashtH = LED.HatWidth -1
 
-  if(BlastH < 1):
-    BlastH = 1
+  #if(BlastH < 1):
+  #  BlastH = 1
 
 
   #print("BlastHV BombvelocityHV:",BlastH,BlastV,DefenderBomb.velocityH, DefenderBomb.velocityV)
@@ -993,8 +993,8 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
     #try:
     #blow up pieces of ground
     if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
-       or BlastV >= Floor
-       or abs(DefenderBomb.velocityV) < DetonateVelocity
+       #or BlastV >= Floor
+       #or abs(DefenderBomb.velocityV) < DetonateVelocity
        ):
 
       #r,g,b = (random.randint(50,255),0,0)
@@ -1204,7 +1204,7 @@ def PlayDefender(GameMaxMinutes):
   print("")
   print("")
   print("*****************************************************")
-  #LED.OutbreakGamesPlayed = LED.OutbreakGamesPlayed + 1
+  #LED.DefenderGamesPlayed = LED.DefenderGamesPlayed + 1
   #LED.SaveConfigData()
   print("*****************************************************")
 
@@ -2029,7 +2029,7 @@ if __name__ == "__main__" :
   while(1==1):
     #LED.LoadConfigData()
     #LED.SaveConfigData()
-    print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
+    print("After SAVE DefenderGamesPlayed:",LED.DefenderGamesPlayed)
     LaunchDefender(100000,False)        
 
 

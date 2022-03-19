@@ -169,6 +169,7 @@ OutbreakHighScore      = 0
 OutbreakGamesPlayed    = 0
 SpaceDotHighScore      = 0
 SpaceDotGamesPlayed    = 0
+DefenderGamesPlayed    = 0
 
 
 
@@ -2933,6 +2934,7 @@ class ColorAnimatedSprite(object):
 
 
   def UpdateLocationWithGravity(self):
+  #color animated sprite version    
   #keep all the info inside the sprite object if possible
 
     GRAVITY  = 0.0098
@@ -11286,6 +11288,7 @@ def SaveConfigData():
   ConfigFile.set('scores',   'OutbreakGamesPlayed', str(OutbreakGamesPlayed))
   ConfigFile.set('scores',   'SpaceDotHighScore',   str(SpaceDotHighScore))
   ConfigFile.set('scores',   'SpaceDotGamesPlayed', str(SpaceDotGamesPlayed))
+  ConfigFile.set('scores',   'DefenderGamesPlayed', str(DefenderGamesPlayed))
 
 
   print ("Writing configuration file")
@@ -11303,6 +11306,7 @@ def LoadConfigData():
   global OutbreakGamesPlayed
   global SpaceDotHighScore
   global SpaceDotGamesPlayed
+  global DefenderGamesPlayed
 
   print ("--Load Config Data--")
   #print ("PacDotHighScore Before Load: ",PacDotHighScore)
@@ -11350,7 +11354,14 @@ def LoadConfigData():
     print ("SpaceDotHighScore:      ",SpaceDotHighScore)
     print ("SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
 
-    
+
+    #Get Defender data
+    DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
+    DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
+    print ("DefenderHighScore:      ",DefenderHighScore)
+    print ("DefenderGamesPlayed:    ",DefenderGamesPlayed)
+
+
   else:
     print ("Config file not found! Running with default values.")
 
