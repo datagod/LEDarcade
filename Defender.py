@@ -956,7 +956,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   #Defenderbomb.h is relative to the  64x32 display
   #BlastHV is relative to the  64x32 display
 
-  #Floor = LED.HatHeight -1
+  Floor = LED.HatHeight
   DetonateVelocity = 0.04
   
   BlastH = round(DefenderBomb.h)
@@ -993,7 +993,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
     #try:
     #blow up pieces of ground
     if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
-       #or BlastV >= Floor
+       or BlastV >= Floor
        #or abs(DefenderBomb.velocityV) < DetonateVelocity
        ):
 
