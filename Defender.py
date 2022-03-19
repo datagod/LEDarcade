@@ -148,10 +148,11 @@ BombGravity            = 0.0198
 #Bomb
 DefenderBombVelocityH  =  0.4
 DefenderBombVelocityV  = -0.2
-BlastStrengthMin       = 2
-BlastStrengthMax       = 10
-StrafeLaserStrength    = 2
+BlastStrengthMin       = 4
+BlastStrengthMax       = 15
+StrafeLaserStrength    = 4
 LaserTurnOffChance     = 20
+BombDropChance         = 10
 RequestBombDrop        = False
 RequestGroundLaser     = False
 RequestedBombVelocityH =  0.2
@@ -291,8 +292,8 @@ def LookForTargets2(H,V,TargetName,Defender, DefenderPlayfield,Canvas,EnemyShips
 
   ScanStartH = H + Defender.width + Defender.h
   ScanStopH  = ScanStartH + 40
-  ScanStartV = Defender.v -3
-  ScanStopV  = Defender.v + 6
+  ScanStartV = Defender.v -5
+  ScanStopV  = Defender.v + 8
 
 
   EnemyName = ''
@@ -308,33 +309,43 @@ def LookForTargets2(H,V,TargetName,Defender, DefenderPlayfield,Canvas,EnemyShips
     ScanStartH = DefenderPlayfield.width - 1
 
   #build list of enemies that fall within the radar box
-  graphics.DrawLine(Canvas,ScanStartH -H, ScanStartV,ScanStopH-H,ScanStartV, graphics.Color(0,255,0))
-  graphics.DrawLine(Canvas,ScanStartH-H, ScanStartV,ScanStartH-H,ScanStopV, graphics.Color(0,255,0))
-  graphics.DrawLine(Canvas,ScanStartH-H, ScanStopV,ScanStopH-H,ScanStopV, graphics.Color(0,255,0))
-  graphics.DrawLine(Canvas,ScanStopH-H,  ScanStopV,ScanStopH-H,ScanStartV, graphics.Color(0,255,0))
+  #graphics.DrawLine(Canvas,ScanStartH -H, ScanStartV,ScanStopH-H,ScanStartV, graphics.Color(0,255,0))
+  #graphics.DrawLine(Canvas,ScanStartH-H, ScanStartV,ScanStartH-H,ScanStopV, graphics.Color(0,255,0))
+  #graphics.DrawLine(Canvas,ScanStartH-H, ScanStopV,ScanStopH-H,ScanStopV, graphics.Color(0,255,0))
+  #graphics.DrawLine(Canvas,ScanStopH-H,  ScanStopV,ScanStopH-H,ScanStartV, graphics.Color(0,255,0))
   
 
   #Built ItemList
   TargetFound = False
   ItemList = []
   for Ship in EnemyShips:
-    print('Scanning:',Ship.h,Ship.v)
+    #print('Scanning:',Ship.h,Ship.v)
 
-    LED.TheMatrix.SetPixel(Ship.h - H,Ship.v,255,255,255)
-    graphics.DrawCircle(Canvas,Ship.h - H,Ship.v,4,graphics.Color(255,255,255))
-    
+    if(Ship.alive == True):
 
-    if((ScanStartH <= Ship.h <= ScanStopH) and (ScanStartV <= Ship.v <= ScanStopV)):
-      TargetFound = True
-      EnemyName = Ship.name
-      EnemyH    = Ship.h
-      EnemyV    = Ship.v
-      print("LookForTarget2: EnemyFound HV",EnemyH, EnemyV)
-      break
+      #LED.TheMatrix.SetPixel(Ship.h - H,Ship.v,255,255,255)
+      #graphics.DrawCircle(Canvas,Ship.h - H,Ship.v,4,graphics.Color(255,255,255))
+      
+
+      if((ScanStartH <= Ship.h <= ScanStopH) and (ScanStartV <= Ship.v <= ScanStopV)):
+        TargetFound = True
+        EnemyName = Ship.name
+        EnemyH    = Ship.h
+        EnemyV    = Ship.v
+        #print("LookForTarget2: EnemyFound HV",EnemyH, EnemyV)
+        break
 
   return EnemyName, EnemyH, EnemyV, TargetFound
 
+
+
+
+
+
+
+
 def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
+  ## Deprecaged, old and slow
   global RequestBombDrop
   #This is my tradition method of examining the playfield to see if enemies are within range of the radar probes
   #examining things one cell at a time
@@ -488,7 +499,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   for i in range (0,len(Humans)):
     if(StartX <= Humans[i].h <= StopX  and StartY <= Humans[i].v <=  StopY):
       #print("Found Human[i]hv | StartStopX |:",Humans[i].h,Humans[i].v," | ",StartX, StopX )
-      LED.TheMatrix.SetPixel(Humans[i].h - PlayfieldH,Humans[i].v,255,255,255)
+      #LED.TheMatrix.SetPixel(Humans[i].h - PlayfieldH,Humans[i].v,255,255,255)
       Found = True
       RequestGroundLaser = True
       RequestBombDrop    = True
@@ -497,7 +508,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   for i in range (0,len(EnemyShips)):
     if(StartX <= EnemyShips[i].h <= StopX  and StartY <= EnemyShips[i].v <=  StopY):
       #print("Found EnemyShip[i]hv | StartStopX |:",EnemyShips[i].h,EnemyShips[i].v," | ",StartX, StopX )
-      LED.TheMatrix.SetPixel(EnemyShips[i].h - PlayfieldH,EnemyShips[i].v,255,255,255)
+      #LED.TheMatrix.SetPixel(EnemyShips[i].h - PlayfieldH,EnemyShips[i].v,255,255,255)
       Found = True
       RequestGroundLaser = True
       RequestBombDrop    = True
@@ -532,14 +543,18 @@ def ShootTarget(PlayfieldH, PlayfieldV, TargetName, TargetH,TargetV,Defender, De
   #print("ST - TargetName:",TargetName)
   #print("ST - Shooting:",DefenderPlayfield.map[TargetV][TargetH+PlayfieldH].name, TargetH+PlayfieldH, TargetV)
   
-  #we want to always shoot straight from the Defender.  If it hits, good. If not, too bad.
-  graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , TargetH - DefenderPlayfield.h, TargetV, graphics.Color(255,0,0))
 
-  if(DefenderPlayfield.map[TargetV][TargetH].name != "EmptyObject"):
+  if(DefenderPlayfield.map[TargetV][TargetH].name != "EmptyObject" and DefenderPlayfield.map[TargetV][TargetH].alive == True):
     DefenderPlayfield.map[TargetV][TargetH].ConvertSpriteToParticles()
     DefenderPlayfield.map[TargetV][TargetH].EraseSpriteFromPlayfield2(DefenderPlayfield)
     DefenderPlayfield.map[TargetV][TargetH].alive = False
     TargetHit = True
+    #we want to always shoot straight from the Defender.  If it hits, good. If not, too bad.
+    graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , TargetH - DefenderPlayfield.DisplayH, TargetV, graphics.Color(255,0,0))
+
+  else:
+    #Laser misses, draw to end of screen
+    graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , LED.HatWidth , TargetV, graphics.Color(255,0,0))
 
   
   return DefenderPlayfield,TargetHit
@@ -939,12 +954,16 @@ def KillEnemiesInBlastZone(BlastH,BlastV,BlastStrength, Humans, HumanParticles, 
 def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Humans,HumanParticles,EnemyShips, DefenderPlayfield,Canvas,GroundRGB, SurfaceRGB):
   # PlayfieldH, PlayfieldV = upper left hand corner of the window being displayed
   #Defenderbomb.h is relative to the  64x32 display
+  #BlastHV is relative to the  64x32 display
 
+  Floor = LED.HatHeight -1
+  DetonateVelocity = 0.04
+  
   BlastH = round(DefenderBomb.h)
   BlastV = round(DefenderBomb.v)
   
   #the further the bomb travels, the more power it gains
-  BlastStrength  = round  (DefenderBomb.velocityV * 5    + DefenderBomb.h / 10)
+  BlastStrength  = round  (DefenderBomb.velocityV * 5    + DefenderBomb.h / 5)
 
 
   SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
@@ -952,47 +971,58 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
   #ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
 
+  #print(BlastH, BlastV, DefenderBomb.velocityH, DefenderBomb.velocityV)
 
 
-  if(BlastV >= LED.HatHeight -4):
-    BlastV = LED.HatHeight -4
-  if(BlastH + PlayfieldH >= DefenderPlayfield.width -1):
-    BlastH = 0
+  #Keep blast on the screen
+  if(BlastV > Floor):
+    BlastV = Floor 
 
-  
+  if(BlastH > LED.HatWidth -1):
+    BlashtH = LED.HatWidth -1
 
-  #Blow up bomb if it touches ground
-  #try:
-  #blow up pieces of ground
-  if(Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0) or BlastV >= LED.HatHeight-4):
-
-    #r,g,b = (random.randint(50,255),0,0)
+  if(BlastH < 1):
+    BlastH = 1
 
 
-    
-    #destroy ground
-    gv = BlastV
-    gh = BlastH+PlayfieldH
-    for j in range (-4,BlastStrength):
-      for i in range (-BlastStrength + j ,BlastStrength - j   ):
+  #print("BlastHV BombvelocityHV:",BlastH,BlastV,DefenderBomb.velocityH, DefenderBomb.velocityV)
 
-        #near to the blast gets erased
-        if(gv + j < LED.HatHeight and gh + i < Ground.width):
-          Ground.map[gv +j][gh +i] = (0,0,0)
-        else:
-          break
+  try:
+
+    #Blow up bomb if it touches ground or runs out of velocity
+    #try:
+    #blow up pieces of ground
+    if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
+       or BlastV >= Floor
+       or abs(DefenderBomb.velocityV) < DetonateVelocity
+       ):
+
+      #r,g,b = (random.randint(50,255),0,0)
+
+
       
-      #set ground outside the blast zone to different color
+      #destroy ground
+      gv = BlastV
+      gh = BlastH+PlayfieldH
+      for j in range (-4,BlastStrength):
+        for i in range (-BlastStrength + j ,BlastStrength - j   ):
 
-      if (j >= 0):         
-        if(gv + j < LED.HatHeight and (gh + BlastStrength + j) < Ground.width):
-          if(Ground.map[gv +j][gh - BlastStrength +j - 1] != (0,0,0)):
-            Ground.map[gv +j][gh - BlastStrength +j - 1] = (SurfaceR,SurfaceG,SurfaceB)
-          
-          if(Ground.map[gv +j][gh + BlastStrength -j ] != (0,0,0)):
-            Ground.map[gv +j][gh + BlastStrength -j ] = (SurfaceR,SurfaceG,SurfaceB)
-          
-      
+          #near to the blast gets erased
+          if(gv + j < LED.HatHeight and gh + i < Ground.width):
+            Ground.map[gv +j][gh +i] = (0,0,0)
+          else:
+            break
+        
+        #set ground outside the blast zone to different color
+
+        if (j >= 0):         
+          if(gv + j < LED.HatHeight and (gh + BlastStrength + j) < Ground.width):
+            if(Ground.map[gv +j][gh - BlastStrength +j - 1] != (0,0,0)):
+              Ground.map[gv +j][gh - BlastStrength +j - 1] = (SurfaceR,SurfaceG,SurfaceB)
+            
+            if(Ground.map[gv +j][gh + BlastStrength -j ] != (0,0,0)):
+              Ground.map[gv +j][gh + BlastStrength -j ] = (SurfaceR,SurfaceG,SurfaceB)
+         
 
       #beside blast gets colored green
           
@@ -1000,20 +1030,24 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
       #Ground.map[gv +j][gh +i -j - 1] = (0,35,0)
 
 
-    #Big white flash
-    for i in range (1,BlastStrength):
-      graphics.DrawCircle(Canvas,BlastH,BlastV,i,graphics.Color(255,255,255))
+      #Big white flash
+      for i in range (1,BlastStrength):
+        graphics.DrawCircle(Canvas,BlastH,BlastV,i,graphics.Color(255,255,255))
 
-    #Explode Ground
-    for i in range(0,round(BlastStrength / 2)):
-      GroundParticles = AddGroundParticles(BlastH,BlastV,ExplosionR, ExplosionG, ExplosionB,GroundParticles)
+      #Explode Ground
+      for i in range(0,round(BlastStrength / 2)):
+        GroundParticles = AddGroundParticles(BlastH,BlastV,ExplosionR, ExplosionG, ExplosionB,GroundParticles)
 
-    Humans, HumanParticles, EnemyShips = KillEnemiesInBlastZone(BlastH + PlayfieldH,BlastV,BlastStrength, Humans, HumanParticles,EnemyShips, DefenderPlayfield)
+      Humans, HumanParticles, EnemyShips = KillEnemiesInBlastZone(BlastH + PlayfieldH,BlastV,BlastStrength, Humans, HumanParticles,EnemyShips, DefenderPlayfield)
 
 
-    
-    DefenderBomb.alive = False
-    #print ("Bomb Dead.",DefenderBomb.alive)
+      
+      DefenderBomb.alive = False
+      #print ("Bomb Dead.",DefenderBomb.alive)
+
+
+  except:
+    print("Bomb error:",BlastV, BlastH ,PlayfieldH)      
 
 
   #except:
@@ -1035,15 +1069,17 @@ def MoveBomb(gx,DefenderBomb,DefenderPlayfield,Canvas):
     bh = round(DefenderBomb.h)
     bv = round(DefenderBomb.v)
 
-    if(bv >= LED.HatHeight -1):
-      bv = LED.HatHeight -1
-    if(bh + gx >= DefenderPlayfield.width -1):
-      bh = 0
-    Canvas = DefenderBomb.PaintAnimatedToCanvas(bh,bv,Canvas)
-
-    return bh, bv, DefenderBomb, DefenderPlayfield, Canvas
-
-
+    #if(bv >= LED.HatHeight -1):
+    #  bv = LED.HatHeight -1
+    #  DefenderBomb.UpdateLocationWithGravity()
+      
+      
+    #if(bh >= LED.HatWidth -1):
+    #  bh = LED.HatWidth -2
+    #  DefenderBomb.UpdateLocationWithGravity()
+       
+  Canvas = DefenderBomb.PaintAnimatedToCanvas(bh,bv,Canvas)
+  return bh, bv, DefenderBomb, DefenderPlayfield, Canvas
 
 
 
@@ -1571,8 +1607,8 @@ def PlayDefender(GameMaxMinutes):
       #keep defender within the screen borders
       if(Defender.v >= LED.HatHeight-3):
         Defender.v = LED.HatHeight-3
-      if(Defender.v <= 0):
-        Defender.v = 0
+      if(Defender.v <= 5):
+        Defender.v = 5
 
 
 
@@ -1592,10 +1628,17 @@ def PlayDefender(GameMaxMinutes):
           TargetFound = False
 
           if(TargetHit == True):
-            Humans, HumanCount, DefenderPlayfield = DropPilot(EnemyH + gx, EnemyV, Humans, DefenderPlayfield)
+            Humans, HumanCount, DefenderPlayfield = DropPilot(EnemyH, EnemyV, Humans, DefenderPlayfield)
           #graphics.DrawLine(Canvas,Defender.h + 5, Defender.v + 2, Defender.h + 40, Defender.v + 2, graphics.Color(255,0,0));
             TargetHit = False
+          else:
+            #missed, so move Defender closer to enemy
+            if(EnemyV > Defender.v):
+              Defender.v = Defender.v + 1
+            elif(EnemyV < Defender.v):
+              Defender.v = Defender.v - 1
 
+            RequestBombDrop = True
 
       #Shoot ground laser when X ships left
 
@@ -1625,9 +1668,9 @@ def PlayDefender(GameMaxMinutes):
         if(DefenderBomb.alive == False):
           #Lob the bombs for increased range and blast
           #print("Lobbing Bombs")
-          if(random.randint(0,100) == 1):
+          if(random.randint(0,BombDropChance) == 1):
             DefenderBomb.alive = True
-            RequestBombDrop == False
+            RequestBombDrop = False
             DefenderBomb.h = Defender.h + 3
             DefenderBomb.v = Defender.v + 1
             DefenderBomb.velocityH = DefenderBombVelocityH
@@ -1640,7 +1683,7 @@ def PlayDefender(GameMaxMinutes):
         if(random.randint(0,25) == 1):
           #print ("Making Bomb alive",DefenderBomb.alive,DefenderBomb.h,DefenderBomb.v)
           DefenderBomb.alive = True
-          RequestBombDrop == False
+          RequestBombDrop = False
           #bombs requested are more direct, to hit aliens hiding in the rocks
           DefenderBomb.h = Defender.h + 2
           DefenderBomb.v = Defender.v + 1
@@ -1652,28 +1695,35 @@ def PlayDefender(GameMaxMinutes):
       if (DefenderBomb.alive == True):
         bh, bv, DefenderBomb, DefenderPlayfield, Canvas = MoveBomb(gx,DefenderBomb,DefenderPlayfield,Canvas)
        
-        #Detonate Bomb if at ground
-        (DefenderBomb, 
-        GroundParticles, 
-        Humans,
-        HumanParticles,
-        EnemyShips,
-        Ground, 
-        DefenderPlayfield
-        )  = DetonateBombIfAtGround(DisplayH,
-                          0,
-                          DefenderBomb,
-                          Ground,
-                          GroundParticles,
-                          Humans,
-                          HumanParticles,
-                          EnemyShips,
-                          DefenderPlayfield,
-                          Canvas,
-                          GroundRGB,
-                          SurfaceRGB
-                          )
-
+        if(DefenderBomb.v >= 20):
+          #Detonate Bomb if at ground
+          (DefenderBomb, 
+          GroundParticles, 
+          Humans,
+          HumanParticles,
+          EnemyShips,
+          Ground, 
+          DefenderPlayfield
+          )  = DetonateBombIfAtGround(DisplayH,
+                            0,
+                            DefenderBomb,
+                            Ground,
+                            GroundParticles,
+                            Humans,
+                            HumanParticles,
+                            EnemyShips,
+                            DefenderPlayfield,
+                            Canvas,
+                            GroundRGB,
+                            SurfaceRGB
+                            )
+        #reset the bomb
+        if (DefenderBomb.alive == False):
+          RequestBombDrop        = False
+          DefenderBomb.velocityH = 0
+          DefenderBomb.velocityV = 0
+          DefenderBomb.h         = 0
+          DefenderBomb.v         = 0
 
 
 
@@ -1819,8 +1869,6 @@ def PlayDefender(GameMaxMinutes):
                 
 
       #delete old bomb
-      if (DefenderBomb.v >= 30):
-        DefenderBomb.alive = False
           
           
 
