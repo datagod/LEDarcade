@@ -2184,6 +2184,7 @@ class ColorAnimatedSprite(object):
     self.alive       = True
     self.counter     = 0
     self.afraid      = False  #when afraid, it will flee 
+    self.bounces     = 0
 
   def IncrementFrame(self):
     self.ticks = self.ticks + 1
@@ -2933,7 +2934,7 @@ class ColorAnimatedSprite(object):
    
 
 
-  def UpdateLocationWithGravity(self):
+  def UpdateLocationWithGravity(self,Friction=0.):
   #color animated sprite version    
   #keep all the info inside the sprite object if possible
 
@@ -2969,6 +2970,7 @@ class ColorAnimatedSprite(object):
       velocityY = -velocityY * FRICTION
       velocityX =  velocityX * FRICTION
       next_y = FLOOR
+      self.bounces = self.bounces + 1
 
 
     # Bounce off WestWall
@@ -2976,12 +2978,14 @@ class ColorAnimatedSprite(object):
       velocityY = velocityY * FRICTION
       velocityX = -velocityX * FRICTION
       next_x = WESTWALL
+      self.bounces = self.bounces + 1
 
 
     if (next_x >= EASTWALL):
       velocityY = velocityY * FRICTION
       velocityX = -velocityX * FRICTION
       next_x = EASTWALL
+      self.bounces = self.bounces + 1
 
 
     #Calculate new vertical velocity (based on gravity)

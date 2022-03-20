@@ -64,6 +64,7 @@ from rgbmatrix import graphics
 
 
 
+
 random.seed()
 start_time = time.time()
 
@@ -119,7 +120,7 @@ LaserB = 0
 
 DefenderWorldWidth = 2048
 HumanCount         = 5
-EnemyShipCount     = 25
+EnemyShipCount     = 2
 SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
 
@@ -133,7 +134,7 @@ GroundRadarChance    = 10
 FrontRadarChance     = 5
 ShootGroundShipCount = 10
 AttackDistance       = 64
-HumanRunDistance     = 40
+HumanRunDistance     = 64
 ShootTime            = time.time()
 ShootWaitTime        = 0.5
 EnemyFearFactor      = 10  #the lower the number, the more likely the enemy will run away
@@ -148,16 +149,16 @@ BombGravity            = 0.0198
 #Bomb
 DefenderBombVelocityH  =  0.4
 DefenderBombVelocityV  = -0.2
-BlastStrengthMin       = 4
-BlastStrengthMax       = 15
+BlastFactor            = 20
 StrafeLaserStrength    = 4
 LaserTurnOffChance     = 20
 BombDropChance         = 10
 RequestBombDrop        = False
 RequestGroundLaser     = False
-RequestedBombVelocityH =  0.2
-RequestedBombVelocityV =  0.01
-
+RequestedBombVelocityH = 0.2
+RequestedBombVelocityV = 0.01
+BombDetonationHeight   = 20
+MaxBombBounces         = 2
 
 #Human
 HumanCountH = 25
@@ -601,8 +602,7 @@ def ShootGround(PlayfieldH, PlayfieldV, GroundV, Defender, DefenderPlayfield, Gr
 
   #examine the killzone
   Humans, HumanParticles, EnemyShips  = KillEnemiesInBlastZone(ScanH,GroundV + j,StrafeLaserStrength, Humans, HumanParticles, EnemyShips,DefenderPlayfield)
-  
-
+   
 
   return DefenderPlayfield, Ground, GroundParticles, Humans, HumanParticles, EnemyShips
 
@@ -957,35 +957,19 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   #BlastHV is relative to the  64x32 display
 
   Floor = LED.HatHeight
-  DetonateVelocity = 0.04
   Finished = False
   
   BlastH = round(DefenderBomb.h)
   BlastV = round(DefenderBomb.v)
   
   #the further the bomb travels, the more power it gains
-  BlastStrength  = round  (DefenderBomb.velocityV * 5    + DefenderBomb.h / 5)
+  BlastStrength  = round  (DefenderBomb.velocityV * BlastFactor    + DefenderBomb.h / BlastFactor)
 
 
   SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
   GroundR, GroundG, GroundB    = GroundRGB
 
-  #ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
-
-  #print(BlastH, BlastV, DefenderBomb.velocityH, DefenderBomb.velocityV)
-
-
-  #Keep blast on the screen
-  #if(BlastV > Floor):
-  #  BlastV = Floor 
-
-  #if(BlastH > LED.HatWidth -1):
-  #  BlashtH = LED.HatWidth -1
-
-  #if(BlastH < 1):
-  #  BlastH = 1
-
-
+  
   #print("BlastHV BombvelocityHV:",BlastH,BlastV,DefenderBomb.velocityH, DefenderBomb.velocityV)
 
   try:
@@ -993,17 +977,11 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
     #Blow up bomb if it touches ground or runs out of velocity
     #try:
     #blow up pieces of ground
+    
+    #print("Bounces:",DefenderBomb.bounces)
     if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
-       or BlastV >= Floor
-       #or abs(DefenderBomb.velocityV) < DetonateVelocity
+       or DefenderBomb.bounces >= MaxBombBounces
        ):
-
-      #r,g,b = (random.randint(50,255),0,0)
-
-      #Keep blast on the screen
-      #if(BlastV >= LED.HatHeight):
-      #  BlastV  =  LED.HatHeight -1
-
       
       #destroy ground
       gv = BlastV
@@ -1018,10 +996,10 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
             gv = gv -1
             Finished = True
             break
-        
+        if(Finished == True):
+          break
         #set ground outside the blast zone to different color
-
-        if(Finished == False):
+        else:
           if (j >= 0):         
             if(gv + j < LED.HatHeight and (gh + BlastStrength + j) < Ground.width):
               if(Ground.map[gv +j][gh - BlastStrength +j - 1] != (0,0,0)):
@@ -1047,14 +1025,19 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
       Humans, HumanParticles, EnemyShips = KillEnemiesInBlastZone(BlastH + PlayfieldH,BlastV,BlastStrength, Humans, HumanParticles,EnemyShips, DefenderPlayfield)
 
-
-      
+     
       DefenderBomb.alive = False
+      #DefenderBomb.bounces = 0
       #print ("Bomb Dead.",DefenderBomb.alive)
 
 
   except:
     print("Bomb error BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
+
+
+  if(DefenderBomb.alive == False):
+    BlastRadius = round(BlastStrength / 2)
+    Ground = FlattenGround(PlayfieldH + BlastH - BlastRadius,PlayfieldH + BlastH + BlastRadius,10,Ground)
 
 
   #except:
@@ -1076,9 +1059,10 @@ def MoveBomb(gx,DefenderBomb,DefenderPlayfield,Canvas):
     bh = round(DefenderBomb.h)
     bv = round(DefenderBomb.v)
 
-    #if(bv >= LED.HatHeight -1):
-    #  bv = LED.HatHeight -1
-    #  DefenderBomb.UpdateLocationWithGravity()
+    if(bv >= LED.HatHeight):
+      bv = LED.HatHeight -1
+      DefenderBomb.velocityV = abs(DefenderBomb.velocityV) * -0.9
+      DefenderBomb.bounces = DefenderBomb.bounces + 1
       
       
     #if(bh >= LED.HatWidth -1):
@@ -1150,6 +1134,95 @@ def DisplayCount(h,v,RGB, Count,Canvas):
   return Canvas, CountSprite
 
 
+
+def FlattenGround(h1,h2,v,Ground):
+  #h1,h2 are the start/stop columns to examine
+  #v is the max height of the ground to check (saves time by not looking at sky)
+  
+  #examine holes in ground and make top layers fall to bottom
+   
+  #look for top ground particle
+  #then look for bottom empty
+  #swap
+
+  
+  minv = v
+  maxv = Ground.height -2
+  GroundFound = False
+  HoleFound   = False
+  Finished    = False
+  GroundV     = 0 
+
+  #check boundaries
+  if(h2 < h1):
+    h2 = h1
+
+  for x in range (h1,h2):
+    
+    minv = v
+    maxv = Ground.height -1
+    #print("Sorting column: ",x)
+    Finished    = False
+    GroundFound = False
+    HoleFound   = False
+
+    #work our way down to find ground
+    #work our way up to find holes
+    #do the swaparoo and continue until we meet in the middle
+    while (Finished == False):
+      GroundFound = False
+      HoleFound   = False
+      while (GroundFound == False):
+        if (minv >= maxv):
+          Finished = True
+          break
+
+        try:
+          if(Ground.map[minv][x] != (0,0,0)):
+            #print("Found ground:",minv)
+            GroundFound = True
+            break
+          else:
+            minv = minv + 1
+            #print("minv maxv:",minv,maxv)
+        except:
+          #weird stuff happens at the end of the playfield
+          print(" Finding Ground Error:",minv,maxv)
+          Finished = True
+          break
+
+
+      
+      #No ground found, move on
+      if (Finished == True):
+        #print("No ground found")
+        break
+
+      while(HoleFound == False):
+        if(maxv <= minv):
+          Finished = True
+          break
+
+        if(Ground.map[maxv][x] == (0,0,0)):
+          HoleFound = True
+          #print("Found hole:",maxv)
+          break
+        else:
+          maxv = maxv -1
+          
+      
+      #no hole found, move on
+      if (Finished == True):
+        break
+
+      if(GroundFound == True and HoleFound == True):
+        Ground.map[maxv][x] = Ground.map[minv][x] 
+        Ground.map[minv][x] = (0,0,0)      
+    
+        #increment/decrement our v counts
+        minv = minv + 1
+        maxv = maxv - 1
+  return Ground
 
 
 def PlayDefender(GameMaxMinutes):      
@@ -1231,10 +1304,16 @@ def PlayDefender(GameMaxMinutes):
   Ground       = LED.Layer(name="ground",    width=DefenderWorldWidth, height=32,h=0,v=0)
 
 
-  Background.CreateStars(5,0,50,50)
-  Middleground.CreateStars(0,0,100,100)
-  Foreground.CreateStars(0,0,200,200)
+  #make some holes for testing purposes
+  Ground.map[16][0]=(255,255,255)
+  Ground.map[17][0]=(255,255,255)
+  Ground.map[18][0]=(255,255,255)
 
+  Ground.map[31][0]=(0,0,0)
+  Ground.map[30][0]=(0,0,0)
+  Ground.map[29][0]=(0,0,0)
+
+ 
   
   i = random.randint(0,GroundColorCount -1)
   GroundRGB, SurfaceRGB      = GroundColorList[i]
@@ -1658,6 +1737,10 @@ def PlayDefender(GameMaxMinutes):
       if(RequestGroundLaser == True):
         #print("Shooting ground!")
         DefenderPlayfield, Ground, GroundParticles, Humans, HumanParticles, EnemyShips = ShootGround(gx,0,GroundV, Defender, DefenderPlayfield,Ground,Canvas,Humans, HumanParticles, EnemyShips,GroundParticles)  
+
+        
+        Ground = FlattenGround(gx + Defender.h -1,gx + Defender.h +1,16,Ground)
+        
         if(random.randint(0,LaserTurnOffChance) == 1):
           RequestGroundLaser = False      
       
@@ -1702,7 +1785,7 @@ def PlayDefender(GameMaxMinutes):
       if (DefenderBomb.alive == True):
         bh, bv, DefenderBomb, DefenderPlayfield, Canvas = MoveBomb(gx,DefenderBomb,DefenderPlayfield,Canvas)
        
-        if(DefenderBomb.v >= 20):
+        if(DefenderBomb.v >= BombDetonationHeight):
           #Detonate Bomb if at ground
           (DefenderBomb, 
           GroundParticles, 
@@ -1815,6 +1898,8 @@ def PlayDefender(GameMaxMinutes):
       #--------------------------------
       #-- Garbage Cleanup            --
       #--------------------------------
+
+
       
       #to reduce the amount of objects being tracked we remove old
       #ships, if they are far enough off the screen to not have any
