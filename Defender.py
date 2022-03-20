@@ -119,8 +119,10 @@ LaserG = 75
 LaserB = 0
 
 DefenderWorldWidth = 2048
+MaxMountainHeight  = 16
 HumanCount         = 5
-EnemyShipCount     = 2
+EnemyShipCount     = 10
+AddEnemyCount      = 5
 SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
 
@@ -1037,13 +1039,13 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
   if(DefenderBomb.alive == False):
     BlastRadius = round(BlastStrength / 2)
-    Ground = FlattenGround(PlayfieldH + BlastH - BlastRadius,PlayfieldH + BlastH + BlastRadius,10,Ground)
+    Ground = FlattenGround(PlayfieldH + BlastH - BlastRadius,PlayfieldH + BlastH + BlastRadius,MaxMountainHeight,Ground)
 
 
   #except:
   #  print("Error detonating bomb HV velocityV: ",bh+PlayfieldH,BlastV,DefenderBomb.velocityV)
                 
-  return DefenderBomb, GroundParticles, Humans, HumanParticles, EnemyShips, Ground, DefenderPlayfield
+  return DefenderBomb, GroundParticles, Humans, HumanParticles, EnemyShips, Ground, DefenderPlayfield,Canvas
 
 
 
@@ -1146,6 +1148,7 @@ def FlattenGround(h1,h2,v,Ground):
   #swap
 
   
+
   minv = v
   maxv = Ground.height -2
   GroundFound = False
@@ -1303,16 +1306,9 @@ def PlayDefender(GameMaxMinutes):
   Foreground   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
   Ground       = LED.Layer(name="ground",    width=DefenderWorldWidth, height=32,h=0,v=0)
 
-
-  #make some holes for testing purposes
-  Ground.map[16][0]=(255,255,255)
-  Ground.map[17][0]=(255,255,255)
-  Ground.map[18][0]=(255,255,255)
-
-  Ground.map[31][0]=(0,0,0)
-  Ground.map[30][0]=(0,0,0)
-  Ground.map[29][0]=(0,0,0)
-
+  Background.CreateStars(5,0,50,50)
+  Middleground.CreateStars(0,0,100,100)
+  Foreground.CreateStars(0,0,200,200)
  
   
   i = random.randint(0,GroundColorCount -1)
@@ -1321,7 +1317,7 @@ def PlayDefender(GameMaxMinutes):
   SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
   ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
 
-  Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=16)
+  Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
   
 
   
@@ -1739,7 +1735,7 @@ def PlayDefender(GameMaxMinutes):
         DefenderPlayfield, Ground, GroundParticles, Humans, HumanParticles, EnemyShips = ShootGround(gx,0,GroundV, Defender, DefenderPlayfield,Ground,Canvas,Humans, HumanParticles, EnemyShips,GroundParticles)  
 
         
-        Ground = FlattenGround(gx + Defender.h -1,gx + Defender.h +1,16,Ground)
+        Ground = FlattenGround(gx + Defender.h -1,gx + Defender.h +1,MaxMountainHeight,Ground)
         
         if(random.randint(0,LaserTurnOffChance) == 1):
           RequestGroundLaser = False      
@@ -1793,7 +1789,8 @@ def PlayDefender(GameMaxMinutes):
           HumanParticles,
           EnemyShips,
           Ground, 
-          DefenderPlayfield
+          DefenderPlayfield,
+          Canvas
           )  = DetonateBombIfAtGround(DisplayH,
                             0,
                             DefenderBomb,
@@ -1880,7 +1877,7 @@ def PlayDefender(GameMaxMinutes):
       #--------------------------------
 
       if(EnemyShipCount <= SpawnNewEnemiesTargetCount):
-        EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipCount=20, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+        EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipCount=AddEnemyCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
 
 
       if(HumanCount <= SpawnNewHumansTargetCount):
