@@ -3256,6 +3256,40 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   
 
 
+def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
+  #we can only write to a canvas, cannot query it
+  #so for fancy special effects we create a grid/screen array 
+
+  ScreenArray  = ([[]])
+  ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+  gwidth = Ground.width
+
+  for x in range (0,HatWidth):
+    for y in range (0,HatHeight):
+
+
+      #wrap around the ground
+      if(x+gh >= gwidth):
+        rgb = Ground.map[y][(x + gh) - gwidth ]
+      else:
+        rgb = Ground.map[y][x+gh]
+
+      if(rgb == (0,0,0)):
+        rgb = Foreground.map[y][x+fh]
+        if(rgb == (0,0,0)):
+          rgb = Middleground.map[y][x+mh]
+          if(rgb == (0,0,0)):
+           rgb = Background.map[y][x+bh]
+
+        #if the pixel is not black, set the ScreenArray
+      if (rgb != (0,0,0)):
+        r,g,b = rgb
+        ScreenArray[y][x] = (r,g,b)
+        Canvas.SetPixel(x,y,r,g,b)
+  
+  return ScreenArray
+  
+
 
 
 

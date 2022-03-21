@@ -149,16 +149,16 @@ BombGravity            = 0.0198
 
 
 #Bomb
-DefenderBombVelocityH  =  0.4
+DefenderBombVelocityH  =  0.6
 DefenderBombVelocityV  = -0.2
-BlastFactor            = 20
+BlastFactor            = 3     
 StrafeLaserStrength    = 4
 LaserTurnOffChance     = 20
 BombDropChance         = 10
 RequestBombDrop        = False
 RequestGroundLaser     = False
 RequestedBombVelocityH = 0.2
-RequestedBombVelocityV = 0.01
+RequestedBombVelocityV = 0.05
 BombDetonationHeight   = 20
 MaxBombBounces         = 2
 
@@ -586,20 +586,23 @@ def ShootGround(PlayfieldH, PlayfieldV, GroundV, Defender, DefenderPlayfield, Gr
   
   LaserR = random.randint(50,255)
   LaserG = random.randint(0,100)
-  
+  LaserB = random.randint(50,255)
   if(ScanH  >= DefenderPlayfield.width - 1):
     ScanH = DefenderPlayfield.width - 1
   
 
-  graphics.DrawLine(Canvas,ScreenH, ScreenV, ScreenH, GroundV, graphics.Color(LaserR,LaserG,LaserB))
+  graphics.DrawLine(Canvas,ScreenH, ScreenV, ScreenH, GroundV +2, graphics.Color(LaserR,LaserG,LaserB))
   #Convert ground to particle
   #Explode Ground
   for j in range(0,StrafeLaserStrength):
     if (GroundV + j < LED.HatHeight):
       #print("Strafe HV:",ScanH, GroundV + j)
-      Ground.map[GroundV+j][ScanH] = (0,0,0)
-      if(random.randint(0,1) == 1):
+
+
+      if(random.randint(0,1) == 1 and Ground.map[GroundV+j][ScanH] != (0,0,0)):
         GroundParticles      = AddGroundParticles(ScreenH,GroundV+j,LaserR, LaserG, 0,GroundParticles,LaserBlast=True)
+      else:
+        Ground.map[GroundV+j][ScanH] = (0,0,0)
       
 
   #examine the killzone
@@ -965,8 +968,8 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   BlastV = round(DefenderBomb.v)
   
   #the further the bomb travels, the more power it gains
-  BlastStrength  = round  (DefenderBomb.velocityV * BlastFactor    + DefenderBomb.h / BlastFactor)
-
+  BlastStrength  = round(DefenderBomb.h / 10 + BlastFactor)
+  
 
   SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
   GroundR, GroundG, GroundB    = GroundRGB
@@ -1039,7 +1042,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
   if(DefenderBomb.alive == False):
     BlastRadius = round(BlastStrength / 2)
-    Ground = FlattenGround(PlayfieldH + BlastH - BlastRadius,PlayfieldH + BlastH + BlastRadius,MaxMountainHeight,Ground)
+    Ground = FlattenGround(PlayfieldH + BlastH - BlastRadius -4,PlayfieldH + BlastH + BlastRadius + 4,MaxMountainHeight,Ground)
 
 
   #except:
@@ -1063,7 +1066,7 @@ def MoveBomb(gx,DefenderBomb,DefenderPlayfield,Canvas):
 
     if(bv >= LED.HatHeight):
       bv = LED.HatHeight -1
-      DefenderBomb.velocityV = abs(DefenderBomb.velocityV) * -0.9
+      DefenderBomb.velocityV = abs(DefenderBomb.velocityV) * -0.75
       DefenderBomb.bounces = DefenderBomb.bounces + 1
       
       
@@ -1322,12 +1325,29 @@ def PlayDefender(GameMaxMinutes):
 
   
   
+  
+
+
+
   #--------------------------------
+  # Fancy Intro                  --
+  #--------------------------------
+  
+  OldScreenArray  = ([[]])
+  OldScreenArray  = [[ (0,0,0) for i in range(LED.HatWidth)] for i in range(LED.HatHeight)]
+
+  NewScreenArray = LED.PaintFourLayerScreenArray(0,0,0,0,Background,Middleground,Foreground,Ground,Canvas)
+  LED.TransitionBetweenScreenArrays(OldScreenArray,NewScreenArray,TransitionType=2)
+
+
+
+#--------------------------------
   #-- Create Enemies             --
   #--------------------------------
 
+     
 
-    
+  
 
   Humans,     DefenderPlayfield = CreateHumans(HumanCount=HumanCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
   HumanCountSprite = LED.CreateBannerSprite(str(HumanCount))
@@ -1349,10 +1369,10 @@ def PlayDefender(GameMaxMinutes):
   HumanParticles = []
 
 
+
   #--------------------------------
   #-- Main timing loop           --
   #--------------------------------
-
 
   x = 0
 
@@ -1735,7 +1755,7 @@ def PlayDefender(GameMaxMinutes):
         DefenderPlayfield, Ground, GroundParticles, Humans, HumanParticles, EnemyShips = ShootGround(gx,0,GroundV, Defender, DefenderPlayfield,Ground,Canvas,Humans, HumanParticles, EnemyShips,GroundParticles)  
 
         
-        Ground = FlattenGround(gx + Defender.h -1,gx + Defender.h +1,MaxMountainHeight,Ground)
+        Ground = FlattenGround(gx + Defender.h +1,gx + Defender.h +3,MaxMountainHeight,Ground)
         
         if(random.randint(0,LaserTurnOffChance) == 1):
           RequestGroundLaser = False      
@@ -1761,6 +1781,7 @@ def PlayDefender(GameMaxMinutes):
             DefenderBomb.v = Defender.v + 1
             DefenderBomb.velocityH = DefenderBombVelocityH
             DefenderBomb.velocityV = DefenderBombVelocityV
+            DefenderBomb.bounces = 0
           
         
 
@@ -1775,6 +1796,7 @@ def PlayDefender(GameMaxMinutes):
           DefenderBomb.v = Defender.v + 1
           DefenderBomb.velocityH = DefenderBombVelocityH / 2
           DefenderBomb.velocityV = DefenderBombVelocityV * -3
+          DefenderBomb.bounces = 0
 
 
       #Move bomb if it is alive
