@@ -121,10 +121,11 @@ LaserB = 0
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
 HumanCount         = 5
-EnemyShipCount     = 10
-AddEnemyCount      = 5
+EnemyShipCount     = 30
+AddEnemyCount      = 30
 SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
+ShipTypes                  = 27
 
 #Movement
 DefenderMoveUpRate   = 3
@@ -700,12 +701,12 @@ def CreateHumans(HumanCount,Ground,DefenderPlayfield):
   return Humans, DefenderPlayfield
 
 
-def CreateEnemyWave(ShipCount,Ground,DefenderPlayfield):
+def CreateEnemyWave(ShipType,ShipCount,Ground,DefenderPlayfield):
   global EnemyShipCount
 
   EnemyShipCount = ShipCount
   EnemyShips = []
-  ShipType = random.randint(0,27)
+  
   for count in range (0,ShipCount):
     NewSprite = copy.deepcopy(LED.ShipSprites[ShipType])
     NewSprite.framerate = random.randint(2,12)
@@ -752,11 +753,10 @@ def CreateEnemyWave(ShipCount,Ground,DefenderPlayfield):
 
 
 
-def AddEnemyShips(EnemyShips,ShipCount,Ground,DefenderPlayfield):
+def AddEnemyShips(EnemyShips,ShipType,ShipCount,Ground,DefenderPlayfield):
   global EnemyShipCount
-
     
-  ShipType = random.randint(0,27)
+
   for count in range (0,ShipCount):
     NewSprite = copy.deepcopy(LED.ShipSprites[ShipType])
     NewSprite.framerate = random.randint(2,12)
@@ -1270,12 +1270,12 @@ def PlayDefender(GameMaxMinutes):
   DefenderPlayfield.DisplayV = 0
 
 
-  LED.TheMatrix.Clear()
-  LED.Canvas.Clear()
+  #LED.TheMatrix.Clear()
+  #LED.Canvas.Clear()
   
   Canvas = LED.TheMatrix.CreateFrameCanvas()
   Canvas.Fill(0,0,0)
-  Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
+  #Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
 
 
 
@@ -1322,42 +1322,50 @@ def PlayDefender(GameMaxMinutes):
 
   Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
   
+  ShipType = 0
 
   
   
   
 
 
+
+  
+ 
 
   #--------------------------------
-  # Fancy Intro                  --
-  #--------------------------------
-  
-  OldScreenArray  = ([[]])
-  OldScreenArray  = [[ (0,0,0) for i in range(LED.HatWidth)] for i in range(LED.HatHeight)]
-
-  NewScreenArray = LED.PaintFourLayerScreenArray(0,0,0,0,Background,Middleground,Foreground,Ground,Canvas)
-  LED.TransitionBetweenScreenArrays(OldScreenArray,NewScreenArray,TransitionType=2)
-
-
-
-#--------------------------------
   #-- Create Enemies             --
   #--------------------------------
 
-     
+  #Display message
+  CursorH = 10
+  CursorV = 8
+  ShipH   = round((LED.HatWidth - LED.ShipSprites[ShipType].width) / 2 )
+  ShipV   = 15
 
-  
+  #display wave message
+  Message        = "WAVE " + str(ShipType + 1)
+  MessageBanner  = LED.CreateBannerSprite(Message)  #to determine the length in pixels
+  CursorH        = round((LED.HatWidth - MessageBanner.width) / 2 )
+  BackgroundScreenArray = LED.PaintFourLayerScreenArray(0,0,0,0,Background,Middleground,Foreground,Ground,Canvas)
+  LED.TransitionBetweenScreenArrays(LED.ScreenArray,BackgroundScreenArray,TransitionType=2)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalTypeLine(LED.ScreenArray,Message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed*2)
+  NewScreenArray = LED.CopyAnimatedSpriteToScreenArrayZoom(LED.ShipSprites[ShipType],ShipH,ShipV,ZoomFactor=2,TheScreenArray=LED.ScreenArray)
+  LED.TransitionBetweenScreenArrays(NewScreenArray,LED.ScreenArray,TransitionType=2)
+
+
 
   Humans,     DefenderPlayfield = CreateHumans(HumanCount=HumanCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
   HumanCountSprite = LED.CreateBannerSprite(str(HumanCount))
   Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,HumanCount,Canvas)
     
 
-  EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipCount=EnemyShipCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+  EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipType=ShipType,ShipCount=EnemyShipCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
   EnemyShipCountSprite = LED.CreateBannerSprite(str(EnemyShipCount))
   Canvas, EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,EnemyShipCount,Canvas)
   
+  #Erase message
+  LED.TransitionBetweenScreenArrays(NewScreenArray,BackgroundScreenArray,TransitionType=1,FadeSleep=0.08)
 
 
   DefenderBomb = LED.BombSprite
@@ -1899,11 +1907,41 @@ def PlayDefender(GameMaxMinutes):
       #--------------------------------
 
       if(EnemyShipCount <= SpawnNewEnemiesTargetCount):
-        EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipCount=AddEnemyCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+        ShipType = ShipType + 1
+        if (ShipType > 27):
+          ShipType = 0
+
+        #Display message
+        CursorH = 10
+        CursorV = 8
+        ShipH   = round((LED.HatWidth - LED.ShipSprites[ShipType].width) / 2 )
+        ShipV   = 15
+
+        #display wave message
+        Message        = "WAVE " + str(ShipType + 1)
+        MessageBanner  = LED.CreateBannerSprite(Message)  #to determine the length in pixels
+        CursorH        = round((LED.HatWidth - MessageBanner.width) / 2 )
+        BackgroundScreenArray = LED.PaintFourLayerScreenArray(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
+        LED.TransitionBetweenScreenArrays(LED.ScreenArray,BackgroundScreenArray,TransitionType=2)
+        LED.ScreenArray,CursorH,CursorV = LED.TerminalTypeLine(LED.ScreenArray,Message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed*2)
+        NewScreenArray = LED.CopyAnimatedSpriteToScreenArrayZoom(LED.ShipSprites[ShipType],ShipH,ShipV,ZoomFactor=2,TheScreenArray=LED.ScreenArray)
+        LED.TransitionBetweenScreenArrays(NewScreenArray,LED.ScreenArray,TransitionType=2)
+
+        #add enemy ships
+        EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipType=ShipType,ShipCount=AddEnemyCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+
+        
+        #Erase message
+        LED.TransitionBetweenScreenArrays(NewScreenArray,BackgroundScreenArray,TransitionType=1,FadeSleep=0.08)
 
 
-      if(HumanCount <= SpawnNewHumansTargetCount):
-        Humans, HumanCount, DefenderPlayfield = AddHumans(Humans, NewHumanCount=20, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+
+      
+
+
+
+      #if(HumanCount <= SpawnNewHumansTargetCount):
+      #  Humans, HumanCount, DefenderPlayfield = AddHumans(Humans, NewHumanCount=20, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
 
 
       #--------------------------------
@@ -2116,7 +2154,7 @@ def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"TRANSMITTING COORDINATES",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"DESTROY ALL INVADERS!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FIRE AT WILL!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
