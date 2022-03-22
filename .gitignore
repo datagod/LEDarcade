@@ -131,6 +131,8 @@ dmypy.json
 #LEDArcade Stuff
 ClockConfig.ini
 KeyConfig.ini
+ClockConfig.ini.sav
+KeyConfig.ini.sav
 go2.sh
 MyConfig.ini
 ClockConfig2.ini
