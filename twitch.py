@@ -1610,11 +1610,11 @@ def CheckConfigFiles():
       KeyConfigFile.write("  BROADCASTER_ID = 12345 (same as UserID)\n")
       KeyConfigFile.write("  ACCESS_TOKEN   = abcdefg\n")
       KeyConfigFile.write("  REFRESH_TOKEN  = hijklmn\n")
-      KeyConfigFile.write("  CLIENT_ID      = ***REMOVED***\n")
+      KeyConfigFile.write("  CLIENT_ID      = gp762nuuoqcoxypju8c569th9wz7q5\n")
       KeyConfigFile.write("\n")
       KeyConfigFile.write("  BOT_ACCESS_TOKEN  = abcde\n")
       KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
-      KeyConfigFile.write("  BOT_CLIENT_ID     = ***REMOVED***\n")
+      KeyConfigFile.write("  BOT_CLIENT_ID     = gp762nuuoqcoxypju8c569th9wz7q5\n")
 
       print("File created")
     except Exception as ErrorMessage:
