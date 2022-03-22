@@ -14004,7 +14004,7 @@ def CopyAnimatedSpriteToPixelsZoomLEDOnly(TheSprite,h,v, ZoomFactor = 1):
 
 
 def CopyAnimatedSpriteToScreenArrayZoom(TheSprite,h,v, ZoomFactor = 1,TheScreenArray = [[]]):
-  #Copy a color animated sprite to the LED and the ScreenArray buffer
+  #Copy a color animated sprite to the a ScreenArray
   #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
 
   width   = TheSprite.width 
@@ -15174,7 +15174,7 @@ def ChangeRGBBrightness(r,g,b,increment):
 
 
 
-def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1):
+def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0.05):
 
   #NewArray NEW pixels need to glow into existence
   #OldArray pixels not in new need to fade
@@ -15248,7 +15248,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1):
 
           PixelsToGlow[i] = (x,y,r,g,b)
           TheMatrix.SetPixel(x,y,r,g,b)
-      time.sleep(0.05)
+      time.sleep(FadeSleep)
     setpixels(NewArray)
     
 
@@ -17938,6 +17938,90 @@ def TerminalScroll(ScreenArray, Message="",CursorH=0,CursorV=0,MessageRGB=(0,150
 
   
   return ScreenArray,CursorH,CursorV
+
+
+
+
+
+def TerminalTypeLine(ScreenArray, Message="",CursorH=0,CursorV=0,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0), StartingLineFeed=0,TypeSpeed=0.1,ScrollSpeed=0.1):
+  
+  #erase the cursor because we are going to type
+  CopySpriteToPixelsZoom(
+    TheSprite = CursorSprite,
+    h = CursorH,
+    v = CursorV,
+    ColorTuple = (0,0,0),
+    FillerTuple=(0,0,0),
+    ZoomFactor = 1,
+    Fill = False
+  )
+
+  for i in range (0,len(Message)):
+
+    #convert single character to a sprite
+    character = Message[i]
+    CharacterSprite = CreateBannerSprite(character)    
+
+    
+    #Make cursor blink at current location
+    CopySpriteToPixelsZoom(
+      TheSprite = CursorSprite,
+      h = CursorH,
+      v = CursorV,
+      ColorTuple = CursorRGB,
+      FillerTuple=(0,0,0),
+      ZoomFactor = 1,
+      Fill = False
+    )
+    
+    if(TypeSpeed >0):
+      time.sleep(TypeSpeed)
+
+
+    #Erase cursor
+    CopySpriteToPixelsZoom(
+      TheSprite = CursorSprite,
+      h = CursorH,
+      v = CursorV,
+      ColorTuple = (0,0,0),
+      FillerTuple=(0,0,0),
+      ZoomFactor = 1,
+      Fill = False
+    )
+    #CopyScreenArrayToCanvasVSync(ScreenArray)
+    
+    #copy character to current spot
+    CopySpriteToScreenArrayZoom(
+      TheSprite = CharacterSprite,
+      h = CursorH,
+      v = CursorV,
+      ColorTuple = MessageRGB,
+      FillerTuple=(0,0,0),
+      ZoomFactor = 1,
+      Fill = False,
+      InputScreenArray = ScreenArray
+    )
+    setpixels(ScreenArray)
+    
+    CursorH = CursorH + CharacterSprite.width
+    
+    #Erase cursor
+    CopySpriteToPixelsZoom(
+      TheSprite = CursorSprite,
+      h = CursorH,
+      v = CursorV,
+      ColorTuple = (0,0,0),
+      FillerTuple=(0,0,0),
+      ZoomFactor = 1,
+      Fill = False
+    )
+  return ScreenArray,CursorH,CursorV
+
+
+
+
+
+
 
 
 def deEmojify(InputString):
