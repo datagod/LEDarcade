@@ -17936,7 +17936,7 @@ def TerminalScroll(ScreenArray, Message="",CursorH=0,CursorV=0,MessageRGB=(0,150
       )
 
 
-  
+   
   return ScreenArray,CursorH,CursorV
 
 
