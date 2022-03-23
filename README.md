@@ -3,8 +3,8 @@
 
 Follow us on Facebook: https://www.facebook.com/ArcadeRetroClock
 
-See the LEDarcade in action:
-https://github.com/datagod/LEDarcade
+See Defender / Offender in action:
+https://www.youtube.com/watch?v=j_cFfgmmj1c
 
 ![ArcadeRetroClockTitleSmall](https://user-images.githubusercontent.com/7650580/112741888-64bd8200-8f57-11eb-9737-7b443b0ef523.jpg)
 
