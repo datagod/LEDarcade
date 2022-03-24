@@ -61,7 +61,7 @@ while 1==1:
     #some scrolling text, an animation and even a nice fade to black
 
     #Starry Night Clock
-    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 1 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1 )
 
 
     LED.DisplayDigitalClock(
@@ -73,9 +73,9 @@ while 1==1:
       ShadowRGB     = LED.ShadowGreen,
       ZoomFactor    = 3,
       AnimationDelay= 10,
-      RunMinutes = 5 )
+      RunMinutes = 1 )
 
-    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 5 )
+    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1 )
 
 
 

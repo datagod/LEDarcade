@@ -126,6 +126,8 @@ AddEnemyCount      = 30
 SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
+GroundDrawMinutes          = 30
+
 
 #Movement
 DefenderMoveUpRate   = 3
@@ -155,7 +157,7 @@ DefenderBombVelocityV  = -0.2
 BlastFactor            = 3     
 StrafeLaserStrength    = 4
 LaserTurnOffChance     = 20
-BombDropChance         = 10
+BombDropChance         = 25
 RequestBombDrop        = False
 RequestGroundLaser     = False
 RequestedBombVelocityH = 0.2
@@ -847,10 +849,13 @@ def DropPilot(H,V,Humans,DefenderPlayfield):
   TheSprite.v = V
   TheSprite.alive = True
     
-  if(random.randint(0,1) == 1):
-    TheSprite.direction = 1
-  else:
-    TheSprite.direction = -1
+  #pilots run away
+  TheSprite.direction = 1
+  
+  #if(random.randint(0,1) == 1):
+  #  TheSprite.direction = 1
+  #else:
+  #  TheSprite.direction = -1
 
   HumanCount = HumanCount + 1
   Humans.append(copy.deepcopy(TheSprite))
@@ -1354,7 +1359,6 @@ def PlayDefender(GameMaxMinutes):
   LED.TransitionBetweenScreenArrays(NewScreenArray,LED.ScreenArray,TransitionType=2)
 
 
-
   Humans,     DefenderPlayfield = CreateHumans(HumanCount=HumanCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
   HumanCountSprite = LED.CreateBannerSprite(str(HumanCount))
   Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,HumanCount,Canvas)
@@ -1449,6 +1453,17 @@ def PlayDefender(GameMaxMinutes):
 
 
 
+        #Redraw ground after X minutes
+        h,m,s    = LED.GetElapsedTime(start_time,time.time())
+        if(m > GroundDrawMinutes):
+
+          i = random.randint(0,GroundColorCount -1)
+          GroundRGB, SurfaceRGB      = GroundColorList[i]
+          GroundR,GroundG,GroundB    = GroundRGB
+          SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
+          ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
+
+          Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
 
 
 
@@ -1525,8 +1540,8 @@ def PlayDefender(GameMaxMinutes):
                   Humans[i].h = DefenderPlayfield.width -1
 
 
-              if(Humans[i].v >= LED.HatHeight -2):
-                Humans[i].v = LED.HatHeight -3
+              if(Humans[i].v >= LED.HatHeight -1):
+                Humans[i].v = LED.HatHeight -2
 
               #print(Humans[i].v,Humans[i].h)
 
@@ -1889,7 +1904,7 @@ def PlayDefender(GameMaxMinutes):
         OldHumanCount = HumanCount
         
         #this is just a test
-        Background = LED.CopySpriteToLayerZoom(HumanCountSprite,bx + 30,HumanCountV + 10,(5,0,5),(1,1,1),ZoomFactor = 2,Fill=False,Layer=Background)
+        Background = LED.CopySpriteToLayerZoom(HumanCountSprite,gx + 64,HumanCountV + 10,(5,0,5),(0,0,0),ZoomFactor = 2,Fill=True,Layer=Background)
 
       else:
         Canvas = LED.CopySpriteToCanvasZoom(HumanCountSprite,HumanCountH,HumanCountV,(HumanCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
@@ -2179,7 +2194,7 @@ if __name__ == "__main__" :
     #LED.LoadConfigData()
     #LED.SaveConfigData()
     print("After SAVE DefenderGamesPlayed:",LED.DefenderGamesPlayed)
-    LaunchDefender(100000,False)        
+    LaunchDefender(100000,True)        
 
 
 

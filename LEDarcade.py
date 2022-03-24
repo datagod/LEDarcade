@@ -170,6 +170,7 @@ OutbreakGamesPlayed    = 0
 SpaceDotHighScore      = 0
 SpaceDotGamesPlayed    = 0
 DefenderGamesPlayed    = 0
+DefenderHighScore     = 0
 
 
 
@@ -11326,6 +11327,7 @@ def SaveConfigData():
   ConfigFile.set('scores',   'OutbreakGamesPlayed', str(OutbreakGamesPlayed))
   ConfigFile.set('scores',   'SpaceDotHighScore',   str(SpaceDotHighScore))
   ConfigFile.set('scores',   'SpaceDotGamesPlayed', str(SpaceDotGamesPlayed))
+  ConfigFile.set('scores',   'DefenderHighScore',   str(DefenderHighScore))
   ConfigFile.set('scores',   'DefenderGamesPlayed', str(DefenderGamesPlayed))
 
 
@@ -11344,8 +11346,9 @@ def LoadConfigData():
   global OutbreakGamesPlayed
   global SpaceDotHighScore
   global SpaceDotGamesPlayed
+  global DefenderHighScore
   global DefenderGamesPlayed
-
+  
   print ("--Load Config Data--")
   #print ("PacDotHighScore Before Load: ",PacDotHighScore)
     
