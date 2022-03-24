@@ -126,7 +126,7 @@ AddEnemyCount      = 30
 SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
-GroundDrawMinutes          = 30
+GroundDrawMinutes          = 60
 
 
 #Movement
@@ -157,7 +157,7 @@ DefenderBombVelocityV  = -0.2
 BlastFactor            = 3     
 StrafeLaserStrength    = 4
 LaserTurnOffChance     = 20
-BombDropChance         = 25
+BombDropChance         = 75
 RequestBombDrop        = False
 RequestGroundLaser     = False
 RequestedBombVelocityH = 0.2
@@ -1344,9 +1344,10 @@ def PlayDefender(GameMaxMinutes):
 
   #Display message
   CursorH = 10
-  CursorV = 8
+  CursorV = 2
   ShipH   = round((LED.HatWidth - LED.ShipSprites[ShipType].width) / 2 )
-  ShipV   = 15
+  ShipV   = 11
+  LED.ShipSprites[ShipType].currentframe = round(LED.ShipSprites[ShipType].frames / 2)
 
   #display wave message
   Message        = "WAVE " + str(ShipType + 1)
@@ -1451,19 +1452,6 @@ def PlayDefender(GameMaxMinutes):
           
           return();
 
-
-
-        #Redraw ground after X minutes
-        h,m,s    = LED.GetElapsedTime(start_time,time.time())
-        if(m > GroundDrawMinutes):
-
-          i = random.randint(0,GroundColorCount -1)
-          GroundRGB, SurfaceRGB      = GroundColorList[i]
-          GroundR,GroundG,GroundB    = GroundRGB
-          SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
-          ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
-
-          Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
 
 
 
@@ -1928,9 +1916,10 @@ def PlayDefender(GameMaxMinutes):
 
         #Display message
         CursorH = 10
-        CursorV = 8
+        CursorV = 2
         ShipH   = round((LED.HatWidth - LED.ShipSprites[ShipType].width) / 2 )
-        ShipV   = 15
+        ShipV   = 11
+        LED.ShipSprites[ShipType].currentframe = round(LED.ShipSprites[ShipType].frames / 2)
 
         #display wave message
         Message        = "WAVE " + str(ShipType + 1)
@@ -1945,7 +1934,23 @@ def PlayDefender(GameMaxMinutes):
         #add enemy ships
         EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipType=ShipType,ShipCount=AddEnemyCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
 
-        
+
+        #Redraw ground after X minutes
+        h,m,s    = LED.GetElapsedTime(start_time,time.time())
+        if(m > GroundDrawMinutes):
+
+          i = random.randint(0,GroundColorCount -1)
+          GroundRGB, SurfaceRGB      = GroundColorList[i]
+          GroundR,GroundG,GroundB    = GroundRGB
+          SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
+          ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
+
+          Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
+
+
+
+
+
         #Erase message
         LED.TransitionBetweenScreenArrays(NewScreenArray,BackgroundScreenArray,TransitionType=1,FadeSleep=0.08)
 
@@ -2194,7 +2199,7 @@ if __name__ == "__main__" :
     #LED.LoadConfigData()
     #LED.SaveConfigData()
     print("After SAVE DefenderGamesPlayed:",LED.DefenderGamesPlayed)
-    LaunchDefender(100000,True)        
+    LaunchDefender(100000,False)        
 
 
 

@@ -3146,21 +3146,28 @@ class Layer(object):
 
 
       #Start with dark, as the mountain grows it gets brighter
-      GroundR, GroundG, GroundB = AdjustBrightnessRGB(GroundRGB,-32)
+      
+      #for y in range (mv,HatHeight):
+      #  #Ground is brighter near top of screen, darker near bottom
+      #  GroundR, GroundG, GroundB = AdjustBrightnessRGB(GroundRGB,-y + 20)
+      #  self.map[y][x] = (GroundR,GroundG,GroundB)  
+      #  #self.map[y][x] = (0,(abs(y -34  )),0)
+      #self.map[mv][x] = (SurfaceR, SurfaceG, SurfaceB)
 
-      for y in range (mv,HatHeight):
-        #Ground is brighter near top of screen, darker near bottom
-        GroundR, GroundG, GroundB = AdjustBrightnessRGB(GroundRGB,1)
-        self.map[y][x] = (GroundR,GroundG,GroundB)  
-        #self.map[y][x] = (0,(abs(y -34  )),0)
-      self.map[mv][x] = (SurfaceR, SurfaceG, SurfaceB)
+      
+      for y in range (0,HatHeight):
+        if(y >= mv):
+          #Ground is brighter near top of screen, darker near bottom
+          GroundR, GroundG, GroundB = AdjustBrightnessRGB(GroundRGB,-y + 20)
+          self.map[y][x] = (GroundR,GroundG,GroundB)  
+          #self.map[y][x] = (0,(abs(y -34  )),0)
+        else:
+          #erase any previous mountain debris
+          self.map[y][x] = (0,0,0)  
+        #draw surface topsoil
+        self.map[mv][x] = (SurfaceR, SurfaceG, SurfaceB)
 
-      #draw box
-      #if(random.randint(0,50) == 1):
-      #  self.map[mv-1][x]   = (100,100,0)
-      #  self.map[mv-1][x-1] = (100,100,0)
-      #  self.map[mv][x-1]   = (100,100,0)
-      #  self.map[mv][x]   = (100,100,0)
+      
 
 
     #copy second half
