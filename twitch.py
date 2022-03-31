@@ -1688,8 +1688,11 @@ def CheckConfigFiles():
       KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
       KeyConfigFile.write("  BOT_CLIENT_ID     = gp762nuuoqcoxypju8c569th9wz7q5\n")
       KeyConfigFile.write("\n")
-      KeyConfigFile.write("  PATREON_CLIENT_ID  = ABCDE\n")
-      KeyConfigFile.write("  PATREON_CLIENT_SECRET  = EFJHI\n")
+      KeyConfigFile.write("  PATREON_CLIENT_ID             = ABCDE\n")
+      KeyConfigFile.write("  PATREON_CLIENT_SECRET         = EFJHI\n")
+      KeyConfigFile.write("  PATREON_CREATOR_ACCESS_TOKEN  = EFJHI\n")
+      KeyConfigFile.write("\n")
+      
       print("File created")
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()

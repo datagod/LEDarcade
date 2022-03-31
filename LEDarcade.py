@@ -18216,7 +18216,8 @@ def CreateCreditImage(names):
   text_y_position = 0
   text_padding    = 12
   image_width     = 64
-  ColorB          = 64
+  ColorB          = 52
+  TextRGB         = (175,175,175)
 
 
 
@@ -18263,7 +18264,7 @@ def CreateCreditImage(names):
          (image_width - text_width) / 2,  text_y_position ),
          name,
          font=fnt,
-         fill=(220,220,220)
+         fill=TextRGB
 
        )
      text_y_position += text_padding
