@@ -1534,9 +1534,9 @@ def LoadConfigFiles():
     print("BROADCASTER_ID:      ",BROADCASTER_ID)
     print("CLIENT_ID:           ",CLIENT_ID)
     print("")
-    print("PATREON_CLIENT_ID:            ",PATREON_CLIENT_ID)
-    print("PATREON_CLIENT_SECRET:        ",PATREON_CLIENT_SECRET)
-    print("PATREON_CREATOR_ACCESS_TOKEN: ",PATREON_CREATOR_ACCESS_TOKEN)
+    #print("PATREON_CLIENT_ID:            ",PATREON_CLIENT_ID)
+    #print("PATREON_CLIENT_SECRET:        ",PATREON_CLIENT_SECRET)
+    #print("PATREON_CREATOR_ACCESS_TOKEN: ",PATREON_CREATOR_ACCESS_TOKEN)
     print("")
     
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
@@ -1617,7 +1617,7 @@ def LoadConfigFiles():
     print("SHOW_FOLLOWERS:        ",SHOW_FOLLOWERS)   
     print("SHOW_SUBS:             ",SHOW_SUBS)   
     print("SHOW_VIEWS:            ",SHOW_VIEWS)   
-    print("SHOW_CHATBOT_MESSAGES: ",SHOW_SUBS)   
+    print("SHOW_CHATBOT_MESSAGES: ",SHOW_CHATBOT_MESSAGES)   
 
 
   else:
