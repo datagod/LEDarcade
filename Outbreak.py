@@ -3152,7 +3152,7 @@ def PlayOutbreak(GameMaxMinutes):
         print("Elapsed Time:  mm:ss",m,s)
         LED.SaveConfigData()
         print("Ending game after",m," minutes")
-        ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
+        LED.ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
 
         LED.ClearBigLED()
         LED.ClearBuffers()

@@ -55,7 +55,7 @@ import inspect
 #RGB Matrix and graphics
 from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 #URL
 import urllib.request
@@ -14614,7 +14614,9 @@ def MoveAnimatedSpriteAcrossScreenStepsPerFrame(TheSprite,Position='bottom',Vadj
   TheSprite.ScreenArray = copy.deepcopy(ScreenArray)
 
 
-  if (Position == 'bottom'):
+  if (Position == 'top'):
+    v =  Vadjust
+  elif (Position == 'bottom'):
     v =  HatHeight - (TheSprite.height * ZoomFactor)
   elif (Position == 'middle'):
     v = (HatHeight / 2)- ((TheSprite.height * ZoomFactor) / 2)
@@ -14622,8 +14624,9 @@ def MoveAnimatedSpriteAcrossScreenStepsPerFrame(TheSprite,Position='bottom',Vadj
     Y =  HatHeight - (TheSprite.height * ZoomFactor)
     v = Y - random.randint(0,Y)
 
-  v = v + Vadjust
-
+  v = round(v + Vadjust)
+  h = round(h)
+  
 
   oldH = h
   oldV = v
@@ -18200,6 +18203,105 @@ def DrawSquare(h1,v1,h2,v2,FillRGB,BorderRGB):
   draw.rectangle((h1, v1, h2, v2), fill=FillRGB, outline=BorderRGB)
   TheMatrix.SetImage(image, h1, v1)
   time.sleep(1)
+
+
+
+
+
+
+
+def CreateCreditImage(names):
+  Buffer          = 32
+  GradientSection = 32
+  text_y_position = 0
+  text_padding    = 12
+  image_width     = 64
+  ColorB          = 64
+
+
+
+
+  #Create blank image
+  image_height    = (len(names) * text_padding) + (Buffer *2) + (GradientSection *2) + 13
+  img = Image.new("RGB", (image_width, image_height), color=(0,0,ColorB))
+  draw = ImageDraw.Draw(img)
+
+ 
+
+  #Draw buffer
+  for v in range (0,Buffer):
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,0,0))
+    text_y_position += 1
+
+  #draw gradient
+  for v in range (0,GradientSection):
+    NewColorB = round(ColorB / GradientSection * v)
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,0,NewColorB))
+    text_y_position += 1
+
+
+  #write header
+  Text = "PATRONS"
+  fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",12)
+  header_width, header_height = draw.textsize(Text, font=fnt)
+  draw.text(
+    ( 
+      (image_width - header_width) / 2,  text_y_position ),
+      Text,
+      font=fnt,
+      fill=(250,250,250)
+    )
+  text_y_position += text_padding
+
+
+  #write patron names
+  for name in names:
+     text_width, text_height = draw.textsize(name, font=fnt)
+     fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",10)
+     draw.text(
+       ( 
+         (image_width - text_width) / 2,  text_y_position ),
+         name,
+         font=fnt,
+         fill=(220,220,220)
+
+       )
+     text_y_position += text_padding
+  
+
+
+  #draw gradient
+  for v in range (GradientSection,0,-1):
+    NewColorB = round(ColorB / GradientSection * v)
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,0,NewColorB))
+    text_y_position += 1
+
+
+  #Draw buffer
+  for v in range (0,Buffer):
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,0,0))
+    text_y_position += 1
+
+  
+
+  img.save('credits.png')       
+
+
+
+def ScrollCreditImage(CreditImage,ScrollSleep):
+  image = Image.open(CreditImage)
+  image = image.convert('RGB')
+  width,height = image.size
+  print("ScrollCreditImage: CreditImage")
+  print("Image width height:", width,height)
+
+  for x in range (0,height - HatHeight):
+    #print("Cropping image x:", x)
+    ScreenCrop = image.crop((0,x,HatWidth,x + HatHeight))
+    TheMatrix.SetImage(ScreenCrop,0,0)
+    time.sleep(ScrollSleep)
+
+
 
 
 

@@ -16,7 +16,7 @@ import socket
 import twitchio
 
 
-# Twitch / Asyncio
+#Twitch / Asyncio
 import asyncio
 from twitchio.ext import pubsub
 from twitchio.ext import commands
@@ -26,6 +26,11 @@ import copy
 
 import irc.bot
 import select
+
+
+#Patreon
+import patreon
+
 
 #list of connection messages
 from CustomMessages import ConnectionMessages
@@ -76,7 +81,10 @@ BOT_ACCESS_TOKEN  = ''
 BOT_REFRESH_TOKEN = ''
 BOT_CLIENT_ID     = ''
 
-
+#PATREON VARIABLES
+PATREON_CLIENT_ID            = ''
+PATREON_CLIENT_SECRET        = ''
+PATREON_CREATOR_ACCESS_TOKEN = ''
 
 
 #User / Channel Info
@@ -146,8 +154,8 @@ class Bot(commands.Bot):
     AnimationDelay      = 30
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
-    MinutesToWaitBeforeCheckingStream = 5        #check the stream this often
-    MinutesToWaitBeforeClosing        = 2        #close chat after X minutes of inactivity
+    MinutesToWaitBeforeCheckingStream = 5       #check the stream this often
+    MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
     #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
     SendStartupMessage  = True
@@ -665,8 +673,8 @@ class Bot(commands.Bot):
     #----------------------------------------
 
     @commands.command()
-    async def help(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?robot ?invaders ?outbreak ?defender ?tron ?starrynight')
+    async def clock(self, ctx: commands.Context):
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons')
 
 
     #----------------------------------------
@@ -944,7 +952,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Looks like you want to play some Outbreak..."
         await self.Channel.send(message)
-      OB.LaunchOutbreak(GameMaxMinutes = 1,ShowIntro = False)
+      OB.LaunchOutbreak(GameMaxMinutes = 5,ShowIntro = False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -961,7 +969,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-      DE.LaunchDefender(GameMaxMinutes = 1,ShowIntro=False)
+      DE.LaunchDefender(GameMaxMinutes = 5,ShowIntro=False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -977,7 +985,7 @@ class Bot(commands.Bot):
     async def tron(self, ctx: commands.Context):
       #Play game Tron
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Time to shoot some mutants"
+        message = "Time for some jetbike races"
         await self.Channel.send(message)
       TR.LaunchTron(GameMaxMinutes = 1,ShowIntro=False)
       LED.ClearBigLED()
@@ -995,11 +1003,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Enjoy the peaceful starry sky while staring at a clock"
         await self.Channel.send(message)
-
-
       LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 1 )
-
-
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -1007,6 +1011,59 @@ class Bot(commands.Bot):
 
 
 
+    #----------------------------------------
+    # DISPLAY PATREON                      --
+    #----------------------------------------
+
+    @commands.command()
+    async def patreon(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Now displaying the list of patrons"
+        await self.Channel.send(message)
+
+      DisplayPatreon()
+      LED.RunningMan2Sprite.ScrollAcrossScreen(20,0,'right', ScrollSleep )
+      LED.RunningMan2Sprite.HorizontalFlip()      
+      LED.RunningMan2Sprite.ScrollAcrossScreen(20,15,'left', ScrollSleep )
+      LED.RunningMan2Sprite.HorizontalFlip()
+
+    @commands.command()
+    async def patrons(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Now displaying the list of patrons"
+        await self.Channel.send(message)
+      
+      DisplayPatreon()
+      LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+        LED.PacManRightSprite,
+        Position      = 'top',
+        Vadjust       = 0 ,
+        direction     = "right",
+        StepsPerFrame = 3,
+        ZoomFactor    = 3,
+        sleep         = 0.02 
+        )
+
+
+      LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+        LED.PacManLeftSprite,
+        Position      = 'middle',
+        Vadjust       = 0,
+        direction     = "left",
+        StepsPerFrame = 3,
+        ZoomFactor    = 3,
+        sleep         = 0.01
+        )
+
+      LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+        LED.PacManRightSprite,
+        Position      = 'bottom',
+        Vadjust       = 0 ,
+        direction     = "right",
+        StepsPerFrame = 3,
+        ZoomFactor    = 3,
+        sleep         = 0.0 
+        )
 
 
 LED.ClearBigLED()
@@ -1424,6 +1481,10 @@ def LoadConfigFiles():
   global BOT_REFRESH_TOKEN
   global BOT_CLIENT_ID
 
+  global PATREON_CLIENT_ID
+  global PATREON_CLIENT_SECRET
+  global PATREON_CREATOR_ACCESS_TOKEN
+
   global SHOW_VIEWERS
   global SHOW_FOLLOWERS
   global SHOW_SUBS
@@ -1452,6 +1513,11 @@ def LoadConfigFiles():
     REFRESH_TOKEN  = KeyFile.get("KEYS","REFRESH_TOKEN")
     CLIENT_ID      = KeyFile.get("KEYS","CLIENT_ID")      #ID of the twitch connected app (this program)
 
+    #Patreon
+    PATREON_CLIENT_ID            = KeyFile.get("KEYS","PATREON_CLIENT_ID")      
+    PATREON_CLIENT_SECRET        = KeyFile.get("KEYS","PATREON_CLIENT_SECRET")      
+    PATREON_CREATOR_ACCESS_TOKEN = KeyFile.get("KEYS","PATREON_CREATOR_ACCESS_TOKEN")      
+
 
     #Bot specific connection info
     #in case we want a bot to connect separately, or to other channels
@@ -1467,6 +1533,12 @@ def LoadConfigFiles():
     print("USER_ID:             ",USER_ID)
     print("BROADCASTER_ID:      ",BROADCASTER_ID)
     print("CLIENT_ID:           ",CLIENT_ID)
+    print("")
+    print("PATREON_CLIENT_ID:            ",PATREON_CLIENT_ID)
+    print("PATREON_CLIENT_SECRET:        ",PATREON_CLIENT_SECRET)
+    print("PATREON_CREATOR_ACCESS_TOKEN: ",PATREON_CREATOR_ACCESS_TOKEN)
+    print("")
+    
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
     #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
 
@@ -1615,7 +1687,9 @@ def CheckConfigFiles():
       KeyConfigFile.write("  BOT_ACCESS_TOKEN  = abcde\n")
       KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
       KeyConfigFile.write("  BOT_CLIENT_ID     = gp762nuuoqcoxypju8c569th9wz7q5\n")
-
+      KeyConfigFile.write("\n")
+      KeyConfigFile.write("  PATREON_CLIENT_ID  = ABCDE\n")
+      KeyConfigFile.write("  PATREON_CLIENT_SECRET  = EFJHI\n")
       print("File created")
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
@@ -1623,6 +1697,63 @@ def CheckConfigFiles():
       LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
     
 
+
+
+
+
+def DisplayPatreon():
+
+#Patreon Stuff
+
+  try:
+    print("--Accessing Patreon--")
+    api_client = patreon.API(PATREON_CREATOR_ACCESS_TOKEN)
+
+    #get the campaign ID
+    campaign_response = api_client.fetch_campaign()
+    campaign_id       = campaign_response.data()[0].id()
+
+    all_pledges = []
+    cursor = None
+
+    while(True):
+      print('Fetching patron data (25 at a time)')
+      pledges_response = api_client.fetch_page_of_pledges(
+        campaign_id, 
+        25,
+        cursor=cursor,
+        fields = {'pledge': ['total_historical_amount_cents']},
+        
+        )
+      cursor = api_client.extract_cursor(pledges_response)
+      all_pledges += pledges_response.data()
+      if(not cursor):
+        print('done patreon data fetch')
+        break
+
+    CreditNames = []
+    for pledge in all_pledges:
+      print('Listing pledges')
+      print(pledge.relationship('patron').attribute('first_name'))
+      print(pledge.relationship('patron').attribute('full_name'))
+      print(pledge.relationship('patron').attribute('created'))
+
+      CreditNames.append(pledge.relationship('patron').attribute('first_name'))
+
+  except:
+
+    print("Error while gathering patron list.  Make sure your Application Token is valid.")
+    CreditNames = []
+    CreditNames.append('Mathew')
+    CreditNames.append('Mark')
+    CreditNames.append('Luke')
+    CreditNames.append('James')
+    CreditNames.append('Jesus')
+    
+
+
+  LED.CreateCreditImage(CreditNames)
+  LED.ScrollCreditImage("credits.png",ScrollSleep=0.04)
 
 
 
@@ -1674,6 +1805,11 @@ LED.DisplayTwitchTimer(
 
 
 
+
+
+
+
+
 print ("---------------------------------------------------------------")
 print ("WELCOME TO THE LED ARCADE - Twitch Version                     ")
 print ("")
@@ -1701,6 +1837,11 @@ print ("")
 CheckConfigFiles()
 LoadConfigFiles()
 #GetBasicTwitchInfo()
+
+
+
+
+
 
 
 

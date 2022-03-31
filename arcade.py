@@ -14,6 +14,7 @@ import DotInvaders as DI
 import Outbreak    as OB
 import SpaceDot    as SD
 import Tron        as TR
+import Defender    as DE
 import time
       
 
@@ -69,18 +70,23 @@ def LaunchArcade(GameMaxMinutes = 10000):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
+    DE.LaunchDefender(GameMaxMinutes)
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
+
+
     TR.LaunchTron(GameMaxMinutes)
     LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
+
 
     DI.LaunchDotInvaders(GameMaxMinutes)
     LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
     OB.LaunchOutbreak(GameMaxMinutes)
-    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 15 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
 
     SD.LaunchSpaceDot(GameMaxMinutes)
-    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 15 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
         
 
 
@@ -92,7 +98,7 @@ def LaunchArcade(GameMaxMinutes = 10000):
 #execute if this script is called directly
 if __name__ == "__main__" :
   while(1==1):
-    LaunchArcade(100000)        
+    LaunchArcade(5)        
 
 
 
