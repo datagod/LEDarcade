@@ -83,8 +83,10 @@ import curses
 import requests
 #import simplejson as json
 
-#Asynchronous Processing
+#Asynchronous / Multiprocessing
 import asyncio
+import multiprocessing 
+
 
 
 #--------------------------------------
@@ -15721,8 +15723,8 @@ def DisplayDigitalClock(
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
-  DisplayNumber2    = 0
-  
+  DisplayNumber2    = 0,
+  EventQueue        = multiprocessing.Manager().Queue()
   ):
 
 
@@ -15789,8 +15791,20 @@ def DisplayDigitalClock(
 
 
       while (Done == False):
+        
+        #Check the EventQueue every second, then sleep
+        for i in range (0,AnimationDelay):
+          #print("Checking the EventQueue for any incoming requests")
+          QueueCount = EventQueue.qsize()
+          #print("QueueCount: ",QueueCount)
+          if (QueueCount > 0):
+            Done = True
+            break
+  
+          time.sleep(1)
 
-        time.sleep(AnimationDelay)
+
+
         ClockSprite = UpdateClockWithTransition(ClockSprite,hh,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
 
 
@@ -16134,6 +16148,8 @@ def DisplayDigitalClock(
         if elapsed_minutes >= RunMinutes:
           Done = True
 
+        
+
 
 
 
@@ -16170,7 +16186,7 @@ def DisplayDigitalClock(
 
 
 
-        #RunningMan
+        #RunningMan / Starrynight
         if (r==1):
          
 
@@ -16810,6 +16826,13 @@ def DisplayDigitalClock(
           Done = True
 
 
+        #Check EventQueue (webhook data from twitch and patreon)
+        #print("Checking the EventQueue for any incoming requests")
+        QueueCount = EventQueue.qsize()
+        #print("QueueCount: ",QueueCount)
+        if (QueueCount > 0):
+          Done = True
+
 
 
 
@@ -16912,6 +16935,13 @@ def DisplayDigitalClock(
           if elapsed_minutes >= RunMinutes:
             Done = True
 
+        if(random.randint(0,100) == 1):
+          #Check EventQueue (webhook data from twitch and patreon)
+          #print("Checking the EventQueue for any incoming requests")
+          QueueCount = EventQueue.qsize()
+          #print("QueueCount: ",QueueCount)
+          if (QueueCount > 0):
+            Done = True
 
 
 
@@ -16944,7 +16974,8 @@ async def DisplayTwitchTimer(
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
-  DisplayNumber2    = 0
+  DisplayNumber2    = 0,
+  EventQueue        = multiprocessing.Manager().Queue()
   
   ):
     
@@ -17021,11 +17052,19 @@ async def DisplayTwitchTimer(
       #ScreenArray = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,BannerRGB,(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray)
 
       #print("Asyncio sleep")
-      await asyncio.sleep(5)
-      #time.sleep(1)
+
       
+      #Check EventQueue (webhook data from twitch and patreon)
+      for i in range (0,5):
+        QueueCount = EventQueue.qsize()
+        if (QueueCount > 0):
+          Done = True
+          TwitchTimerOn = False
+          break
+        await asyncio.sleep(1)
+        
       #check and exit
-      if(TwitchTimerOn == False):
+      if(TwitchTimerOn == False or Done == True):
         return
 
       #Check for animation time

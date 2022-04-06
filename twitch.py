@@ -1,8 +1,19 @@
-
 # %%
+
+'''
+TO DO:
+ - Read the EventQueue even when displaying the digital clock
+   Exit the clock mode and react to the event 
+
+- maybe spawn the clock modes with multiprocessing and allow the twitch bot to process via ASYNC processes
+
+'''
+
 
 import os
 os.system('cls||clear')
+
+import sys
 
 import LEDarcade as LED
 from rgbmatrix import graphics
@@ -16,10 +27,25 @@ import socket
 import twitchio
 
 
-#Twitch / Asyncio
+#multi processing
 import asyncio
+import multiprocessing
+
+from flask import Flask, request, abort
+from multiprocessing.connection import Client
+import json
+
+
+
+#Twitch
 from twitchio.ext import pubsub
 from twitchio.ext import commands
+
+#Webhooks
+import patreon
+#import flask
+#from flask import Flask, request, abort
+
 
 import pprint
 import copy
@@ -28,8 +54,6 @@ import irc.bot
 import select
 
 
-#Patreon
-import patreon
 
 
 #list of connection messages
@@ -143,9 +167,16 @@ TerminalRGB = (0,200,0)
 CursorRGB = (0,75,0)
 
 
+#Data structures
+#EventQueue = asyncio.Queue()  #used to store and process webhook messages
+MPM = multiprocessing.Manager()
+EventQueue = MPM.Queue()       #used to store and process webhook messages
+
+
 
 
 class Bot(commands.Bot):
+#This started out as a Twitch Bot but has grown into a more complex program
 
     CursorH             = 0
     CursorV             = 0
@@ -154,7 +185,7 @@ class Bot(commands.Bot):
     AnimationDelay      = 30
     LastMessageReceived = time.time()
     LastStreamCheckTime = time.time()
-    MinutesToWaitBeforeCheckingStream = 5       #check the stream this often
+    MinutesToWaitBeforeCheckingStream = 1       #check the stream this often
     MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
     #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
@@ -194,7 +225,6 @@ class Bot(commands.Bot):
     async def my_custom_startup(self):
 
         
-
         await asyncio.sleep(1)
         self.Channel = self.get_channel(BOT_CHANNEL)
         #channel2 = self.fetch_channel(CHANNEL_ID)
@@ -222,7 +252,8 @@ class Bot(commands.Bot):
             )
           self.ChatTerminalOn = False
         
-
+        
+        
 
 
         
@@ -260,7 +291,13 @@ class Bot(commands.Bot):
           
           #asyncio.sleep suspends the current task, allowing other processes to run
           await asyncio.sleep(1)
-                    
+
+
+          #Check the event queue for incoming data
+          await self.ReadEventQueue()
+          #print("Stream Status:",StreamActive, 'TwithTimerOn:',LED.TwitchTimerOn)
+
+
           if(StreamActive == True):
             if (self.ChatTerminalOn == True):
               
@@ -296,6 +333,8 @@ class Bot(commands.Bot):
                 self.ChatTerminalOn = False                        
                 #await self.close()
 
+            
+            #I don't remember why I created a tas for this.  That's life I guess.
             if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
               self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
               
@@ -305,8 +344,7 @@ class Bot(commands.Bot):
           if (StreamActive == False):
             await self.DisplayDigitalClock()
 
-
-
+                 
 
           
           
@@ -326,7 +364,7 @@ class Bot(commands.Bot):
 
 
     #---------------------------------------
-    #- Event Ready                         --
+    #- Event Ready                        --
     #---------------------------------------
     async def event_ready(self):
         # Notify us when everything is ready!
@@ -338,6 +376,8 @@ class Bot(commands.Bot):
         #Channel = self.fetch_channel(CHANNEL)
         #print(Channel)
 
+        
+        #My custom startup code runs here
         await self.my_custom_startup()
         #await self.Sleep()
 
@@ -512,6 +552,8 @@ class Bot(commands.Bot):
       print ("Event:  event_join")
       print("Channel:",channel.name)
       print("User:   ",user.name)
+      
+      
 
       
     #---------------------------------------
@@ -583,7 +625,7 @@ class Bot(commands.Bot):
 
 
     #---------------------------------------
-    # Turn on Timer                       --
+    # Turn on Timer (UPTIME)              --
     #---------------------------------------
 
     async def DisplayTwitchTimer(self):
@@ -609,7 +651,8 @@ class Bot(commands.Bot):
           AnimationDelay   = self.AnimationDelay,
           RunMinutes       = 1,
           StartDateTimeUTC = StreamStartedDateTime,
-          HHMMSS           = StreamDurationHHMMSS
+          HHMMSS           = StreamDurationHHMMSS,
+          EventQueue       = EventQueue
           )
         print("Returned back from DisplayTwitchTimer")
       else:
@@ -625,8 +668,15 @@ class Bot(commands.Bot):
     async def DisplayDigitalClock(self):
       print ("Starting: DisplayDigitalClock")
 
+      
+      #Skip the buggy clockstyle 2
+      r = random.randint(1,2)
+      if (r == 2):
+        r = 3
+
+
       LED.DisplayDigitalClock(
-        ClockStyle = 1,
+        ClockStyle = r,
         CenterHoriz = True,
         v   = 1, 
         hh  = 24,
@@ -634,7 +684,8 @@ class Bot(commands.Bot):
         ShadowRGB        = LED.ShadowGreen,
         ZoomFactor       = 3,
         AnimationDelay   = self.AnimationDelay,
-        RunMinutes       = 1
+        RunMinutes       = 1,
+        EventQueue       = EventQueue
         )
       print("Clock function completed")
 
@@ -642,6 +693,107 @@ class Bot(commands.Bot):
 
 
 
+    #---------------------------------------
+    # WEBHOOK EventQueue                  --
+    #---------------------------------------
+
+    async def ReadEventQueue(self):
+      global EventQueue
+      QueueCount = EventQueue.qsize()
+      #print("QueueCount: ",QueueCount)
+
+      for i in range (0,QueueCount):
+        try:      
+          #Read the Queue then mark it as complete
+
+          print("")
+          print("")
+          print("==ReadEventQueue=======================")
+
+          Message = EventQueue.get_nowait()
+          EventQueue.task_done()
+          #print("Message ",str(QueueCount),":",Message)
+
+          print("Parsing Event Message")
+          await self.ProcessEvent(Message)
+          
+          print("=======================================")
+          print("")
+
+        except Exception as ErrorMessage:
+          TraceMessage = traceback.format_exc()
+          AdditionalInfo = "Reading an object from the EventQueue" 
+          LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)      
+ 
+      
+      
+      
+
+    async def ProcessEvent(self,Message):
+      #we need to determine the type of event, source of webhook etc
+   
+     
+      #Patreon Events
+      if Message['data']['attributes']['patron_status']:
+        print ("Data type: PATREON")
+
+        try:
+          PledgeStart = Message['data']['attributes']['pledge_relationship_start']
+          FullName    = Message['data']['attributes']['full_name']
+          City        = Message['included'][0]['attributes']['city']
+          State       = Message['included'][0]['attributes']['state']
+          Country     = Message['included'][0]['attributes']['country']
+
+
+          NameList  = FullName.split()
+          FirstName = NameList[0]
+          LastName  = NameList[-1]
+
+          if(Country == 'CA'):
+            Country = 'Canada'
+
+          if(Country == 'US'):
+            Country = 'U.S.A.'
+
+          print("")
+          print("--Patron Info--")
+          print("PledgeStart:",PledgeStart)
+          print("FullName:   ",FullName)
+          print("City:       ",City)
+          print("State:      ",State)
+          print("Country:    ",Country)
+          print("---------------")
+          
+          
+          LED.ShowTitleScreen(
+            BigText             = "NEW",
+            BigTextRGB          = LED.MedGreen,
+            BigTextShadowRGB    = LED.ShadowGreen,
+            BigText2            = 'PLEDGE',
+            BigText2RGB         = LED.MedGreen,
+            BigText2ShadowRGB   = LED.ShadowGreen,
+            LittleText          = 'PATREON',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = "THANK YOU " + FirstName + " FROM " + State + ", " + Country,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 0           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+
+          LED.ClearBuffers()
+
+        except Exception as ErrorMessage:
+          TraceMessage = traceback.format_exc()
+          AdditionalInfo = "Decoding JSON for WebHook" 
+          LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+
+      else:
+        print("Unkown data type")
+        
 
 
 
@@ -649,7 +801,7 @@ class Bot(commands.Bot):
   #---------------------------------------
   # B O T   C O M M A N D S             --
   #---------------------------------------
-
+  #the bot will respond to these commands typed in the chat e.g. ?hello
 
 
     #----------------------------------------
@@ -934,7 +1086,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
-      DI.LaunchDotInvaders(GameMaxMinutes = 1,ShowIntro=False) 
+      DI.LaunchDotInvaders(GameMaxMinutes = 2,ShowIntro=False) 
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -952,7 +1104,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Looks like you want to play some Outbreak..."
         await self.Channel.send(message)
-      OB.LaunchOutbreak(GameMaxMinutes = 5,ShowIntro = False)
+      OB.LaunchOutbreak(GameMaxMinutes = 2,ShowIntro = False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -969,7 +1121,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to shoot some mutants"
         await self.Channel.send(message)
-      DE.LaunchDefender(GameMaxMinutes = 5,ShowIntro=False)
+      DE.LaunchDefender(GameMaxMinutes = 2,ShowIntro=False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -987,7 +1139,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time for some jetbike races"
         await self.Channel.send(message)
-      TR.LaunchTron(GameMaxMinutes = 1,ShowIntro=False)
+      TR.LaunchTron(GameMaxMinutes = 2,ShowIntro=False)
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -1003,7 +1155,7 @@ class Bot(commands.Bot):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Enjoy the peaceful starry sky while staring at a clock"
         await self.Channel.send(message)
-      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 1 )
+      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 1, EventQueue=EventQueue )
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
@@ -1305,7 +1457,7 @@ def GetBasicTwitchInfo():
     #print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
-    pprint.pprint(results)
+    #pprint.pprint(results)
     #print(" ")
 
     if results['data']:
@@ -1324,17 +1476,10 @@ def GetBasicTwitchInfo():
      
 
 
-
-
-
-
-
-
-
     #----------------------------------------
-    # GET CHANNEL INFO
+    # GET BROADCASTER INFO
     #----------------------------------------
-    print("Get CHANNEL info")
+    print("Get BROADCASTER info")
     API_ENDPOINT = "https://api.twitch.tv/helix/channels?broadcaster_id=" + BROADCASTER_ID
     head = {
     'Client-ID': CLIENT_ID,
@@ -1344,7 +1489,7 @@ def GetBasicTwitchInfo():
     #print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
-    pprint.pprint(results)
+    #pprint.pprint(results)
     #print(" ")
 
     if results['data']:
@@ -1770,6 +1915,105 @@ def DisplayPatreon():
 
 
 
+def WebHook(EventQueue):
+  
+ 
+  #we create a Flask app, assign a default function (Receiver) and use it to write to the 
+  #multiprocessing Queue.  This allows the Twitch Bot to pop the queue.
+
+  app = Flask(__name__)
+  @app.route('/', methods=['POST'])
+  def Receiver():
+    
+    MyData = request.json
+    
+    #MyData = request.get_json(silent=True)
+    #pprint.pprint(MyData)     
+    #print("DATA: ", request.json)
+    EventQueue.put(MyData)
+    
+    #pprint.pprint(MyData, indent=2)        
+
+
+    print("")
+    if request.method == 'POST':
+      print("==WEBHOOK===============================================")
+      print("Status:      DATA RECEIVED")
+      print("Method:     ",request.method)
+      print("QueueCount: ",EventQueue.qsize())
+      print("========================================================")
+      print("")
+      return 'success', 200
+
+    elif request.method == 'GET':
+      print("GET Requested.  received data: ", request.json)
+      return 'success', 200
+
+    else:
+      abort(400)
+
+    
+
+
+    
+
+
+
+
+  print("Running the webhook app")
+  app.run()
+
+
+
+
+
+
+def StartBot():
+
+  CheckConfigFiles()
+  LoadConfigFiles()
+
+
+  print ("--StartBot--")
+  #skip all this if running datagod
+  if (CHANNEL != 'datagod'):
+    #Fake boot sequence
+    LED.ClearBigLED()
+    LED.ClearBuffers()
+    CursorH = 0
+    CursorV = 0
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"by datagod",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Boot sequence initiated",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RAM CHECK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"STORAGE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
+    IPAddress = LED.ShowIPAddress(Wait=5)
+  else:
+    print("Skipping boot up sequence")
+
+   
+
+  mybot = Bot()
+  mybot.run()
+
+
+
+  try:
+    print("Loading chat bot for: ",BOT_CHANNEL)
+    #mybot.run()
+  except:
+    LED.ClearBigLED()
+    LED.ClearBuffers()
+    CursorH = 0
+    CursorV = 0
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"The chat bot has experienced a terminal error",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Connection closed",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    
 
 
 
@@ -1781,35 +2025,6 @@ def DisplayPatreon():
 #------------------------------------------------------------------------------
 # MAIN SECTION                                                               --
 #------------------------------------------------------------------------------
-
-
-#LED.RotateAndZoomImage(PROFILE_IMAGE_URL)
-#LED.DrawSquare()
-
-
-#For testing purposes
-"""
-LED.DisplayTwitchTimer(
-  CenterHoriz = True,
-  CenterVert  = False,
-  h   = 0,
-  v   = 1, 
-  hh  = 24,
-  RGB              = LED.LowGreen,
-  ShadowRGB        = LED.ShadowGreen,
-  ZoomFactor       = 3,
-  AnimationDelay   = 0,
-  RunMinutes       = 1,
-  StartDateTimeUTC = datetime.utcnow(),
-  HHMMSS           = '00:44:00'
-  )
-"""
-
-
-
-
-
-
 
 
 
@@ -1825,76 +2040,21 @@ print ("")
 print ("")
 
 
-
-#connects, but does not retrieve chat messages
-#IRCStuff()
-
-
-
-
-#--------------------------------------
-#  Begin Twitch                      --
-#--------------------------------------
-
-
-CheckConfigFiles()
-LoadConfigFiles()
-#GetBasicTwitchInfo()
+print("--Spawning WebHook process--------------")
+#Spawn the webhook process
+WebHookProcess = multiprocessing.Process(target = WebHook, args=(EventQueue,))
+WebHookProcess.start()
+#BotProcess = multiprocessing.Process(target = StartBot,args=(EventQueue,))
+#BotProcess.start()
+print("----------------------------------------")
 
 
 
 
+StartBot()
 
-
-
-
-#skip all this if running datagod
-if (CHANNEL != 'datagod'):
-  #Fake boot sequence
-  LED.ClearBigLED()
-  LED.ClearBuffers()
-  CursorH = 0
-  CursorV = 0
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"by datagod",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Boot sequence initiated",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RAM CHECK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"STORAGE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-
-  IPAddress = LED.ShowIPAddress(Wait=5)
-else:
-  print("Skipping boot up sequence")
-
-mybot = Bot()
-
-
-#logging.getLogger("asyncio").setLevel(logging.WARNING)
-#logging.basicConfig(level=logging.DEBUG)
-
-mybot.run()
-
-
-
-try:
-  print("Loading chat bot for: ",BOT_CHANNEL)
-  #mybot.run()
-except:
-  LED.ClearBigLED()
-  LED.ClearBuffers()
-  CursorH = 0
-  CursorV = 0
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"The chat bot has experienced a terminal error",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Connection closed",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  
 
 #LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
-
-
-
 
 
 

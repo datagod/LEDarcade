@@ -139,3 +139,6 @@ MyConfig.ini
 passwords.txt
 CurrentProfile.png
 credits.png
+webhook
+test.py
+receiver.pyenvwebhook.py

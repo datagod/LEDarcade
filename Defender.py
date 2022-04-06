@@ -196,8 +196,6 @@ KeyboardSpeed   = 500
 CheckClockSpeed = 500
 
 CheckTime        = 60
-random.seed()
-start_time = time.time()
 
 
 
@@ -1258,6 +1256,10 @@ def PlayDefender(GameMaxMinutes):
   OldHumanCount       = 0
   WaveCount           = 1
   
+  #time
+  random.seed()
+  start_time = time.time()
+
 
   ClockSprite   = LED.CreateClockSprite(24)
   ClockSprite.h = (LED.HatWidth - ClockSprite.width -2)
@@ -1447,8 +1449,9 @@ def PlayDefender(GameMaxMinutes):
 
         #End game after X seconds
         h,m,s    = LED.GetElapsedTime(start_time,time.time())
+        print("Elapsed Time:  mm:ss",m,s)
+
         if(m > GameMaxMinutes):
-          print("Elapsed Time:  mm:ss",m,s)
           LED.SaveConfigData()
           print("Ending game after",m," minutes")
 
