@@ -131,9 +131,9 @@ sudo python3 Tron.py
  https://pagekite.net/support/quickstart/
 
 ~~~
-curl -s https://pagekite.net/pk/ |sudo bash
-OR
 sudo apt-get install pagekite
+curl -s https://pagekite.net/pk/ |sudo bash
+
 ~~~
  
  
