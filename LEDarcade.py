@@ -3343,7 +3343,7 @@ def CopySpriteToLayerZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-
           H = x+h+zh
           V = y+v+zv
          
-          if((0 <= H <= Layer.width) and (0 <= v <= Layer.height)):
+          if((0 <= H < Layer.width) and (0 <= v < Layer.height)):
 
             #draw the sprite portion
             if TheSprite.grid[count] != 0:
@@ -18382,7 +18382,7 @@ def StarryNightDisplayText(
 ):
 
   StartTime = time.time()
-  
+
   #Define color list
   TextColorList = ((ShadowPurple,DarkPurple,LowPurple,MedPurple),
                    (ShadowRed,   DarkRed,   LowRed,   MedRed),
