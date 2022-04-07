@@ -1510,6 +1510,7 @@ def GetBasicTwitchInfo():
       try:
         GameName        = results['data'][0]['game_name']
         Title           = results['data'][0]['title']
+        Title           = title.encode('ascii','replace')
 
       except Exception as ErrorMessage:
         TraceMessage = traceback.format_exc()
