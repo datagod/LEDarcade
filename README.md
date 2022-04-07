@@ -83,6 +83,10 @@ Modify the test.py script to contain the messages you want to display.  Then exe
  
 ~~~
 sudo python3 DotInvaders.py
+sudo python3 Defender.py
+sudo python3 Outbreak.py
+sudo python3 SpaceDot.py
+sudo python3 Tron.py
 ~~~
 
 ![DotInvaders](https://github.com/datagod/LEDarcade/blob/main/images/DotInvadersTitle1.jpg?raw=true)
@@ -94,6 +98,43 @@ sudo python3 DotInvaders.py
  ![DotInvaders](https://github.com/datagod/LEDarcade/blob/main/images/DotInvadersScreen1.jpg?raw=true)
  
  ![DotInvaders](https://github.com/datagod/LEDarcade/blob/main/images/DotInvadersScreen2.jpg?raw=true)
+ 
+ 
+ ## Rotating Arcade Games
+ Run the following to put your clock into a mode that will cycle through all the available games.
+ 
+ ~~~
+ sudo python3 arcade.py
+ ~~~
+ 
+ ## Twitch / Patreon Support
+ You can connect your clock to Twitch and Patreon for interacting with your audience.
+ 
+ #Additional Dependencies
+ **Patreon**
+ <BR>
+ https://github.com/Patreon/patreon-python
+ ~~~
+ sudo python3 -m pip install patreon
+ ~~~
+ 
+ **Flask**
+ <BR>
+ https://github.com/pallets/flask/
+ ~~~
+ sudo python3 -m pip install flask
+ ~~~
+ 
+ **PageKite**
+ <BR>
+ Enables your Raspberry Pi to receive Webhook requests
+ https://pagekite.net/support/quickstart/
+
+~~~
+curl -s https://pagekite.net/pk/ |sudo bash
+OR
+sudo apt-get install pagekite
+~~~
  
  
  
