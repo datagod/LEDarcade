@@ -3343,7 +3343,7 @@ def CopySpriteToLayerZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-
           H = x+h+zh
           V = y+v+zv
          
-          if(CheckBoundary(H,V) == 0):
+          if((0 <= H <= Layer.width) and (0 <= v <= Layer.height)):
 
             #draw the sprite portion
             if TheSprite.grid[count] != 0:
@@ -18366,3 +18366,155 @@ def AdjustBrightnessRGB(rgb,step):
     b = 255
 
   return r,g,b
+
+
+
+
+
+
+
+def StarryNightDisplayText(
+  Text1        = "TEXT1",
+  Text2        = "TEXT2",
+  Text3        = "TEXT3",
+  ScrollSleep = 0.02,
+  RunSeconds  = 60
+):
+
+  StartTime = time.time()
+  
+  #Define color list
+  TextColorList = ((ShadowPurple,DarkPurple,LowPurple,MedPurple),
+                   (ShadowRed,   DarkRed,   LowRed,   MedRed),
+                   (ShadowOrange,DarkOrange,LowOrange,MedOrange),
+                   (ShadowYellow,DarkYellow,LowYellow,MedYellow),
+                   (ShadowGreen, DarkGreen, LowGreen, MedGreen),
+                   (ShadowBlue,  DarkBlue,  LowBlue,  MedBlue),
+                   (ShadowPink,  DarkPink,  LowPink,  MedPink),
+                   (ShadowCyan,  DarkCyan,  LowCyan,  MedCyan)
+  
+                    )
+  TextColorCount = len(TextColorList)
+
+  #Get a bunch of random colors for each text layer  
+  i = random.randint(0,TextColorCount -1)
+  A,B,C,D = TextColorList[i]
+  Text1RGB = C
+
+  i = random.randint(0,TextColorCount -1)
+  A,B,C,D = TextColorList[i]
+  Text2RGB = B
+  
+  i = random.randint(0,TextColorCount -1)
+  A,B,C,D = TextColorList[i]
+  Text3RGB = A
+  
+
+
+
+  #--------------------------------
+  #-- Create Layers              --
+  #--------------------------------
+
+  Background   = Layer(name="backround", width=400, height=32,h=0,v=0)
+  Middleground = Layer(name="backround", width=600, height=32,h=0,v=0)
+  Foreground   = Layer(name="backround", width=1000, height=32,h=0,v=0)
+
+  Background.CreateStars(0,0,50,50)
+  Middleground.CreateStars(0,0,100,100)
+  Foreground.CreateStars(0,0,200,200)
+
+  Canvas = TheMatrix.CreateFrameCanvas()
+  Canvas.Clear()
+  Canvas = TheMatrix.SwapOnVSync(Canvas)
+
+  
+  count  = 0
+  bx     = 0
+  mx     = 0
+  fx     = 0
+  bwidth = Background.width    - HatWidth
+  mwidth = Middleground.width  - HatWidth
+  fwidth = Foreground.width    - HatWidth
+  brate  = 4
+  mrate  = 2
+  frate  = 1
+  Done   = False
+
+
+
+  TheBanner1 = CreateBannerSprite(Text1)
+  h1         = 80
+  v1         = 8
+  Foreground = CopySpriteToLayerZoom(TheBanner1,h1,v1,Text1RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Foreground)
+
+  TheBanner2 = CreateBannerSprite(Text2)
+  h2         = 200
+  v2         = 4
+  Middleground = CopySpriteToLayerZoom(TheBanner2,h2,v2,Text2RGB,(0,0,0),ZoomFactor=2,Fill=False,Layer=Middleground)
+
+  TheBanner3 = CreateBannerSprite(Text3)
+  h3         = 200
+  v3         = 0
+  Background = CopySpriteToLayerZoom(TheBanner3,h3,v3,Text3RGB,(0,0,0),ZoomFactor=1,Fill=False,Layer=Background)
+
+
+
+  while (Done == False):
+
+    x = 0
+
+    #main counter
+    count = count + 1
+    Canvas.Clear()
+  
+    #Background
+    m,r = divmod(count,brate)
+    if(r == 0):
+      bx = bx + 1
+      if(bx > bwidth):
+        bx = 0
+    #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
+
+
+    #Middleground
+    m,r = divmod(count,mrate)
+    if(r == 0):
+      mx = mx + 1
+      if(mx > mwidth):
+        mx = 0
+    #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
+
+      
+    #foreground
+    m,r = divmod(count,frate)
+    if(r == 0):
+      fx = fx + 1
+      if(fx > fwidth):
+        fx = 0
+    #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
+
+
+    Canvas = PaintThreeLayerCanvas(bx,mx,fx,Background,Middleground,Foreground,Canvas)
+
+
+    #LED.RunningMan3Sprite.DisplayAnimated(10,10)
+    Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(-2,15,Canvas)
+    Canvas = TheMatrix.SwapOnVSync(Canvas)
+    
+
+    
+    if(random.randint(0,100) == 1):
+      #This will end the while loop
+      elapsed_time = time.time() - StartTime
+      elapsed_hours, rem = divmod(elapsed_time, 3600)
+      elapsed_minutes, r = divmod(rem, 60)
+      elapsed_seconds = elapsed_time
+
+      #print ("StartTime:    ",StartTime, " Now:",time.time())
+      print("ElapsedSeconds: ",round(elapsed_seconds))
+      if elapsed_seconds >= RunSeconds:
+        Done = True
+
+
+

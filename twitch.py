@@ -765,24 +765,36 @@ class Bot(commands.Bot):
           print("---------------")
           
           
+
+          LED.StarryNightDisplayText(
+            Text1 = "NEW PATRON",
+            Text2 = "Thank you " + FirstName,
+            Text3 = "You are an awesome supporter!",
+            RunSeconds = 60
+            )                    
+
+
+          '''
           LED.ShowTitleScreen(
             BigText             = "NEW",
-            BigTextRGB          = LED.MedGreen,
-            BigTextShadowRGB    = LED.ShadowGreen,
-            BigText2            = 'PLEDGE',
-            BigText2RGB         = LED.MedGreen,
-            BigText2ShadowRGB   = LED.ShadowGreen,
+            BigTextRGB          = LED.MedOrange,
+            BigTextShadowRGB    = LED.ShadowOrange,
+            BigText2            = 'PATRON',
+            BigText2RGB         = LED.MedOrange,
+            BigText2ShadowRGB   = LED.ShadowOrange,
             LittleText          = 'PATREON',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "THANK YOU " + FirstName + " FROM " + State + ", " + Country,
+            ScrollText          = "THANK YOU " + FirstName + "!!" + "                 " + "THANK YOU " + FirstName + "!!" + "                 " + "THANK YOU " + FirstName + "!!",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            DisplayTime         = 5,           # time in seconds to wait before exiting 
             ExitEffect          = 0           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
             )
 
           LED.ClearBuffers()
+         '''
+
 
         except Exception as ErrorMessage:
           TraceMessage = traceback.format_exc()
@@ -2014,9 +2026,6 @@ def StartBot():
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"The chat bot has experienced a terminal error",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Connection closed",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     
-
-
-
 
 
 
