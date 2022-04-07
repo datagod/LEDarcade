@@ -112,6 +112,7 @@ sudo python3 Tron.py
  
  #Additional Dependencies
  **Patreon**
+ <BR>
  https://github.com/Patreon/patreon-python
  ~~~
  sudo python3 -m pip install patreon
