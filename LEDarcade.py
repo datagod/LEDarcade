@@ -18418,7 +18418,7 @@ def StarryNightDisplayText(
 
   Background   = Layer(name="backround", width=400, height=32,h=0,v=0)
   Middleground = Layer(name="backround", width=600, height=32,h=0,v=0)
-  Foreground   = Layer(name="backround", width=1000, height=32,h=0,v=0)
+  Foreground   = Layer(name="backround", width=800, height=32,h=0,v=0)
 
   Background.CreateStars(0,0,50,50)
   Middleground.CreateStars(0,0,100,100)
