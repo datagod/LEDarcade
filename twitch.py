@@ -24,7 +24,7 @@ from configparser import SafeConfigParser
 import requests
 import traceback
 import socket
-import twitchio
+
 
 
 #multi processing
@@ -37,9 +37,14 @@ import json
 
 
 
+
 #Twitch
+import twitchio
 from twitchio.ext import pubsub
 from twitchio.ext import commands
+
+
+
 
 #Webhooks
 import patreon
@@ -220,6 +225,11 @@ class Bot(commands.Bot):
         
         
 
+
+
+
+
+        
 
 
     async def my_custom_startup(self):
@@ -731,9 +741,71 @@ class Bot(commands.Bot):
 
     async def ProcessEvent(self,Message):
       #we need to determine the type of event, source of webhook etc
-   
-     
-      #Patreon Events
+
+      pprint.pprint(Message,indent=4)
+
+
+      #--------------------------------------
+      #-- Twitch Events                    --
+      #--------------------------------------
+
+
+      '''
+        {   'event': {   'broadcaster_user_id': '42892199',
+                      'broadcaster_user_login': 'testBroadcaster',
+                      'broadcaster_user_name': 'testBroadcaster',
+                      'extension_client_id': '6b05be459db6f6a2d2e3245da91f00',
+                      'id': 'b6130327-ae1d-d511-7e77-991bcb697e0b',
+                      'product': {   'bits': 100,
+                                      'in_development': True,
+                                      'name': 'Test Trigger Item from CLI',
+                                      'sku': 'testItemSku'},
+                      'user_id': '98255423',
+                      'user_login': 'testUser',
+                      'user_name': 'testUser'},
+          'subscription': {   'condition': {   'extension_client_id': '6b05be459db6f6a2d2e3245da91f00'},
+                              'cost': 1,
+                              'created_at': '2022-04-10T02:55:56.4342133Z',
+                              'id': 'b6130327-ae1d-d511-7e77-991bcb697e0b',
+                              'status': 'enabled',
+                              'transport': {'callback': 'null', 'method': 'webhook'},
+                              'type': 'extension.bits_transaction.create',
+                              'version': '1'}
+                              
+                              }
+      '''
+
+
+
+      if Message['event']:
+        print("Found Event")
+        BitsThrown = Message['event']['product']['bits']
+        TwitchUser = Message['event']['user_login']
+        print ("Data type: TWITCH - BITS")
+        print("Bits thrown:",BitsThrown)
+
+        try:
+          
+
+          LED.StarryNightDisplayText(
+            Text1 = str(BitsThrown) + " BITS",
+            Text2 = TwitchUser,
+            Text3 = "THANK YOU FOR YOUR SUPPORT", 
+            RunSeconds = 60
+            )                    
+
+        except KeyError:
+          print ("No Twitch data detected")
+          pass
+
+
+
+
+
+      #--------------------------------------
+      #-- Patreon Events                   --
+      #--------------------------------------
+      
       if Message['data']['attributes']['patron_status']:
         print ("Data type: PATREON")
 
@@ -795,11 +867,20 @@ class Bot(commands.Bot):
           LED.ClearBuffers()
          '''
 
+        except KeyError:
+          print ("No Patreon data detected")
+          pass
 
-        except Exception as ErrorMessage:
-          TraceMessage = traceback.format_exc()
-          AdditionalInfo = "Decoding JSON for WebHook" 
-          LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+
+
+
+
+        #except Exception as ErrorMessage:
+        #  TraceMessage = traceback.format_exc()
+        #  AdditionalInfo = "Decoding JSON for WebHook" 
+        #  LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
 
 
@@ -1487,7 +1568,6 @@ def GetBasicTwitchInfo():
         LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
      
 
-
     #----------------------------------------
     # GET BROADCASTER INFO
     #----------------------------------------
@@ -1604,6 +1684,9 @@ def GetBasicTwitchInfo():
 
 
 
+#----------------------------------------
+#-- Generic Functions                  --
+#----------------------------------------
 
 
 
@@ -1619,9 +1702,9 @@ def ConvertDate(TheDate):
 
 
 
-
-
-
+#----------------------------------------
+#-- FILE ACCESS Functions              --
+#----------------------------------------
 
 def LoadConfigFiles():
   
@@ -1920,12 +2003,17 @@ def DisplayPatreon():
 
 
 
+#----------------------------------------
+#-- ASYNCIO Functions                  --
+#----------------------------------------
 
 
 
 
 
-
+#----------------------------------------
+#-- MULTIPROCESSING Functions          --
+#----------------------------------------
 
 
 def WebHook(EventQueue):
@@ -1939,7 +2027,6 @@ def WebHook(EventQueue):
   def Receiver():
     
     MyData = request.json
-    
     #MyData = request.get_json(silent=True)
     #pprint.pprint(MyData)     
     #print("DATA: ", request.json)
@@ -1964,13 +2051,6 @@ def WebHook(EventQueue):
 
     else:
       abort(400)
-
-    
-
-
-    
-
-
 
 
   print("Running the webhook app")
