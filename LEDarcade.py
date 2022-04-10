@@ -18407,7 +18407,7 @@ def StarryNightDisplayText(
   
   i = random.randint(0,TextColorCount -1)
   A,B,C,D = TextColorList[i]
-  Text3RGB = A
+  Text3RGB = B
   
 
 
