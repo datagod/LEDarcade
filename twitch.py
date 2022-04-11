@@ -752,7 +752,7 @@ class Bot(commands.Bot):
       #TWITCH EVENTS
       EventDict = Message.get('event','NONE')
       if(EventDict != "NONE"):
-        print("Twitch Data")
+        print("**TWITCH**")
         print("Found: event")
         ProductDict = EventDict.get('product','NONE')
         
@@ -761,7 +761,7 @@ class Bot(commands.Bot):
           print("Found: product")
           BitsThrown = Message['event']['product']['bits']
           TwitchUser = Message['event']['user_login']
-          print ("Data type: TWITCH - BITS")
+          print ("Found: bits")
           print("Bits thrown:",BitsThrown)
 
           LED.StarryNightDisplayText(
@@ -778,7 +778,7 @@ class Bot(commands.Bot):
             print("Found: rewards")
             ChannelPoints = Message['event']['product']['cost']
             TwitchUser    = Message['event']['user_login']
-            print ("Data type: TWITCH - REWARD")
+            print ("found: cost")
             print("Channel Points: ",ChannelPoints)
 
         
