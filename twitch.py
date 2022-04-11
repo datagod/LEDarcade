@@ -772,7 +772,7 @@ class Bot(commands.Bot):
             Text1 = str(BitsThrown) + " BITS",
             Text2 = TwitchUser,
             Text3 = "THANK YOU FOR YOUR SUPPORT", 
-            RunSeconds = 60
+            RunSeconds = 40
             )                    
 
         #CHANNEL POINTS
@@ -790,7 +790,7 @@ class Bot(commands.Bot):
               Text1 = str(BitsThrown) + " CHANNEL POINTS",
               Text2 = TwitchUser,
               Text3 = "KEEP GOING, USE UP THOSE POINTS!", 
-              RunSeconds = 60
+              RunSeconds = 40
               )                    
 
 
@@ -1451,7 +1451,7 @@ def GetTwitchCounts():
     try:
       results = r.json()
       Subs = results['total']
-      pprint.pprint(results)
+      #pprint.pprint(results)
       #print("")
 
     except Exception as ErrorMessage:
