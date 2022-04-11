@@ -16821,7 +16821,7 @@ def DisplayDigitalClock(
         elapsed_minutes, elapsed_seconds = divmod(rem, 60)
 
         #print ("StartTime:    ",StartTime, " Now:",time.time())
-        print("ElapsedMinues: ",elapsed_minutes)
+        print("ElapsedMinutes: ",elapsed_minutes)
         if elapsed_minutes >= RunMinutes:
           Done = True
 
@@ -16931,7 +16931,7 @@ def DisplayDigitalClock(
           elapsed_minutes, elapsed_seconds = divmod(rem, 60)
 
           #print ("StartTime:    ",StartTime, " Now:",time.time())
-          print("ElapsedMinues: ",elapsed_minutes)
+          print("ElapsedMinutes: ",elapsed_minutes)
           if elapsed_minutes >= RunMinutes:
             Done = True
 
@@ -18381,6 +18381,11 @@ def StarryNightDisplayText(
   RunSeconds  = 60
 ):
 
+  print("")
+  print("-- Starry Night Display Text")
+  print("Text1:",Text1)
+  print("Text2:",Text2)
+  print("Text3:",Text3)
   StartTime = time.time()
 
   #Define color list

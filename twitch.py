@@ -752,10 +752,13 @@ class Bot(commands.Bot):
       #TWITCH EVENTS
       EventDict = Message.get('event','NONE')
       if(EventDict != "NONE"):
+        print("Twitch Data")
+        print("Found: event")
         ProductDict = EventDict.get('product','NONE')
         
         #BITS
         if(ProductDict != "NONE"):
+          print("Found: product")
           BitsThrown = Message['event']['product']['bits']
           TwitchUser = Message['event']['user_login']
           print ("Data type: TWITCH - BITS")
@@ -772,6 +775,7 @@ class Bot(commands.Bot):
         else:
           RewardsDict = EventDict.get('rewards','NONE')
           if(RewardsDict != 'NONE'):
+            print("Found: rewards")
             ChannelPoints = Message['event']['product']['cost']
             TwitchUser    = Message['event']['user_login']
             print ("Data type: TWITCH - REWARD")
@@ -793,6 +797,8 @@ class Bot(commands.Bot):
         DataDict = Message.get('data','NONE')
 
         if (DataDict != 'NONE'):
+          print("Patreon data")
+          found("Found: data")
           AttributesDict = DataDict.get('attributes','NONE')
 
         if(AttributesDict != 'NONE'):
