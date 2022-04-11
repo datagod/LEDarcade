@@ -749,13 +749,17 @@ class Bot(commands.Bot):
       #-- Twitch Events                    --
       #--------------------------------------
 
+      BitsThrown = 0
+      TwitchUser = ''
+
       #TWITCH EVENTS
       EventDict = Message.get('event','NONE')
       if(EventDict != "NONE"):
         print("**TWITCH**")
         print("Found: event")
         ProductDict = EventDict.get('product','NONE')
-        
+        print ("*****************************************************")
+        print(ProductDict)
         #BITS
         if(ProductDict != "NONE"):
           print("Found: product")
@@ -773,10 +777,10 @@ class Bot(commands.Bot):
 
         #CHANNEL POINTS
         else:
-          RewardsDict = EventDict.get('rewards','NONE')
-          if(RewardsDict != 'NONE'):
-            print("Found: rewards")
-            ChannelPoints = Message['event']['product']['cost']
+          RewardDict = EventDict.get('reward','NONE')
+          if(RewardDict != 'NONE'):
+            print("Found: reward")
+            ChannelPoints = Message['event']['reward']['cost']
             TwitchUser    = Message['event']['user_login']
             print ("found: cost")
             print("Channel Points: ",ChannelPoints)
