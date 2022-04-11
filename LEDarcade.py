@@ -18385,10 +18385,12 @@ def StarryNightDisplayText(
 
   #Define color list
   TextColorList = ((ShadowPurple,DarkPurple,LowPurple,MedPurple),
-                   (ShadowRed,   DarkRed,   LowRed,   MedRed),
+                   #(ShadowRed,   DarkRed,   LowRed,   MedRed),
+                   (DarkRed,     LowRed,    MedRed,   HighRed),
                    (ShadowOrange,DarkOrange,LowOrange,MedOrange),
                    (ShadowYellow,DarkYellow,LowYellow,MedYellow),
-                   (ShadowGreen, DarkGreen, LowGreen, MedGreen),
+                   #(ShadowGreen, DarkGreen, LowGreen, MedGreen),
+                   (DarkGreen,   LowGreen,  MedGreen, HighGreen),
                    (ShadowBlue,  DarkBlue,  LowBlue,  MedBlue),
                    (ShadowPink,  DarkPink,  LowPink,  MedPink),
                    (ShadowCyan,  DarkCyan,  LowCyan,  MedCyan)

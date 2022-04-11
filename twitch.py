@@ -749,43 +749,17 @@ class Bot(commands.Bot):
       #-- Twitch Events                    --
       #--------------------------------------
 
-
-      '''
-        {   'event': {   'broadcaster_user_id': '42892199',
-                      'broadcaster_user_login': 'testBroadcaster',
-                      'broadcaster_user_name': 'testBroadcaster',
-                      'extension_client_id': '6b05be459db6f6a2d2e3245da91f00',
-                      'id': 'b6130327-ae1d-d511-7e77-991bcb697e0b',
-                      'product': {   'bits': 100,
-                                      'in_development': True,
-                                      'name': 'Test Trigger Item from CLI',
-                                      'sku': 'testItemSku'},
-                      'user_id': '98255423',
-                      'user_login': 'testUser',
-                      'user_name': 'testUser'},
-          'subscription': {   'condition': {   'extension_client_id': '6b05be459db6f6a2d2e3245da91f00'},
-                              'cost': 1,
-                              'created_at': '2022-04-10T02:55:56.4342133Z',
-                              'id': 'b6130327-ae1d-d511-7e77-991bcb697e0b',
-                              'status': 'enabled',
-                              'transport': {'callback': 'null', 'method': 'webhook'},
-                              'type': 'extension.bits_transaction.create',
-                              'version': '1'}
-                              
-                              }
-      '''
-
-
-
-      if Message['event']:
-        print("Found Event")
-        BitsThrown = Message['event']['product']['bits']
-        TwitchUser = Message['event']['user_login']
-        print ("Data type: TWITCH - BITS")
-        print("Bits thrown:",BitsThrown)
-
-        try:
-          
+      #TWITCH EVENTS
+      EventDict = Message.get('event','NONE')
+      if(EventDict != "NONE"):
+        ProductDict = EventDict.get('product','NONE')
+        
+        #BITS
+        if(ProductDict != "NONE"):
+          BitsThrown = Message['event']['product']['bits']
+          TwitchUser = Message['event']['user_login']
+          print ("Data type: TWITCH - BITS")
+          print("Bits thrown:",BitsThrown)
 
           LED.StarryNightDisplayText(
             Text1 = str(BitsThrown) + " BITS",
@@ -794,28 +768,39 @@ class Bot(commands.Bot):
             RunSeconds = 60
             )                    
 
-        except KeyError:
-          print ("No Twitch data detected")
-          pass
+        #CHANNEL POINTS
+        else:
+          RewardsDict = EventDict.get('rewards','NONE')
+          if(RewardsDict != 'NONE'):
+            ChannelPoints = Message['event']['product']['cost']
+            TwitchUser    = Message['event']['user_login']
+            print ("Data type: TWITCH - REWARD")
+            print("Channel Points: ",ChannelPoints)
 
-
-
+        
+            LED.StarryNightDisplayText(
+              Text1 = str(BitsThrown) + " CHANNEL POINTS",
+              Text2 = TwitchUser,
+              Text3 = "KEEP GOING, USE UP THOSE POINTS!", 
+              RunSeconds = 60
+              )                    
 
 
       #--------------------------------------
       #-- Patreon Events                   --
       #--------------------------------------
-      
-      if Message['data']['attributes']['patron_status']:
-        print ("Data type: PATREON")
+      else:
+        DataDict = Message.get('data','NONE')
 
-        try:
+        if (DataDict != 'NONE'):
+          AttributesDict = DataDict.get('attributes','NONE')
+
+        if(AttributesDict != 'NONE'):
           PledgeStart = Message['data']['attributes']['pledge_relationship_start']
           FullName    = Message['data']['attributes']['full_name']
           City        = Message['included'][0]['attributes']['city']
           State       = Message['included'][0]['attributes']['state']
           Country     = Message['included'][0]['attributes']['country']
-
 
           NameList  = FullName.split()
           FirstName = NameList[0]
@@ -844,37 +829,9 @@ class Bot(commands.Bot):
             Text3 = "You are an awesome supporter!",
             RunSeconds = 60
             )                    
+          
 
-
-          '''
-          LED.ShowTitleScreen(
-            BigText             = "NEW",
-            BigTextRGB          = LED.MedOrange,
-            BigTextShadowRGB    = LED.ShadowOrange,
-            BigText2            = 'PATRON',
-            BigText2RGB         = LED.MedOrange,
-            BigText2ShadowRGB   = LED.ShadowOrange,
-            LittleText          = 'PATREON',
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "THANK YOU " + FirstName + "!!" + "                 " + "THANK YOU " + FirstName + "!!" + "                 " + "THANK YOU " + FirstName + "!!",
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 5,           # time in seconds to wait before exiting 
-            ExitEffect          = 0           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            )
-
-          LED.ClearBuffers()
-         '''
-
-        except KeyError:
-          print ("No Patreon data detected")
-          pass
-
-
-
-
-
+        
 
 
         #except Exception as ErrorMessage:
@@ -882,11 +839,7 @@ class Bot(commands.Bot):
         #  AdditionalInfo = "Decoding JSON for WebHook" 
         #  LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
-
-
-      else:
-        print("Unkown data type")
-        
+       
 
 
 
@@ -2054,7 +2007,7 @@ def WebHook(EventQueue):
 
 
   print("Running the webhook app")
-  app.run()
+  app.run(port=5050)
 
 
 
