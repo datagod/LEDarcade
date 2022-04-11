@@ -2028,7 +2028,7 @@ def StartBot():
 
   print ("--StartBot--")
   #skip all this if running datagod
-  if (CHANNEL != 'datagod'):
+  if (CHANNEL != 'datagod' and CHANNEL != 'xtianninja'):
     #Fake boot sequence
     LED.ClearBigLED()
     LED.ClearBuffers()
