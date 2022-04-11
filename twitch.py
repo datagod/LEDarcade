@@ -225,13 +225,6 @@ class Bot(commands.Bot):
         
         
 
-
-
-
-
-        
-
-
     async def my_custom_startup(self):
 
         
@@ -787,7 +780,7 @@ class Bot(commands.Bot):
 
         
             LED.StarryNightDisplayText(
-              Text1 = str(BitsThrown) + " CHANNEL POINTS",
+              Text1 = str(ChannelPoints) + " CHANNEL POINTS",
               Text2 = TwitchUser,
               Text3 = "KEEP GOING, USE UP THOSE POINTS!", 
               RunSeconds = 40
@@ -1964,13 +1957,9 @@ def DisplayPatreon():
 
 
 
-
-
 #----------------------------------------
 #-- ASYNCIO Functions                  --
 #----------------------------------------
-
-
 
 
 
@@ -2104,7 +2093,14 @@ print("----------------------------------------")
 
 
 
+
+
+
+
+
+time.sleep(5)
 StartBot()
+
 
 
 #LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
