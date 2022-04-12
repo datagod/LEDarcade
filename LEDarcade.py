@@ -15664,14 +15664,14 @@ def UpdateClockWithTransition(ClockSprite,hh=24,h=0,v=0,RGB=HighGreen,ShadowRGB=
 def UpdateTimerWithTransition(TimerSprite,BannerSprite,h=0,v=0,RGB=HighGreen,ShadowRGB=ShadowGreen,ZoomFactor=1,Fill=False,TransitionType=1,StartDateTimeUTC='',ForceUpdate=False):
   #take the time as a sprite, and a message to display (the banner sprite)
   #update the LED screen
-  print("Update timer with transition")
+  #print("Update timer with transition")
 
   global ScreenArray
   
   hh,mm,ss, HHMMSS = CalculateElapsedTime(StartDateTimeUTC)
   #print ('DurationHHMMSS: ',HHMMSS,end="\r")
   print ('DurationHHMMSS: ',HHMMSS)
-  print('HV:',h,v," ForceUpdate:",ForceUpdate)
+  #print('HV:',h,v," ForceUpdate:",ForceUpdate)
   
   if (HHMMSS[0:5] != TimerSprite.HHMM or ForceUpdate == True):
   #if (HHMMSS != TimerSprite.HHMM):
@@ -17051,7 +17051,7 @@ async def DisplayTwitchTimer(
     
     #Show the timer, sleep for X seconds, show animations every Y seconds
     while (Done == False and TwitchTimerOn == True):
-      print("while loop")
+      #print("while loop")
       TimerSprite = UpdateTimerWithTransition(TimerSprite,BannerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
       #ScreenArray = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,BannerRGB,(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray)
 
