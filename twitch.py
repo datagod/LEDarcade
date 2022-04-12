@@ -236,8 +236,14 @@ class Bot(commands.Bot ):
         try:
             print("Subscribing to CHANNEL_FOLLOWS")
             await esclient.subscribe_channel_follows(broadcaster=BROADCASTER_ID)
+
+
+            print("Subscribing to CHANNEL_SUBSCRIPTIONS")
+            await esclient.subscribe_channel_subscriptions(broadcaster=channel_ID)
+
         except twitchio.HTTPException:
             pass              
+
 
 
 
@@ -2135,8 +2141,6 @@ print("--Starting up EventSubBot---------------")
 EventSubBot = commands.Bot.from_client_credentials(client_id=USER_ID,
                                          client_secret=ACCESS_TOKEN)
 
-
-
 esclient = eventsub.EventSubClient(EventSubBot,
                                    webhook_secret=ACCESS_TOKEN,
                                    callback_route=WEBHOOK_URL)
@@ -2148,7 +2152,7 @@ print("")
 
 print ("--StartBot--")
 #skip all this if running datagod
-if (CHANNEL != 'datagod' and CHANNEL != 'xtianninja'):
+if (CHANNEL != 'datagod' and CHANNEL != 'XtianNinja'):
   #Fake boot sequence
   LED.ClearBigLED()
   LED.ClearBuffers()
@@ -2179,10 +2183,27 @@ mybot.run()
 
 
 @esbot.event()
+
 async def event_eventsub_notification_follow(payload: eventsub.ChannelFollowData) -> None:
-    print('** EVENT RECEIVED **')
-    channel = mybot.get_channel(CHANNEL)
-    await channel.send(f'{payload.data.user.name} followed woohoo!')
+  global EventQueue
+  print('** EVENT RECEIVED **')
+  print('** EVENT RECEIVED **')
+  print('** EVENT RECEIVED **')
+  channel = mybot.get_channel(CHANNEL)
+
+  EventQueue.put(eventsub.ChannelFollowData)
+  await channel.send(f'{payload.data.user.name} followed woohoo!')
+
+@esbot.event()
+async def ChannelSubscribeData(payload: eventsub.ChannelSubscribeData) -> None:
+  global EventQueue
+  print('** EVENT RECEIVED **')
+  print('** CHANNEL SUBSCRIBE DATA **')
+  print('** EVENT RECEIVED **')
+  channel = mybot.get_channel(CHANNEL)
+
+  EventQueue.put(eventsub.ChannelSubscribeData)
+  await channel.send(f'{payload.data.user.name} subscribed!')
 
 
 
