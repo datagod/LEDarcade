@@ -731,7 +731,7 @@ class Bot(commands.Bot ):
         ShadowRGB        = LED.ShadowGreen,
         ZoomFactor       = 3,
         AnimationDelay   = self.AnimationDelay,
-        RunMinutes       = 30,
+        RunMinutes       = 5,
         EventQueue       = EventQueue
         )
       print("Clock function completed")
@@ -927,7 +927,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons')
 
 
     #----------------------------------------
@@ -1135,6 +1135,71 @@ class Bot(commands.Bot ):
       time.sleep(3)
       LED.ClearBigLED()
 
+      #SHOW PROFILE
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Now displaying the profile pic for this channel."
+        await self.Channel.send(message)
+
+      LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
+      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
+      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
+      time.sleep(3)
+      LED.SweepClean()
+
+
+
+
+    #----------------------------------------
+    # Me                                   --
+    #----------------------------------------
+
+    #Show the chat user's profile  
+    @commands.command()
+    async def me(self, ctx: commands.Context):
+      
+      
+
+      print("Get user profile info")
+      API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + ctx.author.name
+      head = {
+      'Client-ID': CLIENT_ID,
+      'Authorization': 'Bearer ' +  ACCESS_TOKEN
+      }
+
+      #print ("URL: ",API_ENDPOINT, 'data:',head)
+      r = requests.get(url = API_ENDPOINT, headers = head)
+      results = r.json()
+      #pprint.pprint(results)
+      #print(" ")
+
+      if results['data']:
+        print("Data found.  Processing...")
+
+        try:
+          UserProfileURL = results['data'][0]['profile_image_url']
+
+        except Exception as ErrorMessage:
+          TraceMessage = traceback.format_exc()
+          AdditionalInfo = "Getting CHANNEL info from API call" 
+          LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+        
+        
+      
+      #SHOW PROFILE
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Now displaying the profile pic for this channel."
+        await self.Channel.send(message)
+
+      LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
+      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
+      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=32,ZoomSleep=0.025,Step=4)
+      time.sleep(3)
+      LED.SweepClean()
+
+
+
+
+
 
     #----------------------------------------
     # VIEWS                                --
@@ -1304,10 +1369,8 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
 
       DisplayPatreon()
-      LED.RunningMan2Sprite.ScrollAcrossScreen(20,0,'right', ScrollSleep )
-      LED.RunningMan2Sprite.HorizontalFlip()      
-      LED.RunningMan2Sprite.ScrollAcrossScreen(20,15,'left', ScrollSleep )
-      LED.RunningMan2Sprite.HorizontalFlip()
+      LED.SweepClean()
+
 
     @commands.command()
     async def patrons(self, ctx: commands.Context):

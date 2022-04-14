@@ -18462,6 +18462,13 @@ def ScrollJustJoinedUser(Names=[],ImageName='JustJoined.png',ScrollSleep=0.05):
   ScrollImage(ImageName,ScrollSleep)
 
   #clean up the screen using animations
+  SweepClean()
+
+
+
+
+def SweepClean():
+#clean up the screen using animations
   MoveAnimatedSpriteAcrossScreenStepsPerFrame(
     PacManRightSprite,
     Position      = 'top',
@@ -18492,11 +18499,6 @@ def ScrollJustJoinedUser(Names=[],ImageName='JustJoined.png',ScrollSleep=0.05):
     ZoomFactor    = 3,
     sleep         = 0.0 
     )
-
-
-
-
-
 
 
 
