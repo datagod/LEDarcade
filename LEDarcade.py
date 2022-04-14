@@ -18497,7 +18497,7 @@ def SweepClean():
     direction     = "right",
     StepsPerFrame = 3,
     ZoomFactor    = 3,
-    sleep         = 0.0 
+    sleep         = 0.004 
     )
 
 

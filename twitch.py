@@ -1159,7 +1159,7 @@ class Bot(commands.Bot ):
       
       
 
-      print("Get user profile info")
+      print("Get user profile info:",ctx.author.name)
       API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + ctx.author.name
       head = {
       'Client-ID': CLIENT_ID,
@@ -1192,7 +1192,8 @@ class Bot(commands.Bot ):
 
       LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
       LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=32,ZoomSleep=0.025,Step=4)
+      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
+      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
       time.sleep(3)
       LED.SweepClean()
 
