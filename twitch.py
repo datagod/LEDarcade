@@ -191,6 +191,9 @@ class Bot(commands.Bot ):
     CursorDarkRGB       = (0,50,0)
     AnimationDelay      = 30
     LastMessageReceived = time.time()
+    LastUserJoinedChat  = time.time()
+    ChatUsers           = []
+    SecondsToWaitChat   = 30
     LastStreamCheckTime = time.time()
     MinutesToWaitBeforeCheckingStream = 1       #check the stream this often
     MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
@@ -231,7 +234,7 @@ class Bot(commands.Bot ):
 
     async def __ainit__(self) -> None:
         print("Starting EventSub client")
-        self.loop.create_task(esclient.listen(port=4000))
+        self.loop.create_task(esclient.listen(port=5055))
 
         try:
             print("Subscribing to CHANNEL_FOLLOWS")
@@ -584,10 +587,18 @@ class Bot(commands.Bot ):
     #---------------------------------------
     async def event_join(self,channel,user):
       #Called when a channel event is detected?
-      print("")
-      print ("Event:  event_join")
-      print("Channel:",channel.name)
-      print("User:   ",user.name)
+      print("Channel:",channel.name, " User:",user.name)
+      
+
+      self.ChatUsers.append(user.name)
+
+      #Close Chat Terminal after X minutes of inactivity
+      elapsed_seconds = LED.GetElapsedSeconds(self.LastMessageReceived)
+
+      if(elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 10):
+        LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
+        #Empty chat user list
+        self.ChatUsers = []
       
       
 
@@ -828,7 +839,6 @@ class Bot(commands.Bot ):
 
         if (DataDict != 'NONE'):
           print("Patreon data")
-          found("Found: data")
           AttributesDict = DataDict.get('attributes','NONE')
 
         if(AttributesDict != 'NONE'):
