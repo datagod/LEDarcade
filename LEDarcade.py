@@ -1116,14 +1116,15 @@ def ClockTimer(seconds):
   else:
     return 0
   
-  
-def GetElapsedSeconds(starttime, seconds):
-  
-  elapsed_time = time.time() - starttime
-  elapsed_hours, rem = divmod(elapsed_time, 3600)
-  elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-  #print("Elapsed Time: {:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds),end="\r")
-  return elapsed_seconds
+
+
+#def GetElapsedSeconds(starttime, seconds):
+#  
+#  elapsed_time = time.time() - starttime
+#  elapsed_hours, rem = divmod(elapsed_time, 3600)
+#  elapsed_minutes, elapsed_seconds = divmod(rem, 60)
+#  #print("Elapsed Time: {:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds),end="\r")
+#  return elapsed_seconds
 
 
 def GetElapsedTime(StartTime,StopTime):
@@ -11965,7 +11966,7 @@ def CreateClockSprite(format=24,hhmmss=''):
 
 def CreateTimerSprite(hhmmss='00:00:00',ShowSeconds=False):   
   #HH:MM:SS
-  print("CreateTimerSprite: ",hhmmss)
+  #print("CreateTimerSprite: ",hhmmss)
   hh,mm,ss = hhmmss.split(':')
     
   #get ints
@@ -11990,9 +11991,9 @@ def CreateTimerSprite(hhmmss='00:00:00',ShowSeconds=False):
   TimerSprite.HHMMSS = hhmmss    
   TimerSprite.HHMM   = hhmmss[0:5]
  
-  print('CreateTimerSprite: ',hhmmss, h1,h2,m1,m2,s1,s2)
-  print("TimerSprite.HHMMSS:",TimerSprite.HHMMSS)
-  print("TimerSprite.HHMM:  ",TimerSprite.HHMM)
+  #print('CreateTimerSprite: ',hhmmss, h1,h2,m1,m2,s1,s2)
+  #print("TimerSprite.HHMMSS:",TimerSprite.HHMMSS)
+  #print("TimerSprite.HHMM:  ",TimerSprite.HHMM)
 
   return TimerSprite 
 
@@ -14129,14 +14130,8 @@ def DisplayLevel(level,rgb):
 
 
 def GetElapsedSeconds(starttime):
-  elapsed_time = time.time() - starttime
-  elapsed_hours   = elapsed_time / 3600
-  elapsed_minutes = elapsed_time / 60
-  elapsed_seconds = elapsed_time 
-  #print ("StartTime:",starttime,"Seconds:",seconds)
-  #print("Clock Timer: {:0>2}:{:0>2}:{:05.2f}".format(int(elapsed_hours),int(elapsed_minutes),elapsed_seconds),"Elapsed seconds:",elapsed_seconds, "Check seconds:",seconds)
-  
-  return elapsed_time
+  elapsed_seconds = time.time() - starttime
+  return elapsed_seconds
 
 
 
@@ -14394,30 +14389,30 @@ def ShowTitleScreen(
     r = random.randint(0,5)
     if (r == 0):
       #Zoom out
-      print('Random Zoom out')
+      #print('Random Zoom out')
       ZoomScreen(ScreenArray,32,256,Fade=True,ZoomSleep=0.01)
     elif (r == 1):
       #Shrink
-      print('Random Shrink')
+      #print('Random Shrink')
       ZoomScreen(ScreenArray,32,1,Fade=True,ZoomSleep=0.01)
     elif (r == 2):
       #Bounce1
-      print('Random Bounce1')
+      #print('Random Bounce1')
       ZoomScreen(ScreenArray,32,5,Fade=False,ZoomSleep=0.005)
       ZoomScreen(ScreenArray,6,128,Fade=True,ZoomSleep=0)
     elif (r == 3):
       #Bounce2
-      print('Random Bounce2')
+      #print('Random Bounce2')
       ZoomScreen(ScreenArray,32,42,Fade=False,ZoomSleep=0.015)
       ZoomScreen(ScreenArray,42,1,Fade=True,ZoomSleep=0.0)
     elif (r == 4):
-      print('FallingSand')
+      #print('FallingSand')
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=1)
 
     elif (r == 5):
-      print('Fade')
+      #print('Fade')
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
@@ -15669,8 +15664,8 @@ def UpdateTimerWithTransition(TimerSprite,BannerSprite,h=0,v=0,RGB=HighGreen,Sha
   global ScreenArray
   
   hh,mm,ss, HHMMSS = CalculateElapsedTime(StartDateTimeUTC)
-  #print ('DurationHHMMSS: ',HHMMSS,end="\r")
-  print ('DurationHHMMSS: ',HHMMSS)
+  print ('DurationHHMMSS: ',HHMMSS,end="\r")
+  #print ('DurationHHMMSS: ',HHMMSS)
   #print('HV:',h,v," ForceUpdate:",ForceUpdate)
   
   if (HHMMSS[0:5] != TimerSprite.HHMM or ForceUpdate == True):
@@ -16996,7 +16991,7 @@ async def DisplayTwitchTimer(
     TimerSprite = CreateTimerSprite(HHMMSS)
     Done        = False
     StartTime   = time.time()
-    print("RunMinutes:",RunMinutes)
+    #print("RunMinutes:",RunMinutes)
 
     if (CenterHoriz == True):
       h = round((HatWidth  // 2)  - ((TimerSprite.width * ZoomFactor) // 2) + 1)
@@ -17074,13 +17069,13 @@ async def DisplayTwitchTimer(
       #Check for animation time
       hh1,mmm1,ss1 = GetElapsedTime(LastAnimation,time.time())
       if(ss1 >= AnimationDelay):
-        print("animation delay")
+        #print("animation delay")
         LastAnimation = time.time()
 
         TimerSprite = UpdateTimerWithTransition(TimerSprite,BannerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
 
         r = random.randint(1,13)
-        print("random animation:",r)
+        #print("random animation:",r)
         if (r == 1):
           #ShowScreenArray(ScreenArray)
           #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
@@ -17455,7 +17450,7 @@ async def DisplayTwitchTimer(
       elapsed_h,m,s, HHMMSS = CalculateElapsedTime(StartDateTimeUTC)
       #h,m,s = GetElapsedTime(LastAnimation,time.time())
             
-      print("HHMMSS: ",HHMMSS)
+      #print("HHMMSS: ",HHMMSS)
 
       
 
@@ -17470,7 +17465,7 @@ async def DisplayTwitchTimer(
       #h,m,s = GetElapsedTime(StartTime,time.time())
       m = 0
 
-      print("M:",m," RunMinutes:",RunMinutes)
+      #print("M:",m," RunMinutes:",RunMinutes)
       if m >= RunMinutes:
         Done = True
         TwitchTimerOn = False
@@ -18332,6 +18327,12 @@ def CreateCreditImage(names):
 
 
 
+
+
+
+
+
+
 def ScrollCreditImage(CreditImage,ScrollSleep):
   image = Image.open(CreditImage)
   image = image.convert('RGB')
@@ -18344,6 +18345,159 @@ def ScrollCreditImage(CreditImage,ScrollSleep):
     ScreenCrop = image.crop((0,x,HatWidth,x + HatHeight))
     TheMatrix.SetImage(ScreenCrop,0,0)
     time.sleep(ScrollSleep)
+
+
+
+
+
+
+
+def ScrollImage(ImageName,ScrollSleep):
+  image = Image.open(ImageName)
+  image = image.convert('RGB')
+  width,height = image.size
+  print("ScrollImage:",ImageName)
+  print("Image width height:", width,height)
+
+  for x in range (0,height - HatHeight):
+    #print("Cropping image x:", x)
+    ScreenCrop = image.crop((0,x,HatWidth,x + HatHeight))
+    TheMatrix.SetImage(ScreenCrop,0,0)
+    time.sleep(ScrollSleep)
+
+
+
+
+
+def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
+  Buffer          = 32
+  GradientSection = 32
+  text_y_position = 0
+  text_padding    = 16
+  image_width     = 64
+  ColorG          = 52
+  TextRGB         = (225,225,225)
+  NameFontSize    = 11
+
+
+  #Create blank image
+  image_height    = (len(names) * text_padding) + (Buffer *2) + (GradientSection *2) + 13
+  img = Image.new("RGB", (image_width, image_height), color=(0,ColorG,0))
+  draw = ImageDraw.Draw(img)
+
+ 
+
+  #Draw buffer
+  for v in range (0,Buffer):
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,0,0))
+    text_y_position += 1
+
+  #draw gradient
+  for v in range (0,GradientSection):
+    NewColorG = round(ColorG / GradientSection * v)
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,NewColorG,0))
+    text_y_position += 1
+
+
+  #write header
+  Text = "WELCOME"
+  fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",12)
+  header_width, header_height = draw.textsize(Text, font=fnt)
+  draw.text(
+    ( 
+      (image_width - header_width) / 2,  text_y_position ),
+      Text,
+      font=fnt,
+      fill=(250,250,250)
+    )
+  text_y_position += text_padding
+  
+
+  #write names
+  for name in names:
+     NameLen = len(name)
+     #? not sure why this line is here
+     if(NameLen > 12):
+       name = name[0:11]
+       NameFontSize = 8
+     elif(NameLen >=10):
+       NameFontSize = 9
+     else:
+      NameFontSize = 11
+
+     fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",NameFontSize)
+     text_width, text_height = draw.textsize(name, font=fnt)
+
+     draw.text(
+       ( 
+         (image_width - text_width) / 2,  text_y_position ),
+         name,
+         font=fnt,
+         fill=TextRGB
+
+       )
+     text_y_position += text_padding
+  
+
+
+  #draw gradient
+  for v in range (GradientSection,0,-1):
+    NewColorG = round(ColorG / GradientSection * v)
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,NewColorG,0))
+    text_y_position += 1
+
+
+  #Draw buffer
+  for v in range (0,Buffer + 8):
+    draw.line((0,text_y_position,HatWidth,text_y_position),fill=(0,0,0))
+    text_y_position += 1
+
+  
+  img.save(ImageName)       
+
+
+
+def ScrollJustJoinedUser(Names=[],ImageName='JustJoined.png',ScrollSleep=0.05):
+  CreateJustJoinedImage(Names,ImageName)
+  ScrollImage(ImageName,ScrollSleep)
+
+  #clean up the screen using animations
+  MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+    PacManRightSprite,
+    Position      = 'top',
+    Vadjust       = 0 ,
+    direction     = "right",
+    StepsPerFrame = 3,
+    ZoomFactor    = 3,
+    sleep         = 0.02 
+    )
+
+
+  MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+    PacManLeftSprite,
+    Position      = 'middle',
+    Vadjust       = 0,
+    direction     = "left",
+    StepsPerFrame = 3,
+    ZoomFactor    = 3,
+    sleep         = 0.01
+    )
+
+  MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+    PacManRightSprite,
+    Position      = 'bottom',
+    Vadjust       = 0 ,
+    direction     = "right",
+    StepsPerFrame = 3,
+    ZoomFactor    = 3,
+    sleep         = 0.0 
+    )
+
+
+
+
+
+
 
 
 
