@@ -15,6 +15,16 @@
 # We write to the ScreenArray buffer so we know what is on the screen in case we
 # need to check it
 
+# Patreon - Multiprocessing - Port 5050
+# We launch a process to monitor port 5050 using Flask.  This is the port we have set up to 
+# listen for Patreon traffic.
+# Telebit:  5050.YourTelebitAddress.telebit.io
+#
+# Twitch - EventSub - Port 5051
+# Using Asyncio Client we start a task that subscribes to twitch events.
+# Telebit:  5051.YourTelebitAddress.telebit.io
+#
+
 
 #------------------------------------------------------------------------------
 #   _     _____ ____                          _                              --
@@ -18103,6 +18113,7 @@ def CalculateElapsedTime(StartDateTimeUTC):
 
 
 def ZoomImage(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
+
   global Canvas
 
   image = Image.open(ImageName)
@@ -18118,6 +18129,7 @@ def ZoomImage(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
     for ZoomFactor in range (ZoomStart,ZoomStop,Step):
       ResizedImage = image.resize(size=(ZoomFactor,ZoomFactor))
       TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(HatHeight/2 -(ZoomFactor/2)))
+      #TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(0))
       if (ZoomSleep > 0):
         time.sleep(ZoomSleep)
         
