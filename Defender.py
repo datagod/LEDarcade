@@ -1906,7 +1906,7 @@ def PlayDefender(GameMaxMinutes):
         OldHumanCount = HumanCount
         
         #this is just a test
-        Background = LED.CopySpriteToLayerZoom(HumanCountSprite,gx + 64,HumanCountV + 10,(5,0,5),(0,0,0),ZoomFactor = 2,Fill=True,Layer=Background)
+        #Background = LED.CopySpriteToLayerZoom(HumanCountSprite,gx + 64,HumanCountV + 10,(5,0,5),(0,0,0),ZoomFactor = 2,Fill=True,Layer=Background)
 
       else:
         Canvas = LED.CopySpriteToCanvasZoom(HumanCountSprite,HumanCountH,HumanCountV,(HumanCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)

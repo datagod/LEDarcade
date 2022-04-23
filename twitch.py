@@ -109,7 +109,7 @@ VIEW_COUNT        = ''
 BOT_CHANNEL       = ''
 BOT_CHAT_ACCESS_TOKEN      = ''
 BOT_EVENTSUB_ACCESS_TOKEN  = ''
-BOT_REFRESH_TOKEN = ''
+#BOT_REFRESH_TOKEN = ''
 BOT_CLIENT_ID     = ''
 BOT_CLIENT_SECRET = ''
 TWITCH_WEBHOOK_URL    = ''
@@ -1808,7 +1808,7 @@ def LoadConfigFiles():
   global BOT_CHANNEL
   global BOT_CHAT_ACCESS_TOKEN
   global BOT_EVENTSUB_ACCESS_TOKEN
-  global BOT_REFRESH_TOKEN
+  #global BOT_REFRESH_TOKEN
   global BOT_CLIENT_ID
   global BOT_CLIENT_SECRET
 
@@ -1867,7 +1867,7 @@ def LoadConfigFiles():
     BOT_CHANNEL        = KeyFile.get("KEYS","BOT_CHANNEL")  
     BOT_CHAT_ACCESS_TOKEN     = KeyFile.get("KEYS","BOT_CHAT_ACCESS_TOKEN")  
     BOT_EVENTSUB_ACCESS_TOKEN = KeyFile.get("KEYS","BOT_EVENTSUB_ACCESS_TOKEN")  
-    BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
+    #BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
     BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
     BOT_CLIENT_SECRET  = KeyFile.get("KEYS","BOT_CLIENT_SECRET")     
 
@@ -2044,7 +2044,7 @@ def CheckConfigFiles():
       KeyConfigFile.write("\n")
       KeyConfigFile.write("  BOT_CHAT_ACCESS_TOKEN  = abcde\n")
       KeyConfigFile.write("  BOT_EVENTSUB_ACCESS_TOKEN  = abcde\n")
-      KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
+      #KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
       KeyConfigFile.write("  BOT_CLIENT_ID     = 123456\n")
       KeyConfigFile.write("  BOT_CLIENT_SECRET = abcdefg\n")
       KeyConfigFile.write("\n")
