@@ -2154,7 +2154,7 @@ def TwitchEventSub(EventQueue):
   twitch = Twitch(CLOCKBOT_X_CLIENT_ID, CLOCKBOT_X_CLIENT_SECRET)
   twitch.authenticate_app([])
 
-  uid = twitch.get_users(logins=['datagod'])
+  uid = twitch.get_users(logins=[BROADCASTER_CHANNEL])
   BroadCasterUserID = uid['data'][0]['id']
   
 

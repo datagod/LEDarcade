@@ -21,7 +21,10 @@ ConnectionMessages = [
   "enter at your own risk",
   "Knock Knock...",
   "Imagine if you will a door...",
-  "Dave's not here!"
+  "Dave's not here!",
+  "DO NOT READ THIS MESSAGE",
+  "Access denied.  LOL.  Just kidding!"
+  
 
 
 ]
@@ -46,7 +49,9 @@ ChatStartMessages = [
   '/me is all wound up for a new day',
   '/me pumps up the volume',
   '/me arrives just in the nick of time',
-  'Hi.  I am a your friendly neighborhood chatbot'
+  'Hi.  I am a your friendly neighborhood chatbot',
+  'Hey, did you know you can interact with me and make cool animations appear on the LED display?  Type ?clock for commands.',
+  '/me really wants you to interact with it.  Type ?clock to see available commands.'
   
   
 ]
