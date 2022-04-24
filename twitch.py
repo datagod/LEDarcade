@@ -102,16 +102,17 @@ BROADCASTER_CHANNEL = ''
 CHANNEL_BIG_TEXT    = ''
 CHANNEL_LITTLE_TEXT = ''
 
-USER_ID           = ''
-BROADCASTER_ID    = ''
-PROFILE_IMAGE_URL = ''
-VIEW_COUNT        = ''
-BOT_CHANNEL       = ''
-BOT_CHAT_ACCESS_TOKEN      = ''
-BOT_EVENTSUB_ACCESS_TOKEN  = ''
+BROADCASTER_USER_ID = ''
+BROADCASTER_ID      = ''
+PROFILE_IMAGE_URL   = ''
+VIEW_COUNT          = ''
+THECLOCKBOT_CHANNEL = ''
+
+THECLOCKBOT_CHAT_ACCESS_TOKEN      = ''
+CLOCKBOT_X_ACCESS_TOKEN  = ''
 #BOT_REFRESH_TOKEN = ''
-BOT_CLIENT_ID     = ''
-BOT_CLIENT_SECRET = ''
+THECLOCKBOT_CLIENT_ID      = ''
+THECLOCKBOT_CLIENT_SECRET      = ''
 TWITCH_WEBHOOK_URL    = ''
 TWITCH_WEBHOOK_SECRET = ''
 
@@ -223,14 +224,14 @@ class Bot(commands.Bot ):
         # Note: the bot client id is from Twitch Dev TheClockBot.
         
         print("Bot Initialization")
-        print("BOT_CHANNEL:     ",BOT_CHANNEL)
-        print("BOT_CHAT_ACCESS_TOKEN:",BOT_CHAT_ACCESS_TOKEN)
+        print("THECLOCKBOT_CHANNEL:          ",THECLOCKBOT_CHANNEL)
+        print("THECLOCKBOT_CHAT_ACCESS_TOKEN:",THECLOCKBOT_CHAT_ACCESS_TOKEN)
       
        
         print("=====================================================")
         print("Initiating client object to connect to twitch")
         print("Initial_Channels:",BROADCASTER_CHANNEL)
-        super().__init__(token=BOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
+        super().__init__(token=THECLOCKBOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
         self.BotStartTime   = time.time()
         LastMessageReceived = time.time()
         print("=====================================================")
@@ -380,7 +381,7 @@ class Bot(commands.Bot ):
               self.LastStreamCheckTime = time.time()
 
             #self.__init__()
-            #super().__init__(token=BOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
+            #super().__init__(token=THECLOCKBOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
 
           
 
@@ -1162,8 +1163,8 @@ class Bot(commands.Bot ):
       API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + ctx.author.name
       head = {
       #'Client-ID': CLIENT_ID,
-      'Client-ID': BOT_CLIENT_ID,
-      'Authorization': 'Bearer ' +  BOT_CHAT_ACCESS_TOKEN
+      'Client-ID': THECLOCKBOT_CLIENT_ID,
+      'Authorization': 'Bearer ' +  THECLOCKBOT_ACCESS_TOKEN
       }
 
       #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1484,8 +1485,8 @@ def GetTwitchCounts():
     API_ENDPOINT = "https://api.twitch.tv/helix/streams?user_login=" + BROADCASTER_CHANNEL
     head = {
     #'Client-ID': CLIENT_ID,
-    'Client-ID': BOT_CLIENT_ID,
-    'Authorization': 'Bearer ' +  BOT_EVENTSUB_ACCESS_TOKEN
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
     print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
@@ -1515,11 +1516,11 @@ def GetTwitchCounts():
     # Follower Count
     #----------------------------------------
     print("Get FOLLOWER information")
-    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + USER_ID
+    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + BROADCASTER_USER_ID
     head = {
     #'Client-ID': CLIENT_ID,
-    'Client-ID': BOT_CLIENT_ID,
-    'Authorization': 'Bearer ' +  BOT_EVENTSUB_ACCESS_TOKEN
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1534,7 +1535,7 @@ def GetTwitchCounts():
 
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
-      AdditionalInfo = "Getting FOLLOWER info from API call" 
+      AdditionalInfo = "Getting FOLLOWER info from API call." + " (BROADCASTER_USER_ID:" + BROADCASTER_USER_ID + ")"
       LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
 
@@ -1545,8 +1546,8 @@ def GetTwitchCounts():
     API_ENDPOINT = "https://api.twitch.tv/helix/subscriptions?broadcaster_id=" + BROADCASTER_ID
     head = {
     #'Client-ID': CLIENT_ID,
-    'Client-ID': BOT_CLIENT_ID,
-    'Authorization': 'Bearer ' +  BOT_EVENTSUB_ACCESS_TOKEN
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1611,8 +1612,8 @@ def GetBasicTwitchInfo():
     API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + BROADCASTER_CHANNEL
     head = {
     #'Client-ID': CLIENT_ID,
-    'Client-ID': BOT_CLIENT_ID,
-    'Authorization': 'Bearer ' +  BOT_CHAT_ACCESS_TOKEN
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1630,6 +1631,8 @@ def GetBasicTwitchInfo():
       print("TWITCH ERROR - Could not extract data from CHANNEL info") 
       print("")
       print(results)
+      print(API_ENDPOINT)
+      print(head)
       print("========================================================")
       print("")
       print("")
@@ -1639,10 +1642,10 @@ def GetBasicTwitchInfo():
       print("Data found.  Processing...")
 
       try:
-        USER_ID           = results['data'][0]['id']
-        BROADCASTER_ID    = USER_ID
-        PROFILE_IMAGE_URL = results['data'][0]['profile_image_url']
-        VIEW_COUNT        = results['data'][0]['view_count']
+        BROADCASTER_USER_ID = results['data'][0]['id']
+        BROADCASTER_ID      = BROADCASTER_USER_ID
+        PROFILE_IMAGE_URL   = results['data'][0]['profile_image_url']
+        VIEW_COUNT          = results['data'][0]['view_count']
 
       except Exception as ErrorMessage:
         TraceMessage = traceback.format_exc()
@@ -1656,8 +1659,8 @@ def GetBasicTwitchInfo():
     API_ENDPOINT = "https://api.twitch.tv/helix/channels?broadcaster_id=" + BROADCASTER_ID
     head = {
     #'Client-ID': CLIENT_ID,
-    'Client-ID': BOT_CLIENT_ID,
-    'Authorization': 'Bearer ' +  BOT_CHAT_ACCESS_TOKEN
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1691,9 +1694,9 @@ def GetBasicTwitchInfo():
     API_ENDPOINT = "https://api.twitch.tv/helix/hypetrain/events?broadcaster_id=" + BROADCASTER_ID
     head = {
     #'Client-ID': CLIENT_ID,
-    'Client-ID': BOT_CLIENT_ID,
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
 
-    'Authorization': 'Bearer ' +  BOT_CHAT_ACCESS_TOKEN
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1803,14 +1806,14 @@ def LoadConfigFiles():
   global CHANNEL_BIG_TEXT
   global CHANNEL_LITTLE_TEXT
   
-  global USER_ID
+  global BROADCASTER_USER_ID
   global BROADCASTER_ID
-  global BOT_CHANNEL
-  global BOT_CHAT_ACCESS_TOKEN
-  global BOT_EVENTSUB_ACCESS_TOKEN
+  global THECLOCKBOT_CHANNEL
+  global THECLOCKBOT_CHAT_ACCESS_TOKEN
+  global CLOCKBOT_X_ACCESS_TOKEN
   #global BOT_REFRESH_TOKEN
-  global BOT_CLIENT_ID
-  global BOT_CLIENT_SECRET
+  global CLOCKBOT_X_CLIENT_ID
+  global CLOCKBOT_X_CLIENT_SECRET
 
   global PATREON_CLIENT_ID
   global PATREON_CLIENT_SECRET
@@ -1841,7 +1844,7 @@ def LoadConfigFiles():
     CHANNEL_BIG_TEXT    = KeyFile.get("KEYS","CHANNEL_BIG_TEXT")
     CHANNEL_LITTLE_TEXT = KeyFile.get("KEYS","CHANNEL_LITTLE_TEXT")
 
-    USER_ID                 = KeyFile.get("KEYS","USER_ID")        #Same as Broadcaster_ID
+    BROADCASTER_USER_ID     = KeyFile.get("KEYS","BROADCASTER_USER_ID")        #Same as Broadcaster_ID
     BROADCASTER_ID          = KeyFile.get("KEYS","BROADCASTER_ID") #Same as UserID
     #LEDARCADE_APP_ACCESS_TOKEN  = KeyFile.get("KEYS","LEDARCADE_APP_ACCESS_TOKEN")  
     #REFRESH_TOKEN           = KeyFile.get("KEYS","REFRESH_TOKEN")
@@ -1864,18 +1867,18 @@ def LoadConfigFiles():
 
     #Bot specific connection info
     #in case we want a bot to connect separately, or to other channels
-    BOT_CHANNEL        = KeyFile.get("KEYS","BOT_CHANNEL")  
-    BOT_CHAT_ACCESS_TOKEN     = KeyFile.get("KEYS","BOT_CHAT_ACCESS_TOKEN")  
-    BOT_EVENTSUB_ACCESS_TOKEN = KeyFile.get("KEYS","BOT_EVENTSUB_ACCESS_TOKEN")  
+    THECLOCKBOT_CHANNEL       = KeyFile.get("KEYS","THECLOCKBOT_CHANNEL")  
+    THECLOCKBOT_CHAT_ACCESS_TOKEN     = KeyFile.get("KEYS","THECLOCKBOT_CHAT_ACCESS_TOKEN")  
+    CLOCKBOT_X_ACCESS_TOKEN = KeyFile.get("KEYS","CLOCKBOT_X_ACCESS_TOKEN")  
     #BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
-    BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
-    BOT_CLIENT_SECRET  = KeyFile.get("KEYS","BOT_CLIENT_SECRET")     
+    CLOCKBOT_X_CLIENT_ID      = KeyFile.get("KEYS","CLOCKBOT_X_CLIENT_ID")     
+    CLOCKBOT_X_CLIENT_SECRET  = KeyFile.get("KEYS","CLOCKBOT_X_CLIENT_SECRET")     
 
 
     print("BROADCASTER_CHANNEL: ",BROADCASTER_CHANNEL)   
     print("CHANNEL_BIG_TEXT:    ",CHANNEL_BIG_TEXT)   
     print("CHANNEL_LITTLE_TEXT: ",CHANNEL_LITTLE_TEXT)   
-    print("USER_ID:             ",USER_ID)
+    print("BROADCASTER_USER_ID: ",BROADCASTER_USER_ID)
     print("BROADCASTER_ID:      ",BROADCASTER_ID)
     #print("LEDARCADE_APP_CLIENT_ID: ",LEDARCADE_APP_CLIENT_ID)
     #print("LEDARCADE_APP_CLIENT_SECRET: ",LEDARCADE_APP_CLIENT_SECRET)
@@ -1890,9 +1893,9 @@ def LoadConfigFiles():
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
     #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
 
-    print("BOT_CHANNEL:           ",BOT_CHANNEL)   
-    print("BOT_CLIENT_ID:         ",BOT_CLIENT_ID)
-    print("BOT_CLIENT_SECRET:     ",BOT_CLIENT_SECRET)
+    print("THECLOCKBOT_CHANNEL:   ",THECLOCKBOT_CHANNEL)   
+    print("CLOCKBOT_X_CLIENT_ID:         ",CLOCKBOT_X_CLIENT_ID)
+    print("CLOCKBOT_X_CLIENT_SECRET:     ",CLOCKBOT_X_CLIENT_SECRET)
     print("TWITCH_WEBHOOK_URL:    ",TWITCH_WEBHOOK_URL)
     print("TWITCH_WEBHOOK_SECRET: ",TWITCH_WEBHOOK_SECRET)
     print("PATREON_WEBHOOK_URL:   ",PATREON_WEBHOOK_URL)
@@ -2031,8 +2034,8 @@ def CheckConfigFiles():
       KeyConfigFile.write("  CHANNEL_BIG_TEXT    = LED\n")
       KeyConfigFile.write("  CHANNEL_LITTLE_TEXT = ARCADE\n")
       KeyConfigFile.write("\n")
-      KeyConfigFile.write("  USER_ID        = 12345\n")
-      KeyConfigFile.write("  BROADCASTER_ID = 12345 (same as UserID)\n")
+      KeyConfigFile.write("  BROADCASTER_USER_ID = 12345\n")
+      KeyConfigFile.write("  BROADCASTER_ID      = 12345 (same as BROADCASTER_UserID)\n")
       #KeyConfigFile.write("  LEDARCADE_APP_ACCESS_TOKEN = abcdefg\n")
       #KeyConfigFile.write("  REFRESH_TOKEN  = hijklmn\n")
       #KeyConfigFile.write("  LEDARCADE_APP_CLIENT_ID     = GetThisFromLEDARCADE_APPConsole\n")
@@ -2042,11 +2045,11 @@ def CheckConfigFiles():
       KeyConfigFile.write("  TWITCH_WEBHOOK_URL    = https://eventsub.something.packetriot.net\n")
       KeyConfigFile.write("  TWITCH_WEBHOOK_SECRET = SomeSecretYouMakeUp\n")
       KeyConfigFile.write("\n")
-      KeyConfigFile.write("  BOT_CHAT_ACCESS_TOKEN  = abcde\n")
-      KeyConfigFile.write("  BOT_EVENTSUB_ACCESS_TOKEN  = abcde\n")
+      KeyConfigFile.write("  THECLOCKBOT_CHAT_ACCESS_TOKEN  = abcde\n")
+      KeyConfigFile.write("  CLOCKBOT_X_ACCESS_TOKEN  = abcde\n")
       #KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
-      KeyConfigFile.write("  BOT_CLIENT_ID     = 123456\n")
-      KeyConfigFile.write("  BOT_CLIENT_SECRET = abcdefg\n")
+      KeyConfigFile.write("  CLOCKBOT_X_CLIENT_ID     = 123456\n")
+      KeyConfigFile.write("  CLOCKBOT_X_CLIENT_SECRET = abcdefg\n")
       KeyConfigFile.write("\n")
       KeyConfigFile.write("  PATREON_CLIENT_ID             = ABCDE\n")
       KeyConfigFile.write("  PATREON_CLIENT_SECRET         = EFJHI\n")
@@ -2148,7 +2151,7 @@ async def on_channel_cheer(data:dict):
 def TwitchEventSub(EventQueue):
 
   
-  twitch = Twitch(BOT_CLIENT_ID, BOT_CLIENT_SECRET)
+  twitch = Twitch(CLOCKBOT_X_CLIENT_ID, CLOCKBOT_X_CLIENT_SECRET)
   twitch.authenticate_app([])
 
   uid = twitch.get_users(logins=['datagod'])
@@ -2156,7 +2159,7 @@ def TwitchEventSub(EventQueue):
   
 
   # basic setup, will run on port 8080 and a reverse proxy takes care of the https and certificate
-  hook = EventSub(TWITCH_WEBHOOK_URL, BOT_CLIENT_ID, 5051, twitch)
+  hook = EventSub(TWITCH_WEBHOOK_URL, CLOCKBOT_X_CLIENT_ID, 5051, twitch)
   
   # unsubscribe from all to get a clean slate
   hook.unsubscribe_all()
