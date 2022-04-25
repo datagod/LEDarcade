@@ -111,8 +111,8 @@ THECLOCKBOT_CHANNEL = ''
 THECLOCKBOT_CHAT_ACCESS_TOKEN      = ''
 CLOCKBOT_X_ACCESS_TOKEN  = ''
 #BOT_REFRESH_TOKEN = ''
-THECLOCKBOT_CLIENT_ID      = ''
-THECLOCKBOT_CLIENT_SECRET      = ''
+THECLOCKBOT_CLIENT_ID       = ''
+THECLOCKBOT_CLIENT_SECRET   = ''
 TWITCH_WEBHOOK_URL    = ''
 TWITCH_WEBHOOK_SECRET = ''
 
@@ -226,6 +226,7 @@ class Bot(commands.Bot ):
         # Note: the bot client id is from Twitch Dev TheClockBot.
         
         print("Bot Initialization")
+        print("THECLOCKBOT_CLIENT_ID:        ",THECLOCKBOT_CLIENT_ID)
         print("THECLOCKBOT_CHANNEL:          ",THECLOCKBOT_CHANNEL)
         print("THECLOCKBOT_CHAT_ACCESS_TOKEN:",THECLOCKBOT_CHAT_ACCESS_TOKEN)
       
@@ -1195,12 +1196,13 @@ class Bot(commands.Bot ):
     async def me(self, ctx: commands.Context):
       
       
+      print("THECLOCKBOT_CLIENT_ID:",THECLOCKBOT_CLIENT_ID)
 
       print("Get user profile info:",ctx.author.name)
       API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + ctx.author.name
       head = {
       #'Client-ID': CLIENT_ID,
-      'Client-ID': THECLOCKBOT_CLIENT_ID,
+      'Client-ID':  THECLOCKBOT_CLIENT_ID,
       'Authorization': 'Bearer ' +  THECLOCKBOT_CHAT_ACCESS_TOKEN
       }
 
@@ -1210,6 +1212,7 @@ class Bot(commands.Bot ):
       pprint.pprint(results)
       #print(" ")
 
+      UserProfileURL = ''
       DataDict = results.get('data','NONE')
       if (DataDict != 'NONE'):
 
@@ -1230,12 +1233,13 @@ class Bot(commands.Bot ):
         message = "Lets take a closer look at " + ctx.author.name
         await self.Channel.send(message)
 
-      LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
-      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
-      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
-      time.sleep(3)
-      LED.SweepClean()
+      if (UserProfileURL != ""):
+        LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
+        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
+        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
+        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
+        time.sleep(3)
+        LED.SweepClean()
 
 
 
@@ -1847,6 +1851,7 @@ def LoadConfigFiles():
   
   global BROADCASTER_USER_ID
   global BROADCASTER_ID
+  global THECLOCKBOT_CLIENT_ID
   global THECLOCKBOT_CHANNEL
   global THECLOCKBOT_CHAT_ACCESS_TOKEN
   global CLOCKBOT_X_ACCESS_TOKEN
@@ -1906,6 +1911,7 @@ def LoadConfigFiles():
 
     #Bot specific connection info
     #in case we want a bot to connect separately, or to other channels
+    THECLOCKBOT_CLIENT_ID     = KeyFile.get("KEYS","THECLOCKBOT_CLIENT_ID")  
     THECLOCKBOT_CHANNEL       = KeyFile.get("KEYS","THECLOCKBOT_CHANNEL")  
     THECLOCKBOT_CHAT_ACCESS_TOKEN     = KeyFile.get("KEYS","THECLOCKBOT_CHAT_ACCESS_TOKEN")  
     CLOCKBOT_X_ACCESS_TOKEN = KeyFile.get("KEYS","CLOCKBOT_X_ACCESS_TOKEN")  
@@ -1932,6 +1938,7 @@ def LoadConfigFiles():
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
     #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
 
+    print("THECLOCKBOT_CLIENT_ID:   ",THECLOCKBOT_CLIENT_ID)   
     print("THECLOCKBOT_CHANNEL:   ",THECLOCKBOT_CHANNEL)   
     print("CLOCKBOT_X_CLIENT_ID:         ",CLOCKBOT_X_CLIENT_ID)
     print("CLOCKBOT_X_CLIENT_SECRET:     ",CLOCKBOT_X_CLIENT_SECRET)
