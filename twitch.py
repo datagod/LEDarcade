@@ -1207,10 +1207,12 @@ class Bot(commands.Bot ):
       #print ("URL: ",API_ENDPOINT, 'data:',head)
       r = requests.get(url = API_ENDPOINT, headers = head)
       results = r.json()
-      #pprint.pprint(results)
+      pprint.pprint(results)
       #print(" ")
 
-      if results['data']:
+      DataDict = results.get('data','NONE')
+      if (DataDict != 'NONE'):
+
         print("Data found.  Processing...")
 
         try:
