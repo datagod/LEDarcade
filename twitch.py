@@ -203,7 +203,9 @@ class Bot(commands.Bot ):
     ChatUsers           = []
     SecondsToWaitChat   = 30
     LastStreamCheckTime = time.time()
+    LastChatInfoTime    = time.time()
     MinutesToWaitBeforeCheckingStream = 1       #check the stream this often
+    MinutesToWaitBeforeChatInfo       = 10      #send info message to viewers about clock commands
     MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
     #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
@@ -294,6 +296,14 @@ class Bot(commands.Bot ):
       #  await self.DisplayRandomConnectionMessage()
 
         
+    #---------------------------------------
+    #- Send Chat Message                  --
+    #---------------------------------------
+    async def SendChatMessage(self,Message):
+      await self.Channel.send(Message)
+    
+
+
 
 
     #---------------------------------------
@@ -316,7 +326,6 @@ class Bot(commands.Bot ):
           
           #asyncio.sleep suspends the current task, allowing other processes to run
           await asyncio.sleep(1)
-
 
           #Check the event queue for incoming data
           await self.ReadEventQueue()
@@ -370,6 +379,13 @@ class Bot(commands.Bot ):
             await self.DisplayDigitalClock()
 
                  
+
+          #Send a chat message every X minutes to inform viewers of help commands
+          h,m,s = LED.GetElapsedTime(self.LastChatInfoTime,time.time())
+          if (m >= self.MinutesToWaitBeforeChatInfo):
+            await self.SendChatMessage("Don't forget to interact with the LED display.  Type ?clock for a list of commands.") 
+            self.LastChatInfoTime = time.time()
+          
 
           
           
@@ -886,6 +902,27 @@ class Bot(commands.Bot ):
               )                    
 
 
+      elif (MessageType == 'EVENTSUB_HYPE_TRAIN_BEGIN'):
+          print("HYPE TRAIN BEGIN")
+          pprint.pprint(Message)
+          LED.StarryNightDisplayText(
+            Text1 = "HYPE TRAIN STARTED!",
+            Text2 = "HYPE TRAIN STARTED",
+            Text3 = "More details soon", 
+            RunSeconds = 30
+            )                    
+
+
+
+      elif (MessageType == 'EVENTSUB_HYPE_TRAIN_END'):
+          print("HYPE TRAIN END")
+          pprint.pprint(Message)
+          LED.StarryNightDisplayText(
+            Text1 = "HYPE TRAIN ENDED",
+            Text2 = "HYPE TRAIN ENDED",
+            Text3 = "How sad for us!", 
+            RunSeconds = 30
+            )                    
 
 
 
@@ -1164,7 +1201,7 @@ class Bot(commands.Bot ):
       head = {
       #'Client-ID': CLIENT_ID,
       'Client-ID': THECLOCKBOT_CLIENT_ID,
-      'Authorization': 'Bearer ' +  THECLOCKBOT_ACCESS_TOKEN
+      'Authorization': 'Bearer ' +  THECLOCKBOT_CHAT_ACCESS_TOKEN
       }
 
       #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -2144,6 +2181,13 @@ async def on_channel_cheer(data:dict):
     EventQueue.put(('EVENTSUB_CHEER',data))
 
 
+async def on_hype_train_begin(data:dict):
+    EventQueue.put(('EVENTSUB_HYPE_TRAIN_BEGIN',data))
+
+async def on_hype_train_end(data:dict):
+    EventQueue.put(('EVENTSUB_HYPE_TRAIN_END',data))
+
+
 #----------------------------------------
 #-- MULTIPROCESSING Functions          --
 #----------------------------------------
@@ -2166,21 +2210,31 @@ def TwitchEventSub(EventQueue):
   
   # start client
   hook.start()
-  print("EVENTSUB ")
-  print('EVENTSUB: --subscribing to hooks--')
+  print("EVENTSUB: ")
+  print("EVENTSUB: ")
+  print("EVENTSUB: ")
+  print('EVENTSUB: --Subscribing to EVENTSUB hooks--')
  
   print("EVENTSUB: Channel follows")
   hook.listen_channel_follow(BroadCasterUserID, on_follow)
  
   print("EVENTSUB: Channel subscriptions")
   hook.listen_channel_subscribe(BroadCasterUserID, on_subscribe)
-  #hook.listen_channel_points_custom_reward_redemption_add(BroadCasterUserID, on_channel_points_custom_reward_redemption_add)
  
   print("EVENTSUB: Bits thrown")
-  #hook.listen_extension_bits_transaction_create(BroadCasterUserID,on_bits_transaction_create)
   hook.listen_channel_cheer(BroadCasterUserID,on_channel_cheer)
-  print ('EVENTSUB: ------------------------------')
-  print ('EVENTSUB: ')
+ 
+  print("EVENTSUB: Hype Train begin")
+  hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
+ 
+  print("EVENTSUB: Hype Train end")
+  hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_begin)
+
+ 
+  print('EVENTSUB: --------------------------------')
+  print('EVENTSUB: ')
+  print('EVENTSUB: ')
+  print('EVENTSUB: ')
   
 
 
