@@ -865,14 +865,14 @@ class Bot(commands.Bot ):
       elif (MessageType == 'EVENTSUB_CHEER'):
         EventDict = Message.get('event','NONE')
         if(EventDict != "NONE"):
-          ProductDict = EventDict.get('product','NONE')
+          BitsDict = EventDict.get('bits','NONE')
           print ("*****************************************************")
-          print(ProductDict)
+          print(EventDict)
           #BITS
-          if(ProductDict != "NONE"):
-            print("Found: product")
-            BitsThrown = Message['event']['product']['bits']
-            TwitchUser = Message['event']['user_login']
+          if(BitsDict != "NONE"):
+            print("Found: bits")
+            BitsThrown = Message['event']['bits']
+            TwitchUser = Message['event']['user_name']
             print ("Found: bits")
             print("Bits thrown:",BitsThrown)
 
@@ -883,7 +883,7 @@ class Bot(commands.Bot ):
               RunSeconds = 40
               )                    
 
-        #CHANNEL POINTS  (not implemented yet)
+        #CHANNEL POINTS
         elif (MessageType == 'EVENTSUB_POINTS'):
           EventDict = Message.get('event','NONE')
           RewardDict = EventDict.get('reward','NONE')
