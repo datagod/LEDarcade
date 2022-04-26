@@ -1178,9 +1178,11 @@ class Bot(commands.Bot ):
         message = "Now displaying the profile pic for this channel."
         await self.Channel.send(message)
 
+      LED.TheMatrix.brightness = 25
       LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
+      LED.TheMatrix.brightness = 100
       time.sleep(3)
       LED.SweepClean()
 
@@ -1234,12 +1236,14 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
 
       if (UserProfileURL != ""):
+        LED.TheMatrix.brightness = 25
         LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
         LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
         LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
         LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
         time.sleep(3)
         LED.SweepClean()
+        LED.TheMatrix.brightness = 100
 
 
 
@@ -2167,7 +2171,9 @@ def DisplayPatreon():
 
 
   LED.CreateCreditImage(CreditNames)
+  LED.TheMatrix.brightness = 25
   LED.ScrollCreditImage("credits.png",ScrollSleep=0.04)
+  LED.TheMatrix.brightness = 100
 
 
 

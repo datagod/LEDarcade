@@ -18347,9 +18347,7 @@ def CreateCreditImage(names):
 
 def ScrollCreditImage(CreditImage,ScrollSleep):
   
-  global TheMatrix
 
-  TheMatrix.brightness = 25
 
   image = Image.open(CreditImage)
   image = image.convert('RGB')
@@ -18363,7 +18361,6 @@ def ScrollCreditImage(CreditImage,ScrollSleep):
     TheMatrix.SetImage(ScreenCrop,0,0)
     time.sleep(ScrollSleep)
 
-  TheMatrix.brightness = 100
 
 
 
@@ -18372,8 +18369,6 @@ def ScrollCreditImage(CreditImage,ScrollSleep):
 
 def ScrollImage(ImageName,ScrollSleep):
 
-  global TheMatrix  
-  TheMatrix.brightness = 25
 
   
   image = Image.open(ImageName)
@@ -18388,7 +18383,6 @@ def ScrollImage(ImageName,ScrollSleep):
     TheMatrix.SetImage(ScreenCrop,0,0)
     time.sleep(ScrollSleep)
 
-  TheMatrix.brightness = 100
 
 
 
@@ -18483,10 +18477,8 @@ def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
 
 def ScrollJustJoinedUser(Names=[],ImageName='JustJoined.png',ScrollSleep=0.05):
   
-  TheMatrix.brightness = 25
   CreateJustJoinedImage(Names,ImageName)
   ScrollImage(ImageName,ScrollSleep)
-  TheMatrix.brightness = 100
   
   
   
