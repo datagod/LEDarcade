@@ -862,7 +862,53 @@ class Bot(commands.Bot ):
               )                    
 
 
-      #BITS THROWN / CHEER
+
+      #SUBSCRIPTION GIFT
+      elif (MessageType == 'EVENTSUB_SUBSCRIBE'):
+        EventDict = Message.get('event','NONE')
+        if(EventDict != "NONE"):
+          NameDict = EventDict.get('user_name','NONE')
+          print ("*****************************************************")
+          print(NameDict)
+          #BITS
+          if(NameDict != "NONE"):
+            print("Found: user_name")
+            TwitchUser = Message['event']['user_name']
+            print("user_name:",user_name)
+
+            LED.StarryNightDisplayText(
+              Text1 = str(BitsThrown) + "TwitchUser",
+              Text2 = "NEW SUBSCRIBER!!",
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 60
+              )                    
+
+
+
+
+
+      #SUBSCRIPTION GIFT
+      elif (MessageType == 'EVENTSUB_SUBSCRIPTION_GIFT'):
+        EventDict = Message.get('event','NONE')
+        if(EventDict != "NONE"):
+          NameDict = EventDict.get('user_name','NONE')
+          print ("*****************************************************")
+          print(NameDict)
+          #BITS
+          if(NameDict != "NONE"):
+            print("Found: user_name")
+            TwitchUser = Message['event']['user_name']
+            print("user_name:",user_name)
+
+            LED.StarryNightDisplayText(
+              Text1 = str(BitsThrown) + "TwitchUser",
+              Text2 = "SUB GIFTED!!",
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 60
+              )                    
+
+
+
       elif (MessageType == 'EVENTSUB_CHEER'):
         EventDict = Message.get('event','NONE')
         if(EventDict != "NONE"):
@@ -883,6 +929,8 @@ class Bot(commands.Bot ):
               Text3 = "THANK YOU FOR YOUR SUPPORT", 
               RunSeconds = 40
               )                    
+
+
 
         #CHANNEL POINTS
         elif (MessageType == 'EVENTSUB_POINTS'):
@@ -911,7 +959,7 @@ class Bot(commands.Bot ):
             Text1 = "HYPE TRAIN STARTED!",
             Text2 = "HYPE TRAIN STARTED",
             Text3 = "More details soon", 
-            RunSeconds = 30
+            RunSeconds = 60
             )                    
 
 
@@ -923,7 +971,7 @@ class Bot(commands.Bot ):
             Text1 = "HYPE TRAIN ENDED",
             Text2 = "HYPE TRAIN ENDED",
             Text3 = "How sad for us!", 
-            RunSeconds = 30
+            RunSeconds = 60
             )                    
 
 
@@ -2204,6 +2252,10 @@ async def on_hype_train_begin(data:dict):
 async def on_hype_train_end(data:dict):
     EventQueue.put(('EVENTSUB_HYPE_TRAIN_END',data))
 
+async def on_channel_subscription_gift(data:dict):
+    EventQueue.put(('EVENTSUB_SUBSCRIPTION_GIFT',data))
+
+
 
 #----------------------------------------
 #-- MULTIPROCESSING Functions          --
@@ -2245,7 +2297,10 @@ def TwitchEventSub(EventQueue):
   hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
  
   print("EVENTSUB: Hype Train end")
-  hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_begin)
+  hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_end)
+
+  print("EVENTSUB: subscription gifted")
+  hook.listen_channel_subscription_gift(BroadCastUserID,on_channel_subscription_gift)
 
  
   print('EVENTSUB: --------------------------------')
