@@ -108,7 +108,7 @@ PROFILE_IMAGE_URL   = ''
 VIEW_COUNT          = ''
 THECLOCKBOT_CHANNEL = ''
 
-THECLOCKBOT_CHAT_ACCESS_TOKEN      = ''
+THECLOCKBOT_CHAT_ACCESS_TOKEN  = ''
 CLOCKBOT_X_ACCESS_TOKEN  = ''
 #BOT_REFRESH_TOKEN = ''
 THECLOCKBOT_CLIENT_ID       = ''
@@ -152,7 +152,8 @@ HypeTrainTotal       = ''
 
 HatHeight = 32
 HatWidth  = 64
-
+StreamBrightness = 20
+MaxBrightness    = 100
 
   
 
@@ -1168,7 +1169,7 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
 
 
-      LED.TheMatrix.brightness = 25
+      LED.TheMatrix.brightness = StreamBrightness
       LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
@@ -1183,7 +1184,7 @@ class Bot(commands.Bot ):
       LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
-      LED.TheMatrix.brightness = 100
+      LED.TheMatrix.brightness = MaxBrightness
       time.sleep(3)
       LED.SweepClean()
 
@@ -1237,14 +1238,14 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
 
       if (UserProfileURL != ""):
-        LED.TheMatrix.brightness = 25
+        LED.TheMatrix.brightness = StreamBrightness
         LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
         LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
         LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
         LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
         time.sleep(3)
+        LED.TheMatrix.brightness = MaxBrightness
         LED.SweepClean()
-        LED.TheMatrix.brightness = 100
 
 
 
@@ -2172,9 +2173,9 @@ def DisplayPatreon():
 
 
   LED.CreateCreditImage(CreditNames)
-  LED.TheMatrix.brightness = 25
+  LED.TheMatrix.brightness = StreamBrightness
   LED.ScrollCreditImage("credits.png",ScrollSleep=0.04)
-  LED.TheMatrix.brightness = 100
+  LED.TheMatrix.brightness = MaxBrightness
 
 
 
