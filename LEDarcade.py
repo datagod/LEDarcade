@@ -18347,6 +18347,8 @@ def CreateCreditImage(names):
 
 def ScrollCreditImage(CreditImage,ScrollSleep):
   
+  global TheMatrix
+
   TheMatrix.brightness = 25
 
   image = Image.open(CreditImage)
@@ -18369,6 +18371,11 @@ def ScrollCreditImage(CreditImage,ScrollSleep):
 
 
 def ScrollImage(ImageName,ScrollSleep):
+
+  global TheMatrix  
+  TheMatrix.brightness = 25
+
+  
   image = Image.open(ImageName)
   image = image.convert('RGB')
   width,height = image.size
@@ -18381,6 +18388,7 @@ def ScrollImage(ImageName,ScrollSleep):
     TheMatrix.SetImage(ScreenCrop,0,0)
     time.sleep(ScrollSleep)
 
+  TheMatrix.brightness = 100
 
 
 
