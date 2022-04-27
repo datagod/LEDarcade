@@ -855,10 +855,10 @@ class Bot(commands.Bot ):
             FollowedBy = Message['event']['user_name']
             
             LED.StarryNightDisplayText(
-              Text1 = "NEW FOLLOWER!",
-              Text2 = FollowedBy,
+              Text1 = FollowedBy,
+              Text2 = "NEW FOLLOWER!!",
               Text3 = "THANK YOU FOR YOUR SUPPORT", 
-              RunSeconds = 30
+              RunSeconds = 60
               )                    
 
 
@@ -902,7 +902,7 @@ class Bot(commands.Bot ):
 
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + "TwitchUser",
-              Text2 = "SUB GIFTED!!",
+              Text2 = "GAVE A SUBSCRIPTION!!",
               Text3 = "THANK YOU FOR YOUR SUPPORT", 
               RunSeconds = 60
               )                    
@@ -951,7 +951,7 @@ class Bot(commands.Bot ):
               RunSeconds = 40
               )                    
 
-
+      #HYPE TRAIN BEGIN
       elif (MessageType == 'EVENTSUB_HYPE_TRAIN_BEGIN'):
           print("HYPE TRAIN BEGIN")
           pprint.pprint(Message)
@@ -962,8 +962,45 @@ class Bot(commands.Bot ):
             RunSeconds = 60
             )                    
 
+      #HYPE TRAIN PROGRESS
+      elif (MessageType == 'EVENTSUB_HYPE_TRAIN_PROGRESS'):
+          print("HYPE TRAIN PROGRESS")
+          EventDict = Message.get('event','NONE')
+          if(EventDict != 'NONE'):
+            HypeLevel = Message['event']['level']
+            HypeTotal = Message['event']['total']
+            HypeGoal = Message['event']['goal']
+            print("HypeTrainLevel: ",HypeLevel)
+            print("HypeTrainTotal: ",HypeTotal)
+            print("HypeTrainGoal: ",HypeGoal)
+            pprint.pprint(Message)
+
+          LED.ShowTitleScreen(
+            BigText             = "LEVEL",
+            BigTextRGB          = LED.HighRed,
+            BigTextShadowRGB    = LED.ShadowRed,
+            BigTextZoom         = 3, 
+            BigText2            = '',
+            BigText2RGB         = HighBlue,
+            BigText2ShadowRGB   = ShadowBlue,
+
+          
+            ScrollText          = 'HYPE TRAIN WOO WOO',
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 10,           # time in seconds to wait before exiting 
+            ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+
+          LED.StarryNightDisplayText(
+            Text1 = "HYPE TRAIN POINTS " + HypeTotal ,
+            Text2 = HypeTotal,
+            Text3 = HypeGoal + " points needed to reach the next leve", 
+            RunSeconds = 60
+            )                    
 
 
+      #HYPE TRAIN END
       elif (MessageType == 'EVENTSUB_HYPE_TRAIN_END'):
           print("HYPE TRAIN END")
           pprint.pprint(Message)
@@ -2249,6 +2286,10 @@ async def on_channel_cheer(data:dict):
 async def on_hype_train_begin(data:dict):
     EventQueue.put(('EVENTSUB_HYPE_TRAIN_BEGIN',data))
 
+async def on_hype_train_progress(data:dict):
+    EventQueue.put(('EVENTSUB_HYPE_TRAIN_PROGRESS',data))
+
+
 async def on_hype_train_end(data:dict):
     EventQueue.put(('EVENTSUB_HYPE_TRAIN_END',data))
 
@@ -2295,12 +2336,16 @@ def TwitchEventSub(EventQueue):
  
   print("EVENTSUB: Hype Train begin")
   hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
- 
+
+  print("EVENTSUB: Hype Train progress")
+  hook.listen_hype_train_progress(BroadCasterUserID, on_hype_train_progress)
+
+
   print("EVENTSUB: Hype Train end")
   hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_end)
 
   print("EVENTSUB: subscription gifted")
-  hook.listen_channel_subscription_gift(BroadCastUserID,on_channel_subscription_gift)
+  hook.listen_channel_subscription_gift(BroadCasterUserID,on_channel_subscription_gift)
 
  
   print('EVENTSUB: --------------------------------')
