@@ -607,8 +607,8 @@ class Bot(commands.Bot ):
       elapsed_seconds = LED.GetElapsedSeconds(self.LastMessageReceived)
 
       if(StreamActive == True and 
-        LED.TheMatrix.brightness = StreamBrightness
         ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 10))):
+        LED.TheMatrix.brightness = StreamBrightness
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
         self.ChatUsers = []
