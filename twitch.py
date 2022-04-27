@@ -152,8 +152,8 @@ HypeTrainTotal       = ''
 
 HatHeight = 32
 HatWidth  = 64
-StreamBrightness = 15
-MaxBrightness    = 100
+StreamBrightness = 20
+MaxBrightness    = 90
 
   
 
