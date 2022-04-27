@@ -152,7 +152,7 @@ HypeTrainTotal       = ''
 
 HatHeight = 32
 HatWidth  = 64
-StreamBrightness = 20
+StreamBrightness = 15
 MaxBrightness    = 100
 
   
@@ -607,10 +607,13 @@ class Bot(commands.Bot ):
       elapsed_seconds = LED.GetElapsedSeconds(self.LastMessageReceived)
 
       if(StreamActive == True and 
+        LED.TheMatrix.brightness = StreamBrightness
         ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 10))):
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
         self.ChatUsers = []
+        LED.TheMatrix.brightness = MaxBrightness
+
       
       
 
@@ -1052,6 +1055,24 @@ class Bot(commands.Bot ):
     @commands.command()
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views')
+
+
+    #----------------------------------------
+    # Current Viewers                      --
+    #----------------------------------------
+    @commands.command()
+    async def who(self, ctx: commands.Context):
+
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Now scrolling: Most recent viewers".format(ViewerCount)
+        await self.Channel.send(message)
+
+      LED.TheMatrix.brightness = StreamBrightness
+      LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
+      LED.TheMatrix.brightness = MaxBrightness
+  
+  
+    
 
 
     #----------------------------------------
