@@ -954,13 +954,14 @@ class Bot(commands.Bot ):
             print("Found: channel points redeemed")
             #Reward     = Message['event']['reward']
             TwitchUser = Message['event']['user_name']
-            Cost       =  Message['event']['Cost']
+            Cost       =  Message['event']['reward']['cost']
+            Title       =  Message['event']['reward']['title']
             print ("username:     ",TwitchUser)
             print("points redeemed:",Cost)
 
             LED.StarryNightDisplayText(
-              Text1 = str(Cost) + " POINTS REDEEMED",
-              Text2 = TwitchUser,
+              Text1 = Title + " REDEEMED",
+              Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
               Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
               RunSeconds = 40
               )                    
