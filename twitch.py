@@ -899,8 +899,6 @@ class Bot(commands.Bot ):
 
 
 
-
-
       #SUBSCRIPTION GIFT
       elif (MessageType == 'EVENTSUB_SUBSCRIPTION_GIFT'):
         EventDict = Message.get('event','NONE')
@@ -922,7 +920,7 @@ class Bot(commands.Bot ):
               )                    
 
 
-
+      #BITS / CHEER
       elif (MessageType == 'EVENTSUB_CHEER'):
         EventDict = Message.get('event','NONE')
         if(EventDict != "NONE"):
@@ -944,8 +942,8 @@ class Bot(commands.Bot ):
               RunSeconds = 40
               )                    
 
-
-      elif (MessageType == 'EVENTSUB_POINTS_REDEEMED'):
+      #CHANNEL POINTS REDEMPTION
+      elif (MessageType == 'EVENTSUB_POINTS_REDEMPTION'):
         EventDict = Message.get('event','NONE')
         if(EventDict != "NONE"):
           RewardDict = EventDict.get('reward','NONE')
@@ -954,13 +952,14 @@ class Bot(commands.Bot ):
           #REWARDS
           if(RewardDict != "NONE"):
             print("Found: channel points redeemed")
-            Reward     = Message['event']['reward']
+            #Reward     = Message['event']['reward']
             TwitchUser = Message['event']['user_name']
-            print ("username:  ",TwitchUser)
-            print("Bits thrown:",BitsThrown)
+            Cost       =  Message['event']['cost']
+            print ("username:     ",TwitchUser)
+            print("points redeemed:",Cost)
 
             LED.StarryNightDisplayText(
-              Text1 = str(Reward) + " POINTS REDEEMED",
+              Text1 = str(Cost) + " POINTS REDEEMED",
               Text2 = TwitchUser,
               Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
               RunSeconds = 40
@@ -2323,8 +2322,8 @@ async def on_subscribe(data: dict):
 async def on_channel_cheer(data:dict):
     EventQueue.put(('EVENTSUB_CHEER',data))
 
-async def on_channel_points(data:dict):
-    EventQueue.put(('EVENTSUB_POINTS_REDEEMED',data))
+async def on_channel_points_redemption(data:dict):
+    EventQueue.put(('EVENTSUB_POINTS_REDEMPTION',data))
 
 async def on_hype_train_begin(data:dict):
     EventQueue.put(('EVENTSUB_HYPE_TRAIN_BEGIN',data))
@@ -2380,9 +2379,9 @@ def TwitchEventSub(EventQueue):
   print("EVENTSUB: Bits thrown")
   hook.listen_channel_cheer(BroadCasterUserID,on_channel_cheer)
  
-  #not working, not sure if eventsub or pubsub
-  #print("EVENTSUB: Channel points redeemed")
-  #hook.listen_channel_points(BroadCasterUserID,on_channel_points)
+  
+  print("EVENTSUB: Channel points redeemed")
+  hook.listen_channel_points_custom_reward_redemption_add(BroadCasterUserID,on_channel_points_redemption)
 
   print("EVENTSUB: Hype Train begin")
   hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
