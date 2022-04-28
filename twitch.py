@@ -610,6 +610,8 @@ class Bot(commands.Bot ):
         #Empty chat user list
         self.ChatUsers = []
         LED.TheMatrix.brightness = MaxBrightness
+        #clean up the screen using animations
+        LED.SweepClean()
 
       
       
@@ -848,6 +850,19 @@ class Bot(commands.Bot ):
       #-- Twitch Events                    --
       #--------------------------------------
       
+      elif (MessageType == 'EVENTSUB_STREAM_ONLINE'):
+          EventDict = Message.get('event','NONE')
+          if(EventDict != "NONE"):
+            print("Event discovered")
+            FollowedBy = Message['event']['started_at']
+            
+            LED.StarryNightDisplayText(
+              Text1 = FollowedBy,
+              Text2 = "NEW FOLLOWER!!",
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 60
+              )                    
+
       elif (MessageType == 'EVENTSUB_FOLLOW'):
           EventDict = Message.get('event','NONE')
           if(EventDict != "NONE"):
@@ -860,7 +875,6 @@ class Bot(commands.Bot ):
               Text3 = "THANK YOU FOR YOUR SUPPORT", 
               RunSeconds = 60
               )                    
-
 
 
       #SUBSCRIPTION GIFT
@@ -1069,7 +1083,10 @@ class Bot(commands.Bot ):
       LED.TheMatrix.brightness = StreamBrightness
       LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
       LED.TheMatrix.brightness = MaxBrightness
-  
+    
+      #clean up the screen using animations
+      LED.SweepClean()
+
   
     
 
@@ -2289,6 +2306,10 @@ def DisplayPatreon():
 #----------------------------------------
 
 # this will be called whenever someone follows the target channel
+async def on_stream_online(data: dict):
+    print("**** STREAM ONLINE ****")
+    EventQueue.put(('EVENTSUB_STREAM_ONLINE',data))
+
 async def on_follow(data: dict):
     print("**** follow detected ****")
     EventQueue.put(('EVENTSUB_FOLLOW',data))
@@ -2296,8 +2317,8 @@ async def on_follow(data: dict):
 async def on_subscribe(data: dict):
     EventQueue.put(('EVENTSUB_SUBSCRIBE',data))
 
-#async def on_channel_points_custom_reward_redemption_add(data: dict):
-#    EventQueue.put(dict)
+async def on_subscribe(data: dict):
+    EventQueue.put(('EVENTSUB_SUBSCRIBE',data))
 
 async def on_channel_cheer(data:dict):
     EventQueue.put(('EVENTSUB_CHEER',data))
@@ -2349,7 +2370,10 @@ def TwitchEventSub(EventQueue):
  
   print("EVENTSUB: Channel follows")
   hook.listen_channel_follow(BroadCasterUserID, on_follow)
- 
+
+  print("EVENTSUB: Stream goes live")
+  hook.listen_stream_online(BroadCasterUserID, on_stream_online)
+
   print("EVENTSUB: Channel subscriptions")
   hook.listen_channel_subscribe(BroadCasterUserID, on_subscribe)
  
@@ -2364,7 +2388,6 @@ def TwitchEventSub(EventQueue):
 
   print("EVENTSUB: Hype Train progress")
   hook.listen_hype_train_progress(BroadCasterUserID, on_hype_train_progress)
-
 
   print("EVENTSUB: Hype Train end")
   hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_end)
