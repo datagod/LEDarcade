@@ -567,9 +567,6 @@ class Bot(commands.Bot ):
         print(" ")
 
 
-
-
-
         try:
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message.author.display_name + ":",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,0,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=1,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, ScrollText,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=0,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
@@ -934,25 +931,27 @@ class Bot(commands.Bot ):
               )                    
 
 
-
-        #CHANNEL POINTS
-        elif (MessageType == 'EVENTSUB_POINTS'):
-          EventDict = Message.get('event','NONE')
+      elif (MessageType == 'EVENTSUB_POINTS_REDEEMED'):
+        EventDict = Message.get('event','NONE')
+        if(EventDict != "NONE"):
           RewardDict = EventDict.get('reward','NONE')
-          if(RewardDict != 'NONE'):
-            print("Found: reward")
-            ChannelPoints = Message['event']['reward']['cost']
-            TwitchUser    = Message['event']['user_login']
-            print ("found: cost")
-            print("Channel Points: ",ChannelPoints)
+          print ("*****************************************************")
+          print(EventDict)
+          #REWARDS
+          if(RewardDict != "NONE"):
+            print("Found: channel points redeemed")
+            Reward     = Message['event']['reward']
+            TwitchUser = Message['event']['user_name']
+            print ("username:  ",TwitchUser)
+            print("Bits thrown:",BitsThrown)
 
-        
             LED.StarryNightDisplayText(
-              Text1 = str(ChannelPoints) + " CHANNEL POINTS",
+              Text1 = str(Reward) + " POINTS REDEEMED",
               Text2 = TwitchUser,
-              Text3 = "KEEP GOING, USE UP THOSE POINTS!", 
+              Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
               RunSeconds = 40
               )                    
+
 
       #HYPE TRAIN BEGIN
       elif (MessageType == 'EVENTSUB_HYPE_TRAIN_BEGIN'):
@@ -2303,6 +2302,8 @@ async def on_subscribe(data: dict):
 async def on_channel_cheer(data:dict):
     EventQueue.put(('EVENTSUB_CHEER',data))
 
+async def on_channel_points(data:dict):
+    EventQueue.put(('EVENTSUB_POINTS_REDEEMED',data))
 
 async def on_hype_train_begin(data:dict):
     EventQueue.put(('EVENTSUB_HYPE_TRAIN_BEGIN',data))
@@ -2355,6 +2356,9 @@ def TwitchEventSub(EventQueue):
   print("EVENTSUB: Bits thrown")
   hook.listen_channel_cheer(BroadCasterUserID,on_channel_cheer)
  
+  print("EVENTSUB: Channel points redeemed")
+  hook.listen_channel_points(BroadCasterUserID,on_channel_points)
+
   print("EVENTSUB: Hype Train begin")
   hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
 
