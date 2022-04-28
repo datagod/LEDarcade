@@ -2380,8 +2380,9 @@ def TwitchEventSub(EventQueue):
   print("EVENTSUB: Bits thrown")
   hook.listen_channel_cheer(BroadCasterUserID,on_channel_cheer)
  
-  print("EVENTSUB: Channel points redeemed")
-  hook.listen_channel_points(BroadCasterUserID,on_channel_points)
+  #not working, not sure if eventsub or pubsub
+  #print("EVENTSUB: Channel points redeemed")
+  #hook.listen_channel_points(BroadCasterUserID,on_channel_points)
 
   print("EVENTSUB: Hype Train begin")
   hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
