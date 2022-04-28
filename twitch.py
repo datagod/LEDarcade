@@ -954,7 +954,7 @@ class Bot(commands.Bot ):
             print("Found: channel points redeemed")
             #Reward     = Message['event']['reward']
             TwitchUser = Message['event']['user_name']
-            Cost       =  Message['event']['cost']
+            Cost       =  Message['event']['Cost']
             print ("username:     ",TwitchUser)
             print("points redeemed:",Cost)
 
