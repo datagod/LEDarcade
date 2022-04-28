@@ -18480,13 +18480,6 @@ def ScrollJustJoinedUser(Names=[],ImageName='JustJoined.png',ScrollSleep=0.05):
   CreateJustJoinedImage(Names,ImageName)
   ScrollImage(ImageName,ScrollSleep)
   
-  
-  
-
-
-  #clean up the screen using animations
-  SweepClean()
-
 
 
 
@@ -18650,6 +18643,16 @@ def StarryNightDisplayText(
 
 
 
+  #Choose a random sprite
+  r = random.randint(0,1)
+  if(r == 0):
+    TheSprite = copy.deepcopy(RunningMan2Sprite)
+    TheSprite.framerate = 3
+  else:
+    TheSprite = copy.deepcopy(RunningMan3Sprite)
+    TheSprite.framerate = 2
+  
+
   while (Done == False):
 
     x = 0
@@ -18688,8 +18691,9 @@ def StarryNightDisplayText(
     Canvas = PaintThreeLayerCanvas(bx,mx,fx,Background,Middleground,Foreground,Canvas)
 
 
+
     #LED.RunningMan3Sprite.DisplayAnimated(10,10)
-    Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(-2,15,Canvas)
+    Canvas = TheSprite.PaintAnimatedToCanvas(-2,15,Canvas)
     Canvas = TheMatrix.SwapOnVSync(Canvas)
     
 
