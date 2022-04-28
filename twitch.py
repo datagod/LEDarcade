@@ -888,7 +888,7 @@ class Bot(commands.Bot ):
           if(NameDict != "NONE"):
             print("Found: user_name")
             TwitchUser = Message['event']['user_name']
-            print("user_name:",user_name)
+            print("user_name:",TwitchUser)
 
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + "TwitchUser",
@@ -960,7 +960,7 @@ class Bot(commands.Bot ):
             print("points redeemed:",Cost)
 
             LED.StarryNightDisplayText(
-              Text1 = Title + " REDEEMED",
+              Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
               Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
               RunSeconds = 40
