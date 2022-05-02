@@ -7983,6 +7983,84 @@ LightBikeMap.CopyMapToColorSprite(TheSprite=LightBike)
 
 
 
+HeartSprite = ColorAnimatedSprite(
+  h=0, 
+  v=0, 
+  name="Heart", 
+  width  = 32, 
+  height = 32, 
+  frames = 0, 
+  framerate=2,
+  grid=[]  )
+
+                 
+
+HeartSpriteMap = TextMap(
+  h      = 1,
+  v      = 1,
+  width  = 32, 
+  height = 32
+  )
+
+HeartSpriteMap.ColorList = {
+  ' ' : 0,
+  '*' : 3,  # med  white
+  '#' : 4,  # high white
+  '-' : 5,  # dark red
+  '.' : 6,  # low  red
+  'o' : 7,  # med  red
+  'O' : 8,  # high red
+}
+
+RunningMan3SpriteMap.TypeList = {
+  ' ' : 'Empty'
+  
+}
+
+
+
+HeartSpriteMap.map= (
+  #0.........1.........2.........3...
+  "                                 ", 
+  "                                 ", 
+  "                                 ", 
+  "        ----         ----        ", 
+  "      -ooooo--     --ooo---      ", 
+  "     -OOOOOOo-     -oooo----     ", 
+  "    -OOO***Oo--   --ooooo----    ", 
+  "    OOO*##*Oo--   -ooooooo---    ", 
+  "   -OO*##*OOoo-- -oooooooo----   ", 
+  "   OO*##*OOOoo-- -ooooooooo---   ", 
+  "  -O*##*OOOOoo ---oooooooooo---  ", 
+  "  -O*##*OOOOoooooooooooooooo---  ", 
+  "  -OO***OOOOOooooooooooooooo---  ", 
+  "  -OOO*OOOOOOOoooooooooooooo---  ", 
+  "  -ooOOOOOOOOOoooooooooooooo---  ", 
+  "  --ooOOOOOOOOooooooooooooo----  ", 
+  "  --oooOOOOOOooooooooooooo-----  ", 
+  "   --oooOOOOooooooooooooo-----   ", 
+  "    --oooOOOoooooooooooo-----    ", 
+  "     --oooOoooooooooooo-----     ", 
+  "      --oooooooooooooo-----      ", 
+  "       --oooooooooooo-----       ", 
+  "        --oooooooooo-----        ", 
+  "         --ooooooooo----         ", 
+  "          --ooooooo----          ", 
+  "           --ooooo----           ", 
+  "            ---ooo---            ", 
+  "             ---oo--             ", 
+  "              --o--              ", 
+  "               ---               ", 
+  "                -                ", 
+  "                                 " 
+)
+      
+HeartSpriteMap.CopyMapToColorSprite(TheSprite=HeartSprite)
+
+
+
+
+
 
 DropShip = ColorAnimatedSprite(h=0, v=0, name="DropShip", width=5, height=8, frames=2, framerate=1,grid=[])
 DropShip.grid.append(
@@ -14057,6 +14135,7 @@ def CopyAnimatedSpriteToScreenArrayZoom(TheSprite,h,v, ZoomFactor = 1,TheScreenA
             #Experimental method to only draw if the sprite is non black, and to fill in the spot with the 
             #the screenArray (our manual copy of the screen) if it is black which prevents the background from getting erased
             if (r >0 or g > 0 or b > 0):
+              
               TheScreenArray[V][H] = r,g,b
 
   return TheScreenArray
@@ -18712,3 +18791,18 @@ def StarryNightDisplayText(
 
 
 
+def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
+  ScreenArray  = ([[]])
+  ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+  ScreenArray = CopyAnimatedSpriteToScreenArrayZoom(HeartSprite,h,v,1,TheScreenArray=ScreenArray)
+
+  ZoomScreen(ScreenArray,1,32,Sleep)
+
+  for i in range(0,beats):
+    time.sleep(0.125)
+    ZoomScreen(ScreenArray,32,22,Sleep)
+    time.sleep(0.125)
+    ZoomScreen(ScreenArray,22,32,Sleep)
+
+  SweepClean()

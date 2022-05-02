@@ -531,13 +531,23 @@ class Bot(commands.Bot ):
         await self.handle_commands(message)
 
 
+        # Check for special key words
+        #Remove emoji from message
+        message.content = LED.deEmojify(message.content)
+
+        #HUGS
+        if (message.content == "!hug" or message.conent == "?hug"):
+          LED.ShowBeatingHeart(16,0,10,0)
+          
+
+
+
+
         #Exit if Chat Terminal is not on
         if (self.ChatTerminalOn == False):
           self.MesageCount = self.MessageCount -1
           return
         
-        #Remove emoji from message
-        message.content = LED.deEmojify(message.content)
 
         
 
@@ -2462,6 +2472,9 @@ def PatreonWebHook(EventQueue):
 #------------------------------------------------------------------------------
 # MAIN SECTION                                                               --
 #------------------------------------------------------------------------------
+
+
+
 
 
 
