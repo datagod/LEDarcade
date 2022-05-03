@@ -536,7 +536,7 @@ class Bot(commands.Bot ):
         message.content = LED.deEmojify(message.content)
 
         #HUGS
-        if (message.content == "!hug" or message.content == "?hug"):
+        if (message.content == "!hug"):
           LED.ShowBeatingHeart(16,0,10,0)
           
 
