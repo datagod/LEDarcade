@@ -2488,11 +2488,6 @@ def PatreonWebHook(EventQueue):
 #------------------------------------------------------------------------------
 
 
-print("GIF TEST")
-LED.DisplayGIF('./images/catwindow.gif',5)
-print("TEST COMPLETE")
-time.sleep(5)
-
 
 print ("---------------------------------------------------------------")
 print ("WELCOME TO THE LED ARCADE - Twitch Version                     ")
