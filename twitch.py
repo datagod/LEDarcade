@@ -153,7 +153,7 @@ HypeTrainTotal       = ''
 HatHeight = 32
 HatWidth  = 64
 StreamBrightness = 20
-MaxBrightness    = 90
+MaxBrightness    = 80
 
   
 
@@ -537,7 +537,10 @@ class Bot(commands.Bot ):
 
         #HUGS
         if (message.content == "!hug"):
+          LED.TheMatrix.brightness = StreamBrightness
           LED.ShowBeatingHeart(16,0,10,0)
+          LED.TheMatrix.brightness = MaxBrightness
+
           
 
 
@@ -1106,8 +1109,9 @@ class Bot(commands.Bot ):
     async def hug(self, ctx: commands.Context):
       message = "Sending hugs <3 <3 <3"
       await self.Channel.send(message)
-
+      LED.TheMatrix.brightness = StreamBrightness
       LED.ShowBeatingHeart(16,0,10,0)
+      LED.TheMatrix.brightness = MaxBrightness
 
 
 
@@ -2484,8 +2488,10 @@ def PatreonWebHook(EventQueue):
 #------------------------------------------------------------------------------
 
 
-
-
+print("GIF TEST")
+LED.DisplayGIF('./images/catwindow.gif',5)
+print("TEST COMPLETE")
+time.sleep(5)
 
 
 print ("---------------------------------------------------------------")

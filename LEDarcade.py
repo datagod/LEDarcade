@@ -18806,3 +18806,28 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
     ZoomScreen(ScreenArray,22,32,Sleep)
 
   SweepClean()
+
+
+
+
+def DisplayGIF(GIFName,Loops=5):
+  canvas = Image.new("RGB",(HatWidth,HatHeight),"black")
+  gif = Image.open(GIFName, 'r')
+
+  resized =  gif.resize((64,64),Image.LANCZOS)
+
+  frames = []
+  
+  try:
+      while 1:
+          frames.append(resized.copy())
+          print(len(frames))
+          gif.seek(len(frames))
+  except EOFError:
+      pass
+
+  for frame in frames:
+      canvas.paste(frame)
+      TheMatrix.SetImage(canvas)
+      time.sleep(0.05)      
+      
