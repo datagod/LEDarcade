@@ -15,6 +15,16 @@
 # We write to the ScreenArray buffer so we know what is on the screen in case we
 # need to check it
 
+# Patreon - Multiprocessing - Port 5050
+# We launch a process to monitor port 5050 using Flask.  This is the port we have set up to 
+# listen for Patreon traffic.
+# Telebit:  5050.YourTelebitAddress.telebit.io
+#
+# Twitch - EventSub - Port 5051
+# Using Asyncio Client we start a task that subscribes to twitch events.
+# Telebit:  5051.YourTelebitAddress.telebit.io
+#
+
 
 #------------------------------------------------------------------------------
 #   _     _____ ____                          _                              --
@@ -7973,6 +7983,84 @@ LightBikeMap.CopyMapToColorSprite(TheSprite=LightBike)
 
 
 
+HeartSprite = ColorAnimatedSprite(
+  h=0, 
+  v=0, 
+  name="Heart", 
+  width  = 32, 
+  height = 32, 
+  frames = 0, 
+  framerate=2,
+  grid=[]  )
+
+                 
+
+HeartSpriteMap = TextMap(
+  h      = 1,
+  v      = 1,
+  width  = 32, 
+  height = 32
+  )
+
+HeartSpriteMap.ColorList = {
+  ' ' : 0,
+  '*' : 3,  # med  white
+  '#' : 4,  # high white
+  '-' : 5,  # dark red
+  '.' : 6,  # low  red
+  'o' : 7,  # med  red
+  'O' : 8,  # high red
+}
+
+RunningMan3SpriteMap.TypeList = {
+  ' ' : 'Empty'
+  
+}
+
+
+
+HeartSpriteMap.map= (
+  #0.........1.........2.........3...
+  "                                 ", 
+  "                                 ", 
+  "                                 ", 
+  "        ----         ----        ", 
+  "      -ooooo--     --ooo---      ", 
+  "     -OOOOOOo-     -oooo----     ", 
+  "    -OOO***Oo--   --ooooo----    ", 
+  "    OOO*##*Oo--   -ooooooo---    ", 
+  "   -OO*##*OOoo-- -oooooooo----   ", 
+  "   OO*##*OOOoo-- -ooooooooo---   ", 
+  "  -O*##*OOOOoo ---oooooooooo---  ", 
+  "  -O*##*OOOOoooooooooooooooo---  ", 
+  "  -OO***OOOOOooooooooooooooo---  ", 
+  "  -OOO*OOOOOOOoooooooooooooo---  ", 
+  "  -ooOOOOOOOOOoooooooooooooo---  ", 
+  "  --ooOOOOOOOOooooooooooooo----  ", 
+  "  --oooOOOOOOooooooooooooo-----  ", 
+  "   --oooOOOOooooooooooooo-----   ", 
+  "    --oooOOOoooooooooooo-----    ", 
+  "     --oooOoooooooooooo-----     ", 
+  "      --oooooooooooooo-----      ", 
+  "       --oooooooooooo-----       ", 
+  "        --oooooooooo-----        ", 
+  "         --ooooooooo----         ", 
+  "          --ooooooo----          ", 
+  "           --ooooo----           ", 
+  "            ---ooo---            ", 
+  "             ---oo--             ", 
+  "              --o--              ", 
+  "               ---               ", 
+  "                -                ", 
+  "                                 " 
+)
+      
+HeartSpriteMap.CopyMapToColorSprite(TheSprite=HeartSprite)
+
+
+
+
+
 
 DropShip = ColorAnimatedSprite(h=0, v=0, name="DropShip", width=5, height=8, frames=2, framerate=1,grid=[])
 DropShip.grid.append(
@@ -14047,6 +14135,7 @@ def CopyAnimatedSpriteToScreenArrayZoom(TheSprite,h,v, ZoomFactor = 1,TheScreenA
             #Experimental method to only draw if the sprite is non black, and to fill in the spot with the 
             #the screenArray (our manual copy of the screen) if it is black which prevents the background from getting erased
             if (r >0 or g > 0 or b > 0):
+              
               TheScreenArray[V][H] = r,g,b
 
   return TheScreenArray
@@ -18103,6 +18192,7 @@ def CalculateElapsedTime(StartDateTimeUTC):
 
 
 def ZoomImage(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
+
   global Canvas
 
   image = Image.open(ImageName)
@@ -18118,6 +18208,7 @@ def ZoomImage(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
     for ZoomFactor in range (ZoomStart,ZoomStop,Step):
       ResizedImage = image.resize(size=(ZoomFactor,ZoomFactor))
       TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(HatHeight/2 -(ZoomFactor/2)))
+      #TheMatrix.SetImage(ResizedImage, (HatWidth/2 -(ZoomFactor/2)),(0))
       if (ZoomSleep > 0):
         time.sleep(ZoomSleep)
         
@@ -18334,6 +18425,9 @@ def CreateCreditImage(names):
 
 
 def ScrollCreditImage(CreditImage,ScrollSleep):
+  
+
+
   image = Image.open(CreditImage)
   image = image.convert('RGB')
   width,height = image.size
@@ -18353,6 +18447,9 @@ def ScrollCreditImage(CreditImage,ScrollSleep):
 
 
 def ScrollImage(ImageName,ScrollSleep):
+
+
+  
   image = Image.open(ImageName)
   image = image.convert('RGB')
   width,height = image.size
@@ -18458,12 +18555,10 @@ def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
 
 
 def ScrollJustJoinedUser(Names=[],ImageName='JustJoined.png',ScrollSleep=0.05):
+  
   CreateJustJoinedImage(Names,ImageName)
   ScrollImage(ImageName,ScrollSleep)
-
-  #clean up the screen using animations
-  SweepClean()
-
+  
 
 
 
@@ -18627,6 +18722,16 @@ def StarryNightDisplayText(
 
 
 
+  #Choose a random sprite
+  r = random.randint(0,1)
+  if(r == 0):
+    TheSprite = copy.deepcopy(RunningMan2Sprite)
+    TheSprite.framerate = 3
+  else:
+    TheSprite = copy.deepcopy(RunningMan3Sprite)
+    TheSprite.framerate = 2
+  
+
   while (Done == False):
 
     x = 0
@@ -18665,8 +18770,9 @@ def StarryNightDisplayText(
     Canvas = PaintThreeLayerCanvas(bx,mx,fx,Background,Middleground,Foreground,Canvas)
 
 
+
     #LED.RunningMan3Sprite.DisplayAnimated(10,10)
-    Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(-2,15,Canvas)
+    Canvas = TheSprite.PaintAnimatedToCanvas(-2,15,Canvas)
     Canvas = TheMatrix.SwapOnVSync(Canvas)
     
 
@@ -18685,3 +18791,18 @@ def StarryNightDisplayText(
 
 
 
+def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
+  ScreenArray  = ([[]])
+  ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+  ScreenArray = CopyAnimatedSpriteToScreenArrayZoom(HeartSprite,h,v,1,TheScreenArray=ScreenArray)
+
+  ZoomScreen(ScreenArray,1,32,Sleep)
+
+  for i in range(0,beats):
+    time.sleep(0.125)
+    ZoomScreen(ScreenArray,32,22,Sleep)
+    time.sleep(0.125)
+    ZoomScreen(ScreenArray,22,32,Sleep)
+
+  SweepClean()

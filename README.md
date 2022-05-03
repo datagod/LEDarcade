@@ -110,6 +110,9 @@ sudo python3 Tron.py
  ## Twitch / Patreon Support
  You can connect your clock to Twitch and Patreon for interacting with your audience.
  
+ <BR>
+ https://clips.twitch.tv/FuriousFuriousGrouseStoneLightning-yDK0DVBijVEFhwLF
+ 
  #Additional Dependencies
  **Patreon**
  <BR>

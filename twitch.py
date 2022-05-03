@@ -6,8 +6,8 @@ TO DO:
    Exit the clock mode and react to the event 
 
 - maybe spawn the clock modes with multiprocessing and allow the twitch bot to process via ASYNC processes
-
 '''
+
 
 
 import os
@@ -41,8 +41,7 @@ import json
 #Twitch
 import twitchio
 from twitchio.ext import commands, eventsub
-
-
+from twitchAPI import Twitch, EventSub
 
 
 
@@ -93,29 +92,36 @@ CursorDarkRGB       = (0,50,0)
 
 
 #TWITCH VARIABLES
-ACCESS_TOKEN      = ''
-REFRESH_TOKEN     = ''
-CLIENT_ID         = ''
+#LEDARCADE_APP_ACCESS_TOKEN  = ''
+#REFRESH_TOKEN           = ''
 
-CHANNEL             = ''
+#LEDARCADE_APP_CLIENT_ID     = ''
+#LEDARCADE_APP_CLIENT_SECRET = ''
+
+BROADCASTER_CHANNEL = ''
 CHANNEL_BIG_TEXT    = ''
 CHANNEL_LITTLE_TEXT = ''
 
-USER_ID           = ''
-BROADCASTER_ID    = ''
-PROFILE_IMAGE_URL = ''
-VIEW_COUNT        = ''
-BOT_CHANNEL       = ''
-BOT_ACCESS_TOKEN  = ''
-BOT_REFRESH_TOKEN = ''
-BOT_CLIENT_ID     = ''
+BROADCASTER_USER_ID = ''
+BROADCASTER_ID      = ''
+PROFILE_IMAGE_URL   = ''
+VIEW_COUNT          = ''
+THECLOCKBOT_CHANNEL = ''
 
-WEBHOOK_URL       = ''
+THECLOCKBOT_CHAT_ACCESS_TOKEN  = ''
+CLOCKBOT_X_ACCESS_TOKEN  = ''
+#BOT_REFRESH_TOKEN = ''
+THECLOCKBOT_CLIENT_ID       = ''
+THECLOCKBOT_CLIENT_SECRET   = ''
+TWITCH_WEBHOOK_URL    = ''
+TWITCH_WEBHOOK_SECRET = ''
 
 #PATREON VARIABLES
 PATREON_CLIENT_ID            = ''
 PATREON_CLIENT_SECRET        = ''
 PATREON_CREATOR_ACCESS_TOKEN = ''
+PATREON_WEBHOOK_URL          = ''
+PATREON_WEBHOOK_SECRET       = ''
 
 
 #User / Channel Info
@@ -146,7 +152,8 @@ HypeTrainTotal       = ''
 
 HatHeight = 32
 HatWidth  = 64
-
+StreamBrightness = 20
+MaxBrightness    = 90
 
   
 
@@ -182,6 +189,8 @@ EventQueue = MPM.Queue()       #used to store and process webhook messages
 
 
 
+
+
 class Bot(commands.Bot ):
 #This started out as a Twitch Bot but has grown into a more complex program
 
@@ -195,7 +204,9 @@ class Bot(commands.Bot ):
     ChatUsers           = []
     SecondsToWaitChat   = 30
     LastStreamCheckTime = time.time()
+    LastChatInfoTime    = time.time()
     MinutesToWaitBeforeCheckingStream = 1       #check the stream this often
+    MinutesToWaitBeforeChatInfo       = 180     #send info message to viewers about clock commands
     MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
     #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
@@ -213,17 +224,18 @@ class Bot(commands.Bot ):
         # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
         # prefix can be a callable, which returns a list of strings or a string...
         # initial_channels can also be a callable which returns a list of strings...
-
+        # Note: the bot client id is from Twitch Dev TheClockBot.
         
         print("Bot Initialization")
-        print("BOT_CHANNEL:     ",BOT_CHANNEL)
-        print("BOT_ACCESS_TOKEN:",BOT_ACCESS_TOKEN)
+        print("THECLOCKBOT_CLIENT_ID:        ",THECLOCKBOT_CLIENT_ID)
+        print("THECLOCKBOT_CHANNEL:          ",THECLOCKBOT_CHANNEL)
+        print("THECLOCKBOT_CHAT_ACCESS_TOKEN:",THECLOCKBOT_CHAT_ACCESS_TOKEN)
       
        
         print("=====================================================")
         print("Initiating client object to connect to twitch")
-        print("Initial_Channels:",BOT_CHANNEL)
-        super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
+        print("Initial_Channels:",BROADCASTER_CHANNEL)
+        super().__init__(token=THECLOCKBOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
         self.BotStartTime   = time.time()
         LastMessageReceived = time.time()
         print("=====================================================")
@@ -231,30 +243,15 @@ class Bot(commands.Bot ):
         
         
 
-
-    async def __ainit__(self) -> None:
-        print("Starting EventSub client")
-        self.loop.create_task(esclient.listen(port=5055))
-
-        try:
-            print("Subscribing to CHANNEL_FOLLOWS")
-            await esclient.subscribe_channel_follows(broadcaster=BROADCASTER_ID)
-
-
-            print("Subscribing to CHANNEL_SUBSCRIPTIONS")
-            await esclient.subscribe_channel_subscriptions(broadcaster=channel_ID)
-
-        except twitchio.HTTPException:
-            pass              
-
-
+    
+          
 
 
     async def my_custom_startup(self):
 
         
         await asyncio.sleep(1)
-        self.Channel = self.get_channel(BOT_CHANNEL)
+        self.Channel = self.get_channel(BROADCASTER_CHANNEL)
         #channel2 = self.fetch_channel(CHANNEL_ID)
 
         #Check Twitch advanced info 
@@ -271,7 +268,7 @@ class Bot(commands.Bot ):
             LittleText          = "NO STREAM",
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = CHANNEL + " not active. Try again later...",
+            ScrollText          = BROADCASTER_CHANNEL + " not active. Try again later...",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 1,           # time in seconds to wait before exiting 
@@ -301,6 +298,14 @@ class Bot(commands.Bot ):
       #  await self.DisplayRandomConnectionMessage()
 
         
+    #---------------------------------------
+    #- Send Chat Message                  --
+    #---------------------------------------
+    async def SendChatMessage(self,Message):
+      await self.Channel.send(Message)
+    
+
+
 
 
     #---------------------------------------
@@ -323,7 +328,6 @@ class Bot(commands.Bot ):
           
           #asyncio.sleep suspends the current task, allowing other processes to run
           await asyncio.sleep(1)
-
 
           #Check the event queue for incoming data
           await self.ReadEventQueue()
@@ -378,6 +382,13 @@ class Bot(commands.Bot ):
 
                  
 
+          #Send a chat message every X minutes to inform viewers of help commands
+          h,m,s = LED.GetElapsedTime(self.LastChatInfoTime,time.time())
+          if (m >= self.MinutesToWaitBeforeChatInfo):
+            await self.SendChatMessage("Don't forget to interact with the LED display.  Type ?clock for a list of commands.") 
+            self.LastChatInfoTime = time.time()
+          
+
           
           
           #Check to see if stream is live yet (only check every X minutes)
@@ -388,7 +399,7 @@ class Bot(commands.Bot ):
               self.LastStreamCheckTime = time.time()
 
             #self.__init__()
-            #super().__init__(token=BOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
+            #super().__init__(token=THECLOCKBOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
 
           
 
@@ -417,7 +428,7 @@ class Bot(commands.Bot ):
         if(StreamActive == True):
 
           #skip my own channel for testing purposes
-          if(CHANNEL != 'datagod'):
+          if(BROADCASTER_CHANNEL != 'datagod'):
 
             #SHOW INTRO FOR MAIN CHANNEL
             LED.ShowTitleScreen(
@@ -486,7 +497,7 @@ class Bot(commands.Bot ):
               LittleText          = 'TERMINAL',
               LittleTextRGB       = LED.MedBlue,
               LittleTextShadowRGB = LED.ShadowBlue, 
-              ScrollText          = 'TUNING IN TO ' +  CHANNEL,
+              ScrollText          = 'TUNING IN TO ' +  BROADCASTER_CHANNEL,
               ScrollTextRGB       = LED.MedOrange,
               ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
               DisplayTime         = 1,           # time in seconds to wait before exiting 
@@ -520,13 +531,23 @@ class Bot(commands.Bot ):
         await self.handle_commands(message)
 
 
+        # Check for special key words
+        #Remove emoji from message
+        message.content = LED.deEmojify(message.content)
+
+        #HUGS
+        if (message.content == "!hug"):
+          LED.ShowBeatingHeart(16,0,10,0)
+          
+
+
+
+
         #Exit if Chat Terminal is not on
         if (self.ChatTerminalOn == False):
           self.MesageCount = self.MessageCount -1
           return
         
-        #Remove emoji from message
-        message.content = LED.deEmojify(message.content)
 
         
 
@@ -554,9 +575,6 @@ class Bot(commands.Bot ):
 
         #print(message.raw_data)
         print(" ")
-
-
-
 
 
         try:
@@ -595,10 +613,16 @@ class Bot(commands.Bot ):
       #Close Chat Terminal after X minutes of inactivity
       elapsed_seconds = LED.GetElapsedSeconds(self.LastMessageReceived)
 
-      if(elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 10):
+      if(StreamActive == True and 
+        ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 10))):
+        LED.TheMatrix.brightness = StreamBrightness
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
         self.ChatUsers = []
+        LED.TheMatrix.brightness = MaxBrightness
+        #clean up the screen using animations
+        LED.SweepClean()
+
       
       
 
@@ -757,12 +781,12 @@ class Bot(commands.Bot ):
           print("")
           print("==ReadEventQueue=======================")
 
-          Message = EventQueue.get_nowait()
+          MessageType, Message = EventQueue.get_nowait()
           EventQueue.task_done()
           #print("Message ",str(QueueCount),":",Message)
 
           print("Parsing Event Message")
-          await self.ProcessEvent(Message)
+          await self.ProcessEvent(MessageType, Message)
           
           print("=======================================")
           print("")
@@ -776,65 +800,18 @@ class Bot(commands.Bot ):
       
       
 
-    async def ProcessEvent(self,Message):
+    async def ProcessEvent(self,MessageType, Message):
       #we need to determine the type of event, source of webhook etc
 
+      print("MessageType:",MessageType)
       pprint.pprint(Message,indent=4)
 
-
-      #--------------------------------------
-      #-- Twitch Events                    --
-      #--------------------------------------
-
-      BitsThrown = 0
-      TwitchUser = ''
-
-      #TWITCH EVENTS
-      EventDict = Message.get('event','NONE')
-      if(EventDict != "NONE"):
-        print("**TWITCH**")
-        print("Found: event")
-        ProductDict = EventDict.get('product','NONE')
-        print ("*****************************************************")
-        print(ProductDict)
-        #BITS
-        if(ProductDict != "NONE"):
-          print("Found: product")
-          BitsThrown = Message['event']['product']['bits']
-          TwitchUser = Message['event']['user_login']
-          print ("Found: bits")
-          print("Bits thrown:",BitsThrown)
-
-          LED.StarryNightDisplayText(
-            Text1 = str(BitsThrown) + " BITS",
-            Text2 = TwitchUser,
-            Text3 = "THANK YOU FOR YOUR SUPPORT", 
-            RunSeconds = 40
-            )                    
-
-        #CHANNEL POINTS
-        else:
-          RewardDict = EventDict.get('reward','NONE')
-          if(RewardDict != 'NONE'):
-            print("Found: reward")
-            ChannelPoints = Message['event']['reward']['cost']
-            TwitchUser    = Message['event']['user_login']
-            print ("found: cost")
-            print("Channel Points: ",ChannelPoints)
-
-        
-            LED.StarryNightDisplayText(
-              Text1 = str(ChannelPoints) + " CHANNEL POINTS",
-              Text2 = TwitchUser,
-              Text3 = "KEEP GOING, USE UP THOSE POINTS!", 
-              RunSeconds = 40
-              )                    
 
 
       #--------------------------------------
       #-- Patreon Events                   --
       #--------------------------------------
-      else:
+      if(MessageType == "PATREON"):
         DataDict = Message.get('data','NONE')
 
         if (DataDict != 'NONE'):
@@ -877,15 +854,188 @@ class Bot(commands.Bot ):
             )                    
           
 
-        
 
 
-        #except Exception as ErrorMessage:
-        #  TraceMessage = traceback.format_exc()
-        #  AdditionalInfo = "Decoding JSON for WebHook" 
-        #  LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+      #--------------------------------------
+      #-- Twitch Events                    --
+      #--------------------------------------
+      
+      elif (MessageType == 'EVENTSUB_STREAM_ONLINE'):
+          EventDict = Message.get('event','NONE')
+          if(EventDict != "NONE"):
+            print("Event discovered")
+            FollowedBy = Message['event']['started_at']
+            
+            LED.StarryNightDisplayText(
+              Text1 = FollowedBy,
+              Text2 = "NEW FOLLOWER!!",
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 60
+              )                    
+
+      elif (MessageType == 'EVENTSUB_FOLLOW'):
+          EventDict = Message.get('event','NONE')
+          if(EventDict != "NONE"):
+            print("Event discovered")
+            FollowedBy = Message['event']['user_name']
+            
+            LED.StarryNightDisplayText(
+              Text1 = FollowedBy,
+              Text2 = "NEW FOLLOWER!!",
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 60
+              )                    
 
 
+      #SUBSCRIPTION GIFT
+      elif (MessageType == 'EVENTSUB_SUBSCRIBE'):
+        EventDict = Message.get('event','NONE')
+        if(EventDict != "NONE"):
+          NameDict = EventDict.get('user_name','NONE')
+          print ("*****************************************************")
+          print(NameDict)
+          #BITS
+          if(NameDict != "NONE"):
+            print("Found: user_name")
+            TwitchUser = Message['event']['user_name']
+            print("user_name:",TwitchUser)
+
+            LED.StarryNightDisplayText(
+              Text1 = str(BitsThrown) + "TwitchUser",
+              Text2 = "NEW SUBSCRIBER!!",
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 60
+              )                    
+
+
+
+      #SUBSCRIPTION GIFT
+      elif (MessageType == 'EVENTSUB_SUBSCRIPTION_GIFT'):
+        EventDict = Message.get('event','NONE')
+        if(EventDict != "NONE"):
+          NameDict = EventDict.get('user_name','NONE')
+          print ("*****************************************************")
+          print(NameDict)
+          #BITS
+          if(NameDict != "NONE"):
+            print("Found: user_name")
+            TwitchUser = Message['event']['user_name']
+            print("user_name:",user_name)
+
+            LED.StarryNightDisplayText(
+              Text1 = str(BitsThrown) + "TwitchUser",
+              Text2 = "GAVE A SUBSCRIPTION!!",
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 60
+              )                    
+
+
+      #BITS / CHEER
+      elif (MessageType == 'EVENTSUB_CHEER'):
+        EventDict = Message.get('event','NONE')
+        if(EventDict != "NONE"):
+          BitsDict = EventDict.get('bits','NONE')
+          print ("*****************************************************")
+          print(EventDict)
+          #BITS
+          if(BitsDict != "NONE"):
+            print("Found: bits")
+            BitsThrown = Message['event']['bits']
+            TwitchUser = Message['event']['user_name']
+            print ("Found: bits")
+            print("Bits thrown:",BitsThrown)
+
+            LED.StarryNightDisplayText(
+              Text1 = str(BitsThrown) + " BITS",
+              Text2 = TwitchUser,
+              Text3 = "THANK YOU FOR YOUR SUPPORT", 
+              RunSeconds = 40
+              )                    
+
+      #CHANNEL POINTS REDEMPTION
+      elif (MessageType == 'EVENTSUB_POINTS_REDEMPTION'):
+        EventDict = Message.get('event','NONE')
+        if(EventDict != "NONE"):
+          RewardDict = EventDict.get('reward','NONE')
+          print ("*****************************************************")
+          print(EventDict)
+          #REWARDS
+          if(RewardDict != "NONE"):
+            print("Found: channel points redeemed")
+            #Reward     = Message['event']['reward']
+            TwitchUser = Message['event']['user_name']
+            Cost       =  Message['event']['reward']['cost']
+            Title       =  Message['event']['reward']['title']
+            print ("username:     ",TwitchUser)
+            print("points redeemed:",Cost)
+
+            LED.StarryNightDisplayText(
+              Text1 = Title,
+              Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
+              Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
+              RunSeconds = 40
+              )                    
+
+
+      #HYPE TRAIN BEGIN
+      elif (MessageType == 'EVENTSUB_HYPE_TRAIN_BEGIN'):
+          print("HYPE TRAIN BEGIN")
+          pprint.pprint(Message)
+          LED.StarryNightDisplayText(
+            Text1 = "HYPE TRAIN STARTED!",
+            Text2 = "HYPE TRAIN STARTED",
+            Text3 = "More details soon", 
+            RunSeconds = 60
+            )                    
+
+      #HYPE TRAIN PROGRESS
+      elif (MessageType == 'EVENTSUB_HYPE_TRAIN_PROGRESS'):
+          print("HYPE TRAIN PROGRESS")
+          EventDict = Message.get('event','NONE')
+          if(EventDict != 'NONE'):
+            HypeLevel = Message['event']['level']
+            HypeTotal = Message['event']['total']
+            HypeGoal = Message['event']['goal']
+            print("HypeTrainLevel: ",HypeLevel)
+            print("HypeTrainTotal: ",HypeTotal)
+            print("HypeTrainGoal: ",HypeGoal)
+            pprint.pprint(Message)
+
+          LED.ShowTitleScreen(
+            BigText             = "LEVEL",
+            BigTextRGB          = LED.HighRed,
+            BigTextShadowRGB    = LED.ShadowRed,
+            BigTextZoom         = 3, 
+            BigText2            = '',
+            BigText2RGB         = HighBlue,
+            BigText2ShadowRGB   = ShadowBlue,
+
+          
+            ScrollText          = 'HYPE TRAIN WOO WOO',
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 10,           # time in seconds to wait before exiting 
+            ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+
+          LED.StarryNightDisplayText(
+            Text1 = "HYPE TRAIN POINTS " + HypeTotal ,
+            Text2 = HypeTotal,
+            Text3 = HypeGoal + " points needed to reach the next leve", 
+            RunSeconds = 60
+            )                    
+
+
+      #HYPE TRAIN END
+      elif (MessageType == 'EVENTSUB_HYPE_TRAIN_END'):
+          print("HYPE TRAIN END")
+          pprint.pprint(Message)
+          LED.StarryNightDisplayText(
+            Text1 = "HYPE TRAIN ENDED",
+            Text2 = "HYPE TRAIN ENDED",
+            Text3 = "How sad for us!", 
+            RunSeconds = 60
+            )                    
 
 
 
@@ -927,7 +1077,38 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views ?hug')
+
+
+    #----------------------------------------
+    # Current Viewers                      --
+    #----------------------------------------
+    @commands.command()
+    async def who(self, ctx: commands.Context):
+
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Now scrolling: Most recent viewers".format(ViewerCount)
+        await self.Channel.send(message)
+
+      LED.TheMatrix.brightness = StreamBrightness
+      LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
+      LED.TheMatrix.brightness = MaxBrightness
+    
+      #clean up the screen using animations
+      LED.SweepClean()
+
+  
+    
+    #----------------------------------------
+    # Hug                                  --
+    #----------------------------------------
+    @commands.command()
+    async def hug(self, ctx: commands.Context):
+      message = "Sending hugs <3 <3 <3"
+      await self.Channel.send(message)
+
+      LED.ShowBeatingHeart(16,0,10,0)
+
 
 
     #----------------------------------------
@@ -1040,7 +1221,7 @@ class Bot(commands.Bot ):
 
       else:
         if(SHOW_CHATBOT_MESSAGES == True):
-          message = "{} has decided to not show followers.".format(CHANNEL)
+          message = "{} has decided to not show followers.".format(BROADCAST_CHANNEL)
           await self.Channel.send(message)
 
 
@@ -1097,7 +1278,7 @@ class Bot(commands.Bot ):
     async def uptime(self, ctx: commands.Context):
       #SHOW UPTIME
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "{} has been streaming for {} HHMMSS".format(CHANNEL,StreamDurationHHMMSS)
+        message = "{} has been streaming for {} HHMMSS".format(BROADCASTER_CHANNEL,StreamDurationHHMMSS)
         await self.Channel.send(message)
 
       self.ChatTerminalOn = False
@@ -1114,7 +1295,7 @@ class Bot(commands.Bot ):
       self.ChatTerminalOn = True
       LED.TwitchTimerOn   = False
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "The chat will now be displayed on the LEDarcade clock thingy.".format(CHANNEL,StreamDurationHHMMSS)
+        message = "The chat will now be displayed on the LEDarcade clock thingy.".format(BROADCASTER_CHANNEL,StreamDurationHHMMSS)
         await self.Channel.send(message)
       
 
@@ -1129,6 +1310,8 @@ class Bot(commands.Bot ):
         message = "Now displaying the profile pic for this channel."
         await self.Channel.send(message)
 
+
+      LED.TheMatrix.brightness = StreamBrightness
       LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
@@ -1143,6 +1326,7 @@ class Bot(commands.Bot ):
       LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
       LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
+      LED.TheMatrix.brightness = MaxBrightness
       time.sleep(3)
       LED.SweepClean()
 
@@ -1158,21 +1342,26 @@ class Bot(commands.Bot ):
     async def me(self, ctx: commands.Context):
       
       
+      print("THECLOCKBOT_CLIENT_ID:",THECLOCKBOT_CLIENT_ID)
 
       print("Get user profile info:",ctx.author.name)
       API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + ctx.author.name
       head = {
-      'Client-ID': CLIENT_ID,
-      'Authorization': 'Bearer ' +  ACCESS_TOKEN
+      #'Client-ID': CLIENT_ID,
+      'Client-ID':  THECLOCKBOT_CLIENT_ID,
+      'Authorization': 'Bearer ' +  THECLOCKBOT_CHAT_ACCESS_TOKEN
       }
 
       #print ("URL: ",API_ENDPOINT, 'data:',head)
       r = requests.get(url = API_ENDPOINT, headers = head)
       results = r.json()
-      #pprint.pprint(results)
+      pprint.pprint(results)
       #print(" ")
 
-      if results['data']:
+      UserProfileURL = ''
+      DataDict = results.get('data','NONE')
+      if (DataDict != 'NONE'):
+
         print("Data found.  Processing...")
 
         try:
@@ -1187,15 +1376,18 @@ class Bot(commands.Bot ):
       
       #SHOW PROFILE
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Now displaying the profile pic for this channel."
+        message = "Lets take a closer look at " + ctx.author.name
         await self.Channel.send(message)
 
-      LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
-      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
-      LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
-      time.sleep(3)
-      LED.SweepClean()
+      if (UserProfileURL != ""):
+        LED.TheMatrix.brightness = StreamBrightness
+        LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
+        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
+        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
+        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
+        time.sleep(3)
+        LED.TheMatrix.brightness = MaxBrightness
+        LED.SweepClean()
 
 
 
@@ -1441,43 +1633,6 @@ LED.ClearBuffers()
 
 
 
-def IRCStuff():
-  connection_data = ("irc.chat.twitch.tv",6667)
-  token      = 'oauth:' + MY_ACCESS_TOKEN
-  user       = 'dataBot'
-  channel    = 'retrowithmarco'
-  readbuffer = ''
-
-  server = socket.socket()
-  server.connect(connection_data)
-  server.send(bytes('PASS ' + token   + '\r\n', 'utf-8'))
-  server.send(bytes('NICK ' + user    + '\r\n', 'utf-8'))
-  server.send(bytes('JOIN ' + channel + '\r\n', 'utf-8'))
- 
-  print (server)
-
-  timeout_in_seconds = 10
-
-  pprint.pprint(server)  
-  while True:
-    print('Waiting')
-    #ready = select.select([server], [], [], timeout_in_seconds)
-    
-    results = server.recv(512)
-    print(results)
-    
-    
-    #if ready[0]:
-    #  print(ready)
-    #  print('We are ready to recieve')
-    #  results = server.recv(1024)
-    #  print(results)
-      
-    if results.find(str.encode("PING")):
-      print('Ping detected.  Responding with PONG')
-      server.send(bytes("PONG tmi.twitch.tv\r\n", 'utf-8'))
-
-
     
     
 
@@ -1518,10 +1673,11 @@ def GetTwitchCounts():
     # GET USER INFO - ACTIVE STREAM
     #----------------------------------------
     print ("Getting USER info")
-    API_ENDPOINT = "https://api.twitch.tv/helix/streams?user_login=" + CHANNEL
+    API_ENDPOINT = "https://api.twitch.tv/helix/streams?user_login=" + BROADCASTER_CHANNEL
     head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    #'Client-ID': CLIENT_ID,
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
     print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
@@ -1551,10 +1707,11 @@ def GetTwitchCounts():
     # Follower Count
     #----------------------------------------
     print("Get FOLLOWER information")
-    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + USER_ID
+    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + BROADCASTER_USER_ID
     head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    #'Client-ID': CLIENT_ID,
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1569,7 +1726,7 @@ def GetTwitchCounts():
 
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
-      AdditionalInfo = "Getting FOLLOWER info from API call" 
+      AdditionalInfo = "Getting FOLLOWER info from API call." + " (BROADCASTER_USER_ID:" + BROADCASTER_USER_ID + ")"
       LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
 
@@ -1579,8 +1736,9 @@ def GetTwitchCounts():
     print("Get SUBSCRIBER information")
     API_ENDPOINT = "https://api.twitch.tv/helix/subscriptions?broadcaster_id=" + BROADCASTER_ID
     head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    #'Client-ID': CLIENT_ID,
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1642,10 +1800,11 @@ def GetBasicTwitchInfo():
     # GET CHANNEL INFO
     #----------------------------------------
     print("Get CHANNEL info")
-    API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + CHANNEL
+    API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + BROADCASTER_CHANNEL
     head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    #'Client-ID': CLIENT_ID,
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1654,20 +1813,35 @@ def GetBasicTwitchInfo():
     #pprint.pprint(results)
     #print(" ")
 
-    if results['data']:
+
+    DataDict = results.get('data','NONE')
+    if(DataDict == "NONE"):
+      print("")
+      print("")
+      print("========================================================")
+      print("TWITCH ERROR - Could not extract data from CHANNEL info") 
+      print("")
+      print(results)
+      print(API_ENDPOINT)
+      print(head)
+      print("========================================================")
+      print("")
+      print("")
+      return
+    else:
+    #if results['data']:
       print("Data found.  Processing...")
 
       try:
-        USER_ID           = results['data'][0]['id']
-        BROADCASTER_ID    = USER_ID
-        PROFILE_IMAGE_URL = results['data'][0]['profile_image_url']
-        VIEW_COUNT        = results['data'][0]['view_count']
+        BROADCASTER_USER_ID = results['data'][0]['id']
+        BROADCASTER_ID      = BROADCASTER_USER_ID
+        PROFILE_IMAGE_URL   = results['data'][0]['profile_image_url']
+        VIEW_COUNT          = results['data'][0]['view_count']
 
       except Exception as ErrorMessage:
         TraceMessage = traceback.format_exc()
         AdditionalInfo = "Getting CHANNEL info from API call" 
         LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
-     
 
     #----------------------------------------
     # GET BROADCASTER INFO
@@ -1675,8 +1849,9 @@ def GetBasicTwitchInfo():
     print("Get BROADCASTER info")
     API_ENDPOINT = "https://api.twitch.tv/helix/channels?broadcaster_id=" + BROADCASTER_ID
     head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    #'Client-ID': CLIENT_ID,
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1709,8 +1884,10 @@ def GetBasicTwitchInfo():
     print("Get HYPETRAIN info")
     API_ENDPOINT = "https://api.twitch.tv/helix/hypetrain/events?broadcaster_id=" + BROADCASTER_ID
     head = {
-    'Client-ID': CLIENT_ID,
-    'Authorization': 'Bearer ' +  ACCESS_TOKEN
+    #'Client-ID': CLIENT_ID,
+    'Client-ID': CLOCKBOT_X_CLIENT_ID,
+
+    'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
     #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -1718,26 +1895,27 @@ def GetBasicTwitchInfo():
     results = r.json()
     #pprint.pprint(results)
 
+    DataDict = results.get('data','NONE')
+    if (DataDict != 'NONE'):
+      if results['data']:
+        print("Hypetrain data found.  Processing...")
 
-    if results['data']:
-      print("Hypetrain data found.  Processing...")
+        try:
+          HypeTrainStartTime  = results['data'][0]['event_timestamp']
+          HypeTrainExpireTime = results['data'][0]['event_data']['expires_at']
+          HypeTrainGoal  = results['data'][0]['event_data']['goal']
+          HypeTrainLevel = results['data'][0]['event_data']['level']
+          HypeTrainTotal = results['data'][0]['event_data']['total']
 
-      try:
-        HypeTrainStartTime  = results['data'][0]['event_timestamp']
-        HypeTrainExpireTime = results['data'][0]['event_data']['expires_at']
-        HypeTrainGoal  = results['data'][0]['event_data']['goal']
-        HypeTrainLevel = results['data'][0]['event_data']['level']
-        HypeTrainTotal = results['data'][0]['event_data']['total']
-
-        #convert to non annoying format
-        HypeTrainStartTime  = ConvertDate(HypeTrainStartTime)
-        HypeTrainExpireTime = ConvertDate(HypeTrainExpireTime)
+          #convert to non annoying format
+          HypeTrainStartTime  = ConvertDate(HypeTrainStartTime)
+          HypeTrainExpireTime = ConvertDate(HypeTrainExpireTime)
 
 
-      except Exception as ErrorMessage:
-        TraceMessage = traceback.format_exc()
-        AdditionalInfo = "Getting HypeTrain info from API call" 
-        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+        except Exception as ErrorMessage:
+          TraceMessage = traceback.format_exc()
+          AdditionalInfo = "Getting HypeTrain info from API call" 
+          LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
     else:
       print("HypeTrain NOT active")
@@ -1809,19 +1987,25 @@ def ConvertDate(TheDate):
 
 def LoadConfigFiles():
   
-  global ACCESS_TOKEN
+  
+  #global LEDARCADE_APP_ACCESS_TOKEN
+  #global LEDARCADE_APP_CLIENT_ID
+  #global LEDARCADE_APP_CLIENT_SECRET
   global REFRESH_TOKEN
-  global CLIENT_ID
-  global CHANNEL
+  
+  global BROADCASTER_CHANNEL
   global CHANNEL_BIG_TEXT
   global CHANNEL_LITTLE_TEXT
   
-  global USER_ID
+  global BROADCASTER_USER_ID
   global BROADCASTER_ID
-  global BOT_CHANNEL
-  global BOT_ACCESS_TOKEN
-  global BOT_REFRESH_TOKEN
-  global BOT_CLIENT_ID
+  global THECLOCKBOT_CLIENT_ID
+  global THECLOCKBOT_CHANNEL
+  global THECLOCKBOT_CHAT_ACCESS_TOKEN
+  global CLOCKBOT_X_ACCESS_TOKEN
+  #global BOT_REFRESH_TOKEN
+  global CLOCKBOT_X_CLIENT_ID
+  global CLOCKBOT_X_CLIENT_SECRET
 
   global PATREON_CLIENT_ID
   global PATREON_CLIENT_SECRET
@@ -1832,7 +2016,10 @@ def LoadConfigFiles():
   global SHOW_SUBS
   global SHOW_VIEWS
   global SHOW_CHATBOT_MESSAGES
-  global WEBHOOK_URL
+  global TWITCH_WEBHOOK_URL
+  global TWITCH_WEBHOOK_SECRET
+  global PATREON_WEBHOOK_URL
+  global PATREON_WEBHOOK_SECRET
 
   
   
@@ -1845,40 +2032,51 @@ def LoadConfigFiles():
     KeyFile.read(KeyConfigFileName)
 
     #Get tokens
-    CHANNEL             = KeyFile.get("KEYS","CHANNEL")
+    BROADCASTER_CHANNEL = KeyFile.get("KEYS","BROADCASTER_CHANNEL")
     CHANNEL_BIG_TEXT    = KeyFile.get("KEYS","CHANNEL_BIG_TEXT")
     CHANNEL_LITTLE_TEXT = KeyFile.get("KEYS","CHANNEL_LITTLE_TEXT")
 
-    USER_ID        = KeyFile.get("KEYS","USER_ID")        #Same as Broadcaster_ID
-    BROADCASTER_ID = KeyFile.get("KEYS","BROADCASTER_ID") #Same as UserID
-    ACCESS_TOKEN   = KeyFile.get("KEYS","ACCESS_TOKEN")  
-    REFRESH_TOKEN  = KeyFile.get("KEYS","REFRESH_TOKEN")
-    CLIENT_ID      = KeyFile.get("KEYS","CLIENT_ID")      #ID of the twitch connected app (this program)
+    BROADCASTER_USER_ID     = KeyFile.get("KEYS","BROADCASTER_USER_ID")        #Same as Broadcaster_ID
+    BROADCASTER_ID          = KeyFile.get("KEYS","BROADCASTER_ID") #Same as UserID
+    #LEDARCADE_APP_ACCESS_TOKEN  = KeyFile.get("KEYS","LEDARCADE_APP_ACCESS_TOKEN")  
+    #REFRESH_TOKEN           = KeyFile.get("KEYS","REFRESH_TOKEN")
+    #LEDARCADE_APP_CLIENT_ID     = KeyFile.get("KEYS","LEDARCADE_APP_CLIENT_ID")      #CLIENT_ID     of the twitch connected app (ad defined at Twitch Developer site)
+    #LEDARCADE_APP_CLIENT_SECRET = KeyFile.get("KEYS","LEDARCADE_APP_CLIENT_SECRET")  #CLIENT_SECRET of the twitch connected app (ad defined at Twitch Developer site)
+    
 
     #Webhook URL
-    WEBHOOK_URL    = KeyFile.get("KEYS","WEBHOOK_URL")
+    TWITCH_WEBHOOK_URL     = KeyFile.get("KEYS","TWITCH_WEBHOOK_URL")
+    TWITCH_WEBHOOK_SECRET  = KeyFile.get("KEYS","TWITCH_WEBHOOK_SECRET")
     
 
     #Patreon
     PATREON_CLIENT_ID            = KeyFile.get("KEYS","PATREON_CLIENT_ID")      
     PATREON_CLIENT_SECRET        = KeyFile.get("KEYS","PATREON_CLIENT_SECRET")      
     PATREON_CREATOR_ACCESS_TOKEN = KeyFile.get("KEYS","PATREON_CREATOR_ACCESS_TOKEN")      
+    PATREON_WEBHOOK_URL          = KeyFile.get("KEYS","PATREON_WEBHOOK_URL")
+    PATREON_WEBHOOK_SECRET       = KeyFile.get("KEYS","PATREON_WEBHOOK_URL")
 
 
     #Bot specific connection info
     #in case we want a bot to connect separately, or to other channels
-    BOT_CHANNEL = CHANNEL
-    BOT_ACCESS_TOKEN   = KeyFile.get("KEYS","BOT_ACCESS_TOKEN")  
-    BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
-    BOT_CLIENT_ID      = KeyFile.get("KEYS","BOT_CLIENT_ID")     
+    THECLOCKBOT_CLIENT_ID     = KeyFile.get("KEYS","THECLOCKBOT_CLIENT_ID")  
+    THECLOCKBOT_CHANNEL       = KeyFile.get("KEYS","THECLOCKBOT_CHANNEL")  
+    THECLOCKBOT_CHAT_ACCESS_TOKEN     = KeyFile.get("KEYS","THECLOCKBOT_CHAT_ACCESS_TOKEN")  
+    CLOCKBOT_X_ACCESS_TOKEN = KeyFile.get("KEYS","CLOCKBOT_X_ACCESS_TOKEN")  
+    #BOT_REFRESH_TOKEN  = KeyFile.get("KEYS","BOT_REFRESH_TOKEN")
+    CLOCKBOT_X_CLIENT_ID      = KeyFile.get("KEYS","CLOCKBOT_X_CLIENT_ID")     
+    CLOCKBOT_X_CLIENT_SECRET  = KeyFile.get("KEYS","CLOCKBOT_X_CLIENT_SECRET")     
 
 
-    print("CHANNEL:             ",CHANNEL)   
+    print("BROADCASTER_CHANNEL: ",BROADCASTER_CHANNEL)   
     print("CHANNEL_BIG_TEXT:    ",CHANNEL_BIG_TEXT)   
     print("CHANNEL_LITTLE_TEXT: ",CHANNEL_LITTLE_TEXT)   
-    print("USER_ID:             ",USER_ID)
+    print("BROADCASTER_USER_ID: ",BROADCASTER_USER_ID)
     print("BROADCASTER_ID:      ",BROADCASTER_ID)
-    print("CLIENT_ID:           ",CLIENT_ID)
+    #print("LEDARCADE_APP_CLIENT_ID: ",LEDARCADE_APP_CLIENT_ID)
+    #print("LEDARCADE_APP_CLIENT_SECRET: ",LEDARCADE_APP_CLIENT_SECRET)
+    #print("LEDARCADE_APP_ACCESS_TOKEN: ",LEDARCADE_APP_ACCESS_TOKEN)
+    
     print("")
     #print("PATREON_CLIENT_ID:            ",PATREON_CLIENT_ID)
     #print("PATREON_CLIENT_SECRET:        ",PATREON_CLIENT_SECRET)
@@ -1888,9 +2086,14 @@ def LoadConfigFiles():
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
     #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
 
-    print("BOT_CHANNEL:         ",BOT_CHANNEL)   
-    print("BOT_CLIENT_ID:       ",BOT_CLIENT_ID)
-    print("WEBHOOK_URL:         ",WEBHOOK_URL)
+    print("THECLOCKBOT_CLIENT_ID:   ",THECLOCKBOT_CLIENT_ID)   
+    print("THECLOCKBOT_CHANNEL:   ",THECLOCKBOT_CHANNEL)   
+    print("CLOCKBOT_X_CLIENT_ID:         ",CLOCKBOT_X_CLIENT_ID)
+    print("CLOCKBOT_X_CLIENT_SECRET:     ",CLOCKBOT_X_CLIENT_SECRET)
+    print("TWITCH_WEBHOOK_URL:    ",TWITCH_WEBHOOK_URL)
+    print("TWITCH_WEBHOOK_SECRET: ",TWITCH_WEBHOOK_SECRET)
+    print("PATREON_WEBHOOK_URL:   ",PATREON_WEBHOOK_URL)
+    print("PATREON_WEBHOOK_SECRET:",PATREON_WEBHOOK_SECRET)
     #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
     #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
 
@@ -2025,20 +2228,28 @@ def CheckConfigFiles():
       KeyConfigFile.write("  CHANNEL_BIG_TEXT    = LED\n")
       KeyConfigFile.write("  CHANNEL_LITTLE_TEXT = ARCADE\n")
       KeyConfigFile.write("\n")
-      KeyConfigFile.write("  USER_ID        = 12345\n")
-      KeyConfigFile.write("  BROADCASTER_ID = 12345 (same as UserID)\n")
-      KeyConfigFile.write("  ACCESS_TOKEN   = abcdefg\n")
-      KeyConfigFile.write("  REFRESH_TOKEN  = hijklmn\n")
-      KeyConfigFile.write("  CLIENT_ID      = gp762nuuoqcoxypju8c569th9wz7q5\n")
-      KeyConfigFile.write("  WEBHOOK_URL    = https://xxx.telebit.io/\n")
+      KeyConfigFile.write("  BROADCASTER_USER_ID = 12345\n")
+      KeyConfigFile.write("  BROADCASTER_ID      = 12345 (same as BROADCASTER_UserID)\n")
+      #KeyConfigFile.write("  LEDARCADE_APP_ACCESS_TOKEN = abcdefg\n")
+      #KeyConfigFile.write("  REFRESH_TOKEN  = hijklmn\n")
+      #KeyConfigFile.write("  LEDARCADE_APP_CLIENT_ID     = GetThisFromLEDARCADE_APPConsole\n")
+      #KeyConfigFile.write("  LEDARCADE_APP_CLIENT_SECRET = GetThisFromLEDARCADE_APPConsole\n")
+      
+      #KeyConfigFile.write("  LEDARCADE_APP_REDIRECT_URL    = http://localhost\n")
+      KeyConfigFile.write("  TWITCH_WEBHOOK_URL    = https://eventsub.something.packetriot.net\n")
+      KeyConfigFile.write("  TWITCH_WEBHOOK_SECRET = SomeSecretYouMakeUp\n")
       KeyConfigFile.write("\n")
-      KeyConfigFile.write("  BOT_ACCESS_TOKEN  = abcde\n")
-      KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
-      KeyConfigFile.write("  BOT_CLIENT_ID     = gp762nuuoqcoxypju8c569th9wz7q5\n")
+      KeyConfigFile.write("  THECLOCKBOT_CHAT_ACCESS_TOKEN  = abcde\n")
+      KeyConfigFile.write("  CLOCKBOT_X_ACCESS_TOKEN  = abcde\n")
+      #KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
+      KeyConfigFile.write("  CLOCKBOT_X_CLIENT_ID     = 123456\n")
+      KeyConfigFile.write("  CLOCKBOT_X_CLIENT_SECRET = abcdefg\n")
       KeyConfigFile.write("\n")
       KeyConfigFile.write("  PATREON_CLIENT_ID             = ABCDE\n")
       KeyConfigFile.write("  PATREON_CLIENT_SECRET         = EFJHI\n")
       KeyConfigFile.write("  PATREON_CREATOR_ACCESS_TOKEN  = EFJHI\n")
+      KeyConfigFile.write("  PATREON_WEBHOOK_URL    = https://patreon.something.packetriot.net\n")
+      KeyConfigFile.write("  PATREON_WEBHOOK_SECRET = SomeSecretYouMakeUp\n")
       KeyConfigFile.write("\n")
       
       print("File created")
@@ -2104,7 +2315,9 @@ def DisplayPatreon():
 
 
   LED.CreateCreditImage(CreditNames)
+  LED.TheMatrix.brightness = StreamBrightness
   LED.ScrollCreditImage("credits.png",ScrollSleep=0.04)
+  LED.TheMatrix.brightness = MaxBrightness
 
 
 
@@ -2112,16 +2325,108 @@ def DisplayPatreon():
 #-- ASYNCIO Functions                  --
 #----------------------------------------
 
+# this will be called whenever someone follows the target channel
+async def on_stream_online(data: dict):
+    print("**** STREAM ONLINE ****")
+    EventQueue.put(('EVENTSUB_STREAM_ONLINE',data))
+
+async def on_follow(data: dict):
+    print("**** follow detected ****")
+    EventQueue.put(('EVENTSUB_FOLLOW',data))
+
+async def on_subscribe(data: dict):
+    EventQueue.put(('EVENTSUB_SUBSCRIBE',data))
+
+async def on_subscribe(data: dict):
+    EventQueue.put(('EVENTSUB_SUBSCRIBE',data))
+
+async def on_channel_cheer(data:dict):
+    EventQueue.put(('EVENTSUB_CHEER',data))
+
+async def on_channel_points_redemption(data:dict):
+    EventQueue.put(('EVENTSUB_POINTS_REDEMPTION',data))
+
+async def on_hype_train_begin(data:dict):
+    EventQueue.put(('EVENTSUB_HYPE_TRAIN_BEGIN',data))
+
+async def on_hype_train_progress(data:dict):
+    EventQueue.put(('EVENTSUB_HYPE_TRAIN_PROGRESS',data))
+
+
+async def on_hype_train_end(data:dict):
+    EventQueue.put(('EVENTSUB_HYPE_TRAIN_END',data))
+
+async def on_channel_subscription_gift(data:dict):
+    EventQueue.put(('EVENTSUB_SUBSCRIPTION_GIFT',data))
+
 
 
 #----------------------------------------
 #-- MULTIPROCESSING Functions          --
 #----------------------------------------
 
+def TwitchEventSub(EventQueue):
 
-def WebHook(EventQueue):
   
+  twitch = Twitch(CLOCKBOT_X_CLIENT_ID, CLOCKBOT_X_CLIENT_SECRET)
+  twitch.authenticate_app([])
+
+  uid = twitch.get_users(logins=[BROADCASTER_CHANNEL])
+  BroadCasterUserID = uid['data'][0]['id']
+  
+
+  # basic setup, will run on port 8080 and a reverse proxy takes care of the https and certificate
+  hook = EventSub(TWITCH_WEBHOOK_URL, CLOCKBOT_X_CLIENT_ID, 5051, twitch)
+  
+  # unsubscribe from all to get a clean slate
+  hook.unsubscribe_all()
+  
+  # start client
+  hook.start()
+  print("EVENTSUB: ")
+  print("EVENTSUB: ")
+  print("EVENTSUB: ")
+  print('EVENTSUB: --Subscribing to EVENTSUB hooks--')
  
+  print("EVENTSUB: Channel follows")
+  hook.listen_channel_follow(BroadCasterUserID, on_follow)
+
+  print("EVENTSUB: Stream goes live")
+  hook.listen_stream_online(BroadCasterUserID, on_stream_online)
+
+  print("EVENTSUB: Channel subscriptions")
+  hook.listen_channel_subscribe(BroadCasterUserID, on_subscribe)
+ 
+  print("EVENTSUB: Bits thrown")
+  hook.listen_channel_cheer(BroadCasterUserID,on_channel_cheer)
+ 
+  
+  print("EVENTSUB: Channel points redeemed")
+  hook.listen_channel_points_custom_reward_redemption_add(BroadCasterUserID,on_channel_points_redemption)
+
+  print("EVENTSUB: Hype Train begin")
+  hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
+
+  print("EVENTSUB: Hype Train progress")
+  hook.listen_hype_train_progress(BroadCasterUserID, on_hype_train_progress)
+
+  print("EVENTSUB: Hype Train end")
+  hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_end)
+
+  print("EVENTSUB: subscription gifted")
+  hook.listen_channel_subscription_gift(BroadCasterUserID,on_channel_subscription_gift)
+
+ 
+  print('EVENTSUB: --------------------------------')
+  print('EVENTSUB: ')
+  print('EVENTSUB: ')
+  print('EVENTSUB: ')
+  
+
+
+
+def PatreonWebHook(EventQueue):
+
   #we create a Flask app, assign a default function (Receiver) and use it to write to the 
   #multiprocessing Queue.  This allows the Twitch Bot to pop the queue.
 
@@ -2133,7 +2438,7 @@ def WebHook(EventQueue):
     #MyData = request.get_json(silent=True)
     #pprint.pprint(MyData)     
     #print("DATA: ", request.json)
-    EventQueue.put(MyData)
+    EventQueue.put(('PATREON',MyData))
     
     #pprint.pprint(MyData, indent=2)        
 
@@ -2158,6 +2463,7 @@ def WebHook(EventQueue):
 
   print("Running the webhook app")
   app.run(port=5050)
+  
 
 
 
@@ -2176,6 +2482,9 @@ def WebHook(EventQueue):
 #------------------------------------------------------------------------------
 # MAIN SECTION                                                               --
 #------------------------------------------------------------------------------
+
+
+
 
 
 
@@ -2198,35 +2507,25 @@ LoadConfigFiles()
 
 
 
+
 print("--Spawning WebHook process--------------")
 #Spawn the webhook process
-WebHookProcess = multiprocessing.Process(target = WebHook, args=(EventQueue,))
-WebHookProcess.start()
-#BotProcess = multiprocessing.Process(target = StartBot,args=(EventQueue,))
-#BotProcess.start()
+PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
+PatreonWebHookProcess.start()
+
+TwitchEventSubProcess = multiprocessing.Process(target = TwitchEventSub, args=(EventQueue,))
+TwitchEventSubProcess.start()
+
+
 print("----------------------------------------")
 
-
-
-
-
-print("")
-print("--Starting up EventSubBot---------------")
-EventSubBot = commands.Bot.from_client_credentials(client_id=USER_ID,
-                                         client_secret=ACCESS_TOKEN)
-
-esclient = eventsub.EventSubClient(EventSubBot,
-                                   webhook_secret=ACCESS_TOKEN,
-                                   callback_route=WEBHOOK_URL)
-print("----------------------------------------")
-print("")
 
 
 
 
 print ("--StartBot--")
 #skip all this if running datagod
-if (CHANNEL != 'datagod' and CHANNEL != 'XtianNinja'):
+if (BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL != 'XtianNinja'):
   #Fake boot sequence
   LED.ClearBigLED()
   LED.ClearBuffers()
@@ -2249,40 +2548,14 @@ else:
 
 
 
+
+
+
+
+
+
 mybot = Bot()
-mybot.loop.run_until_complete(mybot.__ainit__())
 mybot.run()
-
-
-
-
-@esbot.event()
-
-async def event_eventsub_notification_follow(payload: eventsub.ChannelFollowData) -> None:
-  global EventQueue
-  print('** EVENT RECEIVED **')
-  print('** EVENT RECEIVED **')
-  print('** EVENT RECEIVED **')
-  channel = mybot.get_channel(CHANNEL)
-
-  EventQueue.put(eventsub.ChannelFollowData)
-  await channel.send(f'{payload.data.user.name} followed woohoo!')
-
-@esbot.event()
-async def ChannelSubscribeData(payload: eventsub.ChannelSubscribeData) -> None:
-  global EventQueue
-  print('** EVENT RECEIVED **')
-  print('** CHANNEL SUBSCRIBE DATA **')
-  print('** EVENT RECEIVED **')
-  channel = mybot.get_channel(CHANNEL)
-
-  EventQueue.put(eventsub.ChannelSubscribeData)
-  await channel.send(f'{payload.data.user.name} subscribed!')
-
-
-
-
-
 
 
 
