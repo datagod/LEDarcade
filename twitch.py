@@ -1077,7 +1077,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views ?hug')
 
 
     #----------------------------------------
@@ -1099,6 +1099,16 @@ class Bot(commands.Bot ):
 
   
     
+    #----------------------------------------
+    # Hug                                  --
+    #----------------------------------------
+    @commands.command()
+    async def hug(self, ctx: commands.Context):
+      message = "Sending hugs <3 <3 <3"
+      await self.Channel.send(message)
+
+      LED.ShowBeatingHeart(16,0,10,0)
+
 
 
     #----------------------------------------
