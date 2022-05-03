@@ -540,6 +540,7 @@ class Bot(commands.Bot ):
           LED.TheMatrix.brightness = StreamBrightness
           LED.ShowBeatingHeart(16,0,10,0)
           LED.TheMatrix.brightness = MaxBrightness
+          LED.SweepClean()
 
           
 
@@ -1112,6 +1113,7 @@ class Bot(commands.Bot ):
       LED.TheMatrix.brightness = StreamBrightness
       LED.ShowBeatingHeart(16,0,10,0)
       LED.TheMatrix.brightness = MaxBrightness
+      LED.SweepClean()
 
 
 

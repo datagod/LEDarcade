@@ -18346,7 +18346,7 @@ def CreateCreditImage(names):
   text_padding    = 12
   image_width     = 64
   ColorB          = 52
-  TextRGB         = (175,175,175)
+  TextRGB         = (235,235,235)
 
 
 
@@ -18473,7 +18473,7 @@ def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
   text_padding    = 16
   image_width     = 64
   ColorG          = 52
-  TextRGB         = (225,225,225)
+  TextRGB         = (235,235,235)
   NameFontSize    = 11
 
 
@@ -18805,7 +18805,6 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
     time.sleep(0.125)
     ZoomScreen(ScreenArray,22,32,Sleep)
 
-  SweepClean()
 
 
 
