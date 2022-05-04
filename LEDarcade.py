@@ -65,7 +65,8 @@ import inspect
 #RGB Matrix and graphics
 from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
+
 
 #URL
 import urllib.request
@@ -18809,24 +18810,30 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
 
 
 
-def DisplayGIF(GIFName,Loops=5):
-  canvas = Image.new("RGB",(HatWidth,HatHeight),"black")
+def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
+  #canvas = Image.new("RGB",(HatWidth,HatHeight),"black")
+  global Canvas
+  Canvas.Clear()
   gif = Image.open(GIFName, 'r')
+  #resized =  gif.resize((32,32),Image.LANCZOS)
 
-  resized =  gif.resize((64,64),Image.LANCZOS)
+  ImageArray = []
+  #convert the GIF into an array of resized frames
+  index = 1
+  for frame in ImageSequence.Iterator(gif):
+      frame = frame.convert('RGB')
+      resized = frame.resize((width,height),Image.LANCZOS)
+      ImageArray.append(resized)
+      index += 1
 
-  frames = []
-  
-  try:
-      while 1:
-          frames.append(resized.copy())
-          print(len(frames))
-          gif.seek(len(frames))
-  except EOFError:
-      pass
+  h = (HatWidth  - width) / 2
+  v = (HatHeight - height) / 2
 
-  for frame in frames:
-      canvas.paste(frame)
-      TheMatrix.SetImage(canvas)
-      time.sleep(0.05)      
-      
+  for loop in range(0,Loops):
+    for i in range(0,index-1):
+      Canvas.SetImage(ImageArray[i],h,v)
+      Canvas = TheMatrix.SwapOnVSync(Canvas)
+      time.sleep(sleep)
+
+
+

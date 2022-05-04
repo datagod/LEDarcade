@@ -153,6 +153,7 @@ HypeTrainTotal       = ''
 HatHeight = 32
 HatWidth  = 64
 StreamBrightness = 20
+GifBrightness    = 25
 MaxBrightness    = 80
 
   
@@ -259,7 +260,7 @@ class Bot(commands.Bot ):
 
         if(StreamActive == True and SHOW_CHATBOT_MESSAGES == True):
           self.ChatTerminalOn = True
-        else:
+        elif(StreamActive == False and SHOW_CHATBOT_MESSAGES == True):
           #Explain the main intro is not live
           LED.ShowTitleScreen(
             BigText             = "404",
@@ -973,11 +974,33 @@ class Bot(commands.Bot ):
             print ("username:     ",TwitchUser)
             print("points redeemed:",Cost)
 
+            LED.TheMatrix.brightness = GifBrightness
+            if (Title.upper() in ("D'OH!",'KHAN!','LANGUAGE','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
+              r = random.randint(0,1)            
+              if (r == 0):
+                LED.DisplayGIF('./images/fishburger.gif',64,32,2,0.04)
+              elif(r==1):
+                LED.DisplayGIF('./images/ghosts.gif',64,32,10,0.04)
+
+
+            elif(Title.upper() in ('RIMSHOT','HYDRATE','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI')):
+              r = random.randint(0,3)
+              if (r == 0):
+                LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
+              elif (r == 1):
+                LED.DisplayGIF('./images/arcade1.gif',64,32,25,0.12)
+              elif (r == 2):
+                LED.DisplayGIF('./images/arcade2.gif',64,32,25,0.12)
+              elif (r == 3):
+                LED.TheMatrix.Clear()
+                LED.DisplayGIF('./images/mario.gif',32,32,15,0.05)
+
+            LED.TheMatrix.brightness = MaxBrightness
             LED.StarryNightDisplayText(
               Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
               Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
-              RunSeconds = 30
+              RunSeconds = 15
               )                    
 
 
