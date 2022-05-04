@@ -973,6 +973,28 @@ class Bot(commands.Bot ):
             print ("username:     ",TwitchUser)
             print("points redeemed:",Cost)
 
+            
+            if (Title.upper() in ("D'OH!",'KHAN','LANGUAGE','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
+              r = random.randint(0,1)            
+              if (r == 0):
+                LED.DisplayGIF('./images/fishburger.gif',64,32,2,0.04)
+              elif(r==1):
+                LED.DisplayGIF('./images/ghosts.gif',64,32,10,0.04)
+
+
+            elif(Title.upper() in ('RIMSHOT','HYDRATE','POSTURE CHECK!','BREAK IT DOWN NED')):
+              r = random.randint(0,4)
+              if (r == 0):
+                LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
+              elif (r == 1):
+                LED.DisplayGIF('./images/arcade1.gif',64,32,25,0.12)
+              elif (r == 2):
+                LED.DisplayGIF('./images/arcade2.gif',64,32,25,0.12)
+              elif (r == 3):
+                LED.TheMatrix.Clear()
+              elif (r == 4):
+                LED.DisplayGIF('./images/mario.gif',32,32,15,0.05)
+
             LED.StarryNightDisplayText(
               Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
