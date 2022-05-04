@@ -983,8 +983,8 @@ class Bot(commands.Bot ):
                 LED.DisplayGIF('./images/ghosts.gif',64,32,10,0.04)
 
 
-            elif(Title.upper() in ('RIMSHOT','HYDRATE','POSTURE CHECK!','BREAK IT DOWN NED')):
-              r = random.randint(0,4)
+            elif(Title.upper() in ('RIMSHOT','HYDRATE','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI')):
+              r = random.randint(0,3)
               if (r == 0):
                 LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
               elif (r == 1):
@@ -993,7 +993,6 @@ class Bot(commands.Bot ):
                 LED.DisplayGIF('./images/arcade2.gif',64,32,25,0.12)
               elif (r == 3):
                 LED.TheMatrix.Clear()
-              elif (r == 4):
                 LED.DisplayGIF('./images/mario.gif',32,32,15,0.05)
 
             LED.TheMatrix.brightness = MaxBrightness
