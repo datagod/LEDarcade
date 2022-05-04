@@ -153,6 +153,7 @@ HypeTrainTotal       = ''
 HatHeight = 32
 HatWidth  = 64
 StreamBrightness = 20
+GifBrightness    = 50
 MaxBrightness    = 80
 
   
@@ -259,7 +260,7 @@ class Bot(commands.Bot ):
 
         if(StreamActive == True and SHOW_CHATBOT_MESSAGES == True):
           self.ChatTerminalOn = True
-        else:
+        elif(StreamActive == False and SHOW_CHATBOT_MESSAGES == True):
           #Explain the main intro is not live
           LED.ShowTitleScreen(
             BigText             = "404",
@@ -974,7 +975,7 @@ class Bot(commands.Bot ):
             print("points redeemed:",Cost)
 
             
-            if (Title.upper() in ("D'OH!",'KHAN','LANGUAGE','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
+            if (Title.upper() in ("D'OH!",'KHAN!','LANGUAGE','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
               r = random.randint(0,1)            
               if (r == 0):
                 LED.DisplayGIF('./images/fishburger.gif',64,32,2,0.04)
@@ -999,7 +1000,7 @@ class Bot(commands.Bot ):
               Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
               Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
-              RunSeconds = 30
+              RunSeconds = 15
               )                    
 
 
