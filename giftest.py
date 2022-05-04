@@ -14,6 +14,8 @@ LED.TheMatrix.brightness = 50
 print("GIF TEST")
 
 while(1==1):
+  LED.TheMatrix.Clear()
+  LED.DisplayGIF('./images/samus.gif',32,32,20,0.06)
   LED.DisplayGIF('./images/diner.gif',64,32,5,0.04)
   LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
   LED.DisplayGIF('./images/runningman2.gif',64,32,1,0.04)

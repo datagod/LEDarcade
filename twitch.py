@@ -976,15 +976,18 @@ class Bot(commands.Bot ):
 
             LED.TheMatrix.brightness = GifBrightness
             if (Title.upper() in ("D'OH!",'KHAN!','LANGUAGE','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
-              r = random.randint(0,1)            
+              r = random.randint(0,2)            
               if (r == 0):
                 LED.DisplayGIF('./images/fishburger.gif',64,32,2,0.04)
               elif(r==1):
                 LED.DisplayGIF('./images/ghosts.gif',64,32,10,0.04)
+              elif(r==2):
+                LED.TheMatrix.Clear()
+                LED.DisplayGIF('./images/samus.gif',32,32,20,0.06)
 
 
-            elif(Title.upper() in ('RIMSHOT','HYDRATE','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI')):
-              r = random.randint(0,3)
+            elif(Title.upper() in ('RIMSHOT','HYDRATE!','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI')):
+              r = random.randint(0,4)
               if (r == 0):
                 LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
               elif (r == 1):
@@ -994,6 +997,9 @@ class Bot(commands.Bot ):
               elif (r == 3):
                 LED.TheMatrix.Clear()
                 LED.DisplayGIF('./images/mario.gif',32,32,15,0.05)
+              elif(r==4):
+                LED.TheMatrix.Clear()
+                LED.DisplayGIF('./images/samus.gif',32,32,20,0.06)
 
             LED.TheMatrix.brightness = MaxBrightness
             LED.StarryNightDisplayText(
