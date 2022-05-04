@@ -974,7 +974,7 @@ class Bot(commands.Bot ):
             print ("username:     ",TwitchUser)
             print("points redeemed:",Cost)
 
-            
+            LED.TheMatrix.brightness = GifBrightness
             if (Title.upper() in ("D'OH!",'KHAN!','LANGUAGE','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
               r = random.randint(0,1)            
               if (r == 0):
@@ -996,6 +996,7 @@ class Bot(commands.Bot ):
               elif (r == 4):
                 LED.DisplayGIF('./images/mario.gif',32,32,15,0.05)
 
+            LED.TheMatrix.brightness = MaxBrightness
             LED.StarryNightDisplayText(
               Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
