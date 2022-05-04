@@ -986,10 +986,10 @@ class Bot(commands.Bot ):
                 LED.DisplayGIF('./images/samus.gif',32,32,20,0.06)
 
 
-            elif(Title.upper() in ('RIMSHOT','HYDRATE!','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI')):
+            elif(Title.upper() in ('RIMSHOT','HYDRATE!','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI','HIGHLIGHT MY MESSAGE')):
               r = random.randint(0,4)
               if (r == 0):
-                LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
+                LED.DisplayGIF('./images/homer_marge2.gif',64,32,15,0.04)
               elif (r == 1):
                 LED.DisplayGIF('./images/arcade1.gif',64,32,25,0.12)
               elif (r == 2):
