@@ -46,6 +46,7 @@ import random
 import time
 import numpy
 import math
+from datetime import datetime, timedelta
 
 
 random.seed()
@@ -1970,7 +1971,47 @@ def PlaySpaceDot(GameMaxMinutes = 5):
     while (LevelFinished == 'N' and PlayerShip.alive == 1):
       moves = moves + 1
 
-      
+
+      #check the time once in a while
+      if(random.randint(0,1000) == 1):
+        if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
+          ClockSprite   = LED.CreateClockSprite(24)
+          ClockSprite.h = (LED.HatWidth - ClockSprite.width -2)
+          ClockSprite.v = 0
+          ClockSprite.rgb = ClockRGB
+
+          Background = LED.CopySpriteToLayerZoom(ClockSprite,bx + 30,10,(5,0,5),(0,5,0),2,False,Layer=Background)
+
+
+
+        #End game after X seconds
+        h,m,s    = LED.GetElapsedTime(start_time,time.time())
+        print("Elapsed Time:  mm:ss",m,s)
+
+        if(m > GameMaxMinutes):
+          LED.SaveConfigData()
+          print("Ending game after",m," minutes")
+
+          LED.ClearBigLED()
+          LED.ClearBuffers()
+          CursorH = 0
+          CursorV = 0
+          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"ALIEN ATTACK HAS BEEN DEFLECTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+          LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FOR NOW...",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+          LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+          
+          return();
+
+
+
+
+
+
+
+
+
+
       #Draw bottom background
       m,r = divmod(moves,PlanetSurfaceSleep)  
       if (r == 0):
