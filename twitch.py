@@ -993,7 +993,7 @@ class Bot(commands.Bot ):
 
 
             elif(Title.upper() in ('RIMSHOT','HYDRATE!','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI','HIGHLIGHT MY MESSAGE')):
-              r = random.randint(0,5)
+              r = random.randint(0,6)
               if (r == 0):
                 LED.DisplayGIF('./images/homer_marge2.gif',64,32,15,0.04)
               elif (r == 1):
@@ -1008,6 +1008,10 @@ class Bot(commands.Bot ):
                 LED.DisplayGIF('./images/samus.gif',32,32,20,0.06)
               elif(r==5):
                 LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
+              elif(r==6):
+                LED.TheMatrix.Clear()
+                LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
+
 
             LED.TheMatrix.brightness = MaxBrightness
             LED.StarryNightDisplayText(

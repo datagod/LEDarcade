@@ -15,6 +15,9 @@ print("GIF TEST")
 
 while(1==1):
   LED.TheMatrix.Clear()
+  LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
+  
+  LED.TheMatrix.Clear()
   LED.DisplayGIF('./images/samusbounce.gif',32,32,15,0.09)
   LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
   LED.TheMatrix.Clear()
