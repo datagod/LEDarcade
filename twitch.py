@@ -74,7 +74,7 @@ import DotInvaders as DI
 import Outbreak    as OB
 import Defender    as DE
 import Tron        as TR
-
+import SpaceDot    as SD
 
 
 
@@ -869,13 +869,14 @@ class Bot(commands.Bot ):
           EventDict = Message.get('event','NONE')
           if(EventDict != "NONE"):
             print("Event discovered")
-            FollowedBy = Message['event']['started_at']
-            
+            StartedAt = Message['event']['started_at']
+
+            LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
             LED.StarryNightDisplayText(
-              Text1 = FollowedBy,
-              Text2 = "NEW FOLLOWER!!",
-              Text3 = "THANK YOU FOR YOUR SUPPORT", 
-              RunSeconds = 60
+              Text1 = "STREAM ONLINE",
+              Text2 = "STREAM ONLINE",
+              Text3 = "PREPARE YOURSELF FOR JOY AND ENTERTAINMENT", 
+              RunSeconds = 30
               )                    
 
       elif (MessageType == 'EVENTSUB_FOLLOW'):
@@ -883,6 +884,8 @@ class Bot(commands.Bot ):
           if(EventDict != "NONE"):
             print("Event discovered")
             FollowedBy = Message['event']['user_name']
+          
+            LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
             
             LED.StarryNightDisplayText(
               Text1 = FollowedBy,
@@ -904,6 +907,8 @@ class Bot(commands.Bot ):
             print("Found: user_name")
             TwitchUser = Message['event']['user_name']
             print("user_name:",TwitchUser)
+
+            LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
 
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + "TwitchUser",
@@ -927,6 +932,8 @@ class Bot(commands.Bot ):
             TwitchUser = Message['event']['user_name']
             print("user_name:",user_name)
 
+            LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
+
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + "TwitchUser",
               Text2 = "GAVE A SUBSCRIPTION!!",
@@ -949,6 +956,11 @@ class Bot(commands.Bot ):
             TwitchUser = Message['event']['user_name']
             print ("Found: bits")
             print("Bits thrown:",BitsThrown)
+
+            LED.TheMatrix.Clear()
+            LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
+            LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
+
 
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + " BITS",
@@ -975,7 +987,7 @@ class Bot(commands.Bot ):
             print("points redeemed:",Cost)
 
             LED.TheMatrix.brightness = GifBrightness
-            if (Title.upper() in ("D'OH!",'KHAN!','LANGUAGE','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
+            if (Title.upper() in ("D'OH!",'KHAN!','LANGUAGE!','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
               r = random.randint(0,4)            
               if (r == 0):
                 LED.DisplayGIF('./images/fishburger.gif',64,32,2,0.04)
@@ -1122,7 +1134,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views ?hug')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?astrosmash ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views ?hug')
 
 
     #----------------------------------------
@@ -1554,6 +1566,24 @@ class Bot(commands.Bot ):
       LED.ClearBuffers()
       CursorH = 0
       CursorV = 0
+
+
+    #----------------------------------------
+    # OUTBREAK                             --
+    #----------------------------------------
+
+    @commands.command()
+    async def astrosmash(self, ctx: commands.Context):
+      #Play game Outbreak
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Uh oh.  The sky is falling.  Lets watch AstroSmash..."
+        await self.Channel.send(message)
+      SD.LaunchSpaceDot(GameMaxMinutes = 2,ShowIntro = False)
+      LED.ClearBigLED()
+      LED.ClearBuffers()
+      CursorH = 0
+      CursorV = 0
+
 
     #----------------------------------------
     # DEFENDER                             --
