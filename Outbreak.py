@@ -3272,23 +3272,23 @@ def LaunchOutbreak(GameMaxMinutes = 10000, ShowIntro = True):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-    PlayOutbreak(GameMaxMinutes)
+  PlayOutbreak(GameMaxMinutes)
         
 
-    LED.ClearBigLED()
-    LED.ClearBuffers()
-    CursorH = 0
-    CursorV = 0
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL OUTBREAK HALTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,175,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL LOAD: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(VirusMoves),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,200,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.OutbreakGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"QUARANTINE STILL ACTIVE... OR IS IT?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+  LED.ClearBigLED()
+  LED.ClearBuffers()
+  CursorH = 0
+  CursorV = 0
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL OUTBREAK HALTED",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,175,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+  LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"VIRAL LOAD: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(VirusMoves),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,200,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.OutbreakGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"QUARANTINE STILL ACTIVE... OR IS IT?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
 

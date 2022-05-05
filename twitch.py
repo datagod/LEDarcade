@@ -869,13 +869,14 @@ class Bot(commands.Bot ):
           EventDict = Message.get('event','NONE')
           if(EventDict != "NONE"):
             print("Event discovered")
-            FollowedBy = Message['event']['started_at']
-            
+            StartedAt = Message['event']['started_at']
+
+            LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
             LED.StarryNightDisplayText(
-              Text1 = FollowedBy,
-              Text2 = "NEW FOLLOWER!!",
-              Text3 = "THANK YOU FOR YOUR SUPPORT", 
-              RunSeconds = 60
+              Text1 = "STREAM ONLINE",
+              Text2 = "STREAM ONLINE",
+              Text3 = "PREPARE YOURSELF FOR JOY AND ENTERTAINMENT", 
+              RunSeconds = 30
               )                    
 
       elif (MessageType == 'EVENTSUB_FOLLOW'):
@@ -883,6 +884,8 @@ class Bot(commands.Bot ):
           if(EventDict != "NONE"):
             print("Event discovered")
             FollowedBy = Message['event']['user_name']
+          
+            LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
             
             LED.StarryNightDisplayText(
               Text1 = FollowedBy,
@@ -904,6 +907,8 @@ class Bot(commands.Bot ):
             print("Found: user_name")
             TwitchUser = Message['event']['user_name']
             print("user_name:",TwitchUser)
+
+            LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
 
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + "TwitchUser",
@@ -927,6 +932,8 @@ class Bot(commands.Bot ):
             TwitchUser = Message['event']['user_name']
             print("user_name:",user_name)
 
+            LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
+
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + "TwitchUser",
               Text2 = "GAVE A SUBSCRIPTION!!",
@@ -949,6 +956,9 @@ class Bot(commands.Bot ):
             TwitchUser = Message['event']['user_name']
             print ("Found: bits")
             print("Bits thrown:",BitsThrown)
+
+            LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
+
 
             LED.StarryNightDisplayText(
               Text1 = str(BitsThrown) + " BITS",
