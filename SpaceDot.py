@@ -1980,7 +1980,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           ClockSprite.v = 0
           ClockSprite.rgb = ClockRGB
 
-          Background = LED.CopySpriteToLayerZoom(ClockSprite,bx + 30,10,(5,0,5),(0,5,0),2,False,Layer=Background)
+          #Background = LED.CopySpriteToLayerZoom(ClockSprite,bx + 30,10,(5,0,5),(0,5,0),2,False,Layer=Background)
 
 
 
