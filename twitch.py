@@ -996,7 +996,7 @@ class Bot(commands.Bot ):
               elif(r==2):
                 LED.TheMatrix.Clear()
                 LED.DisplayGIF('./images/samus.gif',32,32,20,0.06)
-              elif(r==4):
+              elif(r==3):
                 LED.TheMatrix.Clear()
                 LED.DisplayGIF('./images/samusbounce.gif',32,32,15,0.09)
               elif(r==4):
@@ -1004,7 +1004,7 @@ class Bot(commands.Bot ):
 
 
 
-            elif(Title.upper() in ('RIMSHOT','HYDRATE!','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI','HIGHLIGHT MY MESSAGE')):
+            elif(Title.upper() in ('RIMSHOT','HYDRATE!','POSTURE CHECK!','BREAK IT DOWN NED','CONFETTI','HIGHLIGHT MY MESSAGE','STREEEEEEEEEETCH','HIT THE DAB')):
               r = random.randint(0,6)
               if (r == 0):
                 LED.DisplayGIF('./images/homer_marge2.gif',64,32,15,0.04)
