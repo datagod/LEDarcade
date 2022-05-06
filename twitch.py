@@ -1030,7 +1030,7 @@ class Bot(commands.Bot ):
               Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
               Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
-              RunSeconds = 15
+              RunSeconds = 25
               )                    
 
 
