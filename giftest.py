@@ -16,7 +16,7 @@ print("GIF TEST")
 while(1==1):
   LED.TheMatrix.Clear()
 
-  LED.DisplayGIF('./images/donkeykong.gif',32,32,5,0.12)
+  LED.DisplayGIF('./images/minioncrying.gif',64,32,2,0.06)
   LED.TheMatrix.Clear()
   LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
   
@@ -25,7 +25,7 @@ while(1==1):
   LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
   LED.TheMatrix.Clear()
   LED.DisplayGIF('./images/samus.gif',32,32,20,0.06)
-  LED.DisplayGIF('./images/diner.gif',64,32,5,0.04)
+  
   LED.DisplayGIF('./images/homer_marge2.gif',64,32,5,0.04)
   LED.DisplayGIF('./images/runningman2.gif',64,32,1,0.04)
   LED.DisplayGIF('./images/arcade1.gif',64,32,25,0.12)
