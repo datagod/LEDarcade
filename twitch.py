@@ -544,14 +544,14 @@ class Bot(commands.Bot ):
           LED.SweepClean()
 
         #REDALERT
-        if (message.content == "redalert"):
+        if (message.content == "!redalert"):
           LED.TheMatrix.brightness = StreamBrightness
           LED.DisplayGIF('./images/redalert.gif',32,32,20,0.06)
           LED.TheMatrix.brightness = MaxBrightness
           LED.SweepClean()
 
         #POLICE
-        if (message.content == "police"):
+        if (message.content == "!police"):
           LED.TheMatrix.brightness = StreamBrightness
           LED.DisplayGIF('./images/simpsonspolice.gif',32,32,20,0.06)
           LED.TheMatrix.brightness = MaxBrightness
