@@ -163,6 +163,7 @@ EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
 Canvas = TheMatrix.CreateFrameCanvas()
 Canvas.Fill(0,0,0)
 
+
 DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
 
 
@@ -4353,6 +4354,37 @@ RightSquareBracketSprite = Sprite(
 )
 
 
+# >
+ForwardSlashSprite = Sprite(
+  5,
+  5,
+  0,
+  0,
+  0,
+  [0,0,0,0,1,
+   0,0,0,1,0,
+   0,0,1,0,0,
+   0,1,0,0,0,
+   1,0,0,0,0]
+)
+
+
+# >
+BackSlashSprite = Sprite(
+  5,
+  5,
+  0,
+  0,
+  0,
+  [1,0,0,0,0,
+   0,1,0,0,0,
+   0,0,1,0,0,
+   0,0,0,1,0,
+   0,0,0,0,1]
+)
+
+
+
 CursorSprite = Sprite(
   4,
   5,
@@ -4367,6 +4399,34 @@ CursorSprite = Sprite(
 )
 
 
+# [
+UpArrowSprite = Sprite(
+  3,
+  3,
+  0,
+  0,
+  0,
+  [0,1,0,
+   1,1,1,
+   0,1,0,
+   0,1,0,
+   0,1,0]
+)
+
+
+# [
+DownArrowSprite = Sprite(
+  3,
+  3,
+  0,
+  0,
+  0,
+  [0,1,0,
+   0,1,0,
+   0,1,0,
+   1,1,1,
+   0,1,0]
+)
 
 
 ClockSpriteBackground = Sprite(
@@ -12425,6 +12485,11 @@ def CreateBannerSprite(TheMessage):
     elif (c == ']'):
       BannerSprite = JoinSprite(BannerSprite, RightSquareBracketSprite,0)
 
+    elif (c == '/'):
+      BannerSprite = JoinSprite(BannerSprite, ForwardSlashSprite,0)
+
+    elif (c == '\\'):
+      BannerSprite = JoinSprite(BannerSprite, BackSlashSprite,0)
 
     elif (c == ' '):
       BannerSprite = JoinSprite(BannerSprite, SpaceSprite,0)
