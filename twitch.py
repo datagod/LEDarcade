@@ -546,14 +546,14 @@ class Bot(commands.Bot ):
         #REDALERT
         if (message.content == "!redalert"):
           LED.TheMatrix.brightness = StreamBrightness
-          LED.DisplayGIF('./images/redalert.gif',32,32,20,0.06)
+          LED.DisplayGIF('./images/redalert.gif',64,32,20,0.06)
           LED.TheMatrix.brightness = MaxBrightness
           LED.SweepClean()
 
         #POLICE
         if (message.content == "!police"):
           LED.TheMatrix.brightness = StreamBrightness
-          LED.DisplayGIF('./images/simpsonspolice.gif',32,32,20,0.06)
+          LED.DisplayGIF('./images/simpsonspolice.gif',64,32,5,0.06)
           LED.TheMatrix.brightness = MaxBrightness
           LED.SweepClean()
           
