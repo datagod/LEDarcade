@@ -543,6 +543,19 @@ class Bot(commands.Bot ):
           LED.TheMatrix.brightness = MaxBrightness
           LED.SweepClean()
 
+        #REDALERT
+        if (message.content == "!redalert"):
+          LED.TheMatrix.brightness = StreamBrightness
+          LED.DisplayGIF('./images/redalert.gif',64,32,20,0.06)
+          LED.TheMatrix.brightness = MaxBrightness
+          LED.SweepClean()
+
+        #POLICE
+        if (message.content == "!police"):
+          LED.TheMatrix.brightness = StreamBrightness
+          LED.DisplayGIF('./images/simpsonspolice.gif',64,32,5,0.06)
+          LED.TheMatrix.brightness = MaxBrightness
+          LED.SweepClean()
           
 
 
@@ -958,6 +971,7 @@ class Bot(commands.Bot ):
             print("Bits thrown:",BitsThrown)
 
             LED.TheMatrix.Clear()
+            LED.TheMatrix.brightness = GifBrightness
             LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
             LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
 
@@ -968,6 +982,7 @@ class Bot(commands.Bot ):
               Text3 = "THANK YOU FOR YOUR SUPPORT", 
               RunSeconds = 40
               )                    
+            LED.TheMatrix.brightness = MaxBrightness
 
       #CHANNEL POINTS REDEMPTION
       elif (MessageType == 'EVENTSUB_POINTS_REDEMPTION'):
@@ -1030,7 +1045,7 @@ class Bot(commands.Bot ):
               Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
               Text3 = "KEEP GOING " + TwitchUser + " YOU GOT MORE TO SPEND!", 
-              RunSeconds = 25
+              RunSeconds = 30
               )                    
 
 
