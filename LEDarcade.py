@@ -184,7 +184,7 @@ OutbreakGamesPlayed    = 0
 SpaceDotHighScore      = 0
 SpaceDotGamesPlayed    = 0
 DefenderGamesPlayed    = 0
-DefenderHighScore     = 0
+DefenderHighScore      = 0
 
 
 
