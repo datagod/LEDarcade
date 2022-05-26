@@ -577,6 +577,24 @@ class Bot(commands.Bot ):
             )
 
 
+        #Goodbye
+        if (message.content.upper() == "!GOODBYE"):
+
+          LED.ShowTitleScreen(
+            BigText             = "BYE",
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            BigTextZoom         = 3,
+            LittleText          = '',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = message.author + " waves as they wander into the sunset",
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 5,           # time in seconds to wait before exiting 
+            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+
 
 
 
