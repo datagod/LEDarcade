@@ -558,6 +558,28 @@ class Bot(commands.Bot ):
           LED.SweepClean()
           
 
+        #VIP / Hello
+        if (message.content == "!vip"):
+
+          LED.ShowTitleScreen(
+            BigText             = "HI",
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            BigTextZoom         = 4,
+            LittleText          = '',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = "VIP " + message.author + says "hello",
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 5,           # time in seconds to wait before exiting 
+            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+
+
+
+
+
 
 
 
