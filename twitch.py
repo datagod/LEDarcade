@@ -429,7 +429,7 @@ class Bot(commands.Bot ):
         if(StreamActive == True):
 
           #skip my own channel for testing purposes
-          if(BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL.upper != 'XTIANNINJA'):
+          if(BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL.upper() != 'XTIANNINJA'):
 
             #SHOW INTRO FOR MAIN CHANNEL
             LED.ShowTitleScreen(
