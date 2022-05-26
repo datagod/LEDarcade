@@ -632,7 +632,7 @@ class Bot(commands.Bot ):
       elapsed_seconds = LED.GetElapsedSeconds(self.LastMessageReceived)
 
       if(StreamActive == True and 
-        ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 10))):
+        ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 25))):
         LED.TheMatrix.brightness = StreamBrightness
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
@@ -898,7 +898,9 @@ class Bot(commands.Bot ):
             print("Event discovered")
             FollowedBy = Message['event']['user_name']
           
+            LED.TheMatrix.brightness = StreamBrightness
             LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
+            LED.TheMatrix.brightness = MaxBrightness
             
             LED.StarryNightDisplayText(
               Text1 = FollowedBy,
@@ -1168,7 +1170,8 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?astrosmash ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views ?hug')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?patreon ?patrons ?me ?views ?hug')
+        await ctx.send('Available games: ?invaders ?astrosmash ?outbreak ?defender ?tron')
 
 
     #----------------------------------------
