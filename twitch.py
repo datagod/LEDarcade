@@ -559,7 +559,7 @@ class Bot(commands.Bot ):
           
 
         #VIP / Hello
-        if (message.content == "!vip"):
+        if (message.content.upper() == "!VIP"):
 
           LED.ShowTitleScreen(
             BigText             = "HI",
