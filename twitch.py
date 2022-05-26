@@ -526,7 +526,7 @@ class Bot(commands.Bot ):
         # For now we just want to ignore them...
         if message.echo:
           return
-
+        
         # Since we have commands and are overriding the default `event_message`
         # We must let the bot know we want to handle and invoke our commands...
         await self.handle_commands(message)
@@ -535,7 +535,7 @@ class Bot(commands.Bot ):
         # Check for special key words
         #Remove emoji from message
         message.content = LED.deEmojify(message.content)
-        author = message.author
+        author = message._author
         print("Author:",author)
         
         #HUGS
