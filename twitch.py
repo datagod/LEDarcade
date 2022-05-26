@@ -571,7 +571,7 @@ class Bot(commands.Bot ):
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "Hello there " + author + "! Thanks for tuning in."
+            ScrollText          = "Hello there " + author + "! Thanks for tuning in.",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 5,           # time in seconds to wait before exiting 
