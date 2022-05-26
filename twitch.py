@@ -536,7 +536,8 @@ class Bot(commands.Bot ):
         #Remove emoji from message
         message.content = LED.deEmojify(message.content)
 
-        
+        author = message.author.display_name
+
         #HUGS
         if (message.content == "!hug"):
           LED.TheMatrix.brightness = StreamBrightness
@@ -554,7 +555,7 @@ class Bot(commands.Bot ):
         #POLICE
         if (message.content == "!police"):
           LED.TheMatrix.brightness = StreamBrightness
-          LED.DisplayGIF('./images/simpsonspolice.gif',64,32,5,0.06)
+          LED.DisplayGIF('./images/simpsonspolice.gif',64,32,4,0.06)
           LED.TheMatrix.brightness = MaxBrightness
           LED.SweepClean()
           
@@ -570,12 +571,13 @@ class Bot(commands.Bot ):
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "",
+            ScrollText          = "Hello there " + author + "! Thanks for tuning in."
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 5,           # time in seconds to wait before exiting 
             ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
             )
+          LED.SweepClean()
 
 
         #Goodbye
@@ -589,12 +591,13 @@ class Bot(commands.Bot ):
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "",
+            ScrollText          = "see you later " + author,
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 5,           # time in seconds to wait before exiting 
             ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
             )
+          LED.SweepClean()
 
 
 
