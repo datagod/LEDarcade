@@ -429,7 +429,7 @@ class Bot(commands.Bot ):
         if(StreamActive == True):
 
           #skip my own channel for testing purposes
-          if(BROADCASTER_CHANNEL != 'datagod'):
+          if(BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL != 'xtianninja'):
 
             #SHOW INTRO FOR MAIN CHANNEL
             LED.ShowTitleScreen(
@@ -535,7 +535,9 @@ class Bot(commands.Bot ):
         # Check for special key words
         #Remove emoji from message
         message.content = LED.deEmojify(message.content)
-
+        author = message.author
+        print("Author:",author)
+        
         #HUGS
         if (message.content == "!hug"):
           LED.TheMatrix.brightness = StreamBrightness
@@ -569,7 +571,7 @@ class Bot(commands.Bot ):
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "VIP " + message.author + " says hello!",
+            ScrollText          = "VIP " + author + " says hello!",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 5,           # time in seconds to wait before exiting 
@@ -588,7 +590,7 @@ class Bot(commands.Bot ):
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = message.author + " waves as they wander into the sunset",
+            ScrollText          = author + " waves as they wander into the sunset",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 5,           # time in seconds to wait before exiting 
