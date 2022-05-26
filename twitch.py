@@ -1045,6 +1045,11 @@ class Bot(commands.Bot ):
                 LED.TheMatrix.brightness = MaxBrightness
                 LED.SweepClean()
            
+              elif(Title.upper() in ('GET ROMANTIC')):
+                LED.TheMatrix.brightness = StreamBrightness
+                LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,5,0.06)
+                LED.TheMatrix.brightness = MaxBrightness
+                LED.SweepClean()
 
 
             LED.TheMatrix.brightness = MaxBrightness
