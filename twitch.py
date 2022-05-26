@@ -569,7 +569,7 @@ class Bot(commands.Bot ):
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
             LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "VIP " + message.author + says "hello",
+            ScrollText          = "VIP " + message.author + " says hello!",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 5,           # time in seconds to wait before exiting 
