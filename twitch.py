@@ -429,7 +429,7 @@ class Bot(commands.Bot ):
         if(StreamActive == True):
 
           #skip my own channel for testing purposes
-          if(BROADCASTER_CHANNEL != 'datagod'):
+          if(BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL.upper() != 'XTIANNINJA'):
 
             #SHOW INTRO FOR MAIN CHANNEL
             LED.ShowTitleScreen(
@@ -526,7 +526,7 @@ class Bot(commands.Bot ):
         # For now we just want to ignore them...
         if message.echo:
           return
-
+        
         # Since we have commands and are overriding the default `event_message`
         # We must let the bot know we want to handle and invoke our commands...
         await self.handle_commands(message)
@@ -535,6 +535,8 @@ class Bot(commands.Bot ):
         # Check for special key words
         #Remove emoji from message
         message.content = LED.deEmojify(message.content)
+
+        author = message.author.display_name
 
         #HUGS
         if (message.content == "!hug"):
@@ -553,10 +555,52 @@ class Bot(commands.Bot ):
         #POLICE
         if (message.content == "!police"):
           LED.TheMatrix.brightness = StreamBrightness
-          LED.DisplayGIF('./images/simpsonspolice.gif',64,32,5,0.06)
+          LED.DisplayGIF('./images/simpsonspolice.gif',64,32,4,0.06)
           LED.TheMatrix.brightness = MaxBrightness
           LED.SweepClean()
           
+
+        #VIP / Hello
+        if (message.content.upper() == "!VIP"):
+
+          LED.ShowTitleScreen(
+            BigText             = "HI",
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            BigTextZoom         = 4,
+            LittleText          = '',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = "Hello there " + author + "! Thanks for tuning in.",
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 5,           # time in seconds to wait before exiting 
+            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+          LED.SweepClean()
+
+
+        #Goodbye
+        if (message.content.upper() == "!GOODBYE"):
+
+          LED.ShowTitleScreen(
+            BigText             = "BYE",
+            BigTextRGB          = LED.MedPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
+            BigTextZoom         = 3,
+            LittleText          = '',
+            LittleTextRGB       = LED.MedRed,
+            LittleTextShadowRGB = LED.ShadowRed, 
+            ScrollText          = "see you later " + author,
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 5,           # time in seconds to wait before exiting 
+            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
+          LED.SweepClean()
+
+
+
 
 
 
@@ -632,7 +676,7 @@ class Bot(commands.Bot ):
       elapsed_seconds = LED.GetElapsedSeconds(self.LastMessageReceived)
 
       if(StreamActive == True and 
-        ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 10))):
+        ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 25))):
         LED.TheMatrix.brightness = StreamBrightness
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
@@ -898,7 +942,9 @@ class Bot(commands.Bot ):
             print("Event discovered")
             FollowedBy = Message['event']['user_name']
           
+            LED.TheMatrix.brightness = StreamBrightness
             LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
+            LED.TheMatrix.brightness = MaxBrightness
             
             LED.StarryNightDisplayText(
               Text1 = FollowedBy,
@@ -1039,17 +1085,24 @@ class Bot(commands.Bot ):
                 LED.TheMatrix.Clear()
                 LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
 
-              elif(Title.upper() in ('RED ALERT')):
-                LED.TheMatrix.brightness = StreamBrightness
-                LED.DisplayGIF('./images/redalert.gif',64,32,20,0.06)
-                LED.TheMatrix.brightness = MaxBrightness
-                LED.SweepClean()
-           
-              elif(Title.upper() in ('GET ROMANTIC')):
-                LED.TheMatrix.brightness = StreamBrightness
-                LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,5,0.06)
-                LED.TheMatrix.brightness = MaxBrightness
-                LED.SweepClean()
+            elif(Title.upper() in ('RED ALERT')):
+              LED.TheMatrix.brightness = StreamBrightness
+              LED.DisplayGIF('./images/redalert.gif',64,32,20,0.06)
+              LED.TheMatrix.brightness = MaxBrightness
+              LED.SweepClean()
+          
+            elif(Title.upper() in ('GET ROMANTIC')):
+              LED.TheMatrix.brightness = StreamBrightness
+              LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,5,0.06)
+              LED.TheMatrix.brightness = MaxBrightness
+              LED.SweepClean()
+
+
+            elif(Title.upper() in ('POLICE! OPEN UP!')):
+              LED.TheMatrix.brightness = StreamBrightness
+              LED.DisplayGIF('./images/policefist.gif',64,32,5,0.06)
+              LED.TheMatrix.brightness = MaxBrightness
+              LED.SweepClean()
 
 
             LED.TheMatrix.brightness = MaxBrightness
@@ -1161,7 +1214,11 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?robot ?invaders ?astrosmash ?outbreak ?defender ?tron ?starrynight ?patreon ?patrons ?me ?views ?hug')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?patreon ?patrons ?me ?views ?hug')
+        time.sleep(2)
+        await ctx.send('Available games: ?invaders ?astrosmash ?outbreak ?defender ?tron')
+
+
 
 
     #----------------------------------------
