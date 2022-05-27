@@ -875,7 +875,7 @@ class Bot(commands.Bot ):
       print("MessageType:",MessageType)
       pprint.pprint(Message,indent=4)
 
-
+      BitsThrown = 0
 
       #--------------------------------------
       #-- Patreon Events                   --
