@@ -683,10 +683,11 @@ class Bot(commands.Bot ):
         LED.TheMatrix.brightness = StreamBrightness
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
-        #self.ChatUsers = []
+        self.ChatUsers = []
         LED.TheMatrix.brightness = MaxBrightness
         #clean up the screen using animations
         LED.SweepClean()
+ 
 
       LastUserJoinedChat  = time.time()
       
