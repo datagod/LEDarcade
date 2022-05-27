@@ -140,6 +140,8 @@ StreamActive          = False
 #Follower Info
 Followers            = 0
 Subs                 = 0
+ChatUserListCount       = 25
+ChatUserListWaitSeconds = 30
 
 #HypeTrain info
 HypeTrainStartTime   = ''
@@ -672,11 +674,12 @@ class Bot(commands.Bot ):
 
       self.ChatUsers.append(user.name)
 
-      #Close Chat Terminal after X minutes of inactivity
-      elapsed_seconds = LED.GetElapsedSeconds(self.LastMessageReceived)
+      elapsed_seconds = LED.GetElapsedSeconds(self.LastUserJoinedChat)
 
       if(StreamActive == True and 
-        ((elapsed_seconds >= self.LastUserJoinedChat) or (len(self.ChatUsers) >= 25))):
+        ((elapsed_seconds >= ChatUserListWaitSeconds) or (len(self.ChatUsers) >= ChatUserListCount))):
+    
+
         LED.TheMatrix.brightness = StreamBrightness
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
@@ -942,8 +945,8 @@ class Bot(commands.Bot ):
             print("Event discovered")
             FollowedBy = Message['event']['user_name']
           
-            LED.TheMatrix.brightness = StreamBrightness
-            LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
+            LED.TheMatrix.brightness = GifBrightness
+            LED.DisplayGIF('./images/minions.gif',64,32,5,0.06)
             LED.TheMatrix.brightness = MaxBrightness
             
             LED.StarryNightDisplayText(
@@ -1042,14 +1045,14 @@ class Bot(commands.Bot ):
             print("Found: channel points redeemed")
             #Reward     = Message['event']['reward']
             TwitchUser = Message['event']['user_name']
-            Cost       =  Message['event']['reward']['cost']
-            Title       =  Message['event']['reward']['title']
+            Cost       = Message['event']['reward']['cost']
+            Title      = Message['event']['reward']['title']
             print ("username:     ",TwitchUser)
             print("points redeemed:",Cost)
 
             LED.TheMatrix.brightness = GifBrightness
             if (Title.upper() in ("D'OH!",'KHAN!','LANGUAGE!','BAZINGA','ANGRY PIGLIN','CREEPER','GHAST SCREAM')):
-              r = random.randint(0,4)            
+              r = random.randint(0,6)            
               if (r == 0):
                 LED.DisplayGIF('./images/fishburger.gif',64,32,2,0.04)
               elif(r==1):
@@ -1062,6 +1065,10 @@ class Bot(commands.Bot ):
                 LED.DisplayGIF('./images/samusbounce.gif',32,32,15,0.09)
               elif(r==4):
                 LED.DisplayGIF('./images/minions.gif',64,32,15,0.06)
+              elif(r==5):
+                LED.DisplayGIF('./images/minioneyes.gif',64,32,4,0.06)
+              elif(r==6):
+                LED.DisplayGIF('./images/minioncrying2.gif',64,32,4,0.06)
 
 
 
@@ -1086,26 +1093,25 @@ class Bot(commands.Bot ):
                 LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,1,0.06)
 
             elif(Title.upper() in ('RED ALERT')):
-              LED.TheMatrix.brightness = StreamBrightness
               LED.DisplayGIF('./images/redalert.gif',64,32,20,0.06)
-              LED.TheMatrix.brightness = MaxBrightness
-              LED.SweepClean()
           
             elif(Title.upper() in ('GET ROMANTIC')):
-              LED.TheMatrix.brightness = StreamBrightness
               LED.DisplayGIF('./images/marioprincesskiss.gif',32,32,5,0.06)
-              LED.TheMatrix.brightness = MaxBrightness
-              LED.SweepClean()
 
 
-            elif(Title.upper() in ('POLICE! OPEN UP!')):
-              LED.TheMatrix.brightness = StreamBrightness
+            elif(Title.upper =='POLICE! OPEN UP!'):
               LED.DisplayGIF('./images/policefist.gif',64,32,5,0.06)
-              LED.TheMatrix.brightness = MaxBrightness
-              LED.SweepClean()
+
+            elif(Title.upper() == 'DANCE PARTY'):
+              LED.DisplayGIF('./images/storm.gif',64,32,5,0.06)
+
+            elif(Title.upper() == 'THUNDERSTORM'):
+              LED.DisplayGIF('./images/storm.gif',64,32,5,0.06)
 
 
             LED.TheMatrix.brightness = MaxBrightness
+            LED.SweepClean()
+
             LED.StarryNightDisplayText(
               Text1 = Title,
               Text2 = TwitchUser + " SPENT " + str(Cost) + " POINTS",
