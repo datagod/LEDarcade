@@ -676,10 +676,12 @@ class Bot(commands.Bot ):
 
       elapsed_seconds = LED.GetElapsedSeconds(self.LastUserJoinedChat)
 
+      
+      '''  --> this is broken, keeps scrolling
       if(StreamActive == True and 
         ((elapsed_seconds >= ChatUserListWaitSeconds) or (len(self.ChatUsers) >= ChatUserListCount))):
     
-
+   
         LED.TheMatrix.brightness = StreamBrightness
         LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
         #Empty chat user list
@@ -687,7 +689,7 @@ class Bot(commands.Bot ):
         LED.TheMatrix.brightness = MaxBrightness
         #clean up the screen using animations
         LED.SweepClean()
- 
+      '''
 
       LastUserJoinedChat  = time.time()
       
