@@ -56,7 +56,7 @@ BoundUpperLeft  = ''
 BoundLowerRight = ''
 Bounds          = ''
 HatHeight       = 32
-HatHeight       = 64
+HatWidth        = 64
 
 
 
