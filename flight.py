@@ -101,8 +101,8 @@ def LoadConfigFile():
     print("BaseLon:        ",BaseLon)   
     print("BoundUpperLeft: ",BoundUpperLeft)
     print("BoundLowerRight:",BoundLowerRight)
-    print("HatHeight:",LED.HatHeight)
-    print("HatWidth:",LED.HatWidth)
+    print("HatHeight:",HatHeight)
+    print("HatWidth:",HatWidth)
     print ("---------------------------------------------")
     print (" ")
 
@@ -386,8 +386,8 @@ print ("")
 
 
 LoadConfigFile()
-LED.HatHeight = HatHeight
-LED.HatWidth  = HatWidth
+LED.HatHeight = int(HatHeight)
+LED.HatWidth  = int(HatWidth)
 GetAirportList()
 
 
