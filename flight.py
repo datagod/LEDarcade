@@ -2,7 +2,7 @@
 '''
 Requirements: geopy
 > sudo pip3 install geopy
-> sudo pip3 install flightradar24
+> sudo pip3 install FlightRadar24API
 '''
 
 
@@ -17,8 +17,8 @@ import geopy.distance
 import LEDarcade as LED
 from configparser import SafeConfigParser
 
-#from FlightRadar24.api import FlightRadar24API 
-import FlightRadar24
+from FlightRadar24.api import FlightRadar24API 
+
 
 fr_api = FlightRadar24API()
 
