@@ -7,8 +7,6 @@ Requirements: geopy
 
 
 import os
-
-from twitch import HatHeight
 os.system('cls||clear')
 
 import requests
