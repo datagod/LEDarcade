@@ -2,10 +2,7 @@
 
 '''
 TO DO:
- - Read the EventQueue even when displaying the digital clock
-   Exit the clock mode and react to the event 
 
-- maybe spawn the clock modes with multiprocessing and allow the twitch bot to process via ASYNC processes
 '''
 
 
