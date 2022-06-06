@@ -57,6 +57,9 @@ BaseLon         = ''
 BoundUpperLeft  = ''
 BoundLowerRight = ''
 Bounds          = ''
+HatHeight       = 32
+HatHeight       = 64
+
 
 
 #----------------------------------------
@@ -71,8 +74,8 @@ def LoadConfigFile():
   global BoundUpperLeft
   global BoundLowerRight
   global Bounds
-  global LED.HatWidth 
-  global LED.HatHeight
+  global HatWidth 
+  global HatHeight
 
 
   print ("--Load Config values--")
@@ -89,8 +92,8 @@ def LoadConfigFile():
     BoundUpperLeft  = KeyFile.get("FLIGHT","BoundUpperLeft")
     BoundLowerRight = KeyFile.get("FLIGHT","BoundLowerRight")
     Bounds          = KeyFile.get("FLIGHT","Bounds")
-    LED.HatHeight   = KeyFile.get("FLIGHT","HatHeight")
-    LED.HatWidth    = KeyFile.get("FLIGHT","HatWidth")
+    HatHeight       = KeyFile.get("FLIGHT","HatHeight")
+    HatWidth        = KeyFile.get("FLIGHT","HatWidth")
 
     print (" ")
 
@@ -385,6 +388,8 @@ print ("")
 
 
 LoadConfigFile()
+LED.HatHeight = HatHeight
+LED.HatWidth  = HatWidth
 GetAirportList()
 
 
