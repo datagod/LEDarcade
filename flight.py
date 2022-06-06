@@ -7,6 +7,8 @@ Requirements: geopy
 
 
 import os
+
+from twitch import HatHeight
 os.system('cls||clear')
 
 import requests
@@ -69,6 +71,8 @@ def LoadConfigFile():
   global BoundUpperLeft
   global BoundLowerRight
   global Bounds
+  global LED.HatWidth 
+  global LED.HatHeight
 
 
   print ("--Load Config values--")
@@ -85,6 +89,8 @@ def LoadConfigFile():
     BoundUpperLeft  = KeyFile.get("FLIGHT","BoundUpperLeft")
     BoundLowerRight = KeyFile.get("FLIGHT","BoundLowerRight")
     Bounds          = KeyFile.get("FLIGHT","Bounds")
+    LED.HatHeight   = KeyFile.get("FLIGHT","HatHeight")
+    LED.HatWidth    = KeyFile.get("FLIGHT","HatWidth")
 
     print (" ")
 
@@ -94,6 +100,8 @@ def LoadConfigFile():
     print("BaseLon:        ",BaseLon)   
     print("BoundUpperLeft: ",BoundUpperLeft)
     print("BoundLowerRight:",BoundLowerRight)
+    print("HatHeight:",LED.HatHeight)
+    print("HatWidth:",LED.HatWidth)
     print ("---------------------------------------------")
     print (" ")
 
