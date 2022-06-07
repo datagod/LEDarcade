@@ -54,6 +54,8 @@ import time
 import gc
 import random
 import os
+os.system('cls||clear')
+
 from configparser import SafeConfigParser
 import sys
 
@@ -116,61 +118,27 @@ TinyClockHours   = 0
 CPUModifier      = 0
 Gamma            = 1
 ShowCrypto       = 'N'
-HatWidth         = 64
-HatHeight        = 32
+HatWidth         = 64  # These defaults can be overwritten in the ClockConfig.ini file
+HatHeight        = 32  # These defaults can be overwritten in the ClockConfig.ini file
 KeyboardPoll     = 10
 BrightColorCount = 27
 
 
 
-#Initialize Matrix objects
-options = RGBMatrixOptions()
-
-options.rows       = HatHeight
-options.cols       = HatWidth
-options.brightness = 100
-#stops sparkling 
-options.gpio_slowdown = 5
-
-
-#options.chain_length = self.args.led_chain
-#options.parallel = self.args.led_parallel
-#options.row_address_type = self.args.led_row_addr_type
-#options.multiplexing = self.args.led_multiplexing
-#options.pwm_bits = self.args.led_pwm_bits
-#options.pwm_lsb_nanoseconds = self.args.led_pwm_lsb_nanoseconds
-#options.led_rgb_sequence = self.args.led_rgb_sequence
-#options.pixel_mapper_config = self.args.led_pixel_mapper
-#if self.args.led_show_refresh:
-#  options.show_refresh_rate = 1
-
-#if self.args.led_no_hardware_pulse:
-#  options.disable_hardware_pulsing = True
-
-
-#The matrix object is what is used to interact with the LED display
-TheMatrix    = RGBMatrix(options = options)
-
-#Screen array is a copy of the matrix light layout because RGBMatrix is not queryable.  
-ScreenArray  = ([[]])
-ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-
-EmptyArray  = ([[]])
-EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-
-
-#Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
-Canvas = TheMatrix.CreateFrameCanvas()
-Canvas.Fill(0,0,0)
-
-
-DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
 
 
 
 
-#Twitch specific
-TwitchTimerOn = False
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -233,6 +201,29 @@ SuperWormLevels    = 3           #number of levels
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Twitch specific
+TwitchTimerOn = False
+
+
+
+
+
 #-----------------------------
 # Used in all games         --
 #-----------------------------
@@ -286,8 +277,150 @@ SpriteFillerRGB = (0,4,0)
 
 
 
+def LoadConfigData():
+  global DotInvadersHighScore
+  global DotInvadersGamesPlayed
+  global OutbreakHighScore
+  global OutbreakGamesPlayed
+  global SpaceDotHighScore
+  global SpaceDotGamesPlayed
+  global DefenderHighScore
+  global DefenderGamesPlayed
+  global HatHeight
+  global HatWidth
+  
+
+  print ("--Load Config Data--")
+  #print ("PacDotHighScore Before Load: ",PacDotHighScore)
+    
+  if (os.path.exists(ConfigFileName)):
+    print ("Config file (",ConfigFileName,"): already exists")
+    ConfigFile = SafeConfigParser()
+    ConfigFile.read(ConfigFileName)
+
+    #Get and set time    
+    #TheTime = ConfigFile.get("main","currenttime")
+    #print ("Setting time: ",TheTime)
+    #CMD = "sudo date --set " + TheTime
+    #os.system(CMD)
+   
+    #Get pacdot data
+    #PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
+    #PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
+    #print ("PacDotHighScore: ",  PacDotHighScore)
+    #print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
+
+    #Get CryptoBalance
+    #CryptoBalance = ConfigFile.get("crypto","balance")
+    #print ("CryptoBalance:   ",CryptoBalance)
+
+    #Get DotInvadersHighScore
+    DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
+    DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
+    print ("DotInvadersHighScore:   ",DotInvadersHighScore)
+    print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
+    try:
+      HatHeight   = int.ConfigFile.get("FLIGHT","HatHeight")
+      HatWidth    = int.ConfigFile.get("FLIGHT","HatWidth")
+    except:
+      print('No override for HatHeight/HatWidth.  Going with defaults.')
+      
+    
+    
+    print("HatWidth:               ",HatWidth)
+    print("HatHeight               ",HatHeight)
+      
+
+
+
+
+    #Get Outbreak data
+    OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
+    OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
+    print ("OutbreakHighScore:      ",OutbreakHighScore)
+    print ("OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
+
+
+    #Get SpaceDot data
+    SpaceDotHighScore   = int(ConfigFile.get("scores","SpaceDotHighScore"))
+    SpaceDotGamesPlayed = int(ConfigFile.get("scores","SpaceDotGamesPlayed"))
+    print ("SpaceDotHighScore:      ",SpaceDotHighScore)
+    print ("SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
+
+
+    #Get Defender data
+    DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
+    DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
+    print ("DefenderHighScore:      ",DefenderHighScore)
+    print ("DefenderGamesPlayed:    ",DefenderGamesPlayed)
+
+
+  else:
+    print ("Config file not found! Running with default values.")
+
+    
+  print ("--------------------")
+  print (" ")
+  
+
+
+ 
+
+
+
+
+
+#--------------------------------------
+# RGB Matrix Options                 --
+#--------------------------------------
+
+#load config data to see if there is an override value for hatwidth/hatheight
+LoadConfigData()
+
+#Initialize Matrix objects
+options = RGBMatrixOptions()
+
+options.rows       = HatHeight
+options.cols       = HatWidth
+options.brightness = 100
+#stops sparkling 
+options.gpio_slowdown = 5
+
+
+#options.chain_length = self.args.led_chain
+#options.parallel = self.args.led_parallel
+#options.row_address_type = self.args.led_row_addr_type
+#options.multiplexing = self.args.led_multiplexing
+#options.pwm_bits = self.args.led_pwm_bits
+#options.pwm_lsb_nanoseconds = self.args.led_pwm_lsb_nanoseconds
+#options.led_rgb_sequence = self.args.led_rgb_sequence
+#options.pixel_mapper_config = self.args.led_pixel_mapper
+#if self.args.led_show_refresh:
+#  options.show_refresh_rate = 1
+
+#if self.args.led_no_hardware_pulse:
+#  options.disable_hardware_pulsing = True
+
+
+#The matrix object is what is used to interact with the LED display
+TheMatrix    = RGBMatrix(options = options)
+
+#Screen array is a copy of the matrix light layout because RGBMatrix is not queryable.  
+ScreenArray  = ([[]])
+ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+EmptyArray  = ([[]])
+EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+
+#Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
+Canvas = TheMatrix.CreateFrameCanvas()
+Canvas.Fill(0,0,0)
+
+
+DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
 
 
 
@@ -11498,80 +11631,6 @@ def SaveConfigData():
 
 
     
-def LoadConfigData():
-  global DotInvadersHighScore
-  global DotInvadersGamesPlayed
-  global OutbreakHighScore
-  global OutbreakGamesPlayed
-  global SpaceDotHighScore
-  global SpaceDotGamesPlayed
-  global DefenderHighScore
-  global DefenderGamesPlayed
-  
-  print ("--Load Config Data--")
-  #print ("PacDotHighScore Before Load: ",PacDotHighScore)
-    
-  if (os.path.exists(ConfigFileName)):
-    print ("Config file (",ConfigFileName,"): already exists")
-    ConfigFile = SafeConfigParser()
-    ConfigFile.read(ConfigFileName)
-
-    #Get and set time    
-    #TheTime = ConfigFile.get("main","currenttime")
-    #print ("Setting time: ",TheTime)
-    #CMD = "sudo date --set " + TheTime
-    #os.system(CMD)
-   
-    #Get pacdot data
-    #PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
-    #PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
-    #print ("PacDotHighScore: ",  PacDotHighScore)
-    #print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
-
-    #Get CryptoBalance
-    #CryptoBalance = ConfigFile.get("crypto","balance")
-    #print ("CryptoBalance:   ",CryptoBalance)
-
-    #Get DotInvadersHighScore
-    DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
-    DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
-    print ("DotInvadersHighScore:   ",DotInvadersHighScore)
-    print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
-
-
-
-
-    #Get Outbreak data
-    OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
-    OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
-    print ("OutbreakHighScore:      ",OutbreakHighScore)
-    print ("OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
-
-
-    #Get SpaceDot data
-    SpaceDotHighScore   = int(ConfigFile.get("scores","SpaceDotHighScore"))
-    SpaceDotGamesPlayed = int(ConfigFile.get("scores","SpaceDotGamesPlayed"))
-    print ("SpaceDotHighScore:      ",SpaceDotHighScore)
-    print ("SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
-
-
-    #Get Defender data
-    DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
-    DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
-    print ("DefenderHighScore:      ",DefenderHighScore)
-    print ("DefenderGamesPlayed:    ",DefenderGamesPlayed)
-
-
-  else:
-    print ("Config file not found! Running with default values.")
-
-    
-  print ("--------------------")
-  print (" ")
-  
-
-
- 
   
     
   
