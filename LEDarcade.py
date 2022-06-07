@@ -322,8 +322,8 @@ def LoadConfigData():
 
 
     #try:
-    HatHeight   = int.ConfigFile.get("MATRIX","HatHeight")
-    HatWidth    = int.ConfigFile.get("MATRIX","HatWidth")
+    HatHeight   = int(ConfigFile.get("MATRIX","HatHeight"))
+    HatWidth    = int(ConfigFile.get("MATRIX","HatWidth"))
     #except:
     #  print('No override for HatHeight/HatWidth.  Going with defaults.')
       
