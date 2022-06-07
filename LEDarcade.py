@@ -321,11 +321,11 @@ def LoadConfigData():
     print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
-    try:
-      HatHeight   = int.ConfigFile.get("MATRIX","HatHeight")
-      HatWidth    = int.ConfigFile.get("MATRIX","HatWidth")
-    except:
-      print('No override for HatHeight/HatWidth.  Going with defaults.')
+    #try:
+    HatHeight   = int.ConfigFile.get("MATRIX","HatHeight")
+    HatWidth    = int.ConfigFile.get("MATRIX","HatWidth")
+    #except:
+    #  print('No override for HatHeight/HatWidth.  Going with defaults.')
       
     
     
