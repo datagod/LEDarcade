@@ -322,8 +322,8 @@ def LoadConfigData():
 
 
     try:
-      HatHeight   = int.ConfigFile.get("FLIGHT","HatHeight")
-      HatWidth    = int.ConfigFile.get("FLIGHT","HatWidth")
+      HatHeight   = int.ConfigFile.get("MATRIX","HatHeight")
+      HatWidth    = int.ConfigFile.get("MATRIX","HatWidth")
     except:
       print('No override for HatHeight/HatWidth.  Going with defaults.')
       
