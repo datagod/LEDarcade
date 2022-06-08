@@ -1707,8 +1707,8 @@ class Sprite(object):
     y = 0
     #print ("Display:",self.width, self.height, self.r, self.g, self.b,v1,h1)
 
-    global Canvas
-    Canvas = TheMatrix.SwapOnVSync(Canvas) 
+    #global Canvas
+    #Canvas = TheMatrix.SwapOnVSync(Canvas) 
 
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
@@ -1717,7 +1717,7 @@ class Sprite(object):
         if (CheckBoundary(x+h1,y+v1) == 0):
 
           setpixelCanvas(x+h1,y+v1,self.r,self.g,self.b)
-    Canvas = TheMatrix.SwapOnVSync(Canvas) 
+    #Canvas = TheMatrix.SwapOnVSync(Canvas) 
 
 
 
@@ -1796,10 +1796,10 @@ class Sprite(object):
     y = 0
 
     
-    global ScreenArray
-    global Canvas
+    #global ScreenArray
+    #global Canvas
     
-    Canvas = TheMatrix.SwapOnVSync(Canvas) 
+    #Canvas = TheMatrix.SwapOnVSync(Canvas) 
     
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
@@ -1811,7 +1811,7 @@ class Sprite(object):
           #setpixel(x+h1,y+v1,0,0,0)
           setpixelCanvas(x+h1,y+v1,0,0,0)
 
-    Canvas = TheMatrix.SwapOnVSync(Canvas)              
+    #Canvas = TheMatrix.SwapOnVSync(Canvas)              
 
 
 
@@ -1858,13 +1858,7 @@ class Sprite(object):
     #flickering.
 
     
-    #At this point, Canvas is blank.  We want it to have a copy of the live display
-    #Copy the live canvas
-    LiveCanvas = TheMatrix.SwapOnVSync(Canvas)
-    Canvas = LiveCanvas
-    LiveCanvas = TheMatrix.SwapOnVSync(Canvas)
-
-    
+      
 
 
     #print("Entering Scroll")
@@ -1880,6 +1874,18 @@ class Sprite(object):
     
     #print("Modifier:",modifier)
     
+    
+   
+    
+    
+    #Put active display into temp canvas
+    #swap main display with canvas
+    #copy temp canvas to canvas
+    #swap main display with canvas
+    #now both main display and canvas have a good background to start scrolling on
+    TempCanvas = TheMatrix.SwapOnVSync(Canvas) 
+    Canvas = TheMatrix.SwapOnVSync(TempCanvas) 
+    Canvas = TempCanvas
 
 
 
@@ -1887,6 +1893,9 @@ class Sprite(object):
       #print ("Direction: ",direction)  
       for count in range (0,moves):
         h = h + (modifier)
+
+
+
         #erase old sprite
         if count >= 1:
           oldh = h - modifier
@@ -1896,14 +1905,16 @@ class Sprite(object):
 
         #draw new sprite
         self.Display(h,v)
-        #unicorn.show()
         #SendBufferPacket(RemoteDisplay,HatHeight,HatWidth)
+        Canvas = TheMatrix.SwapOnVSync(Canvas) 
         time.sleep(delay)
 
         #Check for keyboard input
         r = random.randint(0,50)
         if (r == 0):
           Key = PollKeyboard()
+
+
 
 
     if direction == "up" or direction == "down":
@@ -1917,7 +1928,7 @@ class Sprite(object):
             
         #draw new sprite
         self.Display(h,v)
-        #unicorn.show()
+        Canvas = TheMatrix.SwapOnVSync(Canvas) 
         #SendBufferPacket(RemoteDisplay,HatHeight,HatWidth)
         time.sleep(delay)
         #Check for keyboard input
