@@ -35,7 +35,7 @@ CursorRGB           = (0,0,0)
 CursorDarkRGB       = (0,0,0)
 LastGetFlightsTime    = time.time()
 GetFlightsWaitMinutes = 5
-Canvas                = LED.TheMatrix.CreateFrameCanvas()
+
 OriginAirport         = ''
 DestinationAirport    = ''
 AircraftType          = ''
@@ -125,7 +125,7 @@ def GetFlightsInBounds(Bounds):
 
 
 def GetNearbyFlights():
-  global Canvas
+  
   global OriginAirport
   global DestinationAirport
 
@@ -215,27 +215,27 @@ def GetNearbyFlights():
     ValueAircraftCount = LED.CreateBannerSprite(str(AircraftCount))
     OriginDestination  = LED.CreateBannerSprite("  " + OriginAirport + " " + DestinationAirport)
 
-    Canvas.Clear()    
-    Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,0,0,TitleRGB,(0,5,0),1,False,Canvas)
-    Canvas = LED.CopySpriteToCanvasZoom(ValueFlight,30,0,ValueRGB,(0,5,0),1,False,Canvas)
+    LED.Canvas.Clear()    
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,0,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueFlight,30,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
-    Canvas = LED.CopySpriteToCanvasZoom(TitleDistance,0,6,TitleRGB,(0,5,0),1,False,Canvas)
-    Canvas = LED.CopySpriteToCanvasZoom(ValueDistance,30,6,ValueRGB,(0,5,0),1,False,Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleDistance,0,6,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueDistance,30,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
-    Canvas = LED.CopySpriteToCanvasZoom(TitleSpeed,0,12,TitleRGB,(0,5,0),1,False,Canvas)
-    Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed,30,12,ValueRGB,(0,5,0),1,False,Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSpeed,0,12,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed,30,12,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
-    #Canvas = LED.CopySpriteToCanvasZoom(TitleSquawk,0,21,TitleRGB,(0,5,0),1,False,Canvas)
-    #Canvas = LED.CopySpriteToCanvasZoom(ValueSquawk,30,21,ValueRGB,(0,5,0),1,False,Canvas)
+    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSquawk,0,21,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    #LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSquawk,30,21,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
-    Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,0,18,TitleRGB,(0,5,0),1,False,Canvas)
-    Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,30,18,ValueRGB,(0,5,0),1,False,Canvas)
-
-
-    #Canvas = LED.CopySpriteToCanvasZoom(OriginDestination,0,24,(100,150,0),(0,5,0),1,False,Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,0,18,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,30,18,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
 
-    Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
+    #LED.Canvas = LED.CopySpriteToCanvasZoom(OriginDestination,0,24,(100,150,0),(0,5,0),1,False,LED.Canvas)
+
+
+    LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
 
 
   else:
@@ -377,6 +377,13 @@ print ("")
 print ("")
 
 
+TitleFlight= LED.CreateBannerSprite("Flight")
+LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,30,18,(100,100,100),(0,5,0),1,False,LED.Canvas)
+LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas) 
+LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,30,18,(100,100,100),(0,5,0),1,False,LED.Canvas)
+LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas) 
+LED.ShowScrollingBanner2("THIS IS A TEST",(100,150,0),ScrollSpeed=ScrollSleep,v=26)
+
 LoadConfigFile()
 GetAirportList()
 
@@ -435,6 +442,12 @@ while(1==1):
     LED.ShowScrollingBanner2(ScrollText,(100,150,0),ScrollSpeed=ScrollSleep,v=26)
   except:
     print("ScrollText not found")
+    
+    
+    
+
+
+
     time.sleep(5)
   
 

@@ -1706,14 +1706,20 @@ class Sprite(object):
     x = 0,
     y = 0
     #print ("Display:",self.width, self.height, self.r, self.g, self.b,v1,h1)
+
+    global Canvas
+    Canvas = TheMatrix.SwapOnVSync(Canvas) 
+
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
       #print("Count:",count,"xy",x,y)
       if self.grid[count] == 1:
         if (CheckBoundary(x+h1,y+v1) == 0):
-          #TheMatrix.SetPixel(x+h1,y+v1,self.r,self.g,self.b)
-          setpixel(x+h1,y+v1,self.r,self.g,self.b)
-    #unicorn.show()
+
+          setpixelCanvas(x+h1,y+v1,self.r,self.g,self.b)
+    Canvas = TheMatrix.SwapOnVSync(Canvas) 
+
+
 
 
   def CopySpriteToScreenArrayZoom(self,h,v,ZoomFactor):
@@ -1793,7 +1799,7 @@ class Sprite(object):
     global ScreenArray
     global Canvas
     
-    CopyScreenArrayToCanvas(ScreenArray,Canvas)
+    Canvas = TheMatrix.SwapOnVSync(Canvas) 
     
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
@@ -1844,6 +1850,23 @@ class Sprite(object):
 
 
   def Scroll(self,h,v,direction,moves,delay):
+    global Canvas
+
+    #When we scroll, we want to write to the canvas first, then swap it with
+    #the active display.  However, we want to copy the active display first
+    #so we can write to the canvas and not lose what was on the screen or get
+    #flickering.
+
+    
+    #At this point, Canvas is blank.  We want it to have a copy of the live display
+    #Copy the live canvas
+    LiveCanvas = TheMatrix.SwapOnVSync(Canvas)
+    Canvas = LiveCanvas
+    LiveCanvas = TheMatrix.SwapOnVSync(Canvas)
+
+    
+
+
     #print("Entering Scroll")
     x = 0
     oldh = 0
@@ -1857,6 +1880,9 @@ class Sprite(object):
     
     #print("Modifier:",modifier)
     
+
+
+
     if direction == "left" or direction == "right":
       #print ("Direction: ",direction)  
       for count in range (0,moves):
@@ -11703,7 +11729,7 @@ def SetTimeHHMM():
 
 
  
-  ScreenCap  = copy.deepcopy(unicorn.get_pixels())
+  #ScreenCap  = copy.deepcopy(unicorn.get_pixels())
   ScrollScreen('up',ScreenCap,ScrollSleep)
   ShowScrollingBanner("set time: hours minutes",100,100,0,ScrollSleep)
   ScrollScreen('down',ScreenCap,ScrollSleep)
