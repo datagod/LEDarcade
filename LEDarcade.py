@@ -321,11 +321,11 @@ def LoadConfigData():
     print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
-    #try:
-    HatHeight   = int(ConfigFile.get("MATRIX","HatHeight"))
-    HatWidth    = int(ConfigFile.get("MATRIX","HatWidth"))
-    #except:
-    #  print('No override for HatHeight/HatWidth.  Going with defaults.')
+    try:
+      HatHeight   = int(ConfigFile.get("MATRIX","HatHeight"))
+      HatWidth    = int(ConfigFile.get("MATRIX","HatWidth"))
+    except:
+      print('No override for HatHeight/HatWidth.  Going with defaults.')
       
     
     
@@ -1169,6 +1169,18 @@ def setpixel(x, y, r, g, b):
 
 
 
+def setpixelCanvas(x, y, r, g, b):
+  global ScreenArray
+  global Canvas
+
+
+  if (CheckBoundary(x,y) == 0):
+    Canvas.SetPixel(x,y,r,g,b)
+    ScreenArray[y][x] = (r,g,b)
+
+
+
+
     
 def setpixelRGB(x, y, RGB):
   global ScreenArray
@@ -1776,12 +1788,26 @@ class Sprite(object):
     #It is pretty fast now, seems just as fast as blanking whole screen using off() or clear()
     x = 0
     y = 0
+
+    
+    global ScreenArray
+    global Canvas
+    
+    CopyScreenArrayToCanvas(ScreenArray,Canvas)
+    
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
       if self.grid[count] == 1:
         if (CheckBoundary(x+h1,y+v1) == 0):
           #TheMatrix.SetPixel(x+h1,y+v1,0,0,0)
-          setpixel(x+h1,y+v1,0,0,0)
+          
+          #migrating to canvas logic
+          #setpixel(x+h1,y+v1,0,0,0)
+          setpixelCanvas(x+h1,y+v1,0,0,0)
+
+    Canvas = TheMatrix.SwapOnVSync(Canvas)              
+
+
 
 
   def EraseWholeSprite(self,h1,v1):
@@ -1815,12 +1841,6 @@ class Sprite(object):
 
 
 
-
-
-
-
-
-#Maybe call 1ToPixelsZoom here instead of self.Display()
 
 
   def Scroll(self,h,v,direction,moves,delay):
