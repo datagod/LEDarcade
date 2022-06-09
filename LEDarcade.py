@@ -10,6 +10,8 @@
 # The buffer is a 2D array.  32 lines of 64 pixels
 # BUFFER[V][H]  
 
+#Test Edit
+
 # We write to the LED directory for simplicity
 # We write to the Canvas and swap to the LED for speed
 # We write to the ScreenArray buffer so we know what is on the screen in case we
