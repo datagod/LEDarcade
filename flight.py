@@ -206,30 +206,48 @@ def GetNearbyFlights():
     TitleDistance      = LED.CreateBannerSprite("Dist")
     TitleSpeed         = LED.CreateBannerSprite("Speed")
     TitleSquawk        = LED.CreateBannerSprite("Sqwk")
-    TitleAircraftCount = LED.CreateBannerSprite("Seen")
+    TitleAircraftCount = LED.CreateBannerSprite("IN AIR")
+    TitleAircraftType  = LED.CreateBannerSprite("Type")
+    ValueAirlineShort  = LED.CreateBannerSprite(AirlineShortName)
     
     ValueFlight        = LED.CreateBannerSprite(Flight)
     ValueDistance      = LED.CreateBannerSprite(str(Distance)[0:5])
     ValueSpeed         = LED.CreateBannerSprite(str(Speed)[0:6])
     ValueSquawk        = LED.CreateBannerSprite(Squawk)
     ValueAircraftCount = LED.CreateBannerSprite(str(AircraftCount))
+    ValueAircraftType  = LED.CreateBannerSprite(AircraftType)
+
     OriginDestination  = LED.CreateBannerSprite("  " + OriginAirport + " " + DestinationAirport)
 
     LED.Canvas.Clear()    
     LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,0,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueFlight,30,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueFlight,28,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
     LED.Canvas = LED.CopySpriteToCanvasZoom(TitleDistance,0,6,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueDistance,30,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueDistance,28,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
     LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSpeed,0,12,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed,30,12,ValueRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed,28,12,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSquawk,0,21,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSquawk,30,21,ValueRGB,(0,5,0),1,False,LED.Canvas)
-
+    
     LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,0,18,TitleRGB,(0,5,0),1,False,LED.Canvas)
     LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,30,18,ValueRGB,(0,5,0),1,False,LED.Canvas)
+    
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSquawk,64,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSquawk,88,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
+
+    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftType,64,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftType,64,6,(75,0,200),(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAirlineShort,64,12,(75,0,200),(0,5,0),1,False,LED.Canvas)
+
+    
+
+
+
+    #ScrollText = ScrollText + " - " + AircraftType
+    #ScrollText = ScrollText + " - " + AirlineName
+    #ScrollText = ScrollText + " - " + AirlineShortName
+
 
 
     #LED.Canvas = LED.CopySpriteToCanvasZoom(OriginDestination,0,24,(100,150,0),(0,5,0),1,False,LED.Canvas)
@@ -377,13 +395,6 @@ print ("")
 print ("")
 
 
-TitleFlight= LED.CreateBannerSprite("Flight")
-LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,30,18,(100,100,100),(0,5,0),1,False,LED.Canvas)
-LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas) 
-LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,30,18,(100,100,100),(0,5,0),1,False,LED.Canvas)
-LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas) 
-LED.ShowScrollingBanner2("THIS IS A TEST",(100,150,0),ScrollSpeed=ScrollSleep,v=26)
-
 LoadConfigFile()
 GetAirportList()
 
@@ -434,8 +445,8 @@ while(1==1):
 
   try:
     ScrollText = OriginAirport + "-" + DestinationAirport + " " + OriginText.split()[0] + " " + OriginText.split()[1] + " --> " + DestinationText.split()[0] + " " + DestinationText.split()[1]
-    ScrollText = ScrollText + " - " + AircraftType
-    #ScrollText = ScrollText + " - " + AirlineName
+    #ScrollText = ScrollText + " - " + AircraftType
+    ScrollText = ScrollText + " - " + AirlineName
     ScrollText = ScrollText + " - " + AirlineShortName
     print(ScrollText)
 
