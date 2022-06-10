@@ -204,11 +204,11 @@ def GetNearbyFlights():
 
     TitleFlight        = LED.CreateBannerSprite("Flight")
     TitleDistance      = LED.CreateBannerSprite("Dist")
-    TitleSpeed         = LED.CreateBannerSprite("Speed")
+    TitleSpeed         = LED.CreateBannerSprite("kph")
     TitleSquawk        = LED.CreateBannerSprite("Sqwk")
-    TitleAircraftCount = LED.CreateBannerSprite("IN AIR")
+    TitleAircraftCount = LED.CreateBannerSprite("UP")
     TitleAircraftType  = LED.CreateBannerSprite("Type")
-    ValueAirlineShort  = LED.CreateBannerSprite(AirlineShortName)
+    TitleCategory      = LED.CreateBannerSprite("CAT")
     
     ValueFlight        = LED.CreateBannerSprite(Flight)
     ValueDistance      = LED.CreateBannerSprite(str(Distance)[0:5])
@@ -216,7 +216,9 @@ def GetNearbyFlights():
     ValueSquawk        = LED.CreateBannerSprite(Squawk)
     ValueAircraftCount = LED.CreateBannerSprite(str(AircraftCount))
     ValueAircraftType  = LED.CreateBannerSprite(AircraftType)
-
+    ValueAirlineShort  = LED.CreateBannerSprite(AirlineShortName)
+    ValueCategory      = LED.CreateBannerSprite(Category)
+    
     OriginDestination  = LED.CreateBannerSprite("  " + OriginAirport + " " + DestinationAirport)
 
     LED.Canvas.Clear()    
@@ -225,20 +227,29 @@ def GetNearbyFlights():
 
     LED.Canvas = LED.CopySpriteToCanvasZoom(TitleDistance,0,6,TitleRGB,(0,5,0),1,False,LED.Canvas)
     LED.Canvas = LED.CopySpriteToCanvasZoom(ValueDistance,28,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
+   
+    H = LED.HatWidth - (ValueAircraftCount.width + TitleAircraftCount.width + 1)
+    V = 0
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,H,V,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    H = LED.HatWidth - ValueAircraftCount.width
+    V = 0
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,H,V,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
-    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSpeed,0,12,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed,28,12,ValueRGB,(0,5,0),1,False,LED.Canvas)
+
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleCategory,63,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueCategory,81,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
+
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSpeed,63,6,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed,81,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
     
-    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,0,18,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,30,18,ValueRGB,(0,5,0),1,False,LED.Canvas)
     
-    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSquawk,64,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSquawk,88,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
+    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSquawk,56,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    #LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSquawk,80,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftType,64,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftType,64,6,(75,0,200),(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAirlineShort,64,12,(75,0,200),(0,5,0),1,False,LED.Canvas)
+    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftType,0,24,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftType,0,12,(75,0,200),(0,5,0),1,False,LED.Canvas)
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAirlineShort,0,18,(75,0,200),(0,5,0),1,False,LED.Canvas)
 
     
 
@@ -394,16 +405,22 @@ print ("---------------------------------------------------------------")
 print ("")
 print ("")
 
+LED.ClearBigLED()
+LED.ClearBuffers()
+CursorH = 0
+CursorV = 0
 
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"LOADING CONFIG FILES",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
 LoadConfigFile()
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RETREIVING LIST OF AIRPORTS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
 GetAirportList()
-
 
 #pp.pprint(AirportList)
 
-
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"GETTING LIST OF FLIGHTS WITHIN SPECIFIED BOUNDARY",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
 FlightList = GetFlightsInBounds(Bounds)
 LastGetFlightsTime = time.time()
+LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RETRIEVING FLIGHT DETAILS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
 DetailedFlightList = GetFlightDetails(FlightList)
 
 
@@ -414,7 +431,8 @@ DetailedFlightList = GetFlightDetails(FlightList)
 #pp.pprint(details)
 #time.sleep(2)
 
-
+LED.ClearBigLED()
+LED.ClearBuffers()
 
 while(1==1):
   h,m,s = LED.GetElapsedTime(LastGetFlightsTime,time.time())
@@ -446,8 +464,8 @@ while(1==1):
   try:
     ScrollText = OriginAirport + "-" + DestinationAirport + " " + OriginText.split()[0] + " " + OriginText.split()[1] + " --> " + DestinationText.split()[0] + " " + DestinationText.split()[1]
     #ScrollText = ScrollText + " - " + AircraftType
-    ScrollText = ScrollText + " - " + AirlineName
-    ScrollText = ScrollText + " - " + AirlineShortName
+    #ScrollText = ScrollText + " - " + AirlineName
+    #ScrollText = ScrollText + " - " + AirlineShortName
     print(ScrollText)
 
     LED.ShowScrollingBanner2(ScrollText,(100,150,0),ScrollSpeed=ScrollSleep,v=26)

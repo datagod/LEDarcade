@@ -12547,7 +12547,7 @@ def CreateBannerSprite(TheMessage):
     elif (c == '-'):
       BannerSprite = JoinSprite(BannerSprite, DashSprite,0)
     elif (c == '#'):
-      BannerSprite = JoinSprite(BannerSprite, DashSprite,0)
+      BannerSprite = JoinSprite(BannerSprite, PoundSignSprite,0)
     elif (c == '$'):
       BannerSprite = JoinSprite(BannerSprite, DollarSignSprite,0)
     elif (c == '.'):
@@ -12602,7 +12602,7 @@ def CreateBannerSprite(TheMessage):
 
     elif (c == ']'):
       BannerSprite = JoinSprite(BannerSprite, RightSquareBracketSprite,0)
-
+    
     elif (c == '/'):
       BannerSprite = JoinSprite(BannerSprite, ForwardSlashSprite,0)
 
