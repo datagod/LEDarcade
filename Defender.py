@@ -20,7 +20,7 @@
 # |  _ \| ____|  ___| ____| \ | |  _ \| ____|  _ \                           --
 # | | | |  _| | |_  |  _| |  \| | | | |  _| | |_) |                          --
 # | |_| | |___|  _| | |___| |\  | |_| | |___|  _ <                           --
-# |____/|_____|_|   |_____|_| \_|____/|_____|_| \_\                          --                                                                            --
+# |____/|_____|_|   |_____|_| \_|____/|_____|_| \_\                          -- 
 #                                                                            --
 #------------------------------------------------------------------------------
 
@@ -123,10 +123,10 @@ MaxMountainHeight  = 16
 HumanCount         = 5
 EnemyShipCount     = 25
 AddEnemyCount      = 25
-SpawnNewEnemiesTargetCount = 5
+SpawnNewEnemiesTargetCount = 0
 SpawnNewHumansTargetCount  = 0
 ShipTypes                  = 27
-RedrawGroundWaveCount      = 5
+RedrawGroundWaveCount      = 0
 
 
 
@@ -137,11 +137,11 @@ DefenderMoveDownRate = 3
 HumanMoveChance      = 2
 EnemyMoveSpeed       = 6
 GarbageCleanupChance = 500
-GroundRadarChance    = 10
+GroundRadarChance    = 50
 FrontRadarChance     = 5
 ShootGroundShipCount = 10
-AttackDistance       = 64
-HumanRunDistance     = 64
+AttackDistance       = LED.HatWidth
+HumanRunDistance     = LED.HatWidth
 ShootTime            = time.time()
 ShootWaitTime        = 0.5
 EnemyFearFactor      = 10  #the lower the number, the more likely the enemy will run away
@@ -165,7 +165,7 @@ RequestGroundLaser     = False
 RequestedBombVelocityH = 0.2
 RequestedBombVelocityV = 0.05
 BombDetonationHeight   = 20
-MaxBombBounces         = 2
+MaxBombBounces         = 3
 
 #Human
 HumanCountH = 25
@@ -219,14 +219,14 @@ def ScanInFrontOfDefender(H,V,Defender,DefenderPlayfield):
     
   Item          = ''
   ItemList      = ['NULL']
-  RadarRange    = 50
+  RadarRange    = LED.HatWidth - 14
+
   
   # x 1234567890...50
   
   
   try:
-
-    for x in range(0,RadarRange):
+    for x in range(0,RadarRange,2):
       ScanH, ScanV = LED.CalculateDotMovement(ScanH,ScanV,ScanDirection)
       if(ScanH + H < DefenderPlayfield.width):
         Item = DefenderPlayfield.map[ScanV + V][ScanH + H].name
@@ -251,9 +251,9 @@ def ScanFarAway(H,V,Defender,DefenderPlayfield):
   Item          = ''
   ItemList      = [('EmptyObject',0,0)]
   RadarStart    = 5
-  RadarStop     = 50
-  RadarStepH    = 3
-  RadarStepV    = 2
+  RadarStop     = LED.HatWidth
+  RadarStepH    = 4
+  RadarStepV    = 4
   
   
   # x 20...50
@@ -509,7 +509,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
       Found = True
       RequestGroundLaser = True
       RequestBombDrop    = True
-      #time.sleep(0.25)
+      #time.4(0.25)
       
   for i in range (0,len(EnemyShips)):
     if(StartX <= EnemyShips[i].h <= StopX  and StartY <= EnemyShips[i].v <=  StopY):
@@ -593,8 +593,13 @@ def ShootGround(PlayfieldH, PlayfieldV, GroundV, Defender, DefenderPlayfield, Gr
   if(ScanH  >= DefenderPlayfield.width - 1):
     ScanH = DefenderPlayfield.width - 1
   
+  LineV = GroundV + 2
+  if(LineV > LED.HatHeight -1):
+    LineV = LED.HatHeight -1
+  if(LineV < Defender.v + 2):
+    LineV = Defender.v + 2
 
-  graphics.DrawLine(Canvas,ScreenH, ScreenV, ScreenH, GroundV +2, graphics.Color(LaserR,LaserG,LaserB))
+  graphics.DrawLine(Canvas,ScreenH, ScreenV, ScreenH, LineV, graphics.Color(LaserR,LaserG,LaserB))
   #Convert ground to particle
   #Explode Ground
   for j in range(0,StrafeLaserStrength):
@@ -1443,7 +1448,8 @@ def PlayDefender(GameMaxMinutes):
           ClockSprite.v = 0
           ClockSprite.rgb = ClockRGB
 
-          Background = LED.CopySpriteToLayerZoom(ClockSprite,bx + 30,10,(5,0,5),(0,5,0),2,False,Layer=Background)
+          #we need to earase the clock fist, commenting out for now
+          #Background = LED.CopySpriteToLayerZoom(ClockSprite,bx + 30,10,(5,0,5),(0,5,0),2,False,Layer=Background)
 
 
 

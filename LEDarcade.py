@@ -3462,7 +3462,7 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
           if(rgb == (0,0,0)):
            rgb = Background.map[y][x+bh]
 
-        #if the pixel is not black, set the canvas
+      #if the pixel is not black, set the canvas
       if (rgb != (0,0,0)):
         r,g,b = rgb
         Canvas.SetPixel(x,y,r,g,b)
