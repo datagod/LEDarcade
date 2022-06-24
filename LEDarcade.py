@@ -18890,17 +18890,17 @@ def StarryNightDisplayText(
 
 
   TheBanner1 = CreateBannerSprite(Text1)
-  h1         = 80
+  h1         = HatWidth + 20
   v1         = 8
   Foreground = CopySpriteToLayerZoom(TheBanner1,h1,v1,Text1RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Foreground)
 
   TheBanner2 = CreateBannerSprite(Text2)
-  h2         = 200
+  h2         = HatWidth + 100
   v2         = 4
   Middleground = CopySpriteToLayerZoom(TheBanner2,h2,v2,Text2RGB,(0,0,0),ZoomFactor=2,Fill=False,Layer=Middleground)
 
   TheBanner3 = CreateBannerSprite(Text3)
-  h3         = 200
+  h3         = HatWidth + 100
   v3         = 0
   Background = CopySpriteToLayerZoom(TheBanner3,h3,v3,Text3RGB,(0,0,0),ZoomFactor=1,Fill=False,Layer=Background)
 
@@ -18910,10 +18910,10 @@ def StarryNightDisplayText(
   r = random.randint(0,1)
   if(r == 0):
     TheSprite = copy.deepcopy(RunningMan2Sprite)
-    TheSprite.framerate = 3
+    TheSprite.framerate = 4
   else:
     TheSprite = copy.deepcopy(RunningMan3Sprite)
-    TheSprite.framerate = 2
+    TheSprite.framerate = 3
   
 
   while (Done == False):

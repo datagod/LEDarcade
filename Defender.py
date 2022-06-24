@@ -121,12 +121,12 @@ LaserB = 0
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
 HumanCount         = 5
-EnemyShipCount     = 25
-AddEnemyCount      = 25
-SpawnNewEnemiesTargetCount = 0
-SpawnNewHumansTargetCount  = 0
+EnemyShipCount     = 50
+AddEnemyCount      = 50
+SpawnNewEnemiesTargetCount = 5
+SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
-RedrawGroundWaveCount      = 0
+RedrawGroundWaveCount      = 5
 
 
 
@@ -134,12 +134,12 @@ RedrawGroundWaveCount      = 0
 #Movement
 DefenderMoveUpRate   = 3
 DefenderMoveDownRate = 3
-HumanMoveChance      = 2
+HumanMoveChance      = 3
 EnemyMoveSpeed       = 6
 GarbageCleanupChance = 500
-GroundRadarChance    = 50
-FrontRadarChance     = 5
-ShootGroundShipCount = 10
+GroundRadarChance    = 10
+FrontRadarChance     = 15
+ShootGroundShipCount = 20
 AttackDistance       = LED.HatWidth
 HumanRunDistance     = LED.HatWidth
 ShootTime            = time.time()
@@ -177,6 +177,18 @@ EnemyCountH = 10
 EnemyCountV = 0
 EnemyCountRGB = (10,0,200)
 
+#Defender
+DefenderStartH = 5
+
+#change display based on display dimensions
+if(LED.HatWidth > 60):
+  EnemyCountH = 60
+  HumanCountH = 78
+  ClockZoom = 2
+  DefenderStartH = 15
+else:
+  ClockZoom = 1
+
 
 
 #---------------------------------------
@@ -191,7 +203,6 @@ CursorDarkRGB       = (0,50,0)
 
 BrightRGB  = (0,200,0)
 ShadowRGB  = (0,5,0)
-ShowCrypto = 'N'
 KeyboardSpeed   = 500
 CheckClockSpeed = 500
 
@@ -1142,8 +1153,8 @@ def MoveHumanParticles (HumanParticles,Canvas):
         Canvas.SetPixel(hph,hpv,r,g,b)
           
 
-def DisplayCount(h,v,RGB, Count,Canvas):
-  CountSprite = LED.CreateBannerSprite(str(Count))
+def DisplayCount(h,v,RGB, Header,Count,Canvas):
+  CountSprite = LED.CreateBannerSprite(Header + str(Count))
   Canvas = LED.CopySpriteToCanvasZoom(CountSprite,h,v,(RGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
   #Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
   return Canvas, CountSprite
@@ -1375,13 +1386,13 @@ def PlayDefender(GameMaxMinutes):
 
 
   Humans,     DefenderPlayfield = CreateHumans(HumanCount=HumanCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
-  HumanCountSprite = LED.CreateBannerSprite(str(HumanCount))
-  Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,HumanCount,Canvas)
+  HumanCountSprite = LED.CreateBannerSprite('H' + str(HumanCount))
+  Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,'H',HumanCount,Canvas)
     
 
   EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipType=ShipType,ShipCount=EnemyShipCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
-  EnemyShipCountSprite = LED.CreateBannerSprite(str(EnemyShipCount))
-  Canvas, EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,EnemyShipCount,Canvas)
+  EnemyShipCountSprite = LED.CreateBannerSprite('E'+str(EnemyShipCount))
+  Canvas, EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,'E',EnemyShipCount,Canvas)
   
   #Erase message
   LED.TransitionBetweenScreenArrays(NewScreenArray,BackgroundScreenArray,TransitionType=1,FadeSleep=0.08)
@@ -1422,15 +1433,16 @@ def PlayDefender(GameMaxMinutes):
     gwidth = Ground.width        - LED.HatWidth
     brate  = 6
     mrate  = 4
-    frate  = 2
-    grate  = 1
+    frate  = 3
+    grate  = 2
+    GroundIncrement = 1
     DisplayH = 0
     DisplayV = 0
     TargetHit = False
     
 
     Defender = copy.deepcopy(LED.Defender)
-    Defender.h = 5
+    Defender.h = DefenderStartH
     Defender.v = 20
      
 
@@ -1505,7 +1517,7 @@ def PlayDefender(GameMaxMinutes):
       #ground / display
       m,r = divmod(count,grate)
       if(r == 0):
-        gx = gx + 1
+        gx = gx + GroundIncrement
         if(gx >= gwidth + LED.HatWidth ):
           gx = 0
         DisplayH = gx
@@ -1792,7 +1804,7 @@ def PlayDefender(GameMaxMinutes):
         if(random.randint(0,LaserTurnOffChance) == 1):
           RequestGroundLaser = False      
       
-      Canvas = LED.Defender.PaintAnimatedToCanvas(5,Defender.v,Canvas)
+      Canvas = LED.Defender.PaintAnimatedToCanvas(Defender.h,Defender.v,Canvas)
 
 
       #--------------------------------
@@ -1889,8 +1901,8 @@ def PlayDefender(GameMaxMinutes):
       #-- Numerical Displays         --
       #--------------------------------
 
-      #Add clock
-      Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,(0,0,0),1,False,Canvas)
+      ClockSprite.h = LED.HatWidth - (ClockSprite.width * ClockZoom)
+      Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,(0,0,0),ClockZoom,False,Canvas)
 
 
       #Add display
@@ -1898,7 +1910,7 @@ def PlayDefender(GameMaxMinutes):
       
       #Only change display sprite if the count changes
       if(OldEnemyAliveCount != EnemyAliveCount):
-        Canvas,EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,EnemyAliveCount,Canvas)
+        Canvas,EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,'E',EnemyAliveCount,Canvas)
         OldEnemyAliveCount = EnemyAliveCount
       else:
         Canvas = LED.CopySpriteToCanvasZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
@@ -1909,7 +1921,7 @@ def PlayDefender(GameMaxMinutes):
       HumanCount = sum(1 for h in Humans if h.alive == 1)
       #Only change display if the count changes
       if(OldHumanCount != HumanCount):
-        Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,HumanCount,Canvas)
+        Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,'H', HumanCount,Canvas)
         OldHumanCount = HumanCount
         
         #this is just a test
@@ -1950,7 +1962,7 @@ def PlayDefender(GameMaxMinutes):
 
         #Capture new ground and sprites BEFORE
         ScreenA = LED.PaintFourLayerScreenArray(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
-        ScreenA = LED.CopySpriteToScreenArrayZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,ZoomFactor=1,InputScreenArray=ScreenA)
+        ScreenA = LED.CopySpriteToScreenArrayZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,ZoomFactor=ClockZoom,InputScreenArray=ScreenA)
         ScreenA = LED.CopySpriteToScreenArrayZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,InputScreenArray=ScreenA)
         ScreenA = LED.CopySpriteToScreenArrayZoom(HumanCountSprite,HumanCountH,HumanCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,InputScreenArray=ScreenA)
         ScreenA = LED.CopyAnimatedSpriteToScreenArrayZoom(Defender,Defender.h,Defender.v,ZoomFactor=1,TheScreenArray=ScreenA)
@@ -1980,7 +1992,7 @@ def PlayDefender(GameMaxMinutes):
         #transition old to new
         LED.TransitionBetweenScreenArrays(ScreenA,ScreenB,TransitionType=2)
         print("Transition A --> B")
-        time.sleep(2)
+        time.sleep(1)
 
         #Show message
         Message        = "WAVE " + str(WaveCount)
