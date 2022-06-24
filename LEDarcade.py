@@ -10,6 +10,8 @@
 # The buffer is a 2D array.  32 lines of 64 pixels
 # BUFFER[V][H]  
 
+
+
 # We write to the LED directory for simplicity
 # We write to the Canvas and swap to the LED for speed
 # We write to the ScreenArray buffer so we know what is on the screen in case we
@@ -54,6 +56,8 @@ import time
 import gc
 import random
 import os
+os.system('cls||clear')
+
 from configparser import SafeConfigParser
 import sys
 
@@ -116,61 +120,27 @@ TinyClockHours   = 0
 CPUModifier      = 0
 Gamma            = 1
 ShowCrypto       = 'N'
-HatWidth         = 64
-HatHeight        = 32
+HatWidth         = 64  # These defaults can be overwritten in the ClockConfig.ini file
+HatHeight        = 32  # These defaults can be overwritten in the ClockConfig.ini file
 KeyboardPoll     = 10
 BrightColorCount = 27
 
 
 
-#Initialize Matrix objects
-options = RGBMatrixOptions()
-
-options.rows       = HatHeight
-options.cols       = HatWidth
-options.brightness = 100
-#stops sparkling 
-options.gpio_slowdown = 5
-
-
-#options.chain_length = self.args.led_chain
-#options.parallel = self.args.led_parallel
-#options.row_address_type = self.args.led_row_addr_type
-#options.multiplexing = self.args.led_multiplexing
-#options.pwm_bits = self.args.led_pwm_bits
-#options.pwm_lsb_nanoseconds = self.args.led_pwm_lsb_nanoseconds
-#options.led_rgb_sequence = self.args.led_rgb_sequence
-#options.pixel_mapper_config = self.args.led_pixel_mapper
-#if self.args.led_show_refresh:
-#  options.show_refresh_rate = 1
-
-#if self.args.led_no_hardware_pulse:
-#  options.disable_hardware_pulsing = True
-
-
-#The matrix object is what is used to interact with the LED display
-TheMatrix    = RGBMatrix(options = options)
-
-#Screen array is a copy of the matrix light layout because RGBMatrix is not queryable.  
-ScreenArray  = ([[]])
-ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-
-EmptyArray  = ([[]])
-EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-
-
-#Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
-Canvas = TheMatrix.CreateFrameCanvas()
-Canvas.Fill(0,0,0)
-
-
-DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
 
 
 
 
-#Twitch specific
-TwitchTimerOn = False
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -233,6 +203,29 @@ SuperWormLevels    = 3           #number of levels
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Twitch specific
+TwitchTimerOn = False
+
+
+
+
+
 #-----------------------------
 # Used in all games         --
 #-----------------------------
@@ -286,8 +279,150 @@ SpriteFillerRGB = (0,4,0)
 
 
 
+def LoadConfigData():
+  global DotInvadersHighScore
+  global DotInvadersGamesPlayed
+  global OutbreakHighScore
+  global OutbreakGamesPlayed
+  global SpaceDotHighScore
+  global SpaceDotGamesPlayed
+  global DefenderHighScore
+  global DefenderGamesPlayed
+  global HatHeight
+  global HatWidth
+  
+
+  print ("--Load Config Data--")
+  #print ("PacDotHighScore Before Load: ",PacDotHighScore)
+    
+  if (os.path.exists(ConfigFileName)):
+    print ("Config file (",ConfigFileName,"): already exists")
+    ConfigFile = SafeConfigParser()
+    ConfigFile.read(ConfigFileName)
+
+    #Get and set time    
+    #TheTime = ConfigFile.get("main","currenttime")
+    #print ("Setting time: ",TheTime)
+    #CMD = "sudo date --set " + TheTime
+    #os.system(CMD)
+   
+    #Get pacdot data
+    #PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
+    #PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
+    #print ("PacDotHighScore: ",  PacDotHighScore)
+    #print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
+
+    #Get CryptoBalance
+    #CryptoBalance = ConfigFile.get("crypto","balance")
+    #print ("CryptoBalance:   ",CryptoBalance)
+
+    #Get DotInvadersHighScore
+    DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
+    DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
+    print ("DotInvadersHighScore:   ",DotInvadersHighScore)
+    print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
+    try:
+      HatHeight   = int(ConfigFile.get("MATRIX","HatHeight"))
+      HatWidth    = int(ConfigFile.get("MATRIX","HatWidth"))
+    except:
+      print('No override for HatHeight/HatWidth.  Going with defaults.')
+      
+    
+    
+    print("HatWidth:               ",HatWidth)
+    print("HatHeight               ",HatHeight)
+      
+
+
+
+
+    #Get Outbreak data
+    OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
+    OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
+    print ("OutbreakHighScore:      ",OutbreakHighScore)
+    print ("OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
+
+
+    #Get SpaceDot data
+    SpaceDotHighScore   = int(ConfigFile.get("scores","SpaceDotHighScore"))
+    SpaceDotGamesPlayed = int(ConfigFile.get("scores","SpaceDotGamesPlayed"))
+    print ("SpaceDotHighScore:      ",SpaceDotHighScore)
+    print ("SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
+
+
+    #Get Defender data
+    DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
+    DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
+    print ("DefenderHighScore:      ",DefenderHighScore)
+    print ("DefenderGamesPlayed:    ",DefenderGamesPlayed)
+
+
+  else:
+    print ("Config file not found! Running with default values.")
+
+    
+  print ("--------------------")
+  print (" ")
+  
+
+
+ 
+
+
+
+
+
+#--------------------------------------
+# RGB Matrix Options                 --
+#--------------------------------------
+
+#load config data to see if there is an override value for hatwidth/hatheight
+LoadConfigData()
+
+#Initialize Matrix objects
+options = RGBMatrixOptions()
+
+options.rows       = HatHeight
+options.cols       = HatWidth
+options.brightness = 100
+#stops sparkling 
+options.gpio_slowdown = 5
+
+
+#options.chain_length = self.args.led_chain
+#options.parallel = self.args.led_parallel
+#options.row_address_type = self.args.led_row_addr_type
+#options.multiplexing = self.args.led_multiplexing
+#options.pwm_bits = self.args.led_pwm_bits
+#options.pwm_lsb_nanoseconds = self.args.led_pwm_lsb_nanoseconds
+#options.led_rgb_sequence = self.args.led_rgb_sequence
+#options.pixel_mapper_config = self.args.led_pixel_mapper
+#if self.args.led_show_refresh:
+#  options.show_refresh_rate = 1
+
+#if self.args.led_no_hardware_pulse:
+#  options.disable_hardware_pulsing = True
+
+
+#The matrix object is what is used to interact with the LED display
+TheMatrix    = RGBMatrix(options = options)
+
+#Screen array is a copy of the matrix light layout because RGBMatrix is not queryable.  
+ScreenArray  = ([[]])
+ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+EmptyArray  = ([[]])
+EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+
+#Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
+Canvas = TheMatrix.CreateFrameCanvas()
+Canvas.Fill(0,0,0)
+
+
+DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
 
 
 
@@ -1036,6 +1171,18 @@ def setpixel(x, y, r, g, b):
 
 
 
+def setpixelCanvas(x, y, r, g, b):
+  global ScreenArray
+  global Canvas
+
+
+  if (CheckBoundary(x,y) == 0):
+    Canvas.SetPixel(x,y,r,g,b)
+    ScreenArray[y][x] = (r,g,b)
+
+
+
+
     
 def setpixelRGB(x, y, RGB):
   global ScreenArray
@@ -1561,14 +1708,20 @@ class Sprite(object):
     x = 0,
     y = 0
     #print ("Display:",self.width, self.height, self.r, self.g, self.b,v1,h1)
+
+    #global Canvas
+    #Canvas = TheMatrix.SwapOnVSync(Canvas) 
+
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
       #print("Count:",count,"xy",x,y)
       if self.grid[count] == 1:
         if (CheckBoundary(x+h1,y+v1) == 0):
-          #TheMatrix.SetPixel(x+h1,y+v1,self.r,self.g,self.b)
-          setpixel(x+h1,y+v1,self.r,self.g,self.b)
-    #unicorn.show()
+
+          setpixelCanvas(x+h1,y+v1,self.r,self.g,self.b)
+    #Canvas = TheMatrix.SwapOnVSync(Canvas) 
+
+
 
 
   def CopySpriteToScreenArrayZoom(self,h,v,ZoomFactor):
@@ -1643,12 +1796,26 @@ class Sprite(object):
     #It is pretty fast now, seems just as fast as blanking whole screen using off() or clear()
     x = 0
     y = 0
+
+    
+    #global ScreenArray
+    #global Canvas
+    
+    #Canvas = TheMatrix.SwapOnVSync(Canvas) 
+    
     for count in range (0,(self.width * self.height)):
       y,x = divmod(count,self.width)
       if self.grid[count] == 1:
         if (CheckBoundary(x+h1,y+v1) == 0):
           #TheMatrix.SetPixel(x+h1,y+v1,0,0,0)
-          setpixel(x+h1,y+v1,0,0,0)
+          
+          #migrating to canvas logic
+          #setpixel(x+h1,y+v1,0,0,0)
+          setpixelCanvas(x+h1,y+v1,0,0,0)
+
+    #Canvas = TheMatrix.SwapOnVSync(Canvas)              
+
+
 
 
   def EraseWholeSprite(self,h1,v1):
@@ -1684,13 +1851,18 @@ class Sprite(object):
 
 
 
-
-
-
-#Maybe call 1ToPixelsZoom here instead of self.Display()
-
-
   def Scroll(self,h,v,direction,moves,delay):
+    global Canvas
+
+    #When we scroll, we want to write to the canvas first, then swap it with
+    #the active display.  However, we want to copy the active display first
+    #so we can write to the canvas and not lose what was on the screen or get
+    #flickering.
+
+    
+      
+
+
     #print("Entering Scroll")
     x = 0
     oldh = 0
@@ -1704,10 +1876,28 @@ class Sprite(object):
     
     #print("Modifier:",modifier)
     
+    
+   
+    
+    
+    #Put active display into temp canvas
+    #swap main display with canvas
+    #copy temp canvas to canvas
+    #swap main display with canvas
+    #now both main display and canvas have a good background to start scrolling on
+    TempCanvas = TheMatrix.SwapOnVSync(Canvas) 
+    Canvas = TheMatrix.SwapOnVSync(TempCanvas) 
+    Canvas = TempCanvas
+
+
+
     if direction == "left" or direction == "right":
       #print ("Direction: ",direction)  
       for count in range (0,moves):
         h = h + (modifier)
+
+
+
         #erase old sprite
         if count >= 1:
           oldh = h - modifier
@@ -1717,14 +1907,16 @@ class Sprite(object):
 
         #draw new sprite
         self.Display(h,v)
-        #unicorn.show()
         #SendBufferPacket(RemoteDisplay,HatHeight,HatWidth)
+        Canvas = TheMatrix.SwapOnVSync(Canvas) 
         time.sleep(delay)
 
         #Check for keyboard input
         r = random.randint(0,50)
         if (r == 0):
           Key = PollKeyboard()
+
+
 
 
     if direction == "up" or direction == "down":
@@ -1738,7 +1930,7 @@ class Sprite(object):
             
         #draw new sprite
         self.Display(h,v)
-        #unicorn.show()
+        Canvas = TheMatrix.SwapOnVSync(Canvas) 
         #SendBufferPacket(RemoteDisplay,HatHeight,HatWidth)
         time.sleep(delay)
         #Check for keyboard input
@@ -3270,7 +3462,7 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
           if(rgb == (0,0,0)):
            rgb = Background.map[y][x+bh]
 
-        #if the pixel is not black, set the canvas
+      #if the pixel is not black, set the canvas
       if (rgb != (0,0,0)):
         r,g,b = rgb
         Canvas.SetPixel(x,y,r,g,b)
@@ -11498,80 +11690,6 @@ def SaveConfigData():
 
 
     
-def LoadConfigData():
-  global DotInvadersHighScore
-  global DotInvadersGamesPlayed
-  global OutbreakHighScore
-  global OutbreakGamesPlayed
-  global SpaceDotHighScore
-  global SpaceDotGamesPlayed
-  global DefenderHighScore
-  global DefenderGamesPlayed
-  
-  print ("--Load Config Data--")
-  #print ("PacDotHighScore Before Load: ",PacDotHighScore)
-    
-  if (os.path.exists(ConfigFileName)):
-    print ("Config file (",ConfigFileName,"): already exists")
-    ConfigFile = SafeConfigParser()
-    ConfigFile.read(ConfigFileName)
-
-    #Get and set time    
-    #TheTime = ConfigFile.get("main","currenttime")
-    #print ("Setting time: ",TheTime)
-    #CMD = "sudo date --set " + TheTime
-    #os.system(CMD)
-   
-    #Get pacdot data
-    #PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
-    #PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
-    #print ("PacDotHighScore: ",  PacDotHighScore)
-    #print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
-
-    #Get CryptoBalance
-    #CryptoBalance = ConfigFile.get("crypto","balance")
-    #print ("CryptoBalance:   ",CryptoBalance)
-
-    #Get DotInvadersHighScore
-    DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
-    DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
-    print ("DotInvadersHighScore:   ",DotInvadersHighScore)
-    print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
-
-
-
-
-    #Get Outbreak data
-    OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
-    OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
-    print ("OutbreakHighScore:      ",OutbreakHighScore)
-    print ("OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
-
-
-    #Get SpaceDot data
-    SpaceDotHighScore   = int(ConfigFile.get("scores","SpaceDotHighScore"))
-    SpaceDotGamesPlayed = int(ConfigFile.get("scores","SpaceDotGamesPlayed"))
-    print ("SpaceDotHighScore:      ",SpaceDotHighScore)
-    print ("SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
-
-
-    #Get Defender data
-    DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
-    DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
-    print ("DefenderHighScore:      ",DefenderHighScore)
-    print ("DefenderGamesPlayed:    ",DefenderGamesPlayed)
-
-
-  else:
-    print ("Config file not found! Running with default values.")
-
-    
-  print ("--------------------")
-  print (" ")
-  
-
-
- 
   
     
   
@@ -11624,7 +11742,7 @@ def SetTimeHHMM():
 
 
  
-  ScreenCap  = copy.deepcopy(unicorn.get_pixels())
+  #ScreenCap  = copy.deepcopy(unicorn.get_pixels())
   ScrollScreen('up',ScreenCap,ScrollSleep)
   ShowScrollingBanner("set time: hours minutes",100,100,0,ScrollSleep)
   ScrollScreen('down',ScreenCap,ScrollSleep)
@@ -12429,7 +12547,7 @@ def CreateBannerSprite(TheMessage):
     elif (c == '-'):
       BannerSprite = JoinSprite(BannerSprite, DashSprite,0)
     elif (c == '#'):
-      BannerSprite = JoinSprite(BannerSprite, DashSprite,0)
+      BannerSprite = JoinSprite(BannerSprite, PoundSignSprite,0)
     elif (c == '$'):
       BannerSprite = JoinSprite(BannerSprite, DollarSignSprite,0)
     elif (c == '.'):
@@ -12484,7 +12602,7 @@ def CreateBannerSprite(TheMessage):
 
     elif (c == ']'):
       BannerSprite = JoinSprite(BannerSprite, RightSquareBracketSprite,0)
-
+    
     elif (c == '/'):
       BannerSprite = JoinSprite(BannerSprite, ForwardSlashSprite,0)
 
@@ -18772,17 +18890,17 @@ def StarryNightDisplayText(
 
 
   TheBanner1 = CreateBannerSprite(Text1)
-  h1         = 80
+  h1         = HatWidth + 20
   v1         = 8
   Foreground = CopySpriteToLayerZoom(TheBanner1,h1,v1,Text1RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Foreground)
 
   TheBanner2 = CreateBannerSprite(Text2)
-  h2         = 200
+  h2         = HatWidth + 100
   v2         = 4
   Middleground = CopySpriteToLayerZoom(TheBanner2,h2,v2,Text2RGB,(0,0,0),ZoomFactor=2,Fill=False,Layer=Middleground)
 
   TheBanner3 = CreateBannerSprite(Text3)
-  h3         = 200
+  h3         = HatWidth + 100
   v3         = 0
   Background = CopySpriteToLayerZoom(TheBanner3,h3,v3,Text3RGB,(0,0,0),ZoomFactor=1,Fill=False,Layer=Background)
 
@@ -18792,10 +18910,10 @@ def StarryNightDisplayText(
   r = random.randint(0,1)
   if(r == 0):
     TheSprite = copy.deepcopy(RunningMan2Sprite)
-    TheSprite.framerate = 3
+    TheSprite.framerate = 4
   else:
     TheSprite = copy.deepcopy(RunningMan3Sprite)
-    TheSprite.framerate = 2
+    TheSprite.framerate = 3
   
 
   while (Done == False):
