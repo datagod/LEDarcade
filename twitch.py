@@ -1974,6 +1974,35 @@ def GetBasicTwitchInfo():
 
     print ("--GetBasicTwitchInfo--")
 
+
+
+
+
+    #----------------------------------------
+    # GET ACCESS TOKEN
+    #----------------------------------------
+    print("Get CHANNEL info")
+    API_ENDPOINT = "https://id.twitch.tv/oath2/token" + BROADCASTER_CHANNEL
+    head = {
+    'client_id': CLOCKBOT_X_CLIENT_ID,
+    'client_secret' +  CLOCKBOT_X_CLIENT_SECRET,
+    'grant_type=client_credentials'
+    }
+
+    #print ("URL: ",API_ENDPOINT, 'data:',head)
+    r = requests.get(url = API_ENDPOINT, headers = head)
+    results = r.json()
+    pprint.pprint(results)
+    print(" ")
+
+
+
+
+
+
+
+
+
     #----------------------------------------
     # GET CHANNEL INFO
     #----------------------------------------

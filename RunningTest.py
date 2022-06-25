@@ -65,30 +65,18 @@ CursorRGB = (0,75,0)
 
 
 
-
-
-
-LED.TheMatrix.brightness = StreamBrightness
-LED.ZoomImage(ImageName="./images/TwinGalaxies.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-LED.ZoomImage(ImageName="./images/TwinGalaxies.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
-time.sleep(3)
-LED.ClearBigLED()
-LED.TheMatrix.brightness = MaxBrightness
-
-
-
-
+time.sleep(10)
 
 
 
 LED.ShowTitleScreen(
-BigText             = "SUBARCTICA",
+BigText             = "LED ARCADE",
 BigTextRGB          = LED.MedPurple,
 BigTextShadowRGB    = LED.ShadowPurple,
-LittleText          = "control center #1",
+LittleText          = "by datagod",
 LittleTextRGB       = LED.MedRed,
 LittleTextShadowRGB = LED.ShadowRed, 
-ScrollText          = "There is no escapae",
+ScrollText          = "A twitch enabled LED powered retro clock",
 ScrollTextRGB       = LED.MedYellow,
 ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
 DisplayTime         = 1,           # time in seconds to wait before exiting 
@@ -97,10 +85,17 @@ LittleTextZoom      = 1
 )
 
 
+ImageName = "./images/tgthumb.jpg"
+ImageName = "./images/TwinGalaxies.png"
+LED.ShowImage(ImageName,Fade = True, MaxBright = 100, Duration = 1)
+LED.ClearBigLED()
+
+
+
 LED.StarryNightDisplayText(
-Text1 = "jacob mcevoy is a cool dude",
-Text2 = "your mission is to eat cheese",
-Text3 = "how  many times can a dead dog fart?",
+Text1 = "HIGH SCORES",
+Text2 = "WATCH THE TOP PLAYERS IN THE WORLD",
+Text3 = "BREAK RECORDS, MAKE FRIENDS, CELEBRATE EXCELLENCE",
 RunSeconds = 60
 )                    
 

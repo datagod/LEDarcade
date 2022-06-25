@@ -13975,10 +13975,14 @@ def CopySpriteToPixelsZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,
   #print ("Copying sprite to playfield:",TheSprite.name, ObjectType, Filler)
   #if Fill = False, don't write anything for filler, that way we can leave existing lights on LED
 
+
+ 
+  
+
   width   = TheSprite.width 
   height  = TheSprite.height
 
-  global ScreenArray  
+  #global ScreenArray  
   
   if (ColorTuple == (-1,-1,-1)):
     r = TheSprite.r
@@ -14026,7 +14030,8 @@ def CopySpriteToPixelsZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,
               #  setpixel(H,V,0,0,0)
 
   #draw the contents of the buffer to the LED matrix
-  #TheMatrix.SwapOnVSync(Canvas)
+  #Canvas = TheMatrix.SwapOnVSync(Canvas)
+  
  
 
   return;
@@ -14637,7 +14642,7 @@ def ShowTitleScreen(
   #BigText2 or LittleText
   if (BigText2 == ''):
     #Little Text
-    v = BigTextZoom * 7 - 2
+    v = BigTextZoom * 7 
     ShowGlowingText(CenterHoriz=True,h=0,v=v,Text=LittleText,RGB=LittleTextRGB,ShadowRGB=LittleTextShadowRGB,ZoomFactor= LittleTextZoom,GlowLevels=100,DropShadow=True)
   else:
     #BigText2
@@ -18456,7 +18461,7 @@ def RotateAndZoomImage(ImageName):
 
   for i in range (0,359):
     NewImage = ResizedImage.rotate(i)
-    TheMatrix.SetImage(NewImage, 64-r/2, -18)
+    TheMatrix.SetImage(NewImage, HatWidth-r/2, -18)
     time.sleep(0.001 )
 
 
@@ -18474,19 +18479,42 @@ def GetImageFromURL(URL,SaveName):
     image.save(SaveName)
 
 
-def ShowImage(ImageLocation):
+
+
+def ShowImage(ImageLocation,Fade=False,MaxBright = 100, Duration = 1):
   # Make image fit our screen.
   print("")
   print("-- Show Image --")
   print("ImageLocation:",ImageLocation)
   image = Image.open(ImageLocation)
-  image.thumbnail((64, 32), Image.ANTIALIAS)
+  image.thumbnail((HatWidth, HatHeight), Image.ANTIALIAS)
   image = image.convert('RGB')
-  TheMatrix.SetImage(image)
-  for n in range(-32, 63):  # Start off top-left, move off bottom-right
-      TheMatrix.Clear()
-      TheMatrix.SetImage(image, n, 0)
+
+  if(Fade == True):
+    TheMatrix.brightness = 0
+    for x in range (0,MaxBright):
+      TheMatrix.brightness = x
+      TheMatrix.SetImage(image)
+
+  
+  time.sleep(Duration)
+
+
+  if(Fade == True):
+    for x in range (0,MaxBright):
+      TheMatrix.brightness = MaxBright - x
+      TheMatrix.SetImage(image)
       time.sleep(0.01)
+
+  TheMatrix.Clear()
+  TheMatrix.brightness = 100
+      
+
+
+  # for n in range(-32, -HatWidth-1):  # Start off top-left, move off bottom-right
+  #     TheMatrix.Clear()
+  #     TheMatrix.SetImage(image, n, 0)
+  #     time.sleep(0.01)
 
       
 
@@ -18495,7 +18523,7 @@ def DrawSquare2():
 
   # RGB example w/graphics prims.
   # Note, only "RGB" mode is supported currently.
-  image = Image.new("RGB", (64, 32))  # Can be larger than matrix if wanted!!
+  image = Image.new("RGB", (HatWidth, 32))  # Can be larger than matrix if wanted!!
   draw = ImageDraw.Draw(image)  # Declare Draw instance before prims
   # Draw some shapes into image (no immediate effect on matrix)...
   draw.rectangle((0, 0, 31, 31), fill=(0, 0, 0), outline=(0, 0, 255))
@@ -18510,7 +18538,7 @@ def DrawSquare2():
 
 
 def DrawSquare(h1,v1,h2,v2,FillRGB,BorderRGB):
-  image = Image.new("RGB", (64, 32))  # Can be larger than matrix if wanted!!
+  image = Image.new("RGB", (HatWidth, 32))  # Can be larger than matrix if wanted!!
   draw = ImageDraw.Draw(image)  # Declare Draw instance before prims
   # Draw some shapes into image (no immediate effect on matrix)...
   draw.rectangle((h1, v1, h2, v2), fill=FillRGB, outline=BorderRGB)
@@ -18528,7 +18556,7 @@ def CreateCreditImage(names):
   GradientSection = 32
   text_y_position = 0
   text_padding    = 12
-  image_width     = 64
+  image_width     = HatWidth
   ColorB          = 52
   TextRGB         = (235,235,235)
 
@@ -18655,7 +18683,7 @@ def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
   GradientSection = 32
   text_y_position = 0
   text_padding    = 16
-  image_width     = 64
+  image_width     = HatWidth
   ColorG          = 52
   TextRGB         = (235,235,235)
   NameFontSize    = 11
@@ -18862,9 +18890,9 @@ def StarryNightDisplayText(
   #-- Create Layers              --
   #--------------------------------
 
-  Background   = Layer(name="backround", width=400, height=32,h=0,v=0)
-  Middleground = Layer(name="backround", width=600, height=32,h=0,v=0)
-  Foreground   = Layer(name="backround", width=800, height=32,h=0,v=0)
+  Background   = Layer(name="backround", width=600,  height=32,h=0,v=0)
+  Middleground = Layer(name="backround", width=800,  height=32,h=0,v=0)
+  Foreground   = Layer(name="backround", width=1000, height=32,h=0,v=0)
 
   Background.CreateStars(0,0,50,50)
   Middleground.CreateStars(0,0,100,100)
