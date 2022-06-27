@@ -132,7 +132,7 @@ RedrawGroundWaveCount      = 5
 
 
 #Movement
-DefenderSpeed        = 1
+DefenderSpeed        = 2
 DefenderMaxSpeed     = 5
 DefenderMinSpeed     = 1
 DefenderMoveUpRate   = 3
@@ -1494,7 +1494,7 @@ def PlayDefender(GameMaxMinutes):
       #Background
       m,r = divmod(count,brate)
       if(r == 0):
-        bx = bx + 1
+        bx = bx + DefenderSpeed
         if(bx > bwidth):
           bx = 0
       #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
@@ -1503,7 +1503,7 @@ def PlayDefender(GameMaxMinutes):
       #Middleground
       m,r = divmod(count,mrate)
       if(r == 0):
-        mx = mx + 1
+        mx = mx + DefenderSpeed
         if(mx > mwidth):
           mx = 0
       #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
@@ -1512,7 +1512,7 @@ def PlayDefender(GameMaxMinutes):
       #foreground
       m,r = divmod(count,frate)
       if(r == 0):
-        fx = fx + 1
+        fx = fx + DefenderSpeed
         if(fx > fwidth):
           fx = 0
       #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
