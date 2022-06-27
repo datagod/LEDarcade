@@ -132,8 +132,12 @@ RedrawGroundWaveCount      = 5
 
 
 #Movement
+DefenderSpeed        = 1
+DefenderMaxSpeed     = 5
+DefenderMinSpeed     = 1
 DefenderMoveUpRate   = 3
 DefenderMoveDownRate = 3
+DefenderSpeedChangeChance  = 1000
 HumanMoveChance      = 3
 EnemyMoveSpeed       = 6
 GarbageCleanupChance = 500
@@ -178,14 +182,14 @@ EnemyCountV = 0
 EnemyCountRGB = (10,0,200)
 
 #Defender
-DefenderStartH = 5
+DefenderStartH = 2
 
 #change display based on display dimensions
 if(LED.HatWidth > 60):
-  EnemyCountH = 60
-  HumanCountH = 78
+  EnemyCountH = 59
+  HumanCountH = 76
   ClockZoom = 2
-  DefenderStartH = 15
+  DefenderStartH = 2
 else:
   ClockZoom = 1
 
@@ -1264,6 +1268,7 @@ def PlayDefender(GameMaxMinutes):
   global MeltingGroundR
   global MeltingGroundG
   global MeltingGroundB
+  global DefenderSpeed
 
   finished            = 'N'
   LevelCount          = 0
@@ -1435,14 +1440,13 @@ def PlayDefender(GameMaxMinutes):
     mrate  = 4
     frate  = 3
     grate  = 2
-    GroundIncrement = 1
     DisplayH = 0
     DisplayV = 0
     TargetHit = False
     
 
     Defender = copy.deepcopy(LED.Defender)
-    Defender.h = DefenderStartH
+    Defender.h = DefenderStartH + (DefenderSpeed * 2)
     Defender.v = 20
      
 
@@ -1517,7 +1521,7 @@ def PlayDefender(GameMaxMinutes):
       #ground / display
       m,r = divmod(count,grate)
       if(r == 0):
-        gx = gx + GroundIncrement
+        gx = gx + DefenderSpeed
         if(gx >= gwidth + LED.HatWidth ):
           gx = 0
         DisplayH = gx
@@ -1734,7 +1738,21 @@ def PlayDefender(GameMaxMinutes):
       elif(random.randint(0,25) == 1):
         Defender.v = Defender.v +1
 
+      
+      if(random.randint(1,DefenderSpeedChangeChance) == 1):
+        if (random.randint(1,2) == 1):
+          DefenderSpeed = DefenderSpeed + 1
+        else:
+          DefenderSpeed = DefenderSpeed - 1
 
+        if(DefenderSpeed < DefenderMinSpeed):
+          DefenderSpeed = DefenderMinSpeed
+        if(DefenderSpeed > DefenderMaxSpeed):
+          DefenderSpeed = DefenderMaxSpeed
+
+        Defender.h = DefenderStartH + (DefenderSpeed * 2)
+
+          
       ScanV = Defender.v + 10
       if(ScanV > LED.HatHeight -2):
         ScanV = LED.HatHeight -2
@@ -1756,6 +1774,8 @@ def PlayDefender(GameMaxMinutes):
       if(Defender.v <= 5):
         Defender.v = 5
 
+
+      
 
 
       #-------------------------------------
@@ -1804,7 +1824,27 @@ def PlayDefender(GameMaxMinutes):
         if(random.randint(0,LaserTurnOffChance) == 1):
           RequestGroundLaser = False      
       
+      
+
+
+      #--------------------------------
+      #-- Paint defender on canvas   --
+      #--------------------------------
+
       Canvas = LED.Defender.PaintAnimatedToCanvas(Defender.h,Defender.v,Canvas)
+      
+      #paint jet trail
+      if(DefenderSpeed > 1):
+        for x in range(1,DefenderSpeed * 2):
+          #graphics.DrawLine(Canvas,Defender.h, Defender.v +2 , Defender.h - (DefenderSpeed ) , Defender.v +2,  graphics.Color(20 + DefenderSpeed * 15,0,0))
+          r =  175 - x*25
+          if(r <0):
+           r = 0
+          Canvas.SetPixel(Defender.h - x+1, Defender.v + 2,r,0,0)
+
+
+
+
 
 
       #--------------------------------
@@ -2007,19 +2047,16 @@ def PlayDefender(GameMaxMinutes):
 
         #Erase message
         LED.TransitionBetweenScreenArrays(ScreenD,ScreenB,TransitionType=1)        
-        
+
+
+        #Reset Defender Speed
+        DefenderSpeed = DefenderMinSpeed
 
 
 
         
 
-
-      
-
-
-
-      #if(HumanCount <= SpawnNewHumansTargetCount):
-      #  Humans, HumanCount, DefenderPlayfield = AddHumans(Humans, NewHumanCount=20, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
+   
 
 
      
