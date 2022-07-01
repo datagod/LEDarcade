@@ -3443,6 +3443,12 @@ def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
 
 def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
   
+
+  bh = round(bh)
+  mh = round(mh)
+  fh = round(fh)
+  gh = round(gh)
+
   Canvas.Clear()
   gwidth = Ground.width
   for x in range (0,HatWidth):
@@ -3474,6 +3480,13 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
 def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
   #we can only write to a canvas, cannot query it
   #so for fancy special effects we create a grid/screen array 
+
+  bh = round(bh)
+  mh = round(mh)
+  fh = round(fh)
+  gh = round(gh)
+
+
 
   ScreenArray  = ([[]])
   ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
@@ -14128,6 +14141,9 @@ def CopySpriteToScreenArrayZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple
   #print ("Copying sprite to playfield:",TheSprite.name, ObjectType, Filler)
   #if Fill = False, don't write anything for filler, that way we can leave existing lights on LED
 
+  h = round(h)
+  v = round(v)
+
   width   = TheSprite.width 
   height  = TheSprite.height
 
@@ -14191,6 +14207,10 @@ def CopyAnimatedSpriteToPixelsZoom(TheSprite,h,v, ZoomFactor = 1):
   #Copy a color animated sprite to the LED and the ScreenArray buffer
   #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
 
+  h = round(h)
+  v = round(v)
+
+
   width   = TheSprite.width 
   height  = TheSprite.height
 
@@ -14245,6 +14265,10 @@ def CopyAnimatedSpriteToPixelsZoomLEDOnly(TheSprite,h,v, ZoomFactor = 1):
   #Copy a color animated sprite to the LED ONLY
   #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
 
+  h = round(h)
+  v = round(v)
+
+
   width   = TheSprite.width 
   height  = TheSprite.height
 
@@ -14296,6 +14320,9 @@ def CopyAnimatedSpriteToPixelsZoomLEDOnly(TheSprite,h,v, ZoomFactor = 1):
 def CopyAnimatedSpriteToScreenArrayZoom(TheSprite,h,v, ZoomFactor = 1,TheScreenArray = [[]]):
   #Copy a color animated sprite to the a ScreenArray
   #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
+
+  h = round(h)
+  v = round(v)
 
   width   = TheSprite.width 
   height  = TheSprite.height

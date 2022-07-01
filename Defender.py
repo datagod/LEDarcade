@@ -132,23 +132,25 @@ RedrawGroundWaveCount      = 5
 
 
 #Movement
-DefenderSpeed        = 2
-DefenderMaxSpeed     = 5
-DefenderMinSpeed     = 1
-DefenderMoveUpRate   = 3
-DefenderMoveDownRate = 3
-DefenderSpeedChangeChance  = 1000
-HumanMoveChance      = 3
-EnemyMoveSpeed       = 6
-GarbageCleanupChance = 500
-GroundRadarChance    = 10
-FrontRadarChance     = 15
-ShootGroundShipCount = 20
-AttackDistance       = LED.HatWidth
-HumanRunDistance     = LED.HatWidth
-ShootTime            = time.time()
-ShootWaitTime        = 0.5
-EnemyFearFactor      = 10  #the lower the number, the more likely the enemy will run away
+DefenderSpeed          = 1.3
+OldSpeed               = 0
+DefenderSpeedIncrement = 0.25
+DefenderMaxSpeed       = 5
+DefenderMinSpeed       = 1
+DefenderMoveUpRate     = 3
+DefenderMoveDownRate   = 3
+DefenderSpeedChangeChance  = 100
+HumanMoveChance        = 3
+EnemyMoveSpeed         = 6
+GarbageCleanupChance   = 500
+GroundRadarChance      = 10
+FrontRadarChance       = 15
+ShootGroundShipCount   = 20
+AttackDistance         = LED.HatWidth
+HumanRunDistance       = LED.HatWidth
+ShootTime              = time.time()
+ShootWaitTime          = 0.5
+EnemyFearFactor        = 10  #the lower the number, the more likely the enemy will run away
 #Gravity
 GroundParticleGravity  = 0.05
 HumanParticleGravity   = 0.05
@@ -472,7 +474,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   global RequestGroundLaser
 
   #upper left hand corner of currently displayed playfield window
-  PlayfieldH   = DefenderPlayfield.DisplayH
+  PlayfieldH   = round(DefenderPlayfield.DisplayH)
   PlayfieldV   = DefenderPlayfield.DisplayV
   RadarWidth   = 10
   RadarHeight  = 6
@@ -587,7 +589,7 @@ def ShootGround(PlayfieldH, PlayfieldV, GroundV, Defender, DefenderPlayfield, Gr
   #Defender.h and Defender.v are relative to 64x32 display NOT the playfield 
   #print("Defender.h",Defender.h)
 
-  ScanH = PlayfieldH + Defender.h + 3 
+  ScanH = round(PlayfieldH + Defender.h + 3)
   ScanV = Defender.v + 2
   ScreenH = Defender.h + 3 
   ScreenV = Defender.v + 2
@@ -1176,7 +1178,8 @@ def FlattenGround(h1,h2,v,Ground):
   #swap
 
   
-
+  h1 = round(h1)
+  h2 = round(h2)
   minv = v
   maxv = Ground.height -2
   GroundFound = False
@@ -1439,10 +1442,11 @@ def PlayDefender(GameMaxMinutes):
     brate  = 6
     mrate  = 4
     frate  = 3
-    grate  = 2
-    DisplayH = 0
-    DisplayV = 0
+    grate  = 1
+    DisplayH  = 0
+    DisplayV  = 0
     TargetHit = False
+    OldSpeed  = 0
     
 
     Defender = copy.deepcopy(LED.Defender)
@@ -1494,7 +1498,7 @@ def PlayDefender(GameMaxMinutes):
       #Background
       m,r = divmod(count,brate)
       if(r == 0):
-        bx = bx + DefenderSpeed
+        bx = bx + (DefenderSpeed / 2)
         if(bx > bwidth):
           bx = 0
       #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
@@ -1503,7 +1507,7 @@ def PlayDefender(GameMaxMinutes):
       #Middleground
       m,r = divmod(count,mrate)
       if(r == 0):
-        mx = mx + DefenderSpeed
+        mx = mx + (DefenderSpeed / 2)
         if(mx > mwidth):
           mx = 0
       #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
@@ -1512,7 +1516,7 @@ def PlayDefender(GameMaxMinutes):
       #foreground
       m,r = divmod(count,frate)
       if(r == 0):
-        fx = fx + DefenderSpeed
+        fx = fx + (DefenderSpeed / 2)
         if(fx > fwidth):
           fx = 0
       #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
@@ -1521,10 +1525,10 @@ def PlayDefender(GameMaxMinutes):
       #ground / display
       m,r = divmod(count,grate)
       if(r == 0):
-        gx = gx + DefenderSpeed
+        gx = gx + (DefenderSpeed / 2)
         if(gx >= gwidth + LED.HatWidth ):
           gx = 0
-        DisplayH = gx
+        DisplayH = round(gx)
       #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
 
 
@@ -1532,7 +1536,7 @@ def PlayDefender(GameMaxMinutes):
       #Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
 
       #Update DefenderPlayfield
-      DefenderPlayfield.DisplayH = gx
+      DefenderPlayfield.DisplayH = round(gx)
       DefenderPlayfield.DisplayV = 0
 
 
@@ -1729,7 +1733,7 @@ def PlayDefender(GameMaxMinutes):
       #pick up humans
       GroundV = 0
       
-      DefenderPlayfield.DisplayH = gx
+      DefenderPlayfield.DisplayH = round(gx)
       DefenderPlayfield.DisplayV = 0
 
 
@@ -1741,9 +1745,9 @@ def PlayDefender(GameMaxMinutes):
       
       if(random.randint(1,DefenderSpeedChangeChance) == 1):
         if (random.randint(1,2) == 1):
-          DefenderSpeed = DefenderSpeed + 1
+          DefenderSpeed = DefenderSpeed + DefenderSpeedIncrement
         else:
-          DefenderSpeed = DefenderSpeed - 1
+          DefenderSpeed = DefenderSpeed - DefenderSpeedIncrement
 
         if(DefenderSpeed < DefenderMinSpeed):
           DefenderSpeed = DefenderMinSpeed
@@ -1757,7 +1761,7 @@ def PlayDefender(GameMaxMinutes):
       if(ScanV > LED.HatHeight -2):
         ScanV = LED.HatHeight -2
 
-      ScanH = gx + 5
+      ScanH = round(gx + 5)
       if(ScanH >= DefenderPlayfield.width -1):
         ScanH = 0
 
@@ -1835,7 +1839,7 @@ def PlayDefender(GameMaxMinutes):
       
       #paint jet trail
       if(DefenderSpeed > 1):
-        for x in range(1,DefenderSpeed * 2):
+        for x in range(1,round(DefenderSpeed) * 2):
           #graphics.DrawLine(Canvas,Defender.h, Defender.v +2 , Defender.h - (DefenderSpeed ) , Defender.v +2,  graphics.Color(20 + DefenderSpeed * 15,0,0))
           r =  175 - x*25
           if(r <0):
@@ -1971,6 +1975,22 @@ def PlayDefender(GameMaxMinutes):
         Canvas = LED.CopySpriteToCanvasZoom(HumanCountSprite,HumanCountH,HumanCountV,(HumanCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
 
     
+
+
+     
+      
+      #Only change display if the count changes
+      if(OldSpeed != DefenderSpeed):
+        Canvas, SpeedSprite = DisplayCount(EnemyCountH - 22,0,(0,100,0),'S',round(DefenderSpeed,2),Canvas)
+        OldSpeed = DefenderSpeed
+        
+        #this is just a test
+        #Background = LED.CopySpriteToLayerZoom(HumanCountSprite,gx + 64,HumanCountV + 10,(5,0,5),(0,0,0),ZoomFactor = 2,Fill=True,Layer=Background)
+
+      else:
+        Canvas = LED.CopySpriteToCanvasZoom(SpeedSprite,EnemyCountH - 22,0,(0,100,0),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+
+
 
 
 
