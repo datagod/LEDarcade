@@ -18965,7 +18965,7 @@ def StarryNightDisplayText(
 
 
   #Choose a random sprite
-  r = random.randint(7,13)
+  r = random.randint(0,13)
   if(r == 0):
     TheSprite = copy.deepcopy(RunningMan2Sprite)
     TheSprite.framerate = 4
