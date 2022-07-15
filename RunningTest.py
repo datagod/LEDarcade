@@ -65,10 +65,9 @@ CursorRGB = (0,75,0)
 
 
 
-time.sleep(10)
 
 
-
+'''
 LED.ShowTitleScreen(
 BigText             = "LED ARCADE",
 BigTextRGB          = LED.MedPurple,
@@ -90,14 +89,18 @@ ImageName = "./images/TwinGalaxies.png"
 LED.ShowImage(ImageName,Fade = True, MaxBright = 100, Duration = 1)
 LED.ClearBigLED()
 
+'''
+
+while (1==1):
+
+    LED.StarryNightDisplayText(
+    Text1 = "HIGH SCORES",
+    Text2 = "WATCH THE TOP PLAYERS IN THE WORLD",
+    Text3 = "BREAK RECORDS, MAKE FRIENDS, CELEBRATE EXCELLENCE",
+    RunSeconds = 5
+    )                    
 
 
-LED.StarryNightDisplayText(
-Text1 = "HIGH SCORES",
-Text2 = "WATCH THE TOP PLAYERS IN THE WORLD",
-Text3 = "BREAK RECORDS, MAKE FRIENDS, CELEBRATE EXCELLENCE",
-RunSeconds = 60
-)                    
 
 
 

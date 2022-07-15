@@ -4939,11 +4939,11 @@ ThreeGhostPacSprite = ColorAnimatedSprite(h=0, v=0, name="ThreeGhost", width=27,
 
 ThreeGhostPacSprite.grid.append(
   [
-   0, 0, 0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0,22,22,22, 0, 0,
-   0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 22,22,22, 0,0, 0,
-   0, 0,33, 1,33, 1,33, 0,18, 1,18, 1,18, 0, 7, 1, 7, 1, 7, 0, 0, 22,22, 0, 0,0, 0,
-   0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 22,22,22, 0,0, 0,
-   0, 0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0, 0, 0,22,22,22, 0, 0
+   0, 0, 0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0,23,23,23, 0, 0,
+   0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,23, 0,0, 0,
+   0, 0,33, 2,33, 2,33, 0,18, 2,18, 2,18, 0, 7, 2, 7, 2, 7, 0, 0, 23,23, 0, 0,0, 0,
+   0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,23, 0,0, 0,
+   0, 0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0, 0, 0,23,23,23, 0, 0
   
    ]
 )
@@ -4951,11 +4951,11 @@ ThreeGhostPacSprite.grid.append(
 
 ThreeGhostPacSprite.grid.append(
   [
-    0, 0 ,0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0,22,22,22, 0, 0,
-    0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0,22,22,22,22,22, 0,
-    0, 0,33, 1,33, 1,33, 0,18, 1,18, 1,18, 0, 7, 1, 7, 1, 7, 0, 0,22,22,22, 0, 0, 0,
-    0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0,22,22,22,22,22, 0,
-    0, 0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0, 0, 0,22,22,22, 0, 0
+    0, 0 ,0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0,23,23,23, 0, 0,
+    0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0,23,23,23,23,23, 0,
+    0, 0,33, 2,33, 2,33, 0,18, 2,18, 2,18, 0, 7, 2, 7, 2, 7, 0, 0,23,23,23, 0, 0, 0,
+    0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0,23,23,23,23,23, 0,
+    0, 0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0, 0, 0,23,23,23, 0, 0
   
    ]
 )
@@ -4966,7 +4966,7 @@ ThreeGhostPacSprite.grid.append(
   [
     0, 0, 0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0,23,23,23,0, 0,
     0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,23,23,23, 0,
-    0, 0,33, 1,33, 1,33, 0,18, 1,18, 1,18, 0, 7, 1, 7, 1, 7, 0, 0, 23,23,23,23,23, 0,
+    0, 0,33, 2,33, 2,33, 0,18, 2,18, 2,18, 0, 7, 2, 7, 2, 7, 0, 0, 23,23,23,23,23, 0,
     0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,23,23,23, 0,
     0, 0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0, 0, 0,23,23,23,0, 0
   
@@ -4979,7 +4979,7 @@ ThreeGhostPacSprite.grid.append(
   [
     0, 0,0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 0,  0,23,23,23,0, 0,
     0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,23,23,0, 0,
-    0, 0,33, 1,33, 1,33, 0,18, 1,18, 1,18, 0, 7, 1, 7, 1, 7, 0, 0, 23,23,23,0,0, 0,
+    0, 0,33, 2,33, 2,33, 0,18, 2,18, 2,18, 0, 7, 2, 7, 2, 7, 0, 0, 23,23,23,0,0, 0,
     0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,23,23,0,  0,
     0, 0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0, 0, 0,23,23,23,0, 0
   
@@ -4991,7 +4991,7 @@ ThreeGhostPacSprite.grid.append(
   [
     0, 0, 0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0,23,23,23,0, 0,
     0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,0,0,0, 0,
-    0, 0,33, 1,33, 1,33, 0,18, 1,18, 1,18, 0, 7, 1, 7, 1, 7, 0, 0, 23,23,0,0,0, 0,
+    0, 0,33, 2,33, 2,33, 0,18, 2,18, 2,18, 0, 7, 2, 7, 2, 7, 0, 0, 23,23,0,0,0, 0,
     0, 0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 0, 23,23,0,0,0, 0,
     0, 0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0, 0, 0,23,23,23,0, 0
   
@@ -5007,7 +5007,7 @@ ThreeBlueGhostPacSprite.grid.append(
   [
     0,  0,0,14,14,14, 0, 0, 0,14,14,14, 0, 0, 0,14,14,14, 0, 0, 0, 0,23,23,23,0, 0,
     0, 0,14,14,14,14,14, 0,14,14,14,14,14, 0,14,14,14,14,14, 0, 0, 0,0,23,23,23, 0,
-    0, 0,14, 2,14, 1,14, 0,14, 2,14, 2,14, 0,14, 2,14, 2,14, 0, 0, 0,0,0,23,23, 0,
+    0, 0,14, 2,14, 2,14, 0,14, 2,14, 2,14, 0,14, 2,14, 2,14, 0, 0, 0,0,0,23,23, 0,
     0, 0,14,14,14,14,14, 0,14,14,14,14,14, 0,14,14,14,14,14, 0, 0, 0,0,23,23,23, 0,
     0, 0,14, 0,14, 0,14, 0,14, 0,14, 0,14, 0,14, 0,14, 0,14, 0, 0, 0,23,23,23,0, 0
   
@@ -5083,7 +5083,7 @@ ThreeGhostSprite.grid.append(
   [
    0, 0,33,33,33, 0, 0, 0,18,18,18, 0, 0, 0, 7, 7, 7, 0, 0, 
    0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 
-   0,33, 1,33, 1,33, 0,18, 1,18, 1,18, 0, 7, 1, 7, 1, 7, 0, 
+   0,33, 2,33, 2,33, 0,18, 2,18, 2,18, 0, 7, 2, 7, 2, 7, 0, 
    0,33,33,33,33,33, 0,18,18,18,18,18, 0, 7, 7, 7, 7, 7, 0, 
    0,33, 0,33, 0,33, 0,18, 0,18, 0,18, 0, 7, 0, 7, 0, 7, 0 
   
@@ -8302,19 +8302,19 @@ HeartSpriteMap.map= (
   "  -OO***OOOOOooooooooooooooo---  ", 
   "  -OOO*OOOOOOOoooooooooooooo---  ", 
   "  -ooOOOOOOOOOoooooooooooooo---  ", 
-  "  --ooOOOOOOOOooooooooooooo----  ", 
-  "  --oooOOOOOOooooooooooooo-----  ", 
-  "   --oooOOOOooooooooooooo-----   ", 
-  "    --oooOOOoooooooooooo-----    ", 
-  "     --oooOoooooooooooo-----     ", 
-  "      --oooooooooooooo-----      ", 
-  "       --oooooooooooo-----       ", 
-  "        --oooooooooo-----        ", 
-  "         --ooooooooo----         ", 
-  "          --ooooooo----          ", 
-  "           --ooooo----           ", 
-  "            ---ooo---            ", 
-  "             ---oo--             ", 
+  "  --ooOOOOOOOOoooooooooooooo---  ", 
+  "  --oooOOOOOOoooooooooooooo----  ", 
+  "   --oooOOOOooooooooooooooo---   ", 
+  "    --oooOOOoooooooooooooo---    ", 
+  "     --oooOoooooooooooooo---     ", 
+  "      --ooooooooooooooooo--      ", 
+  "       --ooooooooooooooo--       ", 
+  "        --ooooooooooooo--        ", 
+  "         --ooooooooooo--         ", 
+  "          --ooooooooo--          ", 
+  "           --ooooooo--           ", 
+  "            ---ooooo-            ", 
+  "             ---ooo-             ", 
   "              --o--              ", 
   "               ---               ", 
   "                -                ", 
@@ -18875,6 +18875,9 @@ def StarryNightDisplayText(
   RunSeconds  = 60
 ):
 
+  H = 0
+  V = 0
+
   print("")
   print("-- Starry Night Display Text")
   print("Text1:",Text1)
@@ -18962,14 +18965,102 @@ def StarryNightDisplayText(
 
 
   #Choose a random sprite
-  r = random.randint(0,1)
+  r = random.randint(7,13)
   if(r == 0):
     TheSprite = copy.deepcopy(RunningMan2Sprite)
     TheSprite.framerate = 4
-  else:
+    H = -2
+    V = 15
+  elif(r == 1):
     TheSprite = copy.deepcopy(RunningMan3Sprite)
     TheSprite.framerate = 3
+    H = -2
+    V = 15
+  elif(r == 2):
+    TheSprite = copy.deepcopy(ChickenRunning)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+  elif(r == 3):
+    TheSprite = copy.deepcopy(ThreeGhostPacSprite)
+    TheSprite.framerate = 4
+    #TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
   
+  elif(r == 4):
+    TheSprite = copy.deepcopy(ThreeBlueGhostPacSprite)
+    TheSprite.framerate = 4
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
+  elif(r == 5):
+    TheSprite = copy.deepcopy(ChickenChasingWorm)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+  
+  elif(r == 6):
+    TheSprite = copy.deepcopy(DotZerkRobot)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+  
+  elif(r == 7):
+    TheSprite = copy.deepcopy(DotZerkRobotWalking)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
+  elif(r == 8):
+    TheSprite = copy.deepcopy(DotZerkRobotWalkingSmall)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
+  elif(r == 9):
+    TheSprite = copy.deepcopy(Rezonator)
+    TheSprite.framerate = 12
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
+
+  elif(r == 10):
+    TheSprite = copy.deepcopy(BigRezonator)
+    TheSprite.framerate = 12
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
+  elif(r == 11):
+    TheSprite = copy.deepcopy(SpaceInvader)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
+  elif(r == 12):
+    TheSprite = copy.deepcopy(SmallInvader)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
+
+  elif(r == 13):
+    TheSprite = copy.deepcopy(TinyInvader)
+    TheSprite.framerate = 8
+    TheSprite.HorizontalFlip()
+    H = 1
+    V = HatHeight - TheSprite.height
+
 
   while (Done == False):
 
@@ -19011,7 +19102,7 @@ def StarryNightDisplayText(
 
 
     #LED.RunningMan3Sprite.DisplayAnimated(10,10)
-    Canvas = TheSprite.PaintAnimatedToCanvas(-2,15,Canvas)
+    Canvas = TheSprite.PaintAnimatedToCanvas(H,V,Canvas)
     Canvas = TheMatrix.SwapOnVSync(Canvas)
     
 
