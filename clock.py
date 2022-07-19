@@ -34,6 +34,8 @@ print ("")
 #  SHOW TITLE SCREEN                 --
 #--------------------------------------
 
+
+'''
 LED.ShowTitleScreen(
     BigText             = 'CLOCK',
     BigTextRGB          = LED.MedPurple,
@@ -47,7 +49,7 @@ LED.ShowTitleScreen(
     DisplayTime         = 1,           # time in seconds to wait before exiting 
     ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
     )
-
+'''
 
 
 
@@ -60,8 +62,16 @@ while 1==1:
     #This allows you to create a title screen with different size text
     #some scrolling text, an animation and even a nice fade to black
 
+
     #Starry Night Clock
-    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1 )
+    if(LED.HatWidth > 64):
+      ZoomFactor = 3
+
+    else:
+      ZoomFactor = 2
+
+
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = ZoomFactor, AnimationDelay=10, RunMinutes = 5 )
 
 
     LED.DisplayDigitalClock(
@@ -73,7 +83,7 @@ while 1==1:
       ShadowRGB     = LED.ShadowGreen,
       ZoomFactor    = 3,
       AnimationDelay= 10,
-      RunMinutes = 1 )
+      RunMinutes = 5 )
 
     LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1 )
 

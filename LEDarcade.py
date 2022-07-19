@@ -266,17 +266,6 @@ StartTime = time.time()
 
 
 
-#Sprite display locations
-ClockH,      ClockV,      ClockRGB      = 0,0,  (0,150,0)
-DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB  = 10,18,  (125,20,20)
-MonthH,      MonthV,      MonthRGB      = 30,18, (125,30,0)
-DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 49,18, (115,40,10)
-CurrencyH,   CurrencyV,   CurrencyRGB   = 56,18, (0,150,0)
-
-#Sprite filler tuple
-SpriteFillerRGB = (0,4,0)
-
-
 
 
 def LoadConfigData():
@@ -380,6 +369,28 @@ def LoadConfigData():
 
 #load config data to see if there is an override value for hatwidth/hatheight
 LoadConfigData()
+
+
+if(HatWidth > 64):
+  HorizAdjust = 32
+else:
+  HorizAdjust = 0
+
+#Sprite display locations
+ClockH,      ClockV,      ClockRGB      = 0  + HorizAdjust,0,  (0,150,0)
+DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB  = 10 + HorizAdjust,20, (125,20,20)
+MonthH,      MonthV,      MonthRGB      = 30 + HorizAdjust,20, (125,30,0)
+DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 49 + HorizAdjust,20, (115,40,10)
+CurrencyH,   CurrencyV,   CurrencyRGB   = 56 + HorizAdjust,20, (0,150,0)
+
+
+#Sprite filler tuple
+SpriteFillerRGB = (0,0,0)
+
+
+
+
+
 
 #Initialize Matrix objects
 options = RGBMatrixOptions()
@@ -17179,12 +17190,24 @@ def DisplayDigitalClock(
       brate  = 4
       mrate  = 2
       frate  = 1
+      h = HatWidth - ClockSprite.width * ZoomFactor - 2
+      v = 2
+      
+      if(HatWidth > 64):
+        rmH = 0
+        rmV = 13
+      else:
+        rmH = -2
+        rmV = 10
+
 
   
       while (Done == False):
 
         if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
           ClockSprite = CreateClockSprite(hh)
+          h = HatWidth - ClockSprite.width * ZoomFactor - 2
+
           #ScreenArray = CopySpriteToScreenArrayZoom(ClockSprite,45,0,(150,0,0),(0,0,0),1,Fill=True)
   
         x = 0
@@ -17220,8 +17243,8 @@ def DisplayDigitalClock(
         Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
 
         #LED.RunningMan3Sprite.DisplayAnimated(10,10)
-        Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(-2,10,Canvas)
-        Canvas = CopySpriteToCanvasZoom(ClockSprite,28,14,(0,100,0),(0,5,0),2,False,Canvas)
+        Canvas = RunningMan3Sprite.PaintAnimatedToCanvas(rmH,rmV,Canvas)
+        Canvas = CopySpriteToCanvasZoom(ClockSprite,h,v,(0,100,0),(0,5,0),ZoomFactor,False,Canvas)
       
 
         Canvas = TheMatrix.SwapOnVSync(Canvas)
