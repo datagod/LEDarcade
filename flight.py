@@ -2,7 +2,7 @@
 '''
 Requirements: geopy
 > sudo pip3 install geopy
-> sudo pip3 install FlightRadar24API
+> sudo pip3 install FlightRadarAPI
 '''
 
 
