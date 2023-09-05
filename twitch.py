@@ -2018,10 +2018,10 @@ def GetBasicTwitchInfo():
     'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
 
-    #print ("URL: ",API_ENDPOINT, 'data:',head)
+    print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
-    #pprint.pprint(results)
+    pprint.pprint(results)
     #print(" ")
 
 
