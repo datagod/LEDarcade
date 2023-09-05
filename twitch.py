@@ -45,7 +45,7 @@ from twitchAPI import Twitch, EventSub
 
 
 #Webhooks
-import patreon
+#import patreon
 #import flask
 #from flask import Flask, request, abort
 
@@ -1223,7 +1223,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?patreon ?patrons ?views ?hug')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?views ?hug')
         time.sleep(2)
         await ctx.send('Available games: ?invaders ?astrosmash ?outbreak ?defender ?tron')
 
@@ -1735,32 +1735,34 @@ class Bot(commands.Bot ):
     # DISPLAY PATREON                      --
     #----------------------------------------
 
-    @commands.command()
-    async def patreon(self, ctx: commands.Context):
-      if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Now displaying the list of patrons"
-        await self.Channel.send(message)
-
-      DisplayPatreon()
-      LED.SweepClean()
 
 
-    @commands.command()
-    async def patrons(self, ctx: commands.Context):
-      if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Now displaying the list of patrons"
-        await self.Channel.send(message)
+   # @commands.command()
+   # async def patreon(self, ctx: commands.Context):
+   #   if(SHOW_CHATBOT_MESSAGES == True):
+   #     message = "Now displaying the list of patrons"
+   #     await self.Channel.send(message)
+
+   #   DisplayPatreon()
+   #   LED.SweepClean()
+
+
+   # @commands.command()
+   # async def patrons(self, ctx: commands.Context):
+   #   if(SHOW_CHATBOT_MESSAGES == True):
+   #     message = "Now displaying the list of patrons"
+   #     await self.Channel.send(message)
       
-      DisplayPatreon()
-      LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
-        LED.PacManRightSprite,
-        Position      = 'top',
-        Vadjust       = 0 ,
-        direction     = "right",
-        StepsPerFrame = 3,
-        ZoomFactor    = 3,
-        sleep         = 0.02 
-        )
+   #   DisplayPatreon()
+   #   LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+   #     LED.PacManRightSprite,
+   #     Position      = 'top',
+   #     Vadjust       = 0 ,
+   #     direction     = "right",
+   #     StepsPerFrame = 3,
+   #     ZoomFactor    = 3,
+   #     sleep         = 0.02 
+   #     )
 
 
       LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
@@ -2718,8 +2720,8 @@ LoadConfigFiles()
 
 print("--Spawning WebHook process--------------")
 #Spawn the webhook process
-PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
-PatreonWebHookProcess.start()
+#PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
+#PatreonWebHookProcess.start()
 
 TwitchEventSubProcess = multiprocessing.Process(target = TwitchEventSub, args=(EventQueue,))
 TwitchEventSubProcess.start()
