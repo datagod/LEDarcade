@@ -52,7 +52,6 @@ MaxBrightness    = 80
   
 
 
-
 #Sprite display locations
 LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
 LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
@@ -97,7 +96,7 @@ while (1==1):
     Text1 = "HIGH SCORES",
     Text2 = "WATCH THE TOP PLAYERS IN THE WORLD",
     Text3 = "BREAK RECORDS, MAKE FRIENDS, CELEBRATE EXCELLENCE",
-    RunSeconds = 5
+    RunSeconds = 60
     )                    
 
 

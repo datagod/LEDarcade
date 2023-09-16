@@ -3583,6 +3583,7 @@ def CopySpriteToLayerZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-
                 Layer.map[V][H] = (fr,fg,fb)
 
   return Layer;
+  
 
 
 
@@ -14370,6 +14371,98 @@ def CopyAnimatedSpriteToScreenArrayZoom(TheSprite,h,v, ZoomFactor = 1,TheScreenA
 
   
 
+def CopyAnimatedSpriteZoom(TheSprite,ZoomFactor = 2):
+  #Copy a color animated sprite with the specified zoom level
+  #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
+
+  h      = 0
+  v      = 0
+  NewHeight = TheSprite.height * ZoomFactor
+  NewWidth  = TheSprite.width  * ZoomFactor
+  frames    = TheSprite.frames
+  OldGridCount = TheSprite.height * TheSprite.width
+  
+  NewSprite = ColorAnimatedSprite(
+      h = 0, 
+      v = 0, 
+      name   = TheSprite.name, 
+      width  = NewWidth,
+      height = NewHeight, 
+      frames = frames,
+      framerate = TheSprite.framerate,
+      grid = []
+    )
+
+  
+
+
+  #the new grid is messed up
+
+
+
+
+  #initialize new sprite grid
+  #NewSprite.grid  = [[ (0) for i in range(NewWidth * NewHeight)] for i in range(frames)]
+  #NewSprite.grid  = [[ (0) for i in range()] for i in range(3)]
+  NewSprite.grid   = [[]]
+  #print(NewSprite.grid)
+
+  '''
+  Original
+    [1][2]        = [1][2][3][4]
+    [3][4]
+
+  New
+    [1][1][2][2] = [1][1][2][2][1][1][2][2][3][3][4][4][3][3][4][4]
+    [1][1][2][2]
+    [3][3][4][4]
+    [3][3][4][4]
+
+    
+
+  '''
+
+
+
+
+  #Frame 0 is empty in ColorAnimatedSprites  
+  for f in range (1,frames+1):
+    # The sprite is stored in 2D array
+    print("frame:",f)
+
+    Array1 = []
+    Array2 = []    
+
+    #work through array in original sprite
+    #and add double the characters to a new array
+    for i in range (0,TheSprite.height * TheSprite.width ):
+
+      Array1.append(TheSprite.grid[f][i])   
+      Array1.append(TheSprite.grid[f][i])   
+      Array2.append(TheSprite.grid[f][i])   
+      Array2.append(TheSprite.grid[f][i])   
+      #print(i)
+      #NewSprite.grid[f][i]                              = TheSprite.grid[f][i] 
+      #NewSprite.grid[f][i+1]                            = TheSprite.grid[f][i] 
+      #NewSprite.grid[f][i + TheSprite.width * Zoom]     = TheSprite.grid[f][i] 
+      #NewSprite.grid[f][i + TheSprite.width * Zoom + 1] = TheSprite.grid[f][i] 
+
+    
+    Array2 = Array1 + Array2
+    
+    print (TheSprite.grid[f])
+    print (Array2)
+
+    #NewSprite.grid[f] = Array2
+    NewSprite.grid.append(Array2)
+    #take the new array and double it
+    #for i in range (0,len(Array1)):
+    #  Array2.append(Array1[i])
+    
+
+  return NewSprite;
+
+
 
 
 
@@ -19084,6 +19177,13 @@ def StarryNightDisplayText(
     H = 1
     V = HatHeight - TheSprite.height
 
+
+  TheSprite = copy.deepcopy(TinyInvader)
+  TheSprite = CopyAnimatedSpriteZoom(TheSprite,2)
+  TheSprite.currentframe = 1
+  TheSprite.framerate = 8
+  H = 1
+  V = HatHeight - TheSprite.height  -5
 
   while (Done == False):
 
