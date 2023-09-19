@@ -224,6 +224,10 @@ class Bot(commands.Bot ):
     Channel             = ''
     
 
+  
+    
+
+
 
     def __init__(self):
         # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
@@ -237,7 +241,9 @@ class Bot(commands.Bot ):
         print("THECLOCKBOT_CHAT_ACCESS_TOKEN: ",THECLOCKBOT_CHAT_ACCESS_TOKEN)
         print("THECLOCKBOT_CHAT_REFRESH_TOKEN:",THECLOCKBOT_CHAT_REFRESH_TOKEN)
       
-       
+
+
+
         print("=====================================================")
         print("Initiating client object to connect to twitch")
         print("Initial_Channels:",BROADCASTER_CHANNEL)
@@ -247,7 +253,9 @@ class Bot(commands.Bot ):
         print("=====================================================")
         print("")
         
-        
+       
+
+
 
     
           
@@ -419,11 +427,15 @@ class Bot(commands.Bot ):
         # Notify us when everything is ready!
         # We are logged in and ready to chat and use commands...
         #UserList = self.fetch_users()
+        print("")
+        print("************************************************")
         print(f'Logged in as | {self.nick}')
           
         print(self.connected_channels.__len__())
         #Channel = self.fetch_channel(CHANNEL)
         #print(Channel)
+        print("************************************************")
+        print("")
 
         
         #My custom startup code runs here
