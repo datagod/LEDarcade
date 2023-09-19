@@ -240,18 +240,21 @@ class Bot(commands.Bot ):
         print("THECLOCKBOT_CHANNEL:           ",THECLOCKBOT_CHANNEL)
         print("THECLOCKBOT_CHAT_ACCESS_TOKEN: ",THECLOCKBOT_CHAT_ACCESS_TOKEN)
         print("THECLOCKBOT_CHAT_REFRESH_TOKEN:",THECLOCKBOT_CHAT_REFRESH_TOKEN)
-      
+     
 
-
-
+        print("")
+        print("")
+        print("")
         print("=====================================================")
         print("Initiating client object to connect to twitch")
         print("Initial_Channels:",BROADCASTER_CHANNEL)
         super().__init__(token=THECLOCKBOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
         self.BotStartTime   = time.time()
         LastMessageReceived = time.time()
+        sleep(3)
         print("=====================================================")
         print("")
+        
         
        
 
