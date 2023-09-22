@@ -2049,16 +2049,10 @@ def GetBasicTwitchInfo():
     print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
-    try:
-      pprint.pprint(results)
 
-    except Exception as ErrorMessage:
-      TraceMessage = traceback.format_exc()
-      AdditionalInfo = "Pretty Printing CHANNEL INFO" 
-      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+    #pprint.pprint(results)
 
-    #print(" ")
-
+    
 
     DataDict = results.get('data','NONE')
     if(DataDict == "NONE"):
