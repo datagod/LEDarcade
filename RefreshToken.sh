@@ -10,4 +10,4 @@
 # GET AUTHORIZATION CODE
 #curl -X POST https://id.twitch.tv/oauth2/token \
 #-H 'Content-Type: application/x-www-form-urlencoded' \
-#-d 'grant_type=authorization_code&client_id=8vfn07toydiev1lybehht61ov54w9h&client_secret=l59z5i95v07nwhzf3afbvni5nafqqj&code=rpkxjqomfuw7qn0ypdxipfysainwum&redirect_uri=http://localhost'
+#-d 'grant_type=authorization_code&client_id=8vfn07toydiev1lybehht61ov54w9h&client_secret=l59z5i95v07asdfasdffbvni5nafqqj&code=rpkxjqomfuw7qn0ypdxipfysainwum&redirect_uri=http://localhost'
