@@ -2051,9 +2051,10 @@ def GetBasicTwitchInfo():
     results = r.json()
     try:
       pprint.pprint(results)
+
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
-      AdditionalInfo = "Pretty Printing CHANNEL INFO " 
+      AdditionalInfo = "Pretty Printing CHANNEL INFO" 
       LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
     #print(" ")
