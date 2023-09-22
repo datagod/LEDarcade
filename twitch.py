@@ -17,7 +17,7 @@ from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 import random
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 import requests
 import traceback
 import socket
@@ -107,14 +107,15 @@ PROFILE_IMAGE_URL   = ''
 VIEW_COUNT          = ''
 THECLOCKBOT_CHANNEL = ''
 
-THECLOCKBOT_CHAT_ACCESS_TOKEN   = ''
-THECLOCKBOT_CHAT_REFRESH_TOKEN  = ''
+
+THECLOCKBOT_ACCESS_TOKEN  = ''
+THECLOCKBOT_REFRESH_TOKEN = ''
 CLOCKBOT_X_ACCESS_TOKEN   = ''
 CLOCKBOT_X_REFRESH_TOKEN  = ''
 
 #BOT_REFRESH_TOKEN = ''
-THECLOCKBOT_CLIENT_ID       = ''
-THECLOCKBOT_CLIENT_SECRET   = ''
+THECLOCKBOT_CLIENT_ID = ''
+THECLOCKBOT_SECRET    = ''
 TWITCH_WEBHOOK_URL    = ''
 TWITCH_WEBHOOK_SECRET = ''
 
@@ -236,11 +237,18 @@ class Bot(commands.Bot ):
         # Note: the bot client id is from Twitch Dev TheClockBot.
         
         print("Bot Initialization")
-        print("THECLOCKBOT_CLIENT_ID:         ",THECLOCKBOT_CLIENT_ID)
-        print("THECLOCKBOT_CHANNEL:           ",THECLOCKBOT_CHANNEL)
-        print("THECLOCKBOT_CHAT_ACCESS_TOKEN: ",THECLOCKBOT_CHAT_ACCESS_TOKEN)
-        print("THECLOCKBOT_CHAT_REFRESH_TOKEN:",THECLOCKBOT_CHAT_REFRESH_TOKEN)
-     
+        print("THECLOCKBOT_CLIENT_ID:    ",THECLOCKBOT_CLIENT_ID)
+        print("THECLOCKBOT_SECRET:       ",THECLOCKBOT_SECRET)
+        print("THECLOCKBOT_CHANNEL:      ",THECLOCKBOT_CHANNEL)
+        print("THECLOCKBOT_CODE:         ",THECLOCKBOT_CODE)
+        print("THECLOCKBOT_ACCESS_TOKEN: ",THECLOCKBOT_ACCESS_TOKEN)
+        print("THECLOCKBOT_REFRESH_TOKEN:",THECLOCKBOT_REFRESH_TOKEN)
+
+
+
+
+
+
 
         print("")
         print("")
@@ -248,10 +256,10 @@ class Bot(commands.Bot ):
         print("=====================================================")
         print("Initiating client object to connect to twitch")
         print("Initial_Channels:",BROADCASTER_CHANNEL)
-        super().__init__(token=THECLOCKBOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
+        super().__init__(token=THECLOCKBOT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
         self.BotStartTime   = time.time()
         LastMessageReceived = time.time()
-        sleep(3)
+        #time.sleep(3)
         print("=====================================================")
         print("")
         
@@ -416,7 +424,7 @@ class Bot(commands.Bot ):
               self.LastStreamCheckTime = time.time()
 
             #self.__init__()
-            #super().__init__(token=THECLOCKBOT_CHAT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
+            #super().__init__(token=THECLOCKBOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
 
           
 
@@ -1530,7 +1538,7 @@ class Bot(commands.Bot ):
       head = {
       #'Client-ID': CLIENT_ID,
       'Client-ID':  THECLOCKBOT_CLIENT_ID,
-      'Authorization': 'Bearer ' +  THECLOCKBOT_CHAT_ACCESS_TOKEN
+      'Authorization': 'Bearer ' +  THECLOCKBOT_ACCESS_TOKEN
       }
 
       #print ("URL: ",API_ENDPOINT, 'data:',head)
@@ -2010,7 +2018,7 @@ def GetBasicTwitchInfo():
     API_ENDPOINT = "https://id.twitch.tv/oath2/token"
     head = {
     'client_id': CLOCKBOT_X_CLIENT_ID,
-    'client_secret' : CLOCKBOT_X_CLIENT_SECRET,
+    'client_secret' : CLOCKBOT_X_SECRET,
     'grant_type' : 'client_credentials'
     }
 
@@ -2230,11 +2238,14 @@ def LoadConfigFiles():
   global BROADCASTER_USER_ID
   global BROADCASTER_ID
   global THECLOCKBOT_CLIENT_ID
+  global THECLOCKBOT_SECRET
   global THECLOCKBOT_CHANNEL
-  global THECLOCKBOT_CHAT_ACCESS_TOKEN
-  global THECLOCKBOT_CHAT_REFRESH_TOKEN
+  global THECLOCKBOT_CODE
+  global THECLOCKBOT_ACCESS_TOKEN
+  global THECLOCKBOT_REFRESH_TOKEN
   global CLOCKBOT_X_CLIENT_ID
-  global CLOCKBOT_X_CLIENT_SECRET
+  global CLOCKBOT_X_SECRET
+  global CLOCKBOT_X_CODE
   global CLOCKBOT_X_ACCESS_TOKEN
   global CLOCKBOT_X_REFRESH_TOKEN
 
@@ -2259,7 +2270,7 @@ def LoadConfigFiles():
   if (os.path.exists(KeyConfigFileName)):
 
     print ("Config file (",KeyConfigFileName,"): found")
-    KeyFile = SafeConfigParser()
+    KeyFile = ConfigParser()
     KeyFile.read(KeyConfigFileName)
 
     #Get tokens
@@ -2291,13 +2302,16 @@ def LoadConfigFiles():
     #Bot specific connection info
     #in case we want a bot to connect separately, or to other channels
     THECLOCKBOT_CLIENT_ID          = KeyFile.get("KEYS","THECLOCKBOT_CLIENT_ID")  
+    THECLOCKBOT_SECRET             = KeyFile.get("KEYS","THECLOCKBOT_SECRET")  
     THECLOCKBOT_CHANNEL            = KeyFile.get("KEYS","THECLOCKBOT_CHANNEL")  
-    THECLOCKBOT_CHAT_ACCESS_TOKEN  = KeyFile.get("KEYS","THECLOCKBOT_CHAT_ACCESS_TOKEN")  
-    THECLOCKBOT_CHAT_REFRESH_TOKEN = KeyFile.get("KEYS","THECLOCKBOT_CHAT_REFRESH_TOKEN")  
-    CLOCKBOT_X_ACCESS_TOKEN = KeyFile.get("KEYS","CLOCKBOT_X_ACCESS_TOKEN")  
-    CLOCKBOT_X_REFRESH_TOKEN = KeyFile.get("KEYS","CLOCKBOT_X_REFRESH_TOKEN")  
-    CLOCKBOT_X_CLIENT_ID      = KeyFile.get("KEYS","CLOCKBOT_X_CLIENT_ID")     
-    CLOCKBOT_X_CLIENT_SECRET  = KeyFile.get("KEYS","CLOCKBOT_X_CLIENT_SECRET")     
+    THECLOCKBOT_CODE               = KeyFile.get("KEYS","THECLOCKBOT_CODE")  
+    THECLOCKBOT_ACCESS_TOKEN       = KeyFile.get("KEYS","THECLOCKBOT_ACCESS_TOKEN")  
+    THECLOCKBOT_REFRESH_TOKEN      = KeyFile.get("KEYS","THECLOCKBOT_REFRESH_TOKEN")  
+    CLOCKBOT_X_ACCESS_TOKEN        = KeyFile.get("KEYS","CLOCKBOT_X_ACCESS_TOKEN")  
+    CLOCKBOT_X_REFRESH_TOKEN       = KeyFile.get("KEYS","CLOCKBOT_X_REFRESH_TOKEN")  
+    CLOCKBOT_X_CLIENT_ID           = KeyFile.get("KEYS","CLOCKBOT_X_CLIENT_ID")     
+    CLOCKBOT_X_SECRET              = KeyFile.get("KEYS","CLOCKBOT_X_SECRET")     
+    CLOCKBOT_X_CODE                = KeyFile.get("KEYS","CLOCKBOT_X_CODE")     
 
 
     print("BROADCASTER_CHANNEL: ",BROADCASTER_CHANNEL)   
@@ -2315,20 +2329,21 @@ def LoadConfigFiles():
     #print("PATREON_CREATOR_ACCESS_TOKEN: ",PATREON_CREATOR_ACCESS_TOKEN)
     print("")
     
-    print("THECLOCKBOT_CHAT_ACCESS_TOKEN:   ",THECLOCKBOT_CHAT_ACCESS_TOKEN)
-    print("THECLOCKBOT_CHAT_REFRESH_TOKEN:  ",THECLOCKBOT_CHAT_REFRESH_TOKEN)
+    print("THECLOCKBOT_CODE:           ",THECLOCKBOT_CODE)
+    print("THECLOCKBOT_ACCESS_TOKEN:   ",THECLOCKBOT_ACCESS_TOKEN)
+    print("THECLOCKBOT_REFRESH_TOKEN:  ",THECLOCKBOT_REFRESH_TOKEN)
 
-    print("THECLOCKBOT_CLIENT_ID:   ",THECLOCKBOT_CLIENT_ID)   
-    print("THECLOCKBOT_CHANNEL:   ",THECLOCKBOT_CHANNEL)   
-    print("CLOCKBOT_X_CLIENT_ID:         ",CLOCKBOT_X_CLIENT_ID)
-    print("CLOCKBOT_X_CLIENT_SECRET:     ",CLOCKBOT_X_CLIENT_SECRET)
+    print("THECLOCKBOT_CLIENT_ID:      ",THECLOCKBOT_CLIENT_ID)   
+    print("THECLOCKBOT_SECRET:         ",THECLOCKBOT_SECRET)   
+    print("THECLOCKBOT_CHANNEL:        ",THECLOCKBOT_CHANNEL)   
+    print("CLOCKBOT_X_CLIENT_ID:       ",CLOCKBOT_X_CLIENT_ID)
+    print("CLOCKBOT_X_SECRET:          ",CLOCKBOT_X_SECRET)
+    print("CLOCKBOT_X_CODE:            ",CLOCKBOT_X_CODE)
 
     print("TWITCH_WEBHOOK_URL:    ",TWITCH_WEBHOOK_URL)
     print("TWITCH_WEBHOOK_SECRET: ",TWITCH_WEBHOOK_SECRET)
     print("PATREON_WEBHOOK_URL:   ",PATREON_WEBHOOK_URL)
     print("PATREON_WEBHOOK_SECRET:",PATREON_WEBHOOK_SECRET)
-    #print("ACCESS_TOKEN:   ",ACCESS_TOKEN)
-    #print("REFRESH_TOKEN:  ",REFRESH_TOKEN)
 
     print ("--------------------")
     print (" ")
@@ -2345,7 +2360,7 @@ def LoadConfigFiles():
   if (os.path.exists(MyConfigFileName)):
 
     print ("Config file (",MyConfigFileName,"): found")
-    MyConfigFile = SafeConfigParser()
+    MyConfigFile = ConfigParser()
     MyConfigFile.read(MyConfigFileName)
 
     #Get settings
@@ -2463,20 +2478,18 @@ def CheckConfigFiles():
       KeyConfigFile.write("\n")
       KeyConfigFile.write("  BROADCASTER_USER_ID = 12345\n")
       KeyConfigFile.write("  BROADCASTER_ID      = 12345 (same as BROADCASTER_UserID)\n")
-      #KeyConfigFile.write("  LEDARCADE_APP_ACCESS_TOKEN = abcdefg\n")
-      #KeyConfigFile.write("  REFRESH_TOKEN  = hijklmn\n")
-      #KeyConfigFile.write("  LEDARCADE_APP_CLIENT_ID     = GetThisFromLEDARCADE_APPConsole\n")
-      #KeyConfigFile.write("  LEDARCADE_APP_CLIENT_SECRET = GetThisFromLEDARCADE_APPConsole\n")
       
       #KeyConfigFile.write("  LEDARCADE_APP_REDIRECT_URL    = http://localhost\n")
       KeyConfigFile.write("  TWITCH_WEBHOOK_URL    = https://eventsub.something.packetriot.net\n")
       KeyConfigFile.write("  TWITCH_WEBHOOK_SECRET = SomeSecretYouMakeUp\n")
       KeyConfigFile.write("\n")
-      KeyConfigFile.write("  THECLOCKBOT_CHAT_ACCESS_TOKEN  = abcde\n")
+      KeyConfigFile.write("  THECLOCKBOT_CODE         = abcde\n")
+      KeyConfigFile.write("  THECLOCKBOT_ACCESS_TOKEN = abcde\n")
+      KeyConfigFile.write("  THECLOCKBOT_REFRESH_TOKEN = abcde\n")
       KeyConfigFile.write("  CLOCKBOT_X_ACCESS_TOKEN  = abcde\n")
-      #KeyConfigFile.write("  BOT_REFRESH_TOKEN = fghij\n")
       KeyConfigFile.write("  CLOCKBOT_X_CLIENT_ID     = 123456\n")
-      KeyConfigFile.write("  CLOCKBOT_X_CLIENT_SECRET = abcdefg\n")
+      KeyConfigFile.write("  CLOCKBOT_X_SECRET        = abcdefg\n")
+      KeyConfigFile.write("  CLOCKBOT_X_CODE          = abcdefg\n")
       KeyConfigFile.write("\n")
       KeyConfigFile.write("  PATREON_CLIENT_ID             = ABCDE\n")
       KeyConfigFile.write("  PATREON_CLIENT_SECRET         = EFJHI\n")
@@ -2601,7 +2614,7 @@ async def on_channel_subscription_gift(data:dict):
 def TwitchEventSub(EventQueue):
 
   
-  twitch = Twitch(CLOCKBOT_X_CLIENT_ID, CLOCKBOT_X_CLIENT_SECRET)
+  twitch = Twitch(CLOCKBOT_X_CLIENT_ID, CLOCKBOT_X_SECRET)
   twitch.authenticate_app([])
 
   uid = twitch.get_users(logins=[BROADCASTER_CHANNEL])
@@ -2702,11 +2715,372 @@ def PatreonWebHook(EventQueue):
 
 
 
+def GetAccessTokenUsingOAUTHCode_TheClockBot():
+  global THECLOCKBOT_CLIENT_ID
+  global THECLOCKBOT_SECRET
+  global THECLOCKBOT_CODE
+  global THECLOCKBOT_ACCESS_TOKEN
+  global THECLOCKBOT_REFRESH_TOKEN
+ 
+ 
+  print ("-- GET OAUTH TOKEN --")
+  API_ENDPOINT = "https://id.twitch.tv/oauth2/token"
+
+  headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+  }
+
+  payload = {
+      'grant_type': 'authorization_code',
+      'client_id': THECLOCKBOT_CLIENT_ID,
+      'client_secret': THECLOCKBOT_SECRET,
+      'code': THECLOCKBOT_CODE,
+      'redirect_uri': 'http://localhost'
+  }
+
+  try:
+    print ("URL: ",API_ENDPOINT, 'data:',headers, 'Payload:',payload)
+    r = requests.post(url = API_ENDPOINT, headers = headers,params=payload)
+    results = r.json()
+    pprint.pprint(results)
+    #print(" ")
+  except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "ERROR ACCESSING TWITCH OAUTH2 API" 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
 
-  
+  DataDict = results.get('access_token','NONE')
+  if(DataDict == "NONE"):
+    print("")
+    print("")
+    print("=================================================================================")
+    print("TWITCH ERROR - Could not extract ACCESS TOKEN from OATH results") 
+    print("")
+    print(results)
+    print("=================================================================================")
+    print("")
+    print("")
+  else:
+    print("")
+    print("ACCESS GRANTED...processing data results")
+    print("")
+
+    try:
+      THECLOCKBOT_ACCESS_TOKEN   = results['access_token']
+      THECLOCKBOT_REFRESH_TOKEN  = results['refresh_token']
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Getting ACCESS_TOKEN" 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
 
+    print("THECLOCKBOT_CODE:         ",THECLOCKBOT_CODE)
+    print("THECLOCKBOT_ACCESS_TOKEN: ",THECLOCKBOT_ACCESS_TOKEN)
+    print("THECLOCKBOT_REFRESH_TOKEN:",THECLOCKBOT_REFRESH_TOKEN)
+
+    
+    #Write results to config file
+    try:
+        KeyFile = ConfigParser()
+        KeyFile.read(KeyConfigFileName)
+        KeyFile.set('KEYS','THECLOCKBOT_CODE',THECLOCKBOT_CODE)
+        KeyFile.set('KEYS','THECLOCKBOT_ACCESS_TOKEN',THECLOCKBOT_ACCESS_TOKEN)
+        KeyFile.set('KEYS','THECLOCKBOT_REFRESH_TOKEN',THECLOCKBOT_REFRESH_TOKEN)
+
+        print("File:",KeyConfigFileName)
+
+        with open(KeyConfigFileName,'w+') as UpdatedFile:
+          KeyFile.write(UpdatedFile)
+
+    except Exception as ErrorMessage:
+        TraceMessage = traceback.format_exc()
+        AdditionalInfo = "ACCESS_TOKEN not found in result set" 
+        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+  print("----------------------------------------")
+  print("")
+
+
+
+
+def GetAccessTokenUsingRefreshToken_TheClockBot():
+  global THECLOCKBOT_CLIENT_ID
+  global THECLOCKBOT_SECRET
+  global THECLOCKBOT_CODE
+  global THECLOCKBOT_ACCESS_TOKEN
+  global THECLOCKBOT_REFRESH_TOKEN
+ 
+ 
+  print ("-- GET OAUTH TOKEN USING REFRESH TOKEN--")
+  API_ENDPOINT = "https://id.twitch.tv/oauth2/token"
+
+  headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+  }
+
+  payload = {
+      'grant_type': 'refresh_token',
+      'client_id': THECLOCKBOT_CLIENT_ID,
+      'client_secret': THECLOCKBOT_SECRET,
+      'refresh_token': THECLOCKBOT_REFRESH_TOKEN,
+      'redirect_uri': 'http://localhost'
+  }
+
+  try:
+    print ("URL: ",API_ENDPOINT, 'data:',headers, 'Payload:',payload)
+    r = requests.post(url = API_ENDPOINT, headers = headers,params=payload)
+    results = r.json()
+    pprint.pprint(results)
+    #print(" ")
+  except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "ERROR ACCESSING TWITCH OAUTH2 API" 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+  DataDict = results.get('access_token','NONE')
+  if(DataDict == "NONE"):
+    print("")
+    print("")
+    print("=================================================================================")
+    print("TWITCH ERROR - Could not extract access TOKEN from OATH results") 
+    print("")
+    print(results)
+    print("=================================================================================")
+    print("")
+    print("")
+  else:
+    print("")
+    print("ACCESS GRANTED...processing data results")
+    print("")
+
+    try:
+      THECLOCKBOT_ACCESS_TOKEN   = results['access_token']
+      THECLOCKBOT_REFRESH_TOKEN = results['refresh_token']
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Getting ACCESS_TOKEN" 
+      THECLOCKBOT_ACCESS_TOKEN = 'REFRESH_FAILED'
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+
+    print("THECLOCKBOT_CODE:         ",THECLOCKBOT_CODE)
+    print("THECLOCKBOT_ACCESS_TOKEN: ",THECLOCKBOT_ACCESS_TOKEN)
+    print("THECLOCKBOT_REFRESH_TOKEN:",THECLOCKBOT_REFRESH_TOKEN)
+
+    
+    #Write results to config file
+    try:
+        KeyFile = ConfigParser()
+        KeyFile.read(KeyConfigFileName)
+        KeyFile.set('KEYS','THECLOCKBOT_CODE',THECLOCKBOT_CODE)
+        KeyFile.set('KEYS','THECLOCKBOT_ACCESS_TOKEN',THECLOCKBOT_ACCESS_TOKEN)
+        KeyFile.set('KEYS','THECLOCKBOT_REFRESH_TOKEN',THECLOCKBOT_REFRESH_TOKEN)
+
+        print("File:",KeyConfigFileName)
+
+        with open(KeyConfigFileName,'w+') as UpdatedFile:
+          KeyFile.write(UpdatedFile)
+
+    except Exception as ErrorMessage:
+        TraceMessage = traceback.format_exc()
+        AdditionalInfo = "ACCESS_TOKEN not found in result set" 
+        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+  print("----------------------------------------")
+  print("")
+
+
+
+
+      
+def GetAccessTokenUsingOAUTHCode_ClockBotX():
+  global CLOCKBOT_X_CLIENT_ID
+  global CLOCKBOT_X_SECRET
+  global CLOCKBOT_X_CODE
+  global CLOCKBOT_X_ACCESS_TOKEN
+  global CLOCKBOT_X_REFRESH_TOKEN
+ 
+ 
+  print ("-- GET OAUTH TOKEN --")
+  API_ENDPOINT = "https://id.twitch.tv/oauth2/token"
+
+  headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+  }
+
+  payload = {
+      'grant_type': 'authorization_code',
+      'client_id': CLOCKBOT_X_CLIENT_ID,
+      'client_secret': CLOCKBOT_X_SECRET,
+      'code': CLOCKBOT_X_CODE,
+      'redirect_uri': 'http://localhost'
+  }
+
+  try:
+    print ("URL: ",API_ENDPOINT, 'data:',headers, 'Payload:',payload)
+    r = requests.post(url = API_ENDPOINT, headers = headers,params=payload)
+    results = r.json()
+    pprint.pprint(results)
+    #print(" ")
+  except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "ERROR ACCESSING TWITCH OAUTH2 API" 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+  DataDict = results.get('access_token','NONE')
+  if(DataDict == "NONE"):
+    print("")
+    print("")
+    print("=================================================================================")
+    print("TWITCH ERROR - Could not extract ACCESS TOKEN from OATH results") 
+    print("")
+    print(results)
+    print("=================================================================================")
+    print("")
+    print("")
+  else:
+    print("")
+    print("ACCESS GRANTED...processing data results")
+    print("")
+
+    try:
+      CLOCKBOT_X_ACCESS_TOKEN   = results['access_token']
+      CLOCKBOT_X_REFRESH_TOKEN  = results['refresh_token']
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Getting ACCESS_TOKEN" 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+    print("CLOCKBOT_X_CODE:         ",CLOCKBOT_X_CODE)
+    print("CLOCKBOT_X_ACCESS_TOKEN: ",CLOCKBOT_X_ACCESS_TOKEN)
+    print("CLOCKBOT_X_REFRESH_TOKEN:",CLOCKBOT_X_REFRESH_TOKEN)
+
+    
+    #Write results to config file
+    try:
+        KeyFile = ConfigParser()
+        KeyFile.read(KeyConfigFileName)
+        KeyFile.set('KEYS','CLOCKBOT_X_CODE',CLOCKBOT_X_CODE)
+        KeyFile.set('KEYS','CLOCKBOT_X_ACCESS_TOKEN',CLOCKBOT_X_ACCESS_TOKEN)
+        KeyFile.set('KEYS','CLOCKBOT_X_REFRESH_TOKEN',CLOCKBOT_X_REFRESH_TOKEN)
+
+        print("File:",KeyConfigFileName)
+
+        with open(KeyConfigFileName,'w+') as UpdatedFile:
+          KeyFile.write(UpdatedFile)
+
+    except Exception as ErrorMessage:
+        TraceMessage = traceback.format_exc()
+        AdditionalInfo = "ACCESS_TOKEN not found in result set" 
+        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+  print("----------------------------------------")
+  print("")
+
+
+
+
+
+def GetAccessTokenUsingRefreshToken_ClockBotX():
+  global CLOCKBOT_X_CLIENT_ID
+  global CLOCKBOT_X_SECRET
+  global CLOCKBOT_X_CODE
+  global CLOCKBOT_X_ACCESS_TOKEN
+  global CLOCKBOT_X_REFRESH_TOKEN
+ 
+ 
+  print ("-- GET OAUTH TOKEN USING REFRESH TOKEN--")
+  API_ENDPOINT = "https://id.twitch.tv/oauth2/token"
+
+  headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+  }
+
+  payload = {
+      'grant_type': 'refresh_token',
+      'client_id': CLOCKBOT_X_CLIENT_ID,
+      'client_secret': CLOCKBOT_X_SECRET,
+      'refresh_token': CLOCKBOT_X_REFRESH_TOKEN,
+      'redirect_uri': 'http://localhost'
+  }
+
+  try:
+    print ("URL: ",API_ENDPOINT, 'data:',headers, 'Payload:',payload)
+    r = requests.post(url = API_ENDPOINT, headers = headers,params=payload)
+    results = r.json()
+    pprint.pprint(results)
+    #print(" ")
+  except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "ERROR ACCESSING TWITCH OAUTH2 API" 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+  DataDict = results.get('access_token','NONE')
+  if(DataDict == "NONE"):
+    print("")
+    print("")
+    print("=================================================================================")
+    print("TWITCH ERROR - Could not extract access TOKEN from OATH results") 
+    print("")
+    print(results)
+    print("=================================================================================")
+    print("")
+    print("")
+  else:
+    print("")
+    print("ACCESS GRANTED...processing data results")
+    print("")
+
+    try:
+      CLOCKBOT_X_ACCESS_TOKEN  = results['access_token']
+      CLOCKBOT_X_REFRESH_TOKEN = results['refresh_token']
+
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Getting ACCESS_TOKEN" 
+      CLOCKBOT_X_ACCESS_TOKEN = 'REFRESH_FAILED'
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+
+    print("CLOCKBOT_X_CODE:         ",CLOCKBOT_X_CODE)
+    print("CLOCKBOT_X_ACCESS_TOKEN: ",CLOCKBOT_X_ACCESS_TOKEN)
+    print("CLOCKBOT_X_REFRESH_TOKEN:",CLOCKBOT_X_REFRESH_TOKEN)
+
+    
+    #Write results to config file
+    try:
+        KeyFile = ConfigParser()
+        KeyFile.read(KeyConfigFileName)
+        KeyFile.set('KEYS','CLOCKBOT_X_CODE',CLOCKBOT_X_CODE)
+        KeyFile.set('KEYS','CLOCKBOT_X_ACCESS_TOKEN',CLOCKBOT_X_ACCESS_TOKEN)
+        KeyFile.set('KEYS','CLOCKBOT_X_REFRESH_TOKEN',CLOCKBOT_X_REFRESH_TOKEN)
+
+        print("File:",KeyConfigFileName)
+
+        with open(KeyConfigFileName,'w+') as UpdatedFile:
+          KeyFile.write(UpdatedFile)
+
+    except Exception as ErrorMessage:
+        TraceMessage = traceback.format_exc()
+        AdditionalInfo = "ACCESS_TOKEN not found in result set" 
+        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
+  print("----------------------------------------")
+  print("")
 
 
 
@@ -2730,6 +3104,7 @@ print ("")
 print ("")
 
 
+
 #load keys and settings
 CheckConfigFiles()
 LoadConfigFiles()
@@ -2738,6 +3113,70 @@ LoadConfigFiles()
 
 
 
+
+
+#----------------------------------------
+# USE OATH CODE TO GET NEW TOKEN
+#----------------------------------------
+
+#This assumes the user has already granted us access via URL and we were given a CODE
+# https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=xxxxxx&scope=chat%3Aread+chat%3Aedit&redirect_uri=http://localhost
+
+print("  ___    _   _   _ _____ _   _ ")
+print(" / _ \  / \ | | | |_   _| | | |")
+print("| | | |/ _ \| | | | | | | |_| |")
+print("| |_| / ___ \ |_| | | | |  _  |")
+print(" \___/_/   \_\___/  |_| |_| |_|")
+print("")
+
+# TheClockBot Tokens
+# 1.  Do we have an authentication token yet?
+#       No  - get one using CODE
+#       Yes - refresh before use
+# 2.  Did the refresh work?
+#       No  - Maybe it was too old.  get new tokens using CODE
+
+if(THECLOCKBOT_ACCESS_TOKEN == 'NONE'):
+  print("Access token not found")
+  GetAccessTokenUsingOAUTHCode_TheClockBot()
+else:
+  print("Access token found.  Refreshing...")
+  GetAccessTokenUsingRefreshToken_TheClockBot()
+  
+  if(THECLOCKBOT_ACCESS_TOKEN == 'NONE'):
+    print("Refresh failed.  Attempting to generate new ACCESS_TOKEN and REFRESH_TOKEN using CODE")
+    GetAccessTokenUsingOAUTHCode_TheClockBot()
+  
+
+
+
+print("")
+print("")
+print("")
+
+# ClockBot_X Tokens
+# 1.  Do we have an authentication token yet?
+#       No  - get one using CODE
+#       Yes - refresh before use
+# 1.  Did the refresh work?
+#       No  - Maybe it was too old.  get new tokens using CODE
+
+if(CLOCKBOT_X_ACCESS_TOKEN == 'NONE'):
+  print("Access token not found")
+  GetAccessTokenUsingOAUTHCode_ClockBotX()
+else:
+  print("Access token found.  Refreshing...")
+  GetAccessTokenUsingRefreshToken_ClockBotX()
+  
+  if(CLOCKBOT_X_ACCESS_TOKEN == 'NONE'):
+    print("Refresh failed.  Attempting to generate new ACCESS_TOKEN and REFRESH_TOKEN using CODE")
+    GetAccessTokenUsingOAUTHCode_ClockBotX()
+
+
+
+
+
+print("")
 print("--Spawning WebHook process--------------")
 #Spawn the webhook process
 #PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
