@@ -441,7 +441,7 @@ class Bot(commands.Bot ):
         print("")
         print("************************************************")
         print(f'Logged in as | {self.nick}')
-        print("Channels logged in:', self.connected_channels.__len__())
+        #print("Channels logged in:', self.connected_channels.__len__())
         #Channel = self.fetch_channel(CHANNEL)
         #print(Channel)
         print("************************************************")
