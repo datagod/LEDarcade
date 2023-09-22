@@ -441,8 +441,7 @@ class Bot(commands.Bot ):
         print("")
         print("************************************************")
         print(f'Logged in as | {self.nick}')
-          
-        print(self.connected_channels.__len__())
+        print("Channels logged in:', self.connected_channels.__len__())
         #Channel = self.fetch_channel(CHANNEL)
         #print(Channel)
         print("************************************************")
@@ -2050,7 +2049,13 @@ def GetBasicTwitchInfo():
     print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
-    pprint.pprint(results)
+    try:
+      pprint.pprint(results)
+    except Exception as ErrorMessage:
+      TraceMessage = traceback.format_exc()
+      AdditionalInfo = "Pretty Printing CHANNEL INFO " 
+      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
     #print(" ")
 
 
