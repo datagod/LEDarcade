@@ -1688,7 +1688,7 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # OUTBREAK                             --
+    # ASTROSMASH                           --
     #----------------------------------------
 
     @commands.command()
@@ -1906,6 +1906,7 @@ def GetTwitchCounts():
         TraceMessage = traceback.format_exc()
         AdditionalInfo = "Getting USER info from API call" 
         LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+        pprint.pprint(results)
     else:
       print("Stream NOT active")
       StreamActive = False  
