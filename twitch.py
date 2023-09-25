@@ -1890,7 +1890,7 @@ def GetTwitchCounts():
     print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
-    #pprint.pprint(results)
+    pprint.pprint(results)
     #print(" ")
 
     if results['data']:
