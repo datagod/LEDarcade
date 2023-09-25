@@ -1936,6 +1936,7 @@ def GetTwitchCounts():
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
       AdditionalInfo = "Getting FOLLOWER info from API call." + " (BROADCASTER_USER_ID:" + BROADCASTER_USER_ID + ")"
+      pprint.pprint(results)
       LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
 
