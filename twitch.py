@@ -57,8 +57,8 @@ import json
 import twitchio
 from twitchio.ext import commands, eventsub
 
-from twitchAPI.eventsub.webhook import EventSubWebhook
-from twitchAPI.object.eventsub import ChannelFollowEvent
+#from twitchAPI.eventsub.webhook import EventSubWebhook
+#from twitchAPI.object.eventsub import ChannelFollowEvent
 from twitchAPI.twitch import Twitch
 
 
