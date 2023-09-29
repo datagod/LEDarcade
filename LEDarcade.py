@@ -14743,7 +14743,7 @@ def ShowTitleScreen(
 
 
 
-
+  Buffer = copy.deepcopy(unicorn.get_pixels())
   TheMatrix.Clear()
   ClearBuffers()
   
