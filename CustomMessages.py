@@ -34,6 +34,9 @@ ChatStartMessages = [
   '/me just showed up',   
   '/me is here for the lulz',
   'Howdy Folks!',
+  'Greetings friends!',
+  'What a day to be a bot!',
+  'Hey hey folks',
   '/me is here!',
   '/me wanders around aimlessly',
   '/me has come in from the cold',
@@ -51,7 +54,15 @@ ChatStartMessages = [
   '/me arrives just in the nick of time',
   'Hi.  I am a your friendly neighborhood chatbot',
   'Hey, did you know you can interact with me and make cool animations appear on the LED display?  Type ?clock for commands.',
-  '/me really wants you to interact with it.  Type ?clock to see available commands.'
+  '/me really wants you to interact with it.  Type ?clock to see available commands.',
+  '/me is here for friendship and mirth',
+  '/me is now self aware',
+  '/me is definitely NOT powered by A.I. but soon might be...',
+  '/me is in love with this channel'
+  
+  
+  
+  
   
   
 ]

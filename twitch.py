@@ -3,6 +3,25 @@
 '''
 TO DO:
 
+
+The EventSub is so complex to keep going...OATH, reverse DNS, Packet Riot, LetsEncrypt, custom domain....
+I might just read the chat and react there.
+
+Read StreamElements messages
+ - X has been a s-ranked ninja for y months in a row
+ - X just threw down X bits!
+ - X gifted a Tier 1 sub
+ - X just smoke-bombed into lurk mode. They're still here, but as silent as a feather in the wind.... and will be back when you least expect it!
+ - X is raiding
+ 
+Others 
+!lurk
+
+KofiStreamBot
+ - visit XtianNinja page
+
+
+ 
 '''
 
 
@@ -34,12 +53,13 @@ import json
 
 
 
-
 #Twitch
 import twitchio
 from twitchio.ext import commands, eventsub
-from twitchAPI import Twitch, EventSub
 
+from twitchAPI.eventsub.webhook import EventSubWebhook
+from twitchAPI.object.eventsub import ChannelFollowEvent
+from twitchAPI.twitch import Twitch
 
 
 
@@ -115,6 +135,7 @@ CLOCKBOT_X_REFRESH_TOKEN  = ''
 
 #BOT_REFRESH_TOKEN = ''
 THECLOCKBOT_CLIENT_ID = ''
+THECLOCKBOT_USER_ID   = ''
 THECLOCKBOT_SECRET    = ''
 TWITCH_WEBHOOK_URL    = ''
 TWITCH_WEBHOOK_SECRET = ''
@@ -238,6 +259,7 @@ class Bot(commands.Bot ):
         
         print("Bot Initialization")
         print("THECLOCKBOT_CLIENT_ID:    ",THECLOCKBOT_CLIENT_ID)
+        print("THECLOCKBOT_CLIENT_ID:    ",THECLOCKBOT_USER_ID)
         print("THECLOCKBOT_SECRET:       ",THECLOCKBOT_SECRET)
         print("THECLOCKBOT_CHANNEL:      ",THECLOCKBOT_CHANNEL)
         print("THECLOCKBOT_CODE:         ",THECLOCKBOT_CODE)
@@ -342,9 +364,6 @@ class Bot(commands.Bot ):
         #end_time = loop.time() + self.AnimationDelay
 
 
-
-
-
         if(StreamActive == True):
           #await self.DisplayConnectingToTerminalMessage()
           await self.DisplayRandomConnectionMessage()
@@ -404,6 +423,9 @@ class Bot(commands.Bot ):
           #If the stream is not live, display a regular clock 
           if (StreamActive == False):
             await self.DisplayDigitalClock()
+            #Check Twitch advanced info 
+            await self.CheckStream()
+
 
                  
 
@@ -439,12 +461,12 @@ class Bot(commands.Bot ):
         # We are logged in and ready to chat and use commands...
         #UserList = self.fetch_users()
         print("")
-        print("************************************************")
+        print("=================================================")
         print(f'Logged in as | {self.nick}')
         #print("Channels logged in:', self.connected_channels.__len__())
         #Channel = self.fetch_channel(CHANNEL)
         #print(Channel)
-        print("************************************************")
+        print("=================================================")
         print("")
 
         
@@ -564,6 +586,9 @@ class Bot(commands.Bot ):
         message.content = LED.deEmojify(message.content)
 
         author = message.author.display_name
+
+
+
 
         #HUGS
         if (message.content == "!hug"):
@@ -847,9 +872,9 @@ class Bot(commands.Bot ):
         hh  = 24,
         RGB = LED.LowGreen,
         ShadowRGB        = LED.ShadowGreen,
-        ZoomFactor       = 3,
+        ZoomFactor       = 2,
         AnimationDelay   = self.AnimationDelay,
-        RunMinutes       = 5,
+        RunMinutes       = 1,
         EventQueue       = EventQueue
         )
       print("Clock function completed")
@@ -1249,15 +1274,15 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?views ?hug')
-        time.sleep(2)
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?views ?hug ?who')
+        time.sleep(6)
         await ctx.send('Available games: ?invaders ?astrosmash ?outbreak ?defender ?tron')
 
 
 
 
     #----------------------------------------
-    # Current Viewers                      --
+    # WHO - Current Viewers                --
     #----------------------------------------
     @commands.command()
     async def who(self, ctx: commands.Context):
@@ -1880,21 +1905,21 @@ def GetTwitchCounts():
     #----------------------------------------
     # GET USER INFO - ACTIVE STREAM
     #----------------------------------------
-    print ("Getting USER info")
+    print ("GetTwitchCounts| Getting USER info")
     API_ENDPOINT = "https://api.twitch.tv/helix/streams?user_login=" + BROADCASTER_CHANNEL
     head = {
     #'Client-ID': CLIENT_ID,
     'Client-ID': CLOCKBOT_X_CLIENT_ID,
     'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
-    print ("URL: ",API_ENDPOINT, 'data:',head)
+    print ("GetTwitchCounts| URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
     #pprint.pprint(results)
     #print(" ")
 
-    if results['data']:
-      print("Data found.  Processing...")
+    if (r.status_code == 200):
+      print("GetTwitchCounts| Data found.  Processing...")
 
       try:
         StreamStartedAt = results['data'][0]['started_at']
@@ -1902,23 +1927,33 @@ def GetTwitchCounts():
         ViewerCount     = results['data'][0]['viewer_count']
         StreamActive    = True
 
+        if(StreamActive) == False:
+          StreamActive = True
+          print("** STREAM NOW ACTIVE **")
+          #twitch dates are special format, and in UTC
+          #Convert to datetime (timezone naive)
+          StreamStartedDateTime = datetime.strptime(StreamStartedAt, '%Y-%m-%dT%H:%M:%SZ')
+          hh,mm,ss, StreamDurationHHMMSS = LED.CalculateElapsedTime(StreamStartedDateTime)
+          print("GetTwitchCounts| Stream Duration:",StreamDurationHHMMSS)
+
       except Exception as ErrorMessage:
         TraceMessage = traceback.format_exc()
         AdditionalInfo = "Getting USER info from API call" 
         LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
         pprint.pprint(results)
-    else:
-      print("Stream NOT active")
-      StreamActive = False  
+        StreamActive   = False
 
+    else:
+      print("GetTwitchCounts| Stream NOT active")
+      StreamActive = False  
+      StreamDurationHHMMSS = '000000'
 
     #----------------------------------------
     # Follower Count
     #----------------------------------------
     print("Get FOLLOWER information")
-    API_ENDPOINT = "https://api.twitch.tv/helix/users/follows?to_id=" + BROADCASTER_USER_ID
+    API_ENDPOINT = "https://api.twitch.tv/helix/channels/followers?broadcaster_id=" + BROADCASTER_USER_ID
     head = {
-    #'Client-ID': CLIENT_ID,
     'Client-ID': CLOCKBOT_X_CLIENT_ID,
     'Authorization': 'Bearer ' +  CLOCKBOT_X_ACCESS_TOKEN
     }
@@ -1928,10 +1963,16 @@ def GetTwitchCounts():
     #pp.pprint(r.content)
 
     try:
-      results = r.json()
-      Followers = results['total']
-      #pprint.pprint(results)
-      #print("")
+      if (r.status_code == 200) and ('total' in results):
+        print("Data found.  Processing...")
+    
+        results = r.json()
+        Followers = results['total']
+        pprint.pprint(results)
+        print("")
+      else:
+        print("No followers found")
+
 
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
@@ -1955,10 +1996,13 @@ def GetTwitchCounts():
     r = requests.get(url = API_ENDPOINT, headers = head)
 
     try:
-      results = r.json()
-      Subs = results['total']
-      #pprint.pprint(results)
-      #print("")
+      if (r.status_code == 200) and ('total' in results):
+        print("Data found.  Processing...")
+        results = r.json()
+        Subs = results['total']
+      else:
+        print("No subscriber info found")
+
 
     except Exception as ErrorMessage:
       TraceMessage = traceback.format_exc()
@@ -2172,7 +2216,6 @@ def GetBasicTwitchInfo():
       #twitch dates are special format, and in UTC
       #Convert to datetime (timezone naive)
       StreamStartedDateTime = datetime.strptime(StreamStartedAt, '%Y-%m-%dT%H:%M:%SZ')
-      
       hh,mm,ss, StreamDurationHHMMSS = LED.CalculateElapsedTime(StreamStartedDateTime)
       print("Stream Duration:",StreamDurationHHMMSS)
     else:
@@ -2240,6 +2283,7 @@ def LoadConfigFiles():
   global BROADCASTER_USER_ID
   global BROADCASTER_ID
   global THECLOCKBOT_CLIENT_ID
+  global THECLOCKBOT_USER_ID
   global THECLOCKBOT_SECRET
   global THECLOCKBOT_CHANNEL
   global THECLOCKBOT_CODE
@@ -2304,6 +2348,7 @@ def LoadConfigFiles():
     #Bot specific connection info
     #in case we want a bot to connect separately, or to other channels
     THECLOCKBOT_CLIENT_ID          = KeyFile.get("KEYS","THECLOCKBOT_CLIENT_ID")  
+    THECLOCKBOT_USER_ID            = KeyFile.get("KEYS","THECLOCKBOT_USER_ID")  
     THECLOCKBOT_SECRET             = KeyFile.get("KEYS","THECLOCKBOT_SECRET")  
     THECLOCKBOT_CHANNEL            = KeyFile.get("KEYS","THECLOCKBOT_CHANNEL")  
     THECLOCKBOT_CODE               = KeyFile.get("KEYS","THECLOCKBOT_CODE")  
@@ -2336,6 +2381,7 @@ def LoadConfigFiles():
     print("THECLOCKBOT_REFRESH_TOKEN:  ",THECLOCKBOT_REFRESH_TOKEN)
 
     print("THECLOCKBOT_CLIENT_ID:      ",THECLOCKBOT_CLIENT_ID)   
+    print("THECLOCKBOT_USER_ID:        ",THECLOCKBOT_USER_ID)   
     print("THECLOCKBOT_SECRET:         ",THECLOCKBOT_SECRET)   
     print("THECLOCKBOT_CHANNEL:        ",THECLOCKBOT_CHANNEL)   
     print("CLOCKBOT_X_CLIENT_ID:       ",CLOCKBOT_X_CLIENT_ID)
@@ -2573,23 +2619,32 @@ def DisplayPatreon():
 #-- ASYNCIO Functions                  --
 #----------------------------------------
 
+#this allows us to collect data from asynchronous generators
+#Generated by CHATGPT
+async def collect_data_from_async_gen(async_gen):
+    data = []
+    async for item in async_gen:
+        data.append(item)
+    return data
+
+
+
 # this will be called whenever someone follows the target channel
 async def on_stream_online(data: dict):
     print("**** STREAM ONLINE ****")
     EventQueue.put(('EVENTSUB_STREAM_ONLINE',data))
 
+
+#v3
 async def on_follow(data: dict):
     print("**** follow detected ****")
     EventQueue.put(('EVENTSUB_FOLLOW',data))
 
 async def on_subscribe(data: dict):
-    EventQueue.put(('EVENTSUB_SUBSCRIBE',data))
-
-async def on_subscribe(data: dict):
-    EventQueue.put(('EVENTSUB_SUBSCRIBE',data))
+    await EventQueue.put(('EVENTSUB_SUBSCRIBE',data))
 
 async def on_channel_cheer(data:dict):
-    EventQueue.put(('EVENTSUB_CHEER',data))
+    await EventQueue.put(('EVENTSUB_CHEER',data))
 
 async def on_channel_points_redemption(data:dict):
     EventQueue.put(('EVENTSUB_POINTS_REDEMPTION',data))
@@ -2613,62 +2668,105 @@ async def on_channel_subscription_gift(data:dict):
 #-- MULTIPROCESSING Functions          --
 #----------------------------------------
 
-def TwitchEventSub(EventQueue):
+async def TwitchEventSub(EventQueue):
 
+  print("ASYNC| ")
+  print("ASYNC| ")
+  print("ASYNC| Starting TwitchEventSub")
+  print("ASYNC| ")
   
-  twitch = Twitch(CLOCKBOT_X_CLIENT_ID, CLOCKBOT_X_SECRET)
-  twitch.authenticate_app([])
+  print("ASYNC| Authenticating with Twitch using ClockbotX ID and Secret")
+  twitch = await Twitch(CLOCKBOT_X_CLIENT_ID, CLOCKBOT_X_SECRET)
+  await twitch.authenticate_app([])
 
-  uid = twitch.get_users(logins=[BROADCASTER_CHANNEL])
-  BroadCasterUserID = uid['data'][0]['id']
+
+
+  #twitch.get_users returns an async_generator
+  #and must be handled differently than in TwitchAPI3
+  print("ASYNC| Get list of users")
+  async_results = twitch.get_users(logins=[BROADCASTER_CHANNEL])
   
+  #This will create a list of twitch objects
+  #we have to go into the object to get the ID that we want (the first one)
+  print("ASYNC| Processing list of users to get BroadCasterUserID")
+  uid_data = await collect_data_from_async_gen(async_results)
+  BroadCasterUserID = uid_data[0].id
+  print("ASYNC| BroadCasterUserID:",BroadCasterUserID)
+  
+
+
+
+
+
 
   # basic setup, will run on port 8080 and a reverse proxy takes care of the https and certificate
-  hook = EventSub(TWITCH_WEBHOOK_URL, CLOCKBOT_X_CLIENT_ID, 5051, twitch)
+  #EventSub comes from TWITCHAPI
+  #TwitchAPI v3
+  #hook = EventSubWebhook(TWITCH_WEBHOOK_URL, CLOCKBOT_X_CLIENT_ID, 5051, twitch)
+  
+  #TwitchAPI v4
+  print("ASYNC| Creating webhooks")
+  hook = EventSubWebhook(TWITCH_WEBHOOK_URL, 5051, twitch)
   
   # unsubscribe from all to get a clean slate
-  hook.unsubscribe_all()
+  print("ASYNC| unscubscribing to all previous webhooks")
+  await hook.unsubscribe_all()
   
   # start client
   hook.start()
-  print("EVENTSUB: ")
-  print("EVENTSUB: ")
-  print("EVENTSUB: ")
-  print('EVENTSUB: --Subscribing to EVENTSUB hooks--')
- 
-  print("EVENTSUB: Channel follows")
-  hook.listen_channel_follow(BroadCasterUserID, on_follow)
+  print("ASYNC| ")
+  print('ASYNC| --Subscribing to EVENTSUB hooks--')
+  print("ASYNC| BroadCasterUserID:   ",BroadCasterUserID)
+  print("ASYNC| TWITCH_WEBHOOK_URL:  ",TWITCH_WEBHOOK_URL)
+  print("ASYNC| CLOCKBOT_X_CLIENT_ID:",CLOCKBOT_X_CLIENT_ID)
+  print("ASYNC| ")
 
-  print("EVENTSUB: Stream goes live")
-  hook.listen_stream_online(BroadCasterUserID, on_stream_online)
 
-  print("EVENTSUB: Channel subscriptions")
-  hook.listen_channel_subscribe(BroadCasterUserID, on_subscribe)
- 
+  # 2023-09-26 TwitchAPI 4 requires an actual twitch user id (we can use BroadcasterID)
+  # in order to get new follower notifications
+  print("ASYNC| Channel follows")
+  await hook.listen_channel_follow_v2(BroadCasterUserID, BroadCasterUserID, on_follow)
+  
+  
+  
+  #print("EVENTSUB: Stream goes live")
+  #await hook.listen_stream_online(BroadCasterUserID, on_stream_online)
+
+
+  #print("ASYNC| Channel subscriptions")
+  #try:
+  #  await hook.listen_channel_subscribe(BroadCasterUserID, on_subscribe)
+
+  #except Exception as ErrorMessage:
+  #  TraceMessage = traceback.format_exc()
+  #  AdditionalInfo = "ERROR subscribing to listen_channel_subscribe" 
+  #  LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+
+
   print("EVENTSUB: Bits thrown")
-  hook.listen_channel_cheer(BroadCasterUserID,on_channel_cheer)
+  await hook.listen_channel_cheer(BroadCasterUserID,on_channel_cheer)
  
   
-  print("EVENTSUB: Channel points redeemed")
-  hook.listen_channel_points_custom_reward_redemption_add(BroadCasterUserID,on_channel_points_redemption)
+  #print("EVENTSUB: Channel points redeemed")
+  #hook.listen_channel_points_custom_reward_redemption_add(BroadCasterUserID,on_channel_points_redemption)
 
-  print("EVENTSUB: Hype Train begin")
-  hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
+  #print("EVENTSUB: Hype Train begin")
+  #hook.listen_hype_train_begin(BroadCasterUserID, on_hype_train_begin)
 
-  print("EVENTSUB: Hype Train progress")
-  hook.listen_hype_train_progress(BroadCasterUserID, on_hype_train_progress)
+  #print("EVENTSUB: Hype Train progress")
+  #hook.listen_hype_train_progress(BroadCasterUserID, on_hype_train_progress)
 
-  print("EVENTSUB: Hype Train end")
-  hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_end)
+  #print("EVENTSUB: Hype Train end")
+  #hook.listen_hype_train_end(BroadCasterUserID, on_hype_train_end)
 
-  print("EVENTSUB: subscription gifted")
-  hook.listen_channel_subscription_gift(BroadCasterUserID,on_channel_subscription_gift)
+  #print("EVENTSUB: subscription gifted")
+  #hook.listen_channel_subscription_gift(BroadCasterUserID,on_channel_subscription_gift)
 
  
-  print('EVENTSUB: --------------------------------')
-  print('EVENTSUB: ')
-  print('EVENTSUB: ')
-  print('EVENTSUB: ')
+  print("ASYNC| ")
+  print("ASYNC| ")
+  print("ASYNC| ")
+  print("ASYNC| ")
   
 
 
@@ -2719,6 +2817,7 @@ def PatreonWebHook(EventQueue):
 
 def GetAccessTokenUsingOAUTHCode_TheClockBot():
   global THECLOCKBOT_CLIENT_ID
+  global THECLOCKBOT_USER_ID
   global THECLOCKBOT_SECRET
   global THECLOCKBOT_CODE
   global THECLOCKBOT_ACCESS_TOKEN
@@ -2810,6 +2909,7 @@ def GetAccessTokenUsingOAUTHCode_TheClockBot():
 
 def GetAccessTokenUsingRefreshToken_TheClockBot():
   global THECLOCKBOT_CLIENT_ID
+  global THECLOCKBOT_USER_ID
   global THECLOCKBOT_SECRET
   global THECLOCKBOT_CODE
   global THECLOCKBOT_ACCESS_TOKEN
@@ -3088,6 +3188,16 @@ def GetAccessTokenUsingRefreshToken_ClockBotX():
 
 
 
+
+def run_coroutine_in_new_loop(EventQueue):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(TwitchEventSub(EventQueue))
+
+
+
+
+
 #------------------------------------------------------------------------------
 # MAIN SECTION                                                               --
 #------------------------------------------------------------------------------
@@ -3184,8 +3294,11 @@ print("--Spawning WebHook process--------------")
 #PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
 #PatreonWebHookProcess.start()
 
-TwitchEventSubProcess = multiprocessing.Process(target = TwitchEventSub, args=(EventQueue,))
-TwitchEventSubProcess.start()
+
+# 2023-09-28
+#Temporarily removing webhooks this because it is crazy complex to keep it running
+#TwitchEventSubProcess = multiprocessing.Process(target = run_coroutine_in_new_loop, args=(EventQueue,))
+#TwitchEventSubProcess.start()
 
 
 print("----------------------------------------")
