@@ -587,12 +587,19 @@ class Bot(commands.Bot ):
 
         author = message.author.display_name
 
+        #Log Chat
+        print('CHAT| ',author,':',message.content)
+
 
         #LURK
         if (message.content.upper() == "!LURK"):
           print("LURK MODE ACTIVATED: ",author)
+
+          #LED.ClearBigLED()
+          #LED.ClearBuffers()
+
           LED.ShowTitleScreen(
-            BigText             = "BYE",
+            BigText             = "LURK",
             BigTextRGB          = LED.MedGreen,
             BigTextShadowRGB    = LED.ShadowGreen,
             BigTextZoom         = 3,
@@ -603,7 +610,7 @@ class Bot(commands.Bot ):
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
             DisplayTime         = 0,           # time in seconds to wait before exiting 
-            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
             )
 
           print("LURK MODE DEACTIVATED")
@@ -645,7 +652,7 @@ class Bot(commands.Bot ):
             ScrollText          = "Hello there " + author + "! Thanks for tuning in.",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 5,           # time in seconds to wait before exiting 
+            DisplayTime         = 0,           # time in seconds to wait before exiting 
             ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
             )
           LED.SweepClean()

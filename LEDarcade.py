@@ -12,7 +12,8 @@
 
 
 
-# We write to the LED directory for simplicity
+# Methods of writing to the screen
+# We write to the LED directly for simplicity
 # We write to the Canvas and swap to the LED for speed
 # We write to the ScreenArray buffer so we know what is on the screen in case we
 # need to check it
@@ -14723,6 +14724,8 @@ def ShowTitleScreen(
 
 
   global ScreenArray  
+    
+  
   #Draw the Big text
   #Clear only the LED matrix
   #Draw the next size down
@@ -14741,9 +14744,10 @@ def ShowTitleScreen(
   LittleText = LittleText.upper()
   ScrollText = ScrollText.upper()
 
+  
+  #We want to capture what is on the screen before we start drawing, that way we can transition back to it nicely
+  ScreenArrayBefore = copy.deepcopy(ScreenArray)
 
-
-  Buffer = copy.deepcopy(unicorn.get_pixels())
   TheMatrix.Clear()
   ClearBuffers()
   
@@ -14829,13 +14833,14 @@ def ShowTitleScreen(
 
 
   elif(ExitEffect == 1):
-      #Zoom out
-      print('Zoom out')
-      ZoomScreen(ScreenArray,32,256,Fade=True,ZoomSleep=0.01)
-  elif(ExitEffect == 2):
       #Shrink
       print('Shrink')
       ZoomScreen(ScreenArray,32,1,Fade=True,ZoomSleep=0.01)
+  elif(ExitEffect == 2):
+      #Zoom out
+      print('Zoom out')
+      ZoomScreen(ScreenArray,32,256,Fade=True,ZoomSleep=0.01)
+
   elif(ExitEffect == 3):
       #Bounce
       print('Bounce')
@@ -14843,19 +14848,32 @@ def ShowTitleScreen(
       ZoomScreen(ScreenArray,11,128,Fade=True,ZoomSleep=0)
 
   elif(ExitEffect == 4):
-      #Bounce
+      #falling sand
       print('FallingSand')
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=1)
 
   elif(ExitEffect == 5):
-      #Bounce
       print('FallingSand')
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
 
+
+
+  
+  
+  #We want to clean up all our display, but then fade back into whatever what before this function was called
+  #fade back into the previous display (likely Uptime)
+  TheMatrix.Clear()
+
+  BlankScreenArray  = ([[]])
+  BlankScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+  TransitionBetweenScreenArrays(OldArray = BlankScreenArray, NewArray = ScreenArrayBefore,TransitionType=1)
+  
+  
       
     
   
@@ -15802,7 +15820,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0
             #Buffer = SetBufferPixel(Buffer, x, y, 0, 0, 0)
           
 
-      #Canvas = TheMatrix.SwapOnVSync(Canvas)
+      
       CopyScreenArrayToCanvasVSync(Buffer)
       #time.sleep(0.1)
       #time.sleep(0.01)
@@ -18831,6 +18849,7 @@ def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
   TextRGB         = (235,235,235)
   NameFontSize    = 11
 
+  print("LEDarcade| ImageName:",ImageName)
 
   #Create blank image
   image_height    = (len(names) * text_padding) + (Buffer *2) + (GradientSection *2) + 13
