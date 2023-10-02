@@ -121,7 +121,7 @@ TinyClockHours   = 0
 CPUModifier      = 0
 Gamma            = 1
 ShowCrypto       = 'N'
-HatWidth         = 64  # These defaults can be overwritten in the ClockConfig.ini file
+HatWidth         = 32  # These defaults can be overwritten in the ClockConfig.ini file
 HatHeight        = 32  # These defaults can be overwritten in the ClockConfig.ini file
 KeyboardPoll     = 10
 BrightColorCount = 27
@@ -1052,6 +1052,19 @@ BrightColorList.append((SDHighCyanR,SDHighCyanG,SDHighCyanB))
 BrightColorList.append((SDMaxCyanR,SDMaxCyanG,SDMaxCyanB))
 
 
+#Define color list
+TextColorList = ((ShadowPurple,DarkPurple,LowPurple,MedPurple),
+                  #(ShadowRed,   DarkRed,   LowRed,   MedRed),
+                  (DarkRed,     LowRed,    MedRed,   HighRed),
+                  (ShadowOrange,DarkOrange,LowOrange,MedOrange),
+                  (ShadowYellow,DarkYellow,LowYellow,MedYellow),
+                  #(ShadowGreen, DarkGreen, LowGreen, MedGreen),
+                  (DarkGreen,   LowGreen,  MedGreen, HighGreen),
+                  (ShadowBlue,  DarkBlue,  LowBlue,  MedBlue),
+                  (ShadowPink,  DarkPink,  LowPink,  MedPink),
+                  (ShadowCyan,  DarkCyan,  LowCyan,  MedCyan)
+
+                  )
 
 
 
@@ -14867,10 +14880,8 @@ def ShowTitleScreen(
   #We want to clean up all our display, but then fade back into whatever what before this function was called
   #fade back into the previous display (likely Uptime)
   TheMatrix.Clear()
-
   BlankScreenArray  = ([[]])
   BlankScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-
   TransitionBetweenScreenArrays(OldArray = BlankScreenArray, NewArray = ScreenArrayBefore,TransitionType=1)
   
   
@@ -19006,9 +19017,17 @@ def StarryNightDisplayText(
   Text1        = "TEXT1",
   Text2        = "TEXT2",
   Text3        = "TEXT3",
-  ScrollSleep = 0.02,
-  RunSeconds  = 60
+  ScrollSleep  = 0.02,
+  RunSeconds   = 60
 ):
+
+  #We want to capture what is on the screen before we start drawing, that way we can transition back to it nicely
+  ScreenArrayBefore = copy.deepcopy(ScreenArray)
+
+
+
+
+
 
   H = 0
   V = 0
@@ -19197,12 +19216,12 @@ def StarryNightDisplayText(
     V = HatHeight - TheSprite.height
 
 
-  TheSprite = copy.deepcopy(TinyInvader)
-  TheSprite = CopyAnimatedSpriteZoom(TheSprite,2)
-  TheSprite.currentframe = 1
-  TheSprite.framerate = 8
-  H = 1
-  V = HatHeight - TheSprite.height  -5
+  #TheSprite = copy.deepcopy(TinyInvader)
+  #TheSprite = CopyAnimatedSpriteZoom(TheSprite,2)
+  #TheSprite.currentframe = 1
+  #TheSprite.framerate = 8
+  #H = 1
+  #V = HatHeight - TheSprite.height  -5
 
   while (Done == False):
 
@@ -19218,8 +19237,6 @@ def StarryNightDisplayText(
       bx = bx + 1
       if(bx > bwidth):
         bx = 0
-    #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
-
 
     #Middleground
     m,r = divmod(count,mrate)
@@ -19227,8 +19244,6 @@ def StarryNightDisplayText(
       mx = mx + 1
       if(mx > mwidth):
         mx = 0
-    #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
-
       
     #foreground
     m,r = divmod(count,frate)
@@ -19236,19 +19251,17 @@ def StarryNightDisplayText(
       fx = fx + 1
       if(fx > fwidth):
         fx = 0
-    #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
-
 
     Canvas = PaintThreeLayerCanvas(bx,mx,fx,Background,Middleground,Foreground,Canvas)
-
 
 
     #LED.RunningMan3Sprite.DisplayAnimated(10,10)
     Canvas = TheSprite.PaintAnimatedToCanvas(H,V,Canvas)
     Canvas = TheMatrix.SwapOnVSync(Canvas)
+   
     
-
     
+    #Ever once in a while check to see if the time is up and we should exit
     if(random.randint(0,100) == 1):
       #This will end the while loop
       elapsed_time = time.time() - StartTime
@@ -19260,6 +19273,17 @@ def StarryNightDisplayText(
       print("ElapsedSeconds: ",round(elapsed_seconds))
       if elapsed_seconds >= RunSeconds:
         Done = True
+
+    time.sleep(ScrollSleep)
+ 
+  #We want to clean up all our display, but then fade back into whatever what before this function was called
+  #fade back into the previous display (likely Uptime)
+  TheMatrix.Clear()
+  BlankScreenArray  = ([[]])
+  BlankScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+  TransitionBetweenScreenArrays(OldArray = BlankScreenArray, NewArray = ScreenArrayBefore,TransitionType=1)
+
+
 
 
 

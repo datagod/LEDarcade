@@ -188,9 +188,9 @@ DefenderStartH = 2
 
 #change display based on display dimensions
 if(LED.HatWidth > 60):
-  EnemyCountH = 59
-  HumanCountH = 76
-  ClockZoom = 2
+  EnemyCountH = 36
+  HumanCountH = 50
+  ClockZoom = 1
   DefenderStartH = 2
 else:
   ClockZoom = 1
@@ -1360,7 +1360,48 @@ def PlayDefender(GameMaxMinutes):
 
   Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
   
-  ShipType = 0
+
+
+  #Add text to a layer
+  TextColorCount = len(LED.TextColorList)
+
+  #Get a bunch of random colors for each text layer  
+  i = random.randint(0,TextColorCount -1)
+  A,B,C,D = LED.TextColorList[i]
+  Text1RGB = C
+
+  i = random.randint(0,TextColorCount -1)
+  A,B,C,D = LED.TextColorList[i]
+  Text2RGB = B
+  
+  i = random.randint(0,TextColorCount -1)
+  A,B,C,D = LED.TextColorList[i]
+  Text3RGB = B
+
+  
+  TheBanner1 = LED.CreateBannerSprite("death to humans")
+  h1         = round(Middleground.width * 0.80)
+  v1         = 24
+  Middleground = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text3RGB,(0,0,0),ZoomFactor=1,Fill=False,Layer=Middleground)
+
+  
+  TheBanner1 = LED.CreateBannerSprite("X")
+  h1         = round(Ground.width * 0.25)
+  v1         = LED.HatHeight - (TheBanner1.height * 3)
+  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text1RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Ground)
+  TheBanner1 = LED.CreateBannerSprite("Y")
+  h1         = round(Ground.width * 0.50)
+  v1         = LED.HatHeight - (TheBanner1.height * 3)
+  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text2RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Ground)
+  TheBanner1 = LED.CreateBannerSprite("Z")
+  h1         = round(Ground.width * 0.75)
+  v1         = LED.HatHeight - (TheBanner1.height * 3)
+  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text3RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Ground)
+
+
+
+  #Pick a random ship type to start
+  ShipType = random.randint(1,27)
 
   
   
@@ -1470,6 +1511,23 @@ def PlayDefender(GameMaxMinutes):
 
           #we need to earase the clock fist, commenting out for now
           #Background = LED.CopySpriteToLayerZoom(ClockSprite,bx + 30,10,(5,0,5),(0,5,0),2,False,Layer=Background)
+
+          #Copy a big clock to the foreground layer
+          h1         = LED.HatWidth + 60
+          v1         = 10
+          Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text1RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
+
+          h1         = LED.HatWidth + round(Foreground.width * 0.25)
+          v1         = 10
+          Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text2RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
+
+          h1         = LED.HatWidth + round(Foreground.width * 0.5)
+          v1         = 10
+          Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text1RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
+
+          h1         = LED.HatWidth + round(Foreground.width * 0.75)
+          v1         = 10
+          Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text3RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
 
 
 
@@ -1945,8 +2003,10 @@ def PlayDefender(GameMaxMinutes):
       #-- Numerical Displays         --
       #--------------------------------
 
-      ClockSprite.h = LED.HatWidth - (ClockSprite.width * ClockZoom)
-      Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,(0,0,0),ClockZoom,False,Canvas)
+      #This displayes a small clock in upper right hand corner
+      #removing it in favor of a scrolling clock
+      #ClockSprite.h = LED.HatWidth - (ClockSprite.width * ClockZoom)
+      #Canvas = LED.CopySpriteToCanvasZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,(0,0,0),ClockZoom,False,Canvas)
 
 
       #Add display
@@ -1978,17 +2038,15 @@ def PlayDefender(GameMaxMinutes):
 
 
      
-      
-      #Only change display if the count changes
-      if(OldSpeed != DefenderSpeed):
-        Canvas, SpeedSprite = DisplayCount(EnemyCountH - 22,0,(0,100,0),'S',round(DefenderSpeed,2),Canvas)
-        OldSpeed = DefenderSpeed
-        
-        #this is just a test
-        #Background = LED.CopySpriteToLayerZoom(HumanCountSprite,gx + 64,HumanCountV + 10,(5,0,5),(0,0,0),ZoomFactor = 2,Fill=True,Layer=Background)
 
-      else:
-        Canvas = LED.CopySpriteToCanvasZoom(SpeedSprite,EnemyCountH - 22,0,(0,100,0),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+      #Removed to clean up screen clutter      
+      #Only change display if the count changes
+      #if(OldSpeed != DefenderSpeed):
+      #  Canvas, SpeedSprite = DisplayCount(EnemyCountH - 22,0,(0,100,0),'S',round(DefenderSpeed,2),Canvas)
+      #  OldSpeed = DefenderSpeed
+       
+      #else:
+      #  Canvas = LED.CopySpriteToCanvasZoom(SpeedSprite,EnemyCountH - 22,0,(0,100,0),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
 
 
 

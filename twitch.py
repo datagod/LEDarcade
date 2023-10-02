@@ -30,6 +30,7 @@ import os
 os.system('cls||clear')
 
 import sys
+import re   # regular expression
 
 import LEDarcade as LED
 from rgbmatrix import graphics
@@ -589,6 +590,110 @@ class Bot(commands.Bot ):
 
         #Log Chat
         print('CHAT| ',author,':',message.content)
+
+
+        #---------------------------------------
+        # Stream Elements                     --
+        #---------------------------------------
+        
+        #BITS
+        #if (author == 'StreamElements'  and message.content.upper() == ""):
+        if (author.upper() == 'DATAGOD'  and "JUST THREW DOWN" in message.content.upper()):
+          print("CHAT| BITS detected")
+
+          words  = message.content.split(" ")
+          BitGiver = words[0] 
+          bits     = words[4]
+          print("CHAT|",BitGiver,"just threw down ",bits," bits")
+
+          #LED.ClearBigLED()
+          #LED.ClearBuffers()
+
+          LED.StarryNightDisplayText(
+          Text1       = BitGiver + " just threw down " + bits + " bits",
+          Text2       = "Thank you " + BitGiver,
+          Text3       = "Bits are an important part of the economy.  Your contribution is appreciated!", 
+          ScrollSleep = 0.01,
+          RunSeconds  = 30
+          )
+
+
+
+
+        #RAIDING
+        #if (author == 'StreamElements'  and message.content.upper() == "is raiding"):
+        if (author.upper() == 'DATAGOD'  and "IS RAIDING" in message.content.upper()):
+          print("CHAT| Raid detected")
+
+          words  = message.content.split(" ")
+          raider = words[0] 
+          print("CHAT|",raider,"is raiding")
+
+          #LED.ClearBigLED()
+          #LED.ClearBuffers()
+
+          LED.StarryNightDisplayText(
+          Text1       = raider + " is raiding" ,
+          Text2       = "Thank you " + raider,
+          Text3       = "Welcome to our community.  Stick around and have fun!", 
+          ScrollSleep = 0.00,
+          RunSeconds  = 30
+          )
+
+
+
+
+
+        #Subscriber for X months
+        if (author.upper() == 'DATAGOD'  and "MONTHS IN A ROW" in message.content.upper()):
+
+          print("CHAT| SUBscriber detected")
+          words  = message.content.split(" ")
+          Subscriber = words[0] 
+          Months     = words[6]
+          print("CHAT|",Subscriber," has been a subscriber for ",Months, " months")
+        
+          print("Get user profile info:",Subscriber)
+          API_ENDPOINT = "https://api.twitch.tv/helix/users?login=" + Subscriber
+          head = {
+          #'Client-ID': CLIENT_ID,
+          'Client-ID':  THECLOCKBOT_CLIENT_ID,
+          'Authorization': 'Bearer ' +  THECLOCKBOT_ACCESS_TOKEN
+          }
+
+          #print ("URL: ",API_ENDPOINT, 'data:',head)
+          r = requests.get(url = API_ENDPOINT, headers = head)
+          results = r.json()
+          pprint.pprint(results)
+          #print(" ")
+
+          UserProfileURL = ''
+          DataDict = results.get('data','NONE')
+          if (DataDict != 'NONE'):
+
+            print("Data found.  Processing...")
+
+            try:
+              UserProfileURL = results['data'][0]['profile_image_url']
+
+            except Exception as ErrorMessage:
+              TraceMessage = traceback.format_exc()
+              AdditionalInfo = "Getting CHANNEL info from API call" 
+              LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+           
+        
+          if (UserProfileURL != ""):
+            LED.TheMatrix.brightness = StreamBrightness
+            LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
+            LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
+            LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
+            LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
+            time.sleep(3)
+            LED.TheMatrix.brightness = MaxBrightness
+            LED.SweepClean()
+
+
+
 
 
         #LURK
@@ -1922,7 +2027,7 @@ def GetTwitchCounts():
     global StreamType      
     global ViewerCount     
     global StreamActive 
-
+    global BROADCASTER_ID
     #Follower Info
     global Followers      
     global Subs
@@ -2122,38 +2227,40 @@ def GetBasicTwitchInfo():
     r = requests.get(url = API_ENDPOINT, headers = head)
     results = r.json()
 
-    #pprint.pprint(results)
-
-    
-
-    DataDict = results.get('data','NONE')
-    if(DataDict == "NONE"):
-      print("")
-      print("")
-      print("========================================================")
-      print("TWITCH ERROR - Could not extract data from CHANNEL info") 
-      print("")
-      print(results)
-      print(API_ENDPOINT)
-      print(head)
-      print("========================================================")
-      print("")
-      print("")
-      return
+    #check for expired oauth tokens
+    if r.status_code == 401:
+      print("Unauthorized access. Refreshing Credentials")
+      GetAccessTokenUsingRefreshToken_TheClockBot()
     else:
-    #if results['data']:
-      print("Data found.  Processing...")
+      #pprint.pprint(results)
+      DataDict = results.get('data','NONE')
+      if(DataDict == "NONE"):
+        print("")
+        print("")
+        print("========================================================")
+        print("TWITCH ERROR - Could not extract data from CHANNEL info") 
+        print("")
+        print(results)
+        print(API_ENDPOINT)
+        print(head)
+        print("========================================================")
+        print("")
+        print("")
+        return
+      else:
+      #if results['data']:
+        print("Data found.  Processing...")
 
-      try:
-        BROADCASTER_USER_ID = results['data'][0]['id']
-        BROADCASTER_ID      = BROADCASTER_USER_ID
-        PROFILE_IMAGE_URL   = results['data'][0]['profile_image_url']
-        VIEW_COUNT          = results['data'][0]['view_count']
+        try:
+          BROADCASTER_USER_ID = results['data'][0]['id']
+          #BROADCASTER_ID      = BROADCASTER_USER_ID
+          PROFILE_IMAGE_URL   = results['data'][0]['profile_image_url']
+          VIEW_COUNT          = results['data'][0]['view_count']
 
-      except Exception as ErrorMessage:
-        TraceMessage = traceback.format_exc()
-        AdditionalInfo = "Getting CHANNEL info from API call" 
-        LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+        except Exception as ErrorMessage:
+          TraceMessage = traceback.format_exc()
+          AdditionalInfo = "Getting CHANNEL info from API call" 
+          LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
 
     #----------------------------------------
     # GET BROADCASTER INFO
