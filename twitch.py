@@ -598,7 +598,7 @@ class Bot(commands.Bot ):
         
         #BITS
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'DATAGOD'  and "JUST THREW DOWN" in message.content.upper()):
+        if (author.upper() == 'StreamElements'  and "JUST THREW DOWN" in message.content.upper()):
           print("CHAT| BITS detected")
 
           words  = message.content.split(" ")
@@ -622,7 +622,7 @@ class Bot(commands.Bot ):
 
         #RAIDING
         #if (author == 'StreamElements'  and message.content.upper() == "is raiding"):
-        if (author.upper() == 'DATAGOD'  and "IS RAIDING" in message.content.upper()):
+        if (author.upper() == 'StreamElements'  and "IS RAIDING" in message.content.upper()):
           print("CHAT| Raid detected")
 
           words  = message.content.split(" ")
@@ -645,7 +645,7 @@ class Bot(commands.Bot ):
 
 
         #Subscriber for X months
-        if (author.upper() == 'DATAGOD'  and "MONTHS IN A ROW" in message.content.upper()):
+        if (author.upper() == 'StreamElements'  and "MONTHS IN A ROW" in message.content.upper()):
 
           print("CHAT| SUBscriber detected")
           words  = message.content.split(" ")
