@@ -1880,6 +1880,15 @@ def PlayDefender(GameMaxMinutes):
         #print("Shooting ground!")
         DefenderPlayfield, Ground, GroundParticles, Humans, HumanParticles, EnemyShips = ShootGround(gx,0,GroundV, Defender, DefenderPlayfield,Ground,Canvas,Humans, HumanParticles, EnemyShips,GroundParticles)  
 
+        #greater chance of slowing down
+        if(random.randint(1,DefenderSpeedChangeChance) == 1):
+          DefenderSpeed = DefenderSpeed - DefenderSpeedIncrement
+          if(DefenderSpeed < DefenderMinSpeed):
+            DefenderSpeed = DefenderMinSpeed
+          Defender.h = DefenderStartH + (DefenderSpeed * 2)
+        
+
+
         
         Ground = FlattenGround(gx + Defender.h +1,gx + Defender.h +3,MaxMountainHeight,Ground)
         
