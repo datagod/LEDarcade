@@ -598,17 +598,8 @@ class Bot(commands.Bot ):
         
         #TACO
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'StreamElements'  and "TACO" in message.content.upper()):
-          print("CHAT| BITS detected")
-
-          words  = message.content.split(" ")
-          BitGiver = words[0] 
-          bits     = words[4]
-          print("CHAT|",BitGiver,"asked about TACO ",bits," bits")
-
-          #LED.ClearBigLED()
-          #LED.ClearBuffers()
-
+        if (author.upper() == 'StreamElements'  and "The alliance for creative outreach" in message.content.upper()):
+          print("CHAT| TACO detected")
           LED.StarryNightDisplayText(
           Text1       = "TACO",
           Text2       = "The Alliance for creative outreach",
@@ -637,6 +628,24 @@ class Bot(commands.Bot ):
           Text2       = "Thank you " + BitGiver,
           Text3       = "Bits are an important part of the economy.  Your contribution is appreciated!", 
           ScrollSleep = 0.01,
+          RunSeconds  = 30
+          )
+
+
+
+        #FOLLOWING
+        #if (author == 'StreamElements'  and message.content.upper() == "is raiding"):
+        if (author.upper() == 'StreamElements'  and "thank you for following" in message.content.upper()):
+          print("CHAT| follow detected")
+
+          words  = message.content.split(" ")
+          follower = words[4] 
+          print("CHAT|",follower,"is now following")
+          LED.StarryNightDisplayText(
+          Text1       = follower + " is now following" ,
+          Text2       = "Thank you " + follower,
+          Text3       = "Welcome to our community.  We appreciate you joining us!", 
+          ScrollSleep = 0.00,
           RunSeconds  = 30
           )
 
