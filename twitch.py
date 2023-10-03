@@ -609,7 +609,7 @@ class Bot(commands.Bot ):
           Text1       = "KOFI",
           Text2       = "WE APPRECIATE YOUR SUPPORT",
           Text3       = "KOFI IS THE PREFERRED WAY TO SUPPORT THIS CHANNEL", 
-          ScrollSleep = 0.01,
+          ScrollSleep = 0,
           RunSeconds  = 20
           )
 
