@@ -1950,7 +1950,6 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def taco(self, ctx: commands.Context):
-      if(SHOW_CHATBOT_MESSAGES == True):
       print("CHAT| TACO detected")
       LED.StarryNightDisplayText(
       Text1       = "TACO",
