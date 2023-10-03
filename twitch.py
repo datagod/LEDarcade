@@ -596,6 +596,29 @@ class Bot(commands.Bot ):
         # Stream Elements                     --
         #---------------------------------------
         
+        #TACO
+        #if (author == 'StreamElements'  and message.content.upper() == ""):
+        if (author.upper() == 'StreamElements'  and "The Alliance for Creative Outreach" in message.content.upper()):
+          print("CHAT| BITS detected")
+
+          words  = message.content.split(" ")
+          BitGiver = words[0] 
+          bits     = words[4]
+          print("CHAT|",BitGiver,"asked about TACO ",bits," bits")
+
+          #LED.ClearBigLED()
+          #LED.ClearBuffers()
+
+          LED.StarryNightDisplayText(
+          Text1       = "TACO",
+          Text2       = "The Alliance for creative outreach",
+          Text3       = "visit taconetwork.org to learn all about us", 
+          ScrollSleep = 0.01,
+          RunSeconds  = 30
+          )
+
+
+
         #BITS
         #if (author == 'StreamElements'  and message.content.upper() == ""):
         if (author.upper() == 'StreamElements'  and "JUST THREW DOWN" in message.content.upper()):
@@ -1910,6 +1933,8 @@ class Bot(commands.Bot ):
       LED.ClearBuffers()
       CursorH = 0
       CursorV = 0
+
+
 
 
 
