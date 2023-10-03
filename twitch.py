@@ -598,7 +598,7 @@ class Bot(commands.Bot ):
         
         #TACO
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'StreamElements'  and "The Alliance for Creative Outreach" in message.content.upper()):
+        if (author.upper() == 'StreamElements'  and "TACO" in message.content.upper()):
           print("CHAT| BITS detected")
 
           words  = message.content.split(" ")
