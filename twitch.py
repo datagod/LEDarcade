@@ -602,7 +602,6 @@ class Bot(commands.Bot ):
         #---------------------------------------
         # KOFI                                --
         #---------------------------------------
-        #BITS
         if (author.upper() == 'KOFISTREAMBOT'  and "VISIT" in message.content.upper()):
           print("CHAT| KofiBot detected")
           LED.StarryNightDisplayText(
@@ -627,12 +626,12 @@ class Bot(commands.Bot ):
           Text1       = "TACO",
           Text2       = "The Alliance for creative outreach",
           Text3       = "visit taconetwork.org to learn all about us", 
-          ScrollSleep = 0.01,
+          ScrollSleep = 0,
           RunSeconds  = 30
           )
 
 
-
+  
         #BITS
         #if (author == 'StreamElements'  and message.content.upper() == ""):
         if (author.upper() == 'STREAMELEMENTS'  and "JUST THREW DOWN" in message.content.upper()):
