@@ -598,7 +598,7 @@ class Bot(commands.Bot ):
         
         #TACO
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'StreamElements'  and "TACO" in message.content.upper()):
+        if (author.upper() == 'StreamElements'  and "THE ALLIANCE" in message.content.upper()):
           print("CHAT| TACO detected")
           LED.StarryNightDisplayText(
           Text1       = "TACO",
