@@ -592,13 +592,48 @@ class Bot(commands.Bot ):
         print('CHAT| ',author,':',message.content)
 
 
+
+
+
+
+
+
+
+        #---------------------------------------
+        # KOFI                                --
+        #---------------------------------------
+        
+
+        #BITS
+        if (author.upper() == 'KOFISTREAMBOT'  and "JUST THREW DOWN" in message.content.upper()):
+          print("CHAT| BITS detected")
+
+          words  = message.content.split(" ")
+          BitGiver = words[0] 
+          bits     = words[4]
+          print("CHAT|",BitGiver,"just threw down ",bits," bits")
+
+          #LED.ClearBigLED()
+          #LED.ClearBuffers()
+
+          LED.StarryNightDisplayText(
+          Text1       = BitGiver + " just threw down " + bits + " bits",
+          Text2       = "Thank you " + BitGiver,
+          Text3       = "Bits are an important part of the economy.  Your contribution is appreciated!", 
+          ScrollSleep = 0.01,
+          RunSeconds  = 30
+          )
+
+
+
+
         #---------------------------------------
         # Stream Elements                     --
         #---------------------------------------
         
         #TACO
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'StreamElements'  and "THE ALLIANCE" in message.content.upper()):
+        if (author.upper() == 'STREAMELEMENTS'  and "THE ALLIANCE" in message.content.upper()):
           print("CHAT| TACO detected")
           LED.StarryNightDisplayText(
           Text1       = "TACO",
@@ -612,7 +647,7 @@ class Bot(commands.Bot ):
 
         #BITS
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'StreamElements'  and "JUST THREW DOWN" in message.content.upper()):
+        if (author.upper() == 'STREAMELEMENTS'  and "JUST THREW DOWN" in message.content.upper()):
           print("CHAT| BITS detected")
 
           words  = message.content.split(" ")
@@ -635,7 +670,7 @@ class Bot(commands.Bot ):
 
         #FOLLOWING
         #if (author == 'StreamElements'  and message.content.upper() == "is raiding"):
-        if (author.upper() == 'StreamElements'  and "thank you for following" in message.content.upper()):
+        if (author.upper() == 'STREAMELEMENTS'  and "THANK YOU FOR FOLLOWING" in message.content.upper()):
           print("CHAT| follow detected")
 
           words  = message.content.split(" ")
@@ -654,7 +689,7 @@ class Bot(commands.Bot ):
 
         #RAIDING
         #if (author == 'StreamElements'  and message.content.upper() == "is raiding"):
-        if (author.upper() == 'StreamElements'  and "IS RAIDING" in message.content.upper()):
+        if (author.upper() == 'STREAMELEMENTS'  and "IS RAIDING" in message.content.upper()):
           print("CHAT| Raid detected")
 
           words  = message.content.split(" ")
@@ -677,7 +712,7 @@ class Bot(commands.Bot ):
 
 
         #Subscriber for X months
-        if (author.upper() == 'StreamElements'  and "MONTHS IN A ROW" in message.content.upper()):
+        if (author.upper() == 'STREAMELEMENTS'  and "MONTHS IN A ROW" in message.content.upper()):
 
           print("CHAT| SUBscriber detected")
           words  = message.content.split(" ")
