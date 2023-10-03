@@ -1437,7 +1437,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?views ?hug ?who')
+        await ctx.send('Available commands: ?hello ?viewers ?follows ?subs ?uptime ?chat ?profile ?me ?starrynight ?views ?hug ?who ?taco')
         time.sleep(6)
         await ctx.send('Available games: ?invaders ?astrosmash ?outbreak ?defender ?tron')
 
