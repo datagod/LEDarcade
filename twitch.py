@@ -1951,8 +1951,6 @@ class Bot(commands.Bot ):
     @commands.command()
     async def taco(self, ctx: commands.Context):
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Enjoy the peaceful starry sky while staring at a clock"
-      await self.Channel.send(message)
       print("CHAT| TACO detected")
       LED.StarryNightDisplayText(
       Text1       = "TACO",
