@@ -19274,7 +19274,7 @@ def StarryNightDisplayText(
       if elapsed_seconds >= RunSeconds:
         Done = True
 
-    if (Scrollslep > 0):
+    if (ScrollSleep > 0):
       time.sleep(ScrollSleep)
  
   #We want to clean up all our display, but then fade back into whatever what before this function was called
