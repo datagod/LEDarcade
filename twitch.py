@@ -602,28 +602,16 @@ class Bot(commands.Bot ):
         #---------------------------------------
         # KOFI                                --
         #---------------------------------------
-        
-
         #BITS
-        if (author.upper() == 'KOFISTREAMBOT'  and "JUST THREW DOWN" in message.content.upper()):
-          print("CHAT| BITS detected")
-
-          words  = message.content.split(" ")
-          BitGiver = words[0] 
-          bits     = words[4]
-          print("CHAT|",BitGiver,"just threw down ",bits," bits")
-
-          #LED.ClearBigLED()
-          #LED.ClearBuffers()
-
+        if (author.upper() == 'KOFISTREAMBOT'  and "VISIT" in message.content.upper()):
+          print("CHAT| KofiBot detected")
           LED.StarryNightDisplayText(
-          Text1       = BitGiver + " just threw down " + bits + " bits",
-          Text2       = "Thank you " + BitGiver,
-          Text3       = "Bits are an important part of the economy.  Your contribution is appreciated!", 
+          Text1       = "KOFI"
+          Text2       = "WE APPRECIATE YOUR SUPPORT",
+          Text3       = "KOFI IS THE PREFERRED WAY TO SUPPORT THIS CHANNEL", 
           ScrollSleep = 0.01,
-          RunSeconds  = 30
+          RunSeconds  = 20
           )
-
 
 
 
