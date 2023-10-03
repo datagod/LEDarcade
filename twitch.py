@@ -598,7 +598,7 @@ class Bot(commands.Bot ):
         
         #TACO
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'StreamElements'  and "The alliance for creative outreach" in message.content.upper()):
+        if (author.upper() == 'StreamElements'  and "TACO" in message.content.upper()):
           print("CHAT| TACO detected")
           LED.StarryNightDisplayText(
           Text1       = "TACO",
@@ -1943,6 +1943,24 @@ class Bot(commands.Bot ):
       CursorH = 0
       CursorV = 0
 
+
+    #----------------------------------------
+    # STARRY NIGHT CLOCK                   --
+    #----------------------------------------
+
+    @commands.command()
+    async def taco(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Enjoy the peaceful starry sky while staring at a clock"
+      await self.Channel.send(message)
+        print("CHAT| TACO detected")
+        LED.StarryNightDisplayText(
+        Text1       = "TACO",
+        Text2       = "The Alliance for creative outreach",
+        Text3       = "visit taconetwork.org to learn all about us", 
+        ScrollSleep = 0.01,
+        RunSeconds  = 30
+        )
 
 
 
