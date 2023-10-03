@@ -606,7 +606,7 @@ class Bot(commands.Bot ):
         if (author.upper() == 'KOFISTREAMBOT'  and "VISIT" in message.content.upper()):
           print("CHAT| KofiBot detected")
           LED.StarryNightDisplayText(
-          Text1       = "KOFI"
+          Text1       = "KOFI",
           Text2       = "WE APPRECIATE YOUR SUPPORT",
           Text3       = "KOFI IS THE PREFERRED WAY TO SUPPORT THIS CHANNEL", 
           ScrollSleep = 0.01,
