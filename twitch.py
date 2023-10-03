@@ -1953,14 +1953,14 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Enjoy the peaceful starry sky while staring at a clock"
       await self.Channel.send(message)
-        print("CHAT| TACO detected")
-        LED.StarryNightDisplayText(
-        Text1       = "TACO",
-        Text2       = "The Alliance for creative outreach",
-        Text3       = "visit taconetwork.org to learn all about us", 
-        ScrollSleep = 0.01,
-        RunSeconds  = 30
-        )
+      print("CHAT| TACO detected")
+      LED.StarryNightDisplayText(
+      Text1       = "TACO",
+      Text2       = "The Alliance for creative outreach",
+      Text3       = "visit taconetwork.org to learn all about us", 
+      ScrollSleep = 0.01,
+      RunSeconds  = 30
+      )
 
 
 
