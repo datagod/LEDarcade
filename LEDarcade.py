@@ -16030,7 +16030,7 @@ def UpdateClockWithTransition(ClockSprite,hh=24,h=0,v=0,RGB=HighGreen,ShadowRGB=
     MonthSprite         = CreateMonthSprite()
     DayOfMonthSprite    = CreateDayOfMonthSprite()
 
-      
+          
 
 
     #print("ClockSprite.hhm: ",ClockSprite.hhmm, "Other:",datetime.now().strftime('%H:%M'))
@@ -16155,7 +16155,7 @@ def DisplayDigitalClock(
   ShadowRGB   = ShadowBlue,
   ZoomFactor  = 2,
   AnimationDelay = 10,
-  ScrollSleep    = 0.02,
+  ScrollSleep    = 0.01,
   RunMinutes     = 5,
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
@@ -16194,6 +16194,11 @@ def DisplayDigitalClock(
       MonthSprite         = CreateMonthSprite()
       DayOfMonthSprite    = CreateDayOfMonthSprite()
    
+      DateSprite = JoinSprite(DayOfWeekSprite,MonthSprite,4)
+      DateSprite = JoinSprite(DateSprite,DayOfMonthSprite,4)
+      DateSprite.h =  (HatWidth  // 2)  - ((DateSprite.width) // 2) + 1
+      DateSprite.v =  (v + ClockSprite.height * ZoomFactor) + 4
+        
 
 
   
@@ -16218,9 +16223,10 @@ def DisplayDigitalClock(
       
       
       #Show Custom Sprite
-      CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
-      CopySpriteToPixelsZoom(MonthSprite,      MonthH,      MonthV,      MonthRGB,       SpriteFillerRGB,1)
-      CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
+      #CopySpriteToPixelsZoom(DayOfWeekSprite,  DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB,   SpriteFillerRGB,1)
+      #CopySpriteToPixelsZoom(MonthSprite,      MonthH,      MonthV,      MonthRGB,       SpriteFillerRGB,1)
+      #CopySpriteToPixelsZoom(DayOfMonthSprite, DayOfMonthH, DayOfMonthV, DayOfMonthRGB , SpriteFillerRGB,1)
+      CopySpriteToPixelsZoom(DateSprite, DateSprite.h , DateSprite.v, DayOfMonthRGB , SpriteFillerRGB,1)
 
       
       #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)

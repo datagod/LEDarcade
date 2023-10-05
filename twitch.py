@@ -609,7 +609,7 @@ class Bot(commands.Bot ):
           Text2       = "WE APPRECIATE YOUR SUPPORT",
           Text3       = "KOFI IS THE PREFERRED WAY TO SUPPORT THIS CHANNEL", 
           ScrollSleep = 0,
-          RunSeconds  = 20
+          RunSeconds  = 30
           )
 
 
@@ -1454,7 +1454,7 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # commands                             --
+    # clock commands                       --
     #----------------------------------------
 
     @commands.command()
