@@ -16676,6 +16676,7 @@ def DisplayDigitalClock(
           ScreenArray2 = CopySpriteToScreenArrayZoom(ClockSprite,h=h,v=0,ColorTuple=(150,0,0),FillerTuple=(0,0,0),ZoomFactor=2,Fill=True)
           TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
 
+          
 
 
 
@@ -17320,7 +17321,7 @@ def DisplayDigitalClock(
         rmV = 13
       else:
         rmH = -2
-        rmV = 10
+        rmV = 13
 
 
   
@@ -17392,7 +17393,7 @@ def DisplayDigitalClock(
           if (QueueCount > 0):
             Done = True
 
-
+        time.sleep(ScrollSleep)
 
     
 

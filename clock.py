@@ -71,7 +71,7 @@ while 1==1:
       ZoomFactor = 2
 
 
-    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = ZoomFactor, AnimationDelay=10, RunMinutes = 5 )
+    LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = ZoomFactor, AnimationDelay=10, RunMinutes = 5, ScrollSleep = 0.01 )
 
 
     LED.DisplayDigitalClock(
@@ -83,9 +83,10 @@ while 1==1:
       ShadowRGB     = LED.ShadowGreen,
       ZoomFactor    = 3,
       AnimationDelay= 10,
-      RunMinutes = 5 )
+      RunMinutes = 5,
+      ScrollSleep = 0.05)
 
-    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1 )
+    LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1,ScrollSleep = 0.05 )
 
 
 

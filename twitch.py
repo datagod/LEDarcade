@@ -1542,6 +1542,28 @@ class Bot(commands.Bot ):
       
 
     #----------------------------------------
+    # Time                                 --
+    #----------------------------------------
+    @commands.command()
+    async def time(self, ctx: commands.Context):
+      #SHOW DIGITAL CLOCK
+      
+      LED.DisplayDigitalClock(
+        ClockStyle = 1,
+        CenterHoriz = True,
+        v   = 1, 
+        hh  = 24,
+        RGB = LED.LowGreen,
+        ShadowRGB     = LED.ShadowGreen,
+        ZoomFactor    = 3,
+        AnimationDelay= 10,
+        RunMinutes = 0.5,
+        ScrollSleep = 0.05)
+
+
+
+
+    #----------------------------------------
     # Follows / Followers                  --
     #----------------------------------------
 
