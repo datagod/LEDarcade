@@ -121,7 +121,7 @@ LaserB = 0
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
 HumanCount         = 5
-EnemyShipCount     = 50
+EnemyShipCount     = 5
 AddEnemyCount      = 50
 SpawnNewEnemiesTargetCount = 0
 SpawnNewHumansTargetCount  = 5
@@ -140,6 +140,7 @@ DefenderMinSpeed       = 1
 DefenderMoveUpRate     = 3
 DefenderMoveDownRate   = 3
 DefenderSpeedChangeChance  = 100
+DefenderDirection      = 1
 HumanMoveChance        = 3
 EnemyMoveSpeed         = 6
 GarbageCleanupChance   = 500
@@ -160,7 +161,7 @@ BombGravity            = 0.0198
 
 
 #Bomb
-DefenderBombVelocityH  =  0.6
+DefenderBombVelocityH  =  0.6 
 DefenderBombVelocityV  = -0.2
 BlastFactor            = 3     
 StrafeLaserStrength    = 4
@@ -184,14 +185,15 @@ EnemyCountV = 0
 EnemyCountRGB = (10,0,200)
 
 #Defender
-DefenderStartH = 2
+DefenderStartH = 32
+
 
 #change display based on display dimensions
 if(LED.HatWidth > 60):
   EnemyCountH = 36
   HumanCountH = 50
   ClockZoom = 1
-  DefenderStartH = 2
+  DefenderStartH = 32
 else:
   ClockZoom = 1
 
@@ -1272,6 +1274,7 @@ def PlayDefender(GameMaxMinutes):
   global MeltingGroundG
   global MeltingGroundB
   global DefenderSpeed
+  global DefenderDirection
 
   finished            = 'N'
   LevelCount          = 0
@@ -1475,26 +1478,26 @@ def PlayDefender(GameMaxMinutes):
     bx     = 0
     mx     = 0
     fx     = 0
-    gx     = -1
+    gx     = 0
     bwidth = Background.width    - LED.HatWidth
     mwidth = Middleground.width  - LED.HatWidth
     fwidth = Foreground.width    - LED.HatWidth
     gwidth = Ground.width        - LED.HatWidth
-    brate  = 6
-    mrate  = 4
-    frate  = 3
+    brate  = 8
+    mrate  = 6
+    frate  = 4
     grate  = 1
     DisplayH  = 0
     DisplayV  = 0
     TargetHit = False
     OldSpeed  = 0
-    
 
-    Defender = copy.deepcopy(LED.Defender)
+    Defender        = copy.deepcopy(LED.Defender)
+    DefenderReverse = copy.deepcopy(LED.DefenderReverse)
     Defender.h = DefenderStartH + (DefenderSpeed * 2)
-    Defender.v = 20
-     
-
+    Defender.v = 25
+    
+    
 
     while(1==1):
       #main counter
@@ -1556,42 +1559,64 @@ def PlayDefender(GameMaxMinutes):
       #Background
       m,r = divmod(count,brate)
       if(r == 0):
-        bx = bx + (DefenderSpeed / 2)
-        if(bx > bwidth):
-          bx = 0
+        bx = (bx + (DefenderSpeed / 2 * DefenderDirection)) % Background.width
+        #if(bx > bwidth):
+        #  bx = 0
       #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
 
 
       #Middleground
       m,r = divmod(count,mrate)
       if(r == 0):
-        mx = mx + (DefenderSpeed / 2)
-        if(mx > mwidth):
-          mx = 0
+        mx = (mx + (DefenderSpeed / 2 * DefenderDirection)) % Middleground.width
+        #if(mx > mwidth):
+        #  mx = 0
       #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
 
         
       #foreground
       m,r = divmod(count,frate)
       if(r == 0):
-        fx = fx + (DefenderSpeed / 2)
-        if(fx > fwidth):
-          fx = 0
+        fx = (fx + (DefenderSpeed / 2 * DefenderDirection)) % Foreground.width
+        #if(fx > fwidth):
+        #  fx = 0
       #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
+
+      
+
+      #Flip Defender for test purposes
+      r = random.randint(0,2000)
+      if(r == 1):
+        DefenderDirection = DefenderDirection * -1
+        print("New Direction:",DefenderDirection,"Defender.h:",Defender.h)
+        if DefenderDirection == -1:
+          Defender.h = 25
+        
+        
+
+#notes 
+# we need to find out when GX get modified if the end of the ground map is reached
+
 
 
       #ground / display
       m,r = divmod(count,grate)
       if(r == 0):
-        gx = gx + (DefenderSpeed / 2)
-        if(gx >= gwidth + LED.HatWidth ):
-          gx = 0
+        gx = (gx + (DefenderSpeed / 2 * DefenderDirection)) % Ground.width 
+
+
+        #if(gx >= gwidth + LED.HatWidth ):
+        #  gx = 0
+        #elif(gx < 0):
+        #  gx = gwidth
         DisplayH = round(gx)
       #Canvas = Ground.PaintOnCanvas(gx,0,Canvas)
 
 
-      Canvas = LED.PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
-      #Canvas = LED.RunningMan3Sprite.PaintAnimatedToCanvas(-6,14,Canvas)
+      Canvas = LED.PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas,DefenderDirection)
+      #print("bx mx fx gx:",round(bx),round(mx),round(fx),round(gx)," Direction:",DefenderDirection, "Count:",count,brate,mrate,frate,grate)
+      
+      
 
       #Update DefenderPlayfield
       DefenderPlayfield.DisplayH = round(gx)
@@ -1660,12 +1685,7 @@ def PlayDefender(GameMaxMinutes):
           if(DisplayH <=  hH  <= DisplayMaxH):
             Canvas = Humans[i].PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
 
-          #Place Human on playfield
-          
-          #for some reason when we erase the sprite, it doesn't draw anymore on the canvas
-          #DefenderPlayfield = Humans[i].EraseSpriteFromPlayfield2(DefenderPlayfield)
-          #DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[i].h,Humans[i].v,Humans[i])
-
+         
 
       #-------------------------------
       #-- Move EnemyShips           --
@@ -1789,18 +1809,19 @@ def PlayDefender(GameMaxMinutes):
       #defender needs to avoid the ground
       #shoot enemies
       #pick up humans
-      GroundV = 0
+      #GroundV = 0
       
       DefenderPlayfield.DisplayH = round(gx)
       DefenderPlayfield.DisplayV = 0
 
 
+      #move defender up or down randomly
       if(random.randint(0,25) == 1):
         Defender.v = Defender.v -1
       elif(random.randint(0,25) == 1):
         Defender.v = Defender.v +1
 
-      
+      #speed up defender randomly
       if(random.randint(1,DefenderSpeedChangeChance) == 1):
         if (random.randint(1,2) == 1):
           DefenderSpeed = DefenderSpeed + DefenderSpeedIncrement
@@ -1812,7 +1833,8 @@ def PlayDefender(GameMaxMinutes):
         if(DefenderSpeed > DefenderMaxSpeed):
           DefenderSpeed = DefenderMaxSpeed
 
-        Defender.h = DefenderStartH + (DefenderSpeed * 2)
+        #place Defender furhter ahead on screen if moving faster
+        #Defender.h = Defender.h + (DefenderSpeed * DefenderDirection * 2)
 
           
       ScanV = Defender.v + 10
@@ -1820,8 +1842,9 @@ def PlayDefender(GameMaxMinutes):
         ScanV = LED.HatHeight -2
 
       ScanH = round(gx + 5)
-      if(ScanH >= DefenderPlayfield.width -1):
+      if(ScanH >= DefenderPlayfield.width -1) or (ScanH <= 0):
         ScanH = 0
+      
 
       if(Ground.map[ScanV][ScanH] != (0,0,0)): 
         if(random.randint(0,3) == 1):
@@ -1866,6 +1889,14 @@ def PlayDefender(GameMaxMinutes):
             elif(EnemyV < Defender.v):
               Defender.v = Defender.v - 1
 
+
+            DefenderSpeed = DefenderSpeed - DefenderSpeedIncrement
+            if(DefenderSpeed < DefenderMinSpeed):
+              DefenderSpeed = DefenderMinSpeed
+            #Defender.h = Defender.h + (DefenderSpeed * 2 * DefenderDirection)
+
+
+
             RequestBombDrop = True
 
       #Shoot ground laser when X ships left
@@ -1885,7 +1916,7 @@ def PlayDefender(GameMaxMinutes):
           DefenderSpeed = DefenderSpeed - DefenderSpeedIncrement
           if(DefenderSpeed < DefenderMinSpeed):
             DefenderSpeed = DefenderMinSpeed
-          Defender.h = DefenderStartH + (DefenderSpeed * 2)
+          #Defender.h = Defender.h + (DefenderSpeed * 2 * DefenderDirection)
         
 
 
@@ -1901,19 +1932,31 @@ def PlayDefender(GameMaxMinutes):
       #--------------------------------
       #-- Paint defender on canvas   --
       #--------------------------------
-
-      Canvas = LED.Defender.PaintAnimatedToCanvas(Defender.h,Defender.v,Canvas)
       
-      #paint jet trail
-      if(DefenderSpeed > 1):
-        for x in range(1,round(DefenderSpeed) * 2):
-          #graphics.DrawLine(Canvas,Defender.h, Defender.v +2 , Defender.h - (DefenderSpeed ) , Defender.v +2,  graphics.Color(20 + DefenderSpeed * 15,0,0))
-          r =  175 - x*25
-          if(r <0):
-           r = 0
-          Canvas.SetPixel(Defender.h - x+1, Defender.v + 2,r,0,0)
+
+      #paint normal Defender and Jet Trails
+      if(DefenderDirection == 1):
+        Canvas = LED.Defender.PaintAnimatedToCanvas(Defender.h,Defender.v,Canvas)
+        
+        if(DefenderSpeed > 1):
+          for x in range(1,round(DefenderSpeed) * 2):
+            r =  175 - x*25
+            if(r <0):
+              r = 0
+            Canvas.SetPixel(Defender.h - x+1, Defender.v + 2,r,0,0)
 
 
+      #Paint reverse Defender and Jet Trails
+      else:
+        #we only use DefenderReverse to draw the image, all other values are tracked by Defender original sprite
+        Canvas = LED.DefenderReverse.PaintAnimatedToCanvas(Defender.h,Defender.v,Canvas)
+      
+        if(DefenderSpeed > 1):
+          for x in range(1,round(DefenderSpeed) * 2):
+            r =  175 - x*25
+            if(r <0):
+              r = 0
+            Canvas.SetPixel(Defender.h + Defender.width +x-2, Defender.v + 2,r,0,0)
 
 
 
@@ -1932,9 +1975,9 @@ def PlayDefender(GameMaxMinutes):
           if(random.randint(0,BombDropChance) == 1):
             DefenderBomb.alive = True
             RequestBombDrop = False
-            DefenderBomb.h = Defender.h + 3
+            DefenderBomb.h = Defender.h + (3 * DefenderDirection)
             DefenderBomb.v = Defender.v + 1
-            DefenderBomb.velocityH = DefenderBombVelocityH
+            DefenderBomb.velocityH = DefenderBombVelocityH * DefenderDirection
             DefenderBomb.velocityV = DefenderBombVelocityV
             DefenderBomb.bounces = 0
           
@@ -1949,7 +1992,7 @@ def PlayDefender(GameMaxMinutes):
           #bombs requested are more direct, to hit aliens hiding in the rocks
           DefenderBomb.h = Defender.h + 2
           DefenderBomb.v = Defender.v + 1
-          DefenderBomb.velocityH = DefenderBombVelocityH / 2
+          DefenderBomb.velocityH = DefenderBombVelocityH / 2 * DefenderDirection
           DefenderBomb.velocityV = DefenderBombVelocityV * -3
           DefenderBomb.bounces = 0
 

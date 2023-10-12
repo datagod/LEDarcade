@@ -3466,8 +3466,8 @@ def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
   
 
 
-def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
-  
+def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
+  #DirectionOfTravel 1 = East, -1 = West
 
   bh = round(bh)
   mh = round(mh)
@@ -3478,20 +3478,19 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   gwidth = Ground.width
   for x in range (0,HatWidth):
     for y in range (0,HatHeight):
-
-
-      #wrap around the ground
-      if(x+gh >= gwidth):
-        rgb = Ground.map[y][(x + gh) - gwidth ]
-      else:
-        rgb = Ground.map[y][x+gh]
+      #wrap around the ground (using modulo)
+      virtual_x = (x + gh) % gwidth
+      rgb = Ground.map[y][virtual_x]
 
       if(rgb == (0,0,0)):
-        rgb = Foreground.map[y][x+fh]
+        rgb = Foreground.map[y][(x+fh) % Foreground.width]
         if(rgb == (0,0,0)):
-          rgb = Middleground.map[y][x+mh]
+          rgb = Middleground.map[y][(x+mh) % Middleground.width]
           if(rgb == (0,0,0)):
-           rgb = Background.map[y][x+bh]
+            rgb = Background.map[y][(x+bh) % Background.width]
+
+
+
 
       #if the pixel is not black, set the canvas
       if (rgb != (0,0,0)):
@@ -11013,6 +11012,107 @@ DefenderMap.map= (
 
 
 DefenderMap.CopyMapToColorSprite(TheSprite=Defender)
+
+
+
+
+
+
+
+
+DefenderReverse = ColorAnimatedSprite(
+  h=0, 
+  v=0, 
+  name="DefenderReverse", 
+  width  = 7, 
+  height = 4, 
+  framerate=1,
+  grid=[]  )
+
+                 
+
+DefenderReverseMap = TextMap(
+  h      = 1,
+  v      = 1,
+  width  = DefenderReverse.width, 
+  height = DefenderReverse.height
+  )
+
+
+DefenderReverseMap.ColorList = {
+  ' ' : 0,
+  '-' : 29, #dark pink
+  '.' : 2, 
+  'o' : 1, 
+  'O' : 32,
+  '#' : 5,
+  '@' : 6,
+  '6' : 7,
+  '7' : 8,
+  
+
+}
+
+
+DefenderReverseMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "    -  ",
+  " o...# ",
+  "       "
+  
+  
+  )
+
+
+DefenderReverseMap.CopyMapToColorSprite(TheSprite=DefenderReverse)
+
+
+
+DefenderReverseMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "    -  ",
+  " o...@ ",
+  "       "
+  
+  
+  )
+
+
+DefenderReverseMap.CopyMapToColorSprite(TheSprite=DefenderReverse)
+
+
+
+
+
+DefenderReverseMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "    -  ",
+  " o...6 ",
+  "       "
+  
+  
+  )
+
+
+DefenderReverseMap.CopyMapToColorSprite(TheSprite=DefenderReverse)
+
+
+DefenderReverseMap.map= (
+  #0.........1.........2.........3.........4....
+  "       ",
+  "    -  ",
+  " o...7 ",
+  "       "
+  
+  
+  )
+
+
+DefenderReverseMap.CopyMapToColorSprite(TheSprite=DefenderReverse)
+
 
 
 
