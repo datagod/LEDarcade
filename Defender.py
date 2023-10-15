@@ -120,8 +120,8 @@ LaserB = 0
 
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
-HumanCount         = 5
-EnemyShipCount     = 5
+HumanCount         = 50
+EnemyShipCount     = 50
 AddEnemyCount      = 50
 SpawnNewEnemiesTargetCount = 0
 SpawnNewHumansTargetCount  = 5
@@ -132,15 +132,21 @@ RedrawGroundWaveCount      = 5
 
 
 #Movement
-DefenderSpeed          = 1.3
-OldSpeed               = 0
-DefenderSpeedIncrement = 0.25
-DefenderMaxSpeed       = 5
-DefenderMinSpeed       = 1
-DefenderMoveUpRate     = 3
-DefenderMoveDownRate   = 3
-DefenderSpeedChangeChance  = 100
-DefenderDirection      = 1
+DefenderSpeed              = 1
+ReversingAdjustmentSpeed   = 0.10
+ReversingSteps             = 64
+OldSpeed                   = 0
+SlowingDown                = 0
+DefenderSpeedIncrement     = 0.25
+DefenderMaxSpeed           = 8
+DefenderMinSpeed           = 1
+DefenderMoveUpRate         = 2
+DefenderMoveDownRate       = 2
+ReversingChance            = 1500
+DefenderSpeedChangeChance  = 20
+DefenderDirection          = 1
+DefenderReversing          = 0
+UpDownChance               = 25
 HumanMoveChance        = 3
 EnemyMoveSpeed         = 6
 GarbageCleanupChance   = 500
@@ -157,7 +163,9 @@ GroundParticleGravity  = 0.05
 HumanParticleGravity   = 0.05
 EnemyParticleGravity   = 0.0198
 BombGravity            = 0.0198
-
+DevenderReversing      = 0
+CurrentH               = 0
+TargetH                = 0
 
 
 #Bomb
@@ -185,7 +193,7 @@ EnemyCountV = 0
 EnemyCountRGB = (10,0,200)
 
 #Defender
-DefenderStartH = 32
+DefenderStartH = 4
 
 
 #change display based on display dimensions
@@ -193,7 +201,7 @@ if(LED.HatWidth > 60):
   EnemyCountH = 36
   HumanCountH = 50
   ClockZoom = 1
-  DefenderStartH = 32
+  DefenderStartH = 2
 else:
   ClockZoom = 1
 
@@ -315,8 +323,15 @@ def LookForTargets2(H,V,TargetName,Defender, DefenderPlayfield,Canvas,EnemyShips
   #HV are the current upper left hand corner of the displayed playfield window
   #Defender.h is relative to the LED display (64x32)
 
-  ScanStartH = H + Defender.width + Defender.h
-  ScanStopH  = ScanStartH + 40
+  if (DefenderDirection == 1):
+    ScanStartH = H + Defender.width + Defender.h
+    ScanStopH  = ScanStartH + 40
+  else:
+    ScanStartH = H - Defender.h
+    ScanStopH  = ScanStartH + 40
+    
+
+
   ScanStartV = Defender.v -5
   ScanStopV  = Defender.v + 8
 
@@ -575,12 +590,20 @@ def ShootTarget(PlayfieldH, PlayfieldV, TargetName, TargetH,TargetV,Defender, De
     DefenderPlayfield.map[TargetV][TargetH].alive = False
     TargetHit = True
     #we want to always shoot straight from the Defender.  If it hits, good. If not, too bad.
-    graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , TargetH - DefenderPlayfield.DisplayH, TargetV, graphics.Color(255,0,0))
+    if(DefenderDirection == 0):
+      graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , TargetH - DefenderPlayfield.DisplayH, TargetV, graphics.Color(255,0,0))
+    else:
+      graphics.DrawLine(Canvas,Defender.h - 5, Defender.v +2 , TargetH , TargetV, graphics.Color(255,0,0))
+
 
   else:
     #Laser misses, draw to end of screen
-    graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , LED.HatWidth , TargetV, graphics.Color(255,0,0))
+    if(DefenderDirection == 0):
+      graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , LED.HatWidth , TargetV, graphics.Color(255,0,0))
+    else:
+      graphics.DrawLine(Canvas,Defender.h - 5, Defender.v +2 , 0 , TargetV, graphics.Color(255,0,0))
 
+      
   
   return DefenderPlayfield,TargetHit
 
@@ -1275,6 +1298,7 @@ def PlayDefender(GameMaxMinutes):
   global MeltingGroundB
   global DefenderSpeed
   global DefenderDirection
+  global DefenderReversing
 
   finished            = 'N'
   LevelCount          = 0
@@ -1490,7 +1514,7 @@ def PlayDefender(GameMaxMinutes):
     DisplayH  = 0
     DisplayV  = 0
     TargetHit = False
-    OldSpeed  = 0
+    
 
     Defender        = copy.deepcopy(LED.Defender)
     DefenderReverse = copy.deepcopy(LED.DefenderReverse)
@@ -1584,14 +1608,6 @@ def PlayDefender(GameMaxMinutes):
 
       
 
-      #Flip Defender for test purposes
-      r = random.randint(0,2000)
-      if(r == 1):
-        DefenderDirection = DefenderDirection * -1
-        print("New Direction:",DefenderDirection,"Defender.h:",Defender.h)
-        if DefenderDirection == -1:
-          Defender.h = 25
-        
         
 
 #notes 
@@ -1816,25 +1832,30 @@ def PlayDefender(GameMaxMinutes):
 
 
       #move defender up or down randomly
-      if(random.randint(0,25) == 1):
-        Defender.v = Defender.v -1
-      elif(random.randint(0,25) == 1):
-        Defender.v = Defender.v +1
+      if (DefenderReversing == 0):
+        if(random.randint(0,UpDownChance) == 1):
+          Defender.v = Defender.v -1
+        elif(random.randint(0,UpDownChance) == 1):
+          Defender.v = Defender.v +1
 
-      #speed up defender randomly
-      if(random.randint(1,DefenderSpeedChangeChance) == 1):
+      
+      
+      #speed up defender randomly, but only if not in a reversing mode
+      if(random.randint(1,DefenderSpeedChangeChance) == 1) and (DefenderReversing == 0):
         if (random.randint(1,2) == 1):
           DefenderSpeed = DefenderSpeed + DefenderSpeedIncrement
         else:
           DefenderSpeed = DefenderSpeed - DefenderSpeedIncrement
-
         if(DefenderSpeed < DefenderMinSpeed):
           DefenderSpeed = DefenderMinSpeed
         if(DefenderSpeed > DefenderMaxSpeed):
           DefenderSpeed = DefenderMaxSpeed
 
-        #place Defender furhter ahead on screen if moving faster
-        #Defender.h = Defender.h + (DefenderSpeed * DefenderDirection * 2)
+        #place Defender further ahead on screen if moving faster
+        if (DefenderDirection == 1):
+          Defender.h = DefenderStartH +  (DefenderSpeed *2)
+        else:
+          Defender.h = LED.HatWidth - DefenderStartH - Defender.width - (DefenderSpeed * 2)
 
           
       ScanV = Defender.v + 10
@@ -1929,6 +1950,87 @@ def PlayDefender(GameMaxMinutes):
       
 
 
+
+
+
+
+      #--------------------------------
+      #-- Reverse Defender           --
+      #--------------------------------
+      
+      '''
+      - record current h
+      - record target h
+      - turn on "reversing" indicator
+      
+      - flip ship
+      - count from current_h to target_h
+        - determine speed incredments needed to slow down from current speed, reach 0, then increase to opposite direction speed
+        - each increment, change current h until it is target h
+      
+      '''
+
+      if (random.randint(0,ReversingChance) == 0) and (DefenderReversing == 0):
+        DefenderReversing = 1
+        CurrentH          = Defender.h
+        OldSpeed          = DefenderSpeed
+        SlowingDown       = 1
+
+        if(DefenderDirection == 1):
+          TargetH = LED.HatWidth - DefenderStartH
+        else:
+          TargetH = DefenderStartH
+        MovementH = round(abs(CurrentH - TargetH) / ReversingSteps)
+        DefenderDirection = DefenderDirection * -1
+
+     
+      if(DefenderReversing == 1):
+
+        #ground / display
+        m,r = divmod(count,2)
+        if(r == 0):
+          gx = (gx + (DefenderSpeed / 2 * DefenderDirection)) % Ground.width 
+
+
+        #we want to slow down until we reach the minimum, then start going back up until OldSpeed
+        if (SlowingDown == 1):
+          DefenderSpeed = DefenderSpeed - ReversingAdjustmentSpeed
+        else:
+          DefenderSpeed = DefenderSpeed + ReversingAdjustmentSpeed
+       
+        
+        Defender.h = Defender.h + (MovementH * DefenderDirection * -1)
+          
+         #Keep h and speed in boundaries
+        if Defender.h < DefenderStartH:
+          Defender.h = DefenderStartH
+        if Defender.h > (LED.HatWidth - DefenderStartH):
+          Defender.h = (LED.HatWidth - DefenderStartH - Defender.width)
+
+        if(DefenderSpeed < DefenderMinSpeed):
+          DefenderSpeed = DefenderMinSpeed
+          SlowingDown = 0
+        if(DefenderSpeed > OldSpeed):
+          DefenderSpeed = OldSpeed
+          SlowingDown = 0
+
+          
+        #Stop reversing if at the target distance
+        if(abs(Defender.h - TargetH) <= Defender.width ):
+          DefenderReversing = 0
+          #DefenderSpeed     = 1
+
+        #print("Defender.h CurrentH TargetH MovementH DefenderSpeed DefenderReversing :",Defender.h,CurrentH,TargetH,MovementH,DefenderSpeed,DefenderReversing)         
+          
+
+
+
+
+
+
+
+
+
       #--------------------------------
       #-- Paint defender on canvas   --
       #--------------------------------
@@ -1959,6 +2061,9 @@ def PlayDefender(GameMaxMinutes):
             Canvas.SetPixel(Defender.h + Defender.width +x-2, Defender.v + 2,r,0,0)
 
 
+      
+
+      
 
 
       #--------------------------------
@@ -2087,21 +2192,9 @@ def PlayDefender(GameMaxMinutes):
         Canvas = LED.CopySpriteToCanvasZoom(HumanCountSprite,HumanCountH,HumanCountV,(HumanCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
 
     
+   
 
-
-     
-
-      #Removed to clean up screen clutter      
-      #Only change display if the count changes
-      #if(OldSpeed != DefenderSpeed):
-      #  Canvas, SpeedSprite = DisplayCount(EnemyCountH - 22,0,(0,100,0),'S',round(DefenderSpeed,2),Canvas)
-      #  OldSpeed = DefenderSpeed
-       
-      #else:
-      #  Canvas = LED.CopySpriteToCanvasZoom(SpeedSprite,EnemyCountH - 22,0,(0,100,0),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
-
-
-
+      
 
 
       #--------------------------------
@@ -2257,32 +2350,6 @@ def PlayDefender(GameMaxMinutes):
             j = j + 1
                 
 
-      #delete old bomb
-          
-          
-
-      #humans and their particles
-      #DeletedHumans = 0
-      #j = 0
-      #if(random.randint(0,GarbageCleanupChance) == 1):
-      #  for i in range (0,HumanCount):
-          
-      #    H = Humans[j].h 
-      #    V = Humans[j].v 
-          
-      #    DeleteH = DisplayH - LED.HatWidth
-          
-      #    #if enemy is dead and is off screen, nuke them
-      #    if(Humans[j].alive == False):
-      #      #check if EnemyShip is in currently NOT in displayed area
-            
-      #      if(H < DeleteH or H > DeleteH + LED.HatWidth):
-      #        del Humans[j]
-      #        DeletedHumans = DeletedHumans + 1
-      #        j = j - 1
-          
-      #    j = j + 1
-
 
 
       DeletedHumans = 0
@@ -2312,16 +2379,7 @@ def PlayDefender(GameMaxMinutes):
 
 
 
-        #print("Garbage cleanup EnemyShipCount:",EnemyShipCount," HumanCount:",HumanCount)
-      
-
-
-
-
-
-
-      #if(random.randint(0,50) == 1):
-      #  DebugPlayfield(DefenderPlayfield.map,gx,0,64,32)
+        
 
 
 
