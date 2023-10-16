@@ -1059,7 +1059,7 @@ class Bot(commands.Bot ):
         ShadowRGB        = LED.ShadowGreen,
         ZoomFactor       = 2,
         AnimationDelay   = self.AnimationDelay,
-        RunMinutes       = 1,
+        RunMinutes       = 5,
         EventQueue       = EventQueue
         )
       print("Clock function completed")

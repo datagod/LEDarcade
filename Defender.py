@@ -120,9 +120,9 @@ LaserB = 0
 
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
-HumanCount         = 50
-EnemyShipCount     = 50
-AddEnemyCount      = 50
+HumanCount         = 5
+EnemyShipCount     = 5
+AddEnemyCount      = 5
 SpawnNewEnemiesTargetCount = 0
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
@@ -1630,7 +1630,7 @@ def PlayDefender(GameMaxMinutes):
 
 
       Canvas = LED.PaintFourLayerCanvas(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas,DefenderDirection)
-      #print("bx mx fx gx:",round(bx),round(mx),round(fx),round(gx)," Direction:",DefenderDirection, "Count:",count,brate,mrate,frate,grate)
+      #print("bx mx fx gx:",round(bx),round(mx),round(fx),round(gx)," Direction:",DefenderDirection, "Count:",count)
       
       
 
@@ -1999,7 +1999,8 @@ def PlayDefender(GameMaxMinutes):
           DefenderSpeed = DefenderSpeed + ReversingAdjustmentSpeed
        
         
-        Defender.h = Defender.h + (MovementH * DefenderDirection * -1)
+        Defender.h = Defender.h + (MovementH * DefenderDirection * -1) % LED.HatWidth
+        
           
          #Keep h and speed in boundaries
         if Defender.h < DefenderStartH:
@@ -2020,7 +2021,7 @@ def PlayDefender(GameMaxMinutes):
           DefenderReversing = 0
           #DefenderSpeed     = 1
 
-        #print("Defender.h CurrentH TargetH MovementH DefenderSpeed DefenderReversing :",Defender.h,CurrentH,TargetH,MovementH,DefenderSpeed,DefenderReversing)         
+        print("Defender.h CurrentH TargetH MovementH DefenderSpeed DefenderReversing :",Defender.h,CurrentH,TargetH,MovementH,DefenderSpeed,DefenderReversing)         
           
 
 
