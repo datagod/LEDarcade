@@ -120,9 +120,9 @@ LaserB = 0
 
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
-HumanCount         = 5
-EnemyShipCount     = 5
-AddEnemyCount      = 5
+HumanCount         = 15
+EnemyShipCount     = 25
+AddEnemyCount      = 25
 SpawnNewEnemiesTargetCount = 0
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
@@ -2021,7 +2021,7 @@ def PlayDefender(GameMaxMinutes):
           DefenderReversing = 0
           #DefenderSpeed     = 1
 
-        print("Defender.h CurrentH TargetH MovementH DefenderSpeed DefenderReversing :",Defender.h,CurrentH,TargetH,MovementH,DefenderSpeed,DefenderReversing)         
+        #print("Defender.h CurrentH TargetH MovementH DefenderSpeed DefenderReversing :",Defender.h,CurrentH,TargetH,MovementH,DefenderSpeed,DefenderReversing)         
           
 
 
