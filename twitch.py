@@ -1014,24 +1014,26 @@ class Bot(commands.Bot ):
             
         LED.ClearBigLED()
 
-        await LED.DisplayTwitchTimer(
-          CenterHoriz = True,
-          CenterVert  = False,
-          h   = 0,
-          v   = 1, 
-          hh  = 24,
-          RGB              = LED.LowGreen,
-          ShadowRGB        = LED.ShadowGreen,
-          ZoomFactor       = 3,
-          AnimationDelay   = self.AnimationDelay,
-          RunMinutes       = 1,
-          StartDateTimeUTC = StreamStartedDateTime,
-          HHMMSS           = StreamDurationHHMMSS,
-          EventQueue       = EventQueue
-          )
-        print("Returned back from DisplayTwitchTimer")
-      else:
-        print("Timer is not yet finished")
+        if(StreamActive == True):
+
+          await LED.DisplayTwitchTimer(
+            CenterHoriz = True,
+            CenterVert  = False,
+            h   = 0,
+            v   = 1, 
+            hh  = 24,
+            RGB              = LED.LowGreen,
+            ShadowRGB        = LED.ShadowGreen,
+            ZoomFactor       = 3,
+            AnimationDelay   = self.AnimationDelay,
+            RunMinutes       = 1,
+            StartDateTimeUTC = StreamStartedDateTime,
+            HHMMSS           = StreamDurationHHMMSS,
+            EventQueue       = EventQueue
+            )
+          print("Returned back from DisplayTwitchTimer")
+        else:
+          print("Timer is not yet finished")
         
 
 

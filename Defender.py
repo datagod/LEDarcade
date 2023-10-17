@@ -1999,7 +1999,7 @@ def PlayDefender(GameMaxMinutes):
           DefenderSpeed = DefenderSpeed + ReversingAdjustmentSpeed
        
         
-        Defender.h = Defender.h + (MovementH * DefenderDirection * -1) % LED.HatWidth
+        Defender.h = Defender.h + (MovementH * DefenderDirection * -1) 
         
           
          #Keep h and speed in boundaries
