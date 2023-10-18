@@ -138,10 +138,10 @@ ReversingSteps             = 64
 OldSpeed                   = 0
 SlowingDown                = 0
 DefenderSpeedIncrement     = 0.25
-DefenderMaxSpeed           = 8
-DefenderMinSpeed           = 1
-DefenderMoveUpRate         = 2
-DefenderMoveDownRate       = 2
+DefenderMaxSpeed           = 16
+DefenderMinSpeed           = 2
+DefenderMoveUpRate         = 10
+DefenderMoveDownRate       = 10
 ReversingChance            = 1500
 DefenderSpeedChangeChance  = 20
 DefenderDirection          = 1
@@ -1584,28 +1584,22 @@ def PlayDefender(GameMaxMinutes):
       m,r = divmod(count,brate)
       if(r == 0):
         bx = (bx + (DefenderSpeed / 2 * DefenderDirection)) % Background.width
-        #if(bx > bwidth):
-        #  bx = 0
-      #Canvas = Background.PaintOnCanvas(bx,0,Canvas)
-
+        if(bx < 0 ):
+          bx = bx + Background.width
 
       #Middleground
       m,r = divmod(count,mrate)
       if(r == 0):
         mx = (mx + (DefenderSpeed / 2 * DefenderDirection)) % Middleground.width
-        #if(mx > mwidth):
-        #  mx = 0
-      #Canvas = Middleground.PaintOnCanvas(mx,0,Canvas)
-
+        if(mx < 0 ):
+          mx = mx + Middleground.width
         
       #foreground
       m,r = divmod(count,frate)
       if(r == 0):
         fx = (fx + (DefenderSpeed / 2 * DefenderDirection)) % Foreground.width
-        #if(fx > fwidth):
-        #  fx = 0
-      #Canvas = Foreground.PaintOnCanvas(fx,0,Canvas)
-
+        if(fx < 0 ):
+          fx = fx + Foreground.width
       
 
         
