@@ -233,9 +233,9 @@ class Bot(commands.Bot ):
     SecondsToWaitChat   = 30
     LastStreamCheckTime = time.time()
     LastChatInfoTime    = time.time()
-    MinutesToWaitBeforeCheckingStream = 1       #check the stream this often
+    MinutesToWaitBeforeCheckingStream = 5       #check the stream this often
     MinutesToWaitBeforeChatInfo       = 180     #send info message to viewers about clock commands
-    MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
+    MinutesToWaitBeforeClosing        = 1       #close chat after X minutes of inactivity
     #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
     SendStartupMessage  = True

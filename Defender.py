@@ -2219,6 +2219,7 @@ def PlayDefender(GameMaxMinutes):
 
 
         #Capture new ground and sprites BEFORE
+        print("bx mx fx gx:",bx,mx,fx,gx)
         ScreenA = LED.PaintFourLayerScreenArray(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
         ScreenA = LED.CopySpriteToScreenArrayZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,ZoomFactor=ClockZoom,InputScreenArray=ScreenA)
         ScreenA = LED.CopySpriteToScreenArrayZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,InputScreenArray=ScreenA)
