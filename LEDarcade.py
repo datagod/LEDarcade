@@ -3518,22 +3518,17 @@ def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Gro
 
   for x in range (0,HatWidth):
     for y in range (0,HatHeight):
-
-
-      #wrap around the ground
-      if(x+gh >= gwidth):
-        rgb = Ground.map[y][(x + gh) - gwidth ]
-      else:
-        rgb = Ground.map[y][x+gh]
+      virtual_x = (x + gh) % gwidth
+      rgb = Ground.map[y][virtual_x]
 
       if(rgb == (0,0,0)):
-        rgb = Foreground.map[y][x+fh]
+        rgb = Foreground.map[y][(x+fh) % Foreground.width]
         if(rgb == (0,0,0)):
-          rgb = Middleground.map[y][x+mh]
+          rgb = Middleground.map[y][(x+mh) % Middleground.width]
           if(rgb == (0,0,0)):
-           rgb = Background.map[y][x+bh]
+            rgb = Background.map[y][(x+bh) % Background.width]
 
-        #if the pixel is not black, set the ScreenArray
+      #if the pixel is not black, set the ScreenArray
       if (rgb != (0,0,0)):
         r,g,b = rgb
         ScreenArray[y][x] = (r,g,b)

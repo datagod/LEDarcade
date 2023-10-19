@@ -126,20 +126,20 @@ AddEnemyCount      = 25
 SpawnNewEnemiesTargetCount = 0
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
-RedrawGroundWaveCount      = 5
+RedrawGroundWaveCount      = 2
 
 
 
 
 #Movement
 DefenderSpeed              = 1
-ReversingAdjustmentSpeed   = 0.10
+ReversingAdjustmentSpeed   = 0.25
 ReversingSteps             = 64
 OldSpeed                   = 0
 SlowingDown                = 0
 DefenderSpeedIncrement     = 0.25
 DefenderMaxSpeed           = 16
-DefenderMinSpeed           = 2
+DefenderMinSpeed           = 0.5
 DefenderMoveUpRate         = 10
 DefenderMoveDownRate       = 10
 ReversingChance            = 1500
@@ -171,7 +171,7 @@ TargetH                = 0
 #Bomb
 DefenderBombVelocityH  =  0.6 
 DefenderBombVelocityV  = -0.2
-BlastFactor            = 3     
+BlastFactor            = 4     
 StrafeLaserStrength    = 4
 LaserTurnOffChance     = 20
 BombDropChance         = 75
