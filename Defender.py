@@ -123,10 +123,10 @@ MaxMountainHeight  = 16
 HumanCount         = 15
 EnemyShipCount     = 25
 AddEnemyCount      = 25
-SpawnNewEnemiesTargetCount = 0
+SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
-RedrawGroundWaveCount      = 2
+RedrawGroundWaveCount      = 5
 
 
 
@@ -138,15 +138,15 @@ ReversingSteps             = 64
 OldSpeed                   = 0
 SlowingDown                = 0
 DefenderSpeedIncrement     = 0.25
-DefenderMaxSpeed           = 16
-DefenderMinSpeed           = 0.5
+DefenderMaxSpeed           = 7
+DefenderMinSpeed           = 1
 DefenderMoveUpRate         = 10
 DefenderMoveDownRate       = 10
 ReversingChance            = 1500
-DefenderSpeedChangeChance  = 20
+DefenderSpeedChangeChance  = 100
 DefenderDirection          = 1
 DefenderReversing          = 0
-UpDownChance               = 25
+UpDownChance               = 150
 HumanMoveChance        = 3
 EnemyMoveSpeed         = 6
 GarbageCleanupChance   = 500
@@ -172,7 +172,7 @@ TargetH                = 0
 DefenderBombVelocityH  =  0.6 
 DefenderBombVelocityV  = -0.2
 BlastFactor            = 4     
-StrafeLaserStrength    = 4
+StrafeLaserStrength    = 5
 LaserTurnOffChance     = 20
 BombDropChance         = 75
 RequestBombDrop        = False
@@ -320,15 +320,18 @@ def ScanFarAway(H,V,Defender,DefenderPlayfield):
 
 
 def LookForTargets2(H,V,TargetName,Defender, DefenderPlayfield,Canvas,EnemyShips):
+  #Draw a box, scan each location and make a list of enemies
+  
   #HV are the current upper left hand corner of the displayed playfield window
   #Defender.h is relative to the LED display (64x32)
+
 
   if (DefenderDirection == 1):
     ScanStartH = H + Defender.width + Defender.h
     ScanStopH  = ScanStartH + 40
   else:
-    ScanStartH = H - Defender.h
-    ScanStopH  = ScanStartH + 40
+    ScanStartH = H 
+    ScanStopH  = ScanStartH + 40 + Defender.h
     
 
 
@@ -590,18 +593,18 @@ def ShootTarget(PlayfieldH, PlayfieldV, TargetName, TargetH,TargetV,Defender, De
     DefenderPlayfield.map[TargetV][TargetH].alive = False
     TargetHit = True
     #we want to always shoot straight from the Defender.  If it hits, good. If not, too bad.
-    if(DefenderDirection == 0):
-      graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , TargetH - DefenderPlayfield.DisplayH, TargetV, graphics.Color(255,0,0))
+    if(DefenderDirection == -1):
+      graphics.DrawLine(Canvas,Defender.h , Defender.v +2 , TargetH - DefenderPlayfield.DisplayH, TargetV, graphics.Color(255,0,0))
     else:
-      graphics.DrawLine(Canvas,Defender.h - 5, Defender.v +2 , TargetH , TargetV, graphics.Color(255,0,0))
+      graphics.DrawLine(Canvas,Defender.h + 7, Defender.v +2 , TargetH , TargetV, graphics.Color(255,0,0))
 
 
   else:
     #Laser misses, draw to end of screen
-    if(DefenderDirection == 0):
+    if(DefenderDirection == 1):
       graphics.DrawLine(Canvas,Defender.h + 5, Defender.v +2 , LED.HatWidth , TargetV, graphics.Color(255,0,0))
     else:
-      graphics.DrawLine(Canvas,Defender.h - 5, Defender.v +2 , 0 , TargetV, graphics.Color(255,0,0))
+      graphics.DrawLine(Canvas,Defender.h , Defender.v +2 , 0 , TargetV, graphics.Color(255,0,255))
 
       
   
@@ -1412,15 +1415,15 @@ def PlayDefender(GameMaxMinutes):
   Middleground = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text3RGB,(0,0,0),ZoomFactor=1,Fill=False,Layer=Middleground)
 
   
-  TheBanner1 = LED.CreateBannerSprite("X")
+  TheBanner1 = LED.CreateBannerSprite("HELP!")
   h1         = round(Ground.width * 0.25)
   v1         = LED.HatHeight - (TheBanner1.height * 3)
-  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text1RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Ground)
-  TheBanner1 = LED.CreateBannerSprite("Y")
+  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text1RGB,(0,0,0),ZoomFactor=2,Fill=False,Layer=Ground)
+  TheBanner1 = LED.CreateBannerSprite("S.O.S.")
   h1         = round(Ground.width * 0.50)
   v1         = LED.HatHeight - (TheBanner1.height * 3)
-  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text2RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Ground)
-  TheBanner1 = LED.CreateBannerSprite("Z")
+  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text2RGB,(0,0,0),ZoomFactor=2,Fill=False,Layer=Ground)
+  TheBanner1 = LED.CreateBannerSprite("argh!!!")
   h1         = round(Ground.width * 0.75)
   v1         = LED.HatHeight - (TheBanner1.height * 3)
   Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text3RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Ground)
@@ -1740,7 +1743,7 @@ def PlayDefender(GameMaxMinutes):
               
               
               #Move towards defender if not afraid
-              if(EnemyShips[i].afraid == True):
+              if(EnemyShips[i].afraid == True) and (EnemyAliveCount >= 5):
                 EnemyShips[i].direction = LED.PointAwayFromObject8Way(OldH,OldV,Defender.h,Defender.v)
               else:
                 EnemyShips[i].direction = LED.PointTowardsObject8Way(OldH,OldV,Defender.h,Defender.v)
