@@ -421,6 +421,8 @@ class Bot(commands.Bot ):
               
 
 
+          await self.DisplayDigitalClock()
+
           #If the stream is not live, display a regular clock 
           if (StreamActive == False):
             await self.DisplayDigitalClock()
