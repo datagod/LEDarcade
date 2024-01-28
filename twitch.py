@@ -416,8 +416,8 @@ class Bot(commands.Bot ):
 
             
             #I don't remember why I created a task for this.  That's life I guess.
-            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
-              self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
+            #if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
+            #  self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
               
 
 
@@ -1061,7 +1061,7 @@ class Bot(commands.Bot ):
         ShadowRGB        = LED.ShadowGreen,
         ZoomFactor       = 2,
         AnimationDelay   = self.AnimationDelay,
-        RunMinutes       = 5,
+        RunMinutes       = 2,
         EventQueue       = EventQueue
         )
       print("Clock function completed")
