@@ -1023,9 +1023,10 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   BlastV = round(DefenderBomb.v)
   
   #the further the bomb travels, the more power it gains
-  BlastStrength  = round(DefenderBomb.h / 10 + BlastFactor)
+  #BlastStrength  = round(DefenderBomb.h / 10 + BlastFactor)
+  BlastStrength  =  (DefenderBomb.h * DefenderDirection) % LED.HatWidth            +          BlastFactor
   
-
+  
   SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
   GroundR, GroundG, GroundB    = GroundRGB
 
@@ -1409,7 +1410,7 @@ def PlayDefender(GameMaxMinutes):
   Text3RGB = B
 
   
-  TheBanner1 = LED.CreateBannerSprite("death to humans")
+  TheBanner1 = LED.CreateBannerSprite("THIS IS TACO PLANET")
   h1         = round(Middleground.width * 0.80)
   v1         = 24
   Middleground = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text3RGB,(0,0,0),ZoomFactor=1,Fill=False,Layer=Middleground)
