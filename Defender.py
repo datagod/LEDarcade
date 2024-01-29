@@ -1026,7 +1026,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   if (DefenderDirection == 1):
     BlastStrength  = round(DefenderBomb.h / 10 + BlastFactor)
   else:
-    BlastStrength  = round(LED.HatWidth - DefenderBomb.h / 10 + BlastFactor)
+    BlastStrength  = round( (LED.HatWidth - DefenderBomb.h)     / 10 + BlastFactor)
 
 
   
