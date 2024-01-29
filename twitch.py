@@ -419,7 +419,8 @@ class Bot(commands.Bot ):
             # we want to display a regular clock (random styles) for 2 minutes 
             # then show the UPTIME for 1 minute
             if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
-              await self.DisplayDigitalClock()
+              #await self.DisplayDigitalClock()
+              self.TwitchTimerTask = asyncio.create_task(self.DisplayDigitalClock())              
               self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
               
 
