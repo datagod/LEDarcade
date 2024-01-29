@@ -1023,8 +1023,12 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   BlastV = round(DefenderBomb.v)
   
   #the further the bomb travels, the more power it gains
-  BlastStrength  = round(DefenderBomb.h / 10 + BlastFactor)
-  #BlastStrength  =  (DefenderBomb.h * DefenderDirection) % LED.HatWidth            +          BlastFactor
+  if (DefenderDirection == 1):
+    BlastStrength  = round(DefenderBomb.h / 10 + BlastFactor)
+  else
+    BlastStrength  = round(LED.HatWidth - DefenderBomb.h / 10 + BlastFactor)
+
+
   
   
   SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
