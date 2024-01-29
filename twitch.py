@@ -1073,7 +1073,7 @@ class Bot(commands.Bot ):
         print("Clock function completed")
       else:
 
-        LED.DisplayDigitalClock(
+        await LED.DisplayDigitalClock(
           ClockStyle = r,
           CenterHoriz = True,
           v   = 1, 
