@@ -415,13 +415,15 @@ class Bot(commands.Bot ):
                 #await self.close()
 
             
-            #I don't remember why I created a task for this.  That's life I guess.
-            #if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
-            #  self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
+            #Display UPTIME 
+            # we want to display a regular clock (random styles) for 2 minutes 
+            # then show the UPTIME for 1 minute
+            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
+              await self.DisplayDigitalClock()
+              self.TwitchTimerTask = asyncio.create_task(self.DisplayTwitchTimer())
               
 
 
-          await self.DisplayDigitalClock()
 
           #If the stream is not live, display a regular clock 
           if (StreamActive == False):
