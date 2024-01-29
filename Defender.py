@@ -1431,7 +1431,7 @@ def PlayDefender(GameMaxMinutes):
   TheBanner1 = LED.CreateBannerSprite("argh!!!")
   h1         = round(Ground.width * 0.75)
   v1         = LED.HatHeight - (TheBanner1.height * 3)
-  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text3RGB,(0,0,0),ZoomFactor=3,Fill=False,Layer=Ground)
+  Ground     = LED.CopySpriteToLayerZoom(TheBanner1,h1,v1,Text3RGB,(0,0,0),ZoomFactor=2,Fill=False,Layer=Ground)
 
 
 
@@ -1552,15 +1552,19 @@ def PlayDefender(GameMaxMinutes):
           v1         = 10
           Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text1RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
 
-          h1         = LED.HatWidth + round(Foreground.width * 0.25)
+          h1         = LED.HatWidth + round(Foreground.width * 0.20)
           v1         = 10
           Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text2RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
 
-          h1         = LED.HatWidth + round(Foreground.width * 0.5)
+          h1         = LED.HatWidth + round(Foreground.width * 0.40)
           v1         = 10
           Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text1RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
 
-          h1         = LED.HatWidth + round(Foreground.width * 0.75)
+          h1         = LED.HatWidth + round(Foreground.width * 0.60)
+          v1         = 10
+          Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text3RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
+
+          h1         = LED.HatWidth + round(Foreground.width * 0.80)
           v1         = 10
           Foreground = LED.CopySpriteToLayerZoom(ClockSprite,h1,v1,Text3RGB,(0,0,0),ZoomFactor=2,Fill=True,Layer=Foreground)
 
