@@ -16238,8 +16238,8 @@ def UpdateTimerWithTransition(TimerSprite,BannerSprite,h=0,v=0,RGB=HighGreen,Sha
 
 
 
-
-def DisplayDigitalClock(
+#I added the async for twitch.py.  I might need to make a different version for non twitch clocks
+async def DisplayDigitalClock(
   ClockStyle  = 1,
   CenterHoriz = False,
   CenterVert  = False,
