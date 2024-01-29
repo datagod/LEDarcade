@@ -1057,19 +1057,35 @@ class Bot(commands.Bot ):
         r = 3
 
 
-      LED.DisplayDigitalClock(
-        ClockStyle = r,
-        CenterHoriz = True,
-        v   = 1, 
-        hh  = 24,
-        RGB = LED.LowGreen,
-        ShadowRGB        = LED.ShadowGreen,
-        ZoomFactor       = 2,
-        AnimationDelay   = self.AnimationDelay,
-        RunMinutes       = 2,
-        EventQueue       = EventQueue
-        )
-      print("Clock function completed")
+      if(StreamActive == True):
+        await LED.DisplayDigitalClock(
+          ClockStyle = r,
+          CenterHoriz = True,
+          v   = 1, 
+          hh  = 24,
+          RGB = LED.LowGreen,
+          ShadowRGB        = LED.ShadowGreen,
+          ZoomFactor       = 2,
+          AnimationDelay   = self.AnimationDelay,
+          RunMinutes       = 2,
+          EventQueue       = EventQueue
+          )
+        print("Clock function completed")
+      else:
+
+        LED.DisplayDigitalClock(
+          ClockStyle = r,
+          CenterHoriz = True,
+          v   = 1, 
+          hh  = 24,
+          RGB = LED.LowGreen,
+          ShadowRGB        = LED.ShadowGreen,
+          ZoomFactor       = 2,
+          AnimationDelay   = self.AnimationDelay,
+          RunMinutes       = 2,
+          EventQueue       = EventQueue
+          )
+        print("Clock function completed")
 
 
 
