@@ -16251,7 +16251,7 @@ async def DisplayDigitalClock(
   ZoomFactor  = 2,
   AnimationDelay = 10,
   ScrollSleep    = 0.01,
-  RunMinutes     = 5,
+  RunMinutes     = 10,
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
@@ -17521,7 +17521,7 @@ async def DisplayTwitchTimer(
   ZoomFactor  = 2,
   AnimationDelay = 10,
   ScrollSleep    = 0.02,
-  RunMinutes     = 5,
+  RunMinutes     = 1,
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
@@ -18014,8 +18014,8 @@ async def DisplayTwitchTimer(
 
       #How long has this function been running?
       #h,m,s, HHMMSS = CalculateElapsedTime(StartTime)
-      #h,m,s = GetElapsedTime(StartTime,time.time())
-      m = 0
+      h,m,s = GetElapsedTime(StartTime,time.time())
+      
 
       #print("M:",m," RunMinutes:",RunMinutes)
       if m >= RunMinutes:
