@@ -1067,7 +1067,7 @@ class Bot(commands.Bot ):
           ShadowRGB        = LED.ShadowGreen,
           ZoomFactor       = 3,
           AnimationDelay   = self.AnimationDelay,
-          RunMinutes       = 1,
+          RunMinutes       = 5,
           EventQueue       = EventQueue
           )
         print("Clock function completed")
@@ -1082,7 +1082,7 @@ class Bot(commands.Bot ):
           ShadowRGB        = LED.ShadowGreen,
           ZoomFactor       = 2,
           AnimationDelay   = self.AnimationDelay,
-          RunMinutes       = 2,
+          RunMinutes       = 10,
           EventQueue       = EventQueue
           )
         print("Clock function completed")
@@ -2004,7 +2004,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Enjoy the peaceful starry sky while staring at a clock"
         await self.Channel.send(message)
-      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 1, EventQueue=EventQueue )
+      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1, EventQueue=EventQueue )
       LED.ClearBigLED()
       LED.ClearBuffers()
       CursorH = 0
