@@ -16251,7 +16251,7 @@ async def DisplayDigitalClock(
   ZoomFactor  = 2,
   AnimationDelay = 10,
   ScrollSleep    = 0.01,
-  RunMinutes     = 10,
+  RunMinutes     = 1,
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
