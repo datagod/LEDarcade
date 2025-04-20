@@ -2612,48 +2612,72 @@ def CreateDinnerPlate(MapLevel):
                                VirusStartSpeed = VirusStartSpeed)
 
 
+
+
+
     TheMap.ColorList = {
-      ' ' : (  0,  0,  0),
-      '-' : ( 30, 30, 30),  
-      '.' : ( 70, 70, 70),
-      'o' : ( 100,100,100),
-      'O' : ( 130,130,130),
-      '|' : (  0,  0,  0),
-      '*' : (  5,  5,  5),
-      '1' : (0  ,150,  0),
-      '2' : (150,  0,  0),
-      '3' : (150,100,  0),
-      '4' : (  0,  0,100),
-      '5' : (200,  0, 50),
-      '6' : (125,185,  0),
-      '7' : (200,  0,200),
-      '8' : ( 50,150, 75)
+        ' ': (0, 0, 0),
+        '|': (0, 0, 0),
+        '-': (10, 10, 10),
+        '*': (5, 5, 5),
+        'A': (70, 70, 70),
+        'B': (80, 80, 80),
+        'C': (90, 90, 90),
+        'D': (100, 100, 100),
+        'E': (110, 110, 110),
+        'F': (120, 120, 120),
+        'G': (130, 130, 130),
+        'H': (140, 140, 140),
+        'I': (150, 150, 150),
+        'J': (160, 160, 160),
+        'K': (170, 170, 170),
+        'L': (180, 180, 180),
+        '1': (0, 150, 0),
+        '2': (150, 0, 0),
+        '3': (150, 100, 0),
+        '4': (0, 0, 100),
+        '5': (200, 0, 50),
+        '6': (125, 185, 0),
+        '7': (200, 0, 200),
+        '8': (50, 150, 75),
+        '@': (50, 60, 60),
+        '$': (60, 60, 60),
+        'o': (30, 30, 30),
+        '.': (20, 20, 20),
+        'O': (40, 40, 40)
     }
 
     TheMap.TypeList = {
-      ' ' : 'EmptyObject',
-      '-' : 'wall',
-      '.' : 'wall',
-      'o' : 'wall',
-      'O' : 'wall',
-      '@' : 'wall',
-      '#' : 'wall',
-      '$' : 'wall',
-      '#' : 'wall',
-      '*' : 'wallbreakable',
-      '|' : 'wall',
-      '1' : 'virus',
-      '2' : 'virus',
-      '3' : 'virus',
-      '4' : 'virus',
-      '5' : 'virus',
-      '6' : 'virus',
-      '7' : 'virus',
-      '8' : 'virus'
+        ' ': 'EmptyObject',
+        '|': 'wall',
+        '-': 'wall',
+        '*': 'wallbreakable',
+        'A': 'wall',
+        'B': 'wall',
+        'C': 'wall',
+        'D': 'wall',
+        'E': 'wall',
+        'F': 'wall',
+        'G': 'wall',
+        'H': 'wall',
+        'I': 'wallbreakable',
+        'J': 'wallbreakable',
+        'K': 'wallbreakable',
+        'L': 'wallbreakable',
+        '1': 'virus',
+        '2': 'virus',
+        '3': 'virus',
+        '4': 'virus',
+        '5': 'virus',
+        '6': 'virus',
+        '7': 'virus',
+        '8': 'virus',
+        '@': 'wall',
+        '$': 'wall',
+        'o': 'wall',
+        '.': 'wall',
+        'O': 'wall'
     }
-
-
-
 
     TheMap.map = (
         "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
@@ -2690,6 +2714,13 @@ def CreateDinnerPlate(MapLevel):
         "O            |***************************************************O",
         "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
     )
+
+
+
+
+
+
+
 
 
   DinnerPlate.CopyTextMapToPlayfield(TheMap)
