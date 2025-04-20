@@ -1678,7 +1678,7 @@ def MoveVirus(Virus,Playfield):
 def CreateDinnerPlate(MapLevel):
   global mutationrate
   
-  #MapLevel = 11
+  MapLevel = 12
 
   print ("CreateDinnerPlate Map: ",MapLevel)
 
@@ -3350,22 +3350,24 @@ def LaunchOutbreak(GameMaxMinutes = 10000, ShowIntro = True):
   # M A I N   P R O C E S S I N G      --
   #--------------------------------------
 
-  LED.ShowTitleScreen(
-      BigText             = 'UTBR8K',
-      BigTextRGB          = LED.HighRed,
-      BigTextShadowRGB    = LED.ShadowRed,
-      LittleText          = 'AN INFECTION',
-      LittleTextRGB       = LED.MedGreen,
-      LittleTextShadowRGB = (0,10,0), 
-      ScrollText          = 'THE PLAGUE SPREADS',
-      ScrollTextRGB       = LED.MedYellow,
-      ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-      DisplayTime         = 1,           # time in seconds to wait before exiting 
-      ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-      )
     
 
   if(ShowIntro == True):
+
+    LED.ShowTitleScreen(
+        BigText             = 'UTBR8K',
+        BigTextRGB          = LED.HighRed,
+        BigTextShadowRGB    = LED.ShadowRed,
+        LittleText          = 'AN INFECTION',
+        LittleTextRGB       = LED.MedGreen,
+        LittleTextShadowRGB = (0,10,0), 
+        ScrollText          = 'THE PLAGUE SPREADS',
+        ScrollTextRGB       = LED.MedYellow,
+        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+        DisplayTime         = 1,           # time in seconds to wait before exiting 
+        ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        )
+
 
     LED.ClearBigLED()
     LED.ClearBuffers()
@@ -3402,7 +3404,7 @@ def LaunchOutbreak(GameMaxMinutes = 10000, ShowIntro = True):
 
 
 
-#execute if this script is called direction
+#execute if this script is called directly
 if __name__ == "__main__" :
   while(1==1):
     LED.LoadConfigData()
