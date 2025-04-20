@@ -2719,47 +2719,7 @@ def CreateDinnerPlate(MapLevel):
    )
 
 
-    """
-      TheMap.map= (
-       #0         1  .......2.........3.........4.........5.........6....65    
-       "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O", 
-       "O                                                                O", 
-       "O                                                                O", #10
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",    
-       "O                                                                O",
-       "O                                                                O", 
-       "O                                                                O", #20
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O",
-       "O                                                                O", #30
-       "O                                                                O",
-       "O                                                                O",
-       "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
-     )
-
-    """
-
+    
 
 
 
