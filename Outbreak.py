@@ -2695,8 +2695,8 @@ def CreateDinnerPlate(MapLevel):
      "O                    ABCDEFGIIIIIIIIIHFEDCBA                     O", #10
      "O                    ABCDEFGIJJJJJJJIHFEDCBA                     O",
      "O                    ABCDEFGIJKKKKKJIHFEDCBA                     O",
-     "O                    ABCDEFGIJKLLLKJIHFEDCBA                     O",
-     "O                    ABCDEFGIJKLLLKJIHFEDCBA                     O",
+     "O                    ABCDEFGIJK444KJIHFEDCBA                     O",
+     "O                    ABCDEFGIJK444KJIHFEDCBA                     O",
      "O                    ABCDEFGIJKKKKKJIHFEDCBA                     O",
      "O                    ABCDEFGIJJJJJJJIHFEDCBA                     O",
      "O                    ABCDEFGIIIIIIIIIHFEDCBA                     O",    
