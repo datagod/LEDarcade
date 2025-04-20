@@ -2713,6 +2713,7 @@ def CreateDinnerPlate(MapLevel):
         "O            |                                                   O",
         "O            |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@O",
         "O            |                                                   O",
+        "O            |                                                   O",
         "O            |***************************************************O",
         "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
     )
