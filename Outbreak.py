@@ -2681,45 +2681,84 @@ def CreateDinnerPlate(MapLevel):
 
 
     TheMap.map= (
-      #0         1   ......2.........3.........4.........5.........6....65    
-      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
-      "O            |                                                   O",
-      "O            |    -.oO@   @Oo.--.oO@  @@@@@@@@LLLL@@@@@@@@@@@@   O",
-      "O            |    ..oO@   @Oo....oO@  @@@@@@@@LLLL@@@@@@@@@@@@   O",
-      "O            |    oooO@   @OooooooO@  @@OOOOOOLLLLOOOOOOOOOO@@   O",
-      "O            |    OOOO@   @OOOOOOOO@  @@O                  O@@   O",
-      "O            |    @@@@@   @@@@@@@@@@  @@O                  O@@   O",
-      "O            |                        @@O                  O@@   O",
-      "O            |                        @@O                  O@@   O", 
-      "O            |    @@@@@@@@@@@@@@@@@@@@@@O                  O@@   O", 
-      "O            |    @@@@@@@@@@@@@@@@@@@@@@O                  O@@   O", #10
-      "O            |    OOOOOOOOOOOOOOOOOOOOOOO                  O@@   O",
-      "O            |                                             O@@   O",
-      "O            |       ooo           OOOOOOOOOOOOOOOOOOOOOOOOO@@   O",
-      "O            |       ooo           O@@@@@@@@@@@@@@@@@@@@@@@@@@   O",
-      "O            |       ooo           O@@@@@@@@@@@@@@@@@@@@@@@@@@   O",
-      "O            |       ooo                                         O",
-      "O            |       ooo                                         O",    
-      "O            |       ...                                         O",
-      "O            |       ...                                         O", 
-      "O            |       ...        ################                 O", #20
-      "O            |       ...        ################                 O",
-      "O            |       ---                                         O",
-      "O            |       ---                                         O",
-      "O            |       ---        $$$$$$$$$$$$$$$$                 O",
-      "O            |                                                   O",
-      "O            |                                                   O",
-      "O            |                 $.$.$.$.$.$.$.$.                  O",
-      "O            |                                                   O",
-      "O            |                                                   O",
-      "O            |    11111111 2222222 3333333 4444444 5555555       O", #30
-      "O            |                                                   O",
-      "O            |                                                   O",
-      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
-    )
+     #0         1  .......2.........3.........4.........5.........6....65    
+     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
+     "O2222222222222222222222222222222222222222222222222222222222222222O",
+     "O222222222222222222                          22222222222222222222O",
+     "O                    AAAAAAAAAAAAAAAAAAAAAAA                     O",
+     "O                    ABBBBBBBBBBBBBBBBBBBBBA                     O",
+     "O                    ABCCCCCCCCCCCCCCCCCCCBA                     O",
+     "O                    ABCDDDDDDDDDDDDDDDDDCBA                     O",
+     "O                    ABCDEEEEEEEEEEEEEEEDCBA                     O",
+     "O                    ABCDEFFFFFFFFFFFFFEDCBA                     O", 
+     "O                    ABCDEFGGGGGGGGGGGFEDCBA                     O", 
+     "O                    ABCDEFGIIIIIIIIIHFEDCBA                     O", #10
+     "O                    ABCDEFGIJJJJJJJIHFEDCBA                     O",
+     "O                    ABCDEFGIJKKKKKJIHFEDCBA                     O",
+     "O                    ABCDEFGIJKLLLKJIHFEDCBA                     O",
+     "O                    ABCDEFGIJKLLLKJIHFEDCBA                     O",
+     "O                    ABCDEFGIJKKKKKJIHFEDCBA                     O",
+     "O                    ABCDEFGIJJJJJJJIHFEDCBA                     O",
+     "O                    ABCDEFGIIIIIIIIIHFEDCBA                     O",    
+     "O                    ABCDEFGHHHHHHHHHHFEDCBA                     O",
+     "O                    ABCDEFGFFFFFFFFFFFEDCBA                     O", 
+     "O                    ABCDEEEEEEEEEEEEEEEDCBA                     O", #20
+     "O                    ABCDDDDDDDDDDDDDDDDDCBA                     O",
+     "O                    ABCCCCCCCCCCCCCCCCCCCBA                     O",
+     "O                    ABBBBBBBBBBBBBBBBBBBBBA                     O",
+     "O                    AAAAAAAAAAAAAAAAAAAAAAA                     O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O 111111                                                         O",
+     "O 111111                                                  888888 O",
+     "O 111111                                                  888888 O", #30
+     "O 111111                                                  888888 O",
+     "O 111111                                                  888888 O",
+     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
+   )
 
 
+"""
+    TheMap.map= (
+     #0         1  .......2.........3.........4.........5.........6....65    
+     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O", 
+     "O                                                                O", 
+     "O                                                                O", #10
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",    
+     "O                                                                O",
+     "O                                                                O", 
+     "O                                                                O", #20
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O",
+     "O                                                                O", #30
+     "O                                                                O",
+     "O                                                                O",
+     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
+   )
 
+"""
 
 
 
