@@ -2683,9 +2683,9 @@ def CreateDinnerPlate(MapLevel):
       #0         1   ......2.........3.........4.........5.........6....65    
       "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
       "O            |                                                   O",
-      "O            |    -.oO@   @Oo.--.oO@  @@@@@@@@****@@@@@@@@@@@@   O",
-      "O            |    ..oO@   @Oo....oO@  @@@@@@@@****@@@@@@@@@@@@   O",
-      "O            |    oooO@   @OooooooO@  @@OOOOOO****OOOOOOOOOO@@   O",
+      "O            |    -.oO@   @Oo.--.oO@  @@@@@@@@LLLL@@@@@@@@@@@@   O",
+      "O            |    ..oO@   @Oo....oO@  @@@@@@@@LLLL@@@@@@@@@@@@   O",
+      "O            |    oooO@   @OooooooO@  @@OOOOOOLLLLOOOOOOOOOO@@   O",
       "O            |    OOOO@   @OOOOOOOO@  @@O                  O@@   O",
       "O            |    @@@@@   @@@@@@@@@@  @@O                  O@@   O",
       "O            |                        @@O                  O@@   O",
