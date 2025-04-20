@@ -2731,7 +2731,9 @@ def PlayOutbreak(GameMaxMinutes):
   #print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
   print("*****************************************************")
 
-  LevelCount = random.randint(1,MaxLevel)
+  #LevelCount = random.randint(1,MaxLevel)
+  
+  LevelCount = 11
 
   DinnerPlate = CreateDinnerPlate(LevelCount)
 

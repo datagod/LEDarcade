@@ -3321,7 +3321,7 @@ class Layer(object):
       v
     ):  
 
-    self.name   = name,
+    self.name   = name
     self.width  = width
     self.height = height
     self.h      = h
@@ -16336,8 +16336,8 @@ async def DisplayDigitalClock(
           QueueCount = EventQueue.qsize()
           #print("QueueCount: ",QueueCount)
           if (QueueCount > 0):
+            print ("Queue is not empty.  Setting Done = True")
             Done = True
-            break
   
           time.sleep(1)
 
@@ -17492,11 +17492,15 @@ async def DisplayDigitalClock(
           QueueCount = EventQueue.qsize()
           #print("QueueCount: ",QueueCount)
           if (QueueCount > 0):
+            print ("Queue is not empty.  Setting Done = True")
             Done = True
 
         time.sleep(ScrollSleep)
 
-    
+
+
+
+
 
 
 
