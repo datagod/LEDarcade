@@ -3149,7 +3149,9 @@ def PlayOutbreak(GameMaxMinutes):
 
         #Prepare new level
         DominanceCount    = 0
-        LevelCount        = random.randint(1,MaxLevel)
+        #LevelCount        = random.randint(1,MaxLevel)
+        LevelCount        = 12
+
         replicationrate   = OriginalReplicationRate
         mutationdeathrate = OriginalMutationDeathRate
         VirusTopSpeed    = OldVirusTopSpeed
@@ -3270,7 +3272,12 @@ def PlayOutbreak(GameMaxMinutes):
       print("Loading next level")
       LED.OutbreakGamesPlayed = LED.OutbreakGamesPlayed + 1
       LED.SaveConfigData()
-      LevelCount = random.randint(1,MaxLevel)
+      
+      
+      #LevelCount = random.randint(1,MaxLevel)
+      LevelCount = 12
+      
+      
       DinnerPlate = CreateDinnerPlate(LevelCount)
       VirusCount = len(DinnerPlate.Viruses)
       firstname = DinnerPlate.Viruses[0].name
@@ -3401,7 +3408,7 @@ if __name__ == "__main__" :
     LED.LoadConfigData()
     LED.SaveConfigData()
     print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
-    LaunchOutbreak(100000)        
+    LaunchOutbreak(100000,ShowIntro = False)        
 
 
 
