@@ -2719,7 +2719,7 @@ def CreateDinnerPlate(MapLevel):
    )
 
 
-"""
+  """
     TheMap.map= (
      #0         1  .......2.........3.........4.........5.........6....65    
      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
@@ -2758,7 +2758,7 @@ def CreateDinnerPlate(MapLevel):
      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
    )
 
-"""
+  """
 
 
 
