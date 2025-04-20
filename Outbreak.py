@@ -2594,6 +2594,104 @@ def CreateDinnerPlate(MapLevel):
       "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
     )
 
+
+  if (MapLevel == 12):
+    
+    DinnerPlate = VirusWorld(name='BigFood',
+                               width        = 66, #we want the playfield to be 1 pixel larger on all sides than the display
+                               height       = 34,
+                               Map          = [[]],
+                               Playfield    = [[]],
+                               CurrentRoomH = 1,
+                               CurrentRoomV = 1,
+                               DisplayH     = 1,
+                               DisplayV     = 1,
+                               mutationrate = mutationrate,
+                               replicationrate = replicationrate,
+                               mutationdeathrate = mutationdeathrate,
+                               VirusStartSpeed = VirusStartSpeed)
+
+
+    TheMap.ColorList = {
+      ' ' : (  0,  0,  0),
+      '-' : ( 30, 30, 30),  
+      '.' : ( 70, 70, 70),
+      'o' : ( 100,100,100),
+      'O' : ( 130,130,130),
+      '|' : (  0,  0,  0),
+      '*' : (  5,  5,  5),
+      '1' : (0  ,150,  0),
+      '2' : (150,  0,  0),
+      '3' : (150,100,  0),
+      '4' : (  0,  0,100),
+      '5' : (200,  0, 50),
+      '6' : (125,185,  0),
+      '7' : (200,  0,200),
+      '8' : ( 50,150, 75)
+    }
+
+    TheMap.TypeList = {
+      ' ' : 'EmptyObject',
+      '-' : 'wall',
+      '.' : 'wall',
+      'o' : 'wall',
+      'O' : 'wall',
+      '@' : 'wall',
+      '#' : 'wall',
+      '$' : 'wall',
+      '#' : 'wall',
+      '*' : 'wallbreakable',
+      '|' : 'wall',
+      '1' : 'virus',
+      '2' : 'virus',
+      '3' : 'virus',
+      '4' : 'virus',
+      '5' : 'virus',
+      '6' : 'virus',
+      '7' : 'virus',
+      '8' : 'virus'
+    }
+
+
+
+
+    TheMap.map = (
+        "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+        "O            |AABBCCDDEEFFGGHHIIJJKKLLKKJJIIHHGGFFEEDDCCBBAA     O",
+        "O            |AABBCCDDEEFFGGHHIIJJKKLLKKJJIIHHGGFFEEDDCCBBAA     O",
+        "O            |AA  BB  CC  DD  EE  FF  GG  HH  II  JJ  KK  LL     O",
+        "O            |A B C D E F G H I J K L K J I H G F E D C B A      O",
+        "O            |---------------------------------------------------O",
+        "O            |LL  KK  JJ  II  HH  GG  FF  EE  DD  CC  BB  AA     O",
+        "O            |LLKKJJIIHHGGFFEEDDCCBBAABBCCDDEEFFGGHHIIJJKKLL     O",
+        "O            |                                                   O",
+        "O            |  * * * * * * * * * * * * * * * * * * * * * * *    O",
+        "O            |  *                                               O",
+        "O            |  * 12345678 * 87654321 * 12344321 * 11223344 *    O",
+        "O            |  *                                               O",
+        "O            |  * * * * * * * * * * * * * * * * * * * * * * *    O",
+        "O            |                                                   O",
+        "O            |AA--BB--CC--DD--EE--FF--GG--HH--II--JJ--KK--LL     O",
+        "O            |  A  B  C  D  E  F  G  H  I  J  K  L  K  J  I       O",
+        "O            |---------------------------------------------------O",
+        "O            |  L  K  J  I  H  G  F  E  D  C  B  A  B  C  D       O",
+        "O            |LL--KK--JJ--II--HH--GG--FF--EE--DD--CC--BB--AA     O",
+        "O            |                                                   O",
+        "O            |  88888888                          11111111       O",
+        "O            |  77777777                          22222222       O",
+        "O            |  66666666                          33333333       O",
+        "O            |                                                   O",
+        "O            |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@O",
+        "O            |                                                   O",
+        "O            |###$$###$$###$$###$$###$$###$$###$$###$$###$$###$$#O",
+        "O            |                                                   O",
+        "O            |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@O",
+        "O            |                                                   O",
+        "O            |***************************************************O",
+        "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+    )
+
+
   DinnerPlate.CopyTextMapToPlayfield(TheMap)
 
   #we add random viruses to a plate of big food
@@ -2677,7 +2775,7 @@ def PlayOutbreak(GameMaxMinutes):
   finished      = 'N'
   VirusMoves = 0
   LevelCount    = 0
-  MaxLevel      = 11 #number of available mazes
+  MaxLevel      = 12 #number of available mazes
   NameCount     = 0
   Viruses       = []
   VirusCount    = 0
@@ -2733,7 +2831,7 @@ def PlayOutbreak(GameMaxMinutes):
 
   #LevelCount = random.randint(1,MaxLevel)
   
-  LevelCount = 11
+  LevelCount = 12
 
   DinnerPlate = CreateDinnerPlate(LevelCount)
 
