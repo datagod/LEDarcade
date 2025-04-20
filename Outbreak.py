@@ -2683,8 +2683,8 @@ def CreateDinnerPlate(MapLevel):
     TheMap.map= (
      #0         1  .......2.........3.........4.........5.........6....65    
      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
-     "O2222222222222222222222222222222222222222222222222222222222222222O",
-     "O222222222222222222                          22222222222222222222O",
+     "O                                                                O",
+     "O                                                                O",
      "O                    AAAAAAAAAAAAAAAAAAAAAAA                     O",
      "O                    ABBBBBBBBBBBBBBBBBBBBBA                     O",
      "O                    ABCCCCCCCCCCCCCCCCCCCBA                     O",
@@ -2711,9 +2711,9 @@ def CreateDinnerPlate(MapLevel):
      "O                                                                O",
      "O                                                                O",
      "O 111111                                                         O",
-     "O 111111                                                  888888 O",
-     "O 111111                                                  888888 O", #30
-     "O 111111                                                  888888 O",
+     "O 1   11                                                  888888 O",
+     "O 1    1                                                  888888 O", #30
+     "O 1   11                                                  888888 O",
      "O 111111                                                  888888 O",
      "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  #33
    )
