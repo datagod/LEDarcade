@@ -3350,7 +3350,7 @@ def LaunchOutbreak(GameMaxMinutes = 10000, ShowIntro = True):
   # M A I N   P R O C E S S I N G      --
   #--------------------------------------
 
-    
+  print("ShowIntro:",ShowIntro)
 
   if(ShowIntro == True):
 
