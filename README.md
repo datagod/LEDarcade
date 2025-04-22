@@ -1,3 +1,85 @@
+# LEDarcade: A Custom Retro LED Game Engine
+
+> **Created by William McEvoy (aka Datagod)**  
+> *An old-school arcade engineer reborn in modern code, driven by imagination and forged in self-reliance.*
+
+---
+
+## 🎮 Overview
+LEDarcade is a powerful and deeply customized Python engine for rendering retro-style graphics and games on an RGB LED matrix attached to a Raspberry Pi.
+
+Unlike most projects, LEDarcade was created entirely from scratch — without relying on internet tutorials, prefab game engines, or outside design templates. Everything from gamma-corrected color blending to real-time physics and sprite animation was hand-coded, tested, and refined by one mind.
+
+---
+
+## 🧱 Core Features
+
+- **Pixel-Accurate Rendering** with direct-to-buffer control
+- **Dual-Buffer Architecture**: Clean separation between the display (`TheMatrix`) and working state (`ScreenArray`)
+- **Extensive Color System**:
+  - Dozens of hand-tuned colors with gamma control
+  - Shadow/Highlight/Glow overlays
+- **Real-Time Game Engine Modules**:
+  - SuperWorms
+  - Dot Invaders
+  - Outbreak
+  - Defender
+- **Sprite Frameworks**:
+  - `Dot`, `Ship`, `Sprite`, `Wall`, `ColorAnimatedSprite`
+  - Support for zooming, flipping, scrolling, and trail effects
+- **Integrated Flask/Asyncio Services**:
+  - Twitch EventSub listening (Port 5051)
+  - Patreon status monitoring (Port 5050)
+- **Configuration Loader** (`ClockConfig.ini`) for display tuning and score persistence
+
+---
+
+## 🚀 What Makes It Unique
+- Built without copying — all systems invented or reverse-engineered from foundational knowledge
+- A living homage to the classic hardware sprite engines of the 1980s
+- Visual logic grounded in **how light behaves**, not just RGB codes
+- A toolkit for creating both **games and animated art** on LED panels
+
+---
+
+## 🔧 Requirements
+- Raspberry Pi (any model with GPIO and Python 3)
+- RGB Matrix HAT and compatible LED panel (e.g., 32x64)
+- `rpi-rgb-led-matrix` Python bindings
+- `PIL`, `curses`, `requests`, `asyncio`, and optional Flask for web hooks
+
+---
+
+## 🧠 Philosophy
+LEDarcade was designed with one question in mind:
+> *"What could I create if I relied only on my own mind — no forums, no templates, no training wheels?"*
+
+The result is a living artifact of technical mastery, built for joy, exploration, and pure expression.
+
+---
+
+## 👾 Future Directions
+- Sprite animation editor
+- On-device sprite debugger
+- Wi-Fi synced multiplayer
+
+---
+
+## 🙌 Acknowledgements
+This project was envisioned, built, and perfected by William McEvoy (Datagod) — programmer, arcade historian, and lifelong creator.  His son Jacob McEvoy designed several levels and performed quality assurance on many aspects of the project.
+
+---
+
+## 📫 Contact
+Want to collaborate, license, or showcase LEDarcade at an event?  
+Reach out to William directly.
+
+
+
+
+===========================================
+
+
 # LEDarcade
  A collection of classes and functions for animated text and graphics on an Adafruit LED Matrix.
 
