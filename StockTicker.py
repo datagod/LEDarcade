@@ -157,16 +157,18 @@ def GetStockPrice(symbol):
     global ALPHA_API_KEY
 
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval=60min&apikey={ALPHA_API_KEY}"
+    url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_API_KEY}'
     response = requests.get(url)
     data = response.json()
 
     print(data)
 
-    latest_timestamp = list(data["Time Series (60min)"].keys())[0]
-    #latest_price = data["Time Series (5min)"][latest_timestamp]["4. close"]
-    latest_price = data["Time Series (60min)"][latest_timestamp]["4. close"]
+    if 'Global Quote' in data:
+        current_price = data['Global Quote']['05. price']
+        print(f"Current stock price of {symbol}: ${current_price}")
 
-    return latest_price
+
+    return current_price
 
 
 
