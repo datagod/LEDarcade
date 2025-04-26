@@ -1,4 +1,3 @@
-# %%
 
 '''
 TO DO:
@@ -102,7 +101,7 @@ def LoadConfigFiles():
     KeyFile.read(KeyConfigFileName)
 
     #Get key
-    ALPhA_API_KEY = KeyFile.get("KEYS","ALPhA_API_KEY")
+    ALPHA_API_KEY = KeyFile.get("KEYS","ALPhA_API_KEY")
     STOCK_SYMBOL = KeyFile.get("KEYS","STOCK_SYMBOL")
    
     
