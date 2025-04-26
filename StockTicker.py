@@ -9,6 +9,9 @@ TO DO:
 import os
 os.system('cls||clear')
 
+import yfinance as yf
+
+
 import sys
 import re   # regular expression
 
@@ -154,6 +157,8 @@ def CheckConfigFiles():
 
 def GetStockPrice(symbol):
     
+
+    '''    
     global ALPHA_API_KEY
 
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval=60min&apikey={ALPHA_API_KEY}"
@@ -167,6 +172,20 @@ def GetStockPrice(symbol):
         current_price = data['Global Quote']['05. price']
         print(f"Current stock price of {symbol}: ${current_price}")
 
+    '''
+
+
+
+    try:
+        stock = yf.Ticker(symbol)
+        price = stock.info['regularMarketPrice']
+        print(f"Current stock price of {symbol}: ${price}")
+    except KeyError:
+        print(f"Error: No price data for {symbol}. Check symbol.")
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+
+        
 
     return current_price
 
@@ -227,7 +246,7 @@ while 1==1:
   StockPrice = GetStockPrice(STOCK_SYMBOL)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"TESLA CURRENT PRICE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,StockPrice,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=20)
+  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=100)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=5,ScrollSpeed=ScrollSleep)
 
 
