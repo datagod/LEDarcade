@@ -158,24 +158,6 @@ def CheckConfigFiles():
 def GetStockPrice(symbol):
     
 
-    '''    
-    global ALPHA_API_KEY
-
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval=60min&apikey={ALPHA_API_KEY}"
-    url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_API_KEY}'
-    response = requests.get(url)
-    data = response.json()
-
-    print(data)
-
-    if 'Global Quote' in data:
-        current_price = data['Global Quote']['05. price']
-        print(f"Current stock price of {symbol}: ${current_price}")
-
-    '''
-
-
-
     try:
         stock = yf.Ticker(symbol)
         price = stock.info['regularMarketPrice']
@@ -185,9 +167,8 @@ def GetStockPrice(symbol):
     except Exception as e:
         print(f"Error fetching data: {e}")
 
-        
 
-    return current_price
+    return price
 
 
 
