@@ -161,12 +161,13 @@ def GetStockPrice(symbol):
     try:
         stock = yf.Ticker(symbol)
         price = stock.info['regularMarketPrice']
+        price = "{:.2f}".format(price)
         print(f"Current stock price of {symbol}: ${price}")
+
     except KeyError:
         print(f"Error: No price data for {symbol}. Check symbol.")
     except Exception as e:
         print(f"Error fetching data: {e}")
-
 
     return price
 
