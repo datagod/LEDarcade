@@ -203,7 +203,7 @@ def main():
         try:
             StockPrice = GetStockPrice(symbol)
             if StockPrice is not None:
-                stock_prices[symbol] = float(price)
+                stock_prices[symbol] = StockPrice
         except Exception as e:
             print(f"[Warning] Failed to get stock price for {symbol}. Error: {e}")
             continue
