@@ -222,7 +222,6 @@ def main():
 
 
     
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=5,ScrollSpeed=ScrollSleep)
     time.sleep(900)
 
 
