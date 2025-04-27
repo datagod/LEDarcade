@@ -201,7 +201,8 @@ def main():
     stock_prices = {}
     for symbol in STOCK_SYMBOLS:
         try:
-            StockPrice = GetStockPrice(symbol)
+            StockPrice = "{:.2f}".format(GetStockPrice(symbol))
+              
             if StockPrice is not None:
                 stock_prices[symbol] = StockPrice
         except Exception as e:
