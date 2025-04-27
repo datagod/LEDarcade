@@ -11,7 +11,6 @@ os.system('cls||clear')
 
 import yfinance as yf
 
-
 import sys
 import re   # regular expression
 
@@ -43,9 +42,9 @@ from datetime import datetime, timezone
 #---------------------------------------
 #Variable declaration section
 #---------------------------------------
-ScrollSleep         = 0.025
-TerminalTypeSpeed   = 0.02  #pause in seconds between characters
-TerminalScrollSpeed = 0.02  #pause in seconds between new lines
+ScrollSleep         = 0.05
+TerminalTypeSpeed   = 0.01  #pause in seconds between characters
+TerminalScrollSpeed = 0.01  #pause in seconds between new lines
 CursorRGB           = (0,255,0)
 CursorDarkRGB       = (0,50,0)
 
@@ -71,8 +70,6 @@ LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
 TerminalRGB = (0,200,0)
 CursorRGB = (0,75,0)
 
-
-
 #Configurations
 STOCK_SYMBOLS  = []
 
@@ -87,95 +84,6 @@ KeyConfigFileName = "KeyConfig.ini"
 #----------------------------------------
 #-- FILE ACCESS Functions              --
 #----------------------------------------
-
-def LoadConfigFiles():
-     
-  
-  global ALPHA_API_KEY
-  global STOCK_SYMBOL
-
-  
-  print ("--Load Stock Keys--")
-  print("KeyConfig.ini")
-  if (os.path.exists(KeyConfigFileName)):
-
-    print ("Config file (",KeyConfigFileName,"): found")
-    KeyFile = ConfigParser()
-    KeyFile.read(KeyConfigFileName)
-
-    #Get key
-    ALPHA_API_KEY = KeyFile.get("KEYS","ALPhA_API_KEY")
-    STOCK_SYMBOL = KeyFile.get("KEYS","STOCK_SYMBOL")
-   
-    
-    print("ALPHA_API_KEY:              ",ALPHA_API_KEY)
-    print("STOCK_SYMBOL:               ",STOCK_SYMBOL)
-    print ("--------------------")
-    print (" ")
-
-  else:
-    #To be finished later
-    print ("ERROR: Could not locate Key file (",KeyConfigFileName,"). Create a file and make sure to pupulate it with your own keys.")
-
-
-
-def CheckConfigFiles():
-  #This function will create the config files if they do not exist and populate them 
-  #with examples
-
-  #KeyConfig.ini
-
-
-  if (os.path.exists(KeyConfigFileName)):
-    print("File found:",KeyConfigFileName)
-  else:
-    try:
-      print("Warning! File not found:",KeyConfigFileName)
-      print("We will attempt to create a file with default values")
-  
-      #CREATE A CONFIG FILE
-      KeyConfigFile = open(KeyConfigFileName,'a+')
-      KeyConfigFile.write("[KEYS]\n")
-      KeyConfigFile.write("  ALPHA_API_KEY            = YOUR API KEY HERE\n")
-      KeyConfigFile.write("  STOCK_SYMBOL             = TSLA\n")
-      KeyConfigFile.write("\n")
-      
-      print("File created")
-    except Exception as ErrorMessage:
-      TraceMessage = traceback.format_exc()
-      AdditionalInfo = "Creating the {}file".format(KeyConfigFileName)
-      LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
-    
-
-
-
-
-#------------------------------------------------------------------------------
-# CUSTOM FUNCTIONS                                                           --
-#------------------------------------------------------------------------------
-
-
-def GetStockPrice(symbol):
-    
-
-    try:
-        stock = yf.Ticker(symbol)
-        price = stock.info['regularMarketPrice']
-        price = "{:.2f}".format(price)
-        print(f"Current stock price of {symbol}: ${price}")
-
-    except KeyError:
-        print(f"Error: No price data for {symbol}. Check symbol.")
-    except Exception as e:
-        print(f"Error fetching data: {e}")
-
-    return price
-
-
-
-
-
-
 
 def CheckConfigFiles():
     if os.path.exists(KeyConfigFileName):
@@ -213,6 +121,13 @@ def LoadConfigFiles():
         print("--------------------\n")
     else:
         print(f"ERROR: Could not locate Key file ({KeyConfigFileName}). Create it and populate it with your own keys.")
+
+
+
+#------------------------------------------------------------------------------
+# CUSTOM FUNCTIONS                                                           --
+#------------------------------------------------------------------------------
+
 
 def GetStockPrice(symbol):
     try:
