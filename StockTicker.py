@@ -198,10 +198,8 @@ def main():
 
   while 1==1:
 
-    LED.DisplayStockPrice("123.45")
-    time.sleep(5)
 
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CURRENT PRICESS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CURRENT PRICESS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
 
     stock_prices = {}
     for symbol in STOCK_SYMBOLS:
@@ -211,8 +209,14 @@ def main():
             if StockPrice is not None:
                 stock_prices[symbol] = StockPrice
 
-            LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,f"{symbol} {StockPrice}",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-            LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=5)
+            
+            LED.DisplayStockPrice(StockPrice)
+            time.sleep(1)
+
+
+
+            #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,f"{symbol} {StockPrice}",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+            #LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=5)
 
 
 
