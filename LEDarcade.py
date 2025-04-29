@@ -19440,7 +19440,7 @@ def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
 
 
 
-def DisplayStockPrice_old(StockPrice=""):
+def DisplayStockPrice_veryold(StockPrice=""):
    
     RGB = (0,150,0)
     ShadowRGB  = ShadowGreen
@@ -19477,7 +19477,7 @@ def DisplayStockPrice_old(StockPrice=""):
   
 
 
-def DisplayStockPrice(Symbol="", Price=""):
+def DisplayStockPrice_old(Symbol="", Price=""):
     global ScreenArray
 
     # Step 1 - Save current screen
@@ -19512,5 +19512,31 @@ def DisplayStockPrice(Symbol="", Price=""):
     TransitionBetweenScreenArrays(OldArray, NewArray, TransitionType=2)
 
     # Step 7 - Finalize
+    CopyScreenArrayToCanvasVSync(NewArray)
+    ScreenArray = copy.deepcopy(NewArray)
+
+
+def DisplayStockPrice(StockPrice=""):
+    global ScreenArray
+
+    # Step 1 - Capture the current screen FIRST (important!)
+    OldArray = copy.deepcopy(ScreenArray)
+
+    # Step 2 - Create a blank NewArray
+    NewArray = [[(0, 0, 0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+    # Step 3 - Create the new stock price sprite
+    StockSprite = CreateBannerSprite(StockPrice)
+
+    # Step 4 - Copy the new stock price into NewArray
+    h = 10
+    v = 10
+    ZoomFactor = 2
+    NewArray = StockSprite.CopySpriteToScreenArrayZoom(h, v, ZoomFactor=ZoomFactor)
+
+    # Step 5 - Transition from old to new (falling sand)
+    TransitionBetweenScreenArrays(OldArray, NewArray, TransitionType=2)
+
+    # Step 6 - Finalize the new screen
     CopyScreenArrayToCanvasVSync(NewArray)
     ScreenArray = copy.deepcopy(NewArray)
