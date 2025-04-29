@@ -19460,9 +19460,13 @@ def DisplayStockPrice(StockPrice=""):
     ScreenArray1 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
     ScreenArray2 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
 
-    
+    #Copy shadow sprite, then text sprite over top of it
     ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
     ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
     
     TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=2)
+    
+    ScreenArray = copy.deepcopy(ScreenArray2)
+
+
   
