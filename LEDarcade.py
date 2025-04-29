@@ -19477,7 +19477,7 @@ def DisplayStockPrice_veryold(StockPrice=""):
   
 
 
-def DisplayStockPrice_old(Symbol="", Price=""):
+def DisplayStockPrice(Symbol="", Price=""):
     global ScreenArray
 
     # Step 1 - Save current screen
