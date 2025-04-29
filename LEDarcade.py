@@ -19477,29 +19477,40 @@ def DisplayStockPrice_old(StockPrice=""):
   
 
 
-def DisplayStockPrice(StockPrice=""):
+def DisplayStockPrice(Symbol="", Price=""):
     global ScreenArray
 
-    # Step 1 - Capture the current screen FIRST
+    # Step 1 - Save current screen
     OldArray = copy.deepcopy(ScreenArray)
 
-    # Step 2 - Clear the buffers (optional if you need a clean NewArray)
-    ClearBuffers()
-
-    # Step 3 - Create the new stock price sprite
-    StockSprite = CreateBannerSprite(StockPrice)
-
-    # Step 4 - Build a new array
+    # Step 2 - Prepare new empty array
     NewArray = [[(0, 0, 0) for i in range(HatWidth)] for i in range(HatHeight)]
 
-    h = 10
-    v = 10
-    ZoomFactor = 2
-    NewArray = StockSprite.CopySpriteToScreenArrayZoom(h, v, ZoomFactor=ZoomFactor)
+    # Step 3 - Create both sprites
+    SymbolSprite = CreateBannerSprite(Symbol.upper())
+    PriceSprite  = CreateBannerSprite(Price)
 
-    # Step 5 - Transition with falling sand
+    ZoomFactor = 2
+
+    # Estimate sprite heights
+    symbol_height = SymbolSprite.height * ZoomFactor
+    price_height  = PriceSprite.height * ZoomFactor
+    total_height  = symbol_height + price_height
+
+    # Step 4 - Calculate vertical positioning (centered vertically)
+    v_offset = max((HatHeight - total_height) // 2, 0)
+
+    # Horizontal centering
+    symbol_h = max((HatWidth - SymbolSprite.width * ZoomFactor) // 2, 0)
+    price_h  = max((HatWidth - PriceSprite.width  * ZoomFactor) // 2, 0)
+
+    # Step 5 - Copy sprites to NewArray
+    NewArray = SymbolSprite.CopySpriteToScreenArrayZoom(symbol_h, v_offset, ZoomFactor=ZoomFactor)
+    NewArray = PriceSprite.CopySpriteToScreenArrayZoom(price_h, v_offset + symbol_height, ZoomFactor=ZoomFactor)
+
+    # Step 6 - Perform the transition
     TransitionBetweenScreenArrays(OldArray, NewArray, TransitionType=2)
 
-    # Step 6 - Update ScreenArray to match
+    # Step 7 - Finalize
     CopyScreenArrayToCanvasVSync(NewArray)
     ScreenArray = copy.deepcopy(NewArray)

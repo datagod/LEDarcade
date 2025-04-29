@@ -210,7 +210,7 @@ def main():
                 stock_prices[symbol] = StockPrice
 
             
-            LED.DisplayStockPrice(StockPrice)
+            LED.DisplayStockPrice(Symbol=symbol, StockPrice=StockPrice)
             time.sleep(1)
 
 
@@ -231,7 +231,7 @@ def main():
 
 
 
-    time.sleep(900)
+    time.sleep(10)
 
 
 
