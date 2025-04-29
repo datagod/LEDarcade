@@ -19458,8 +19458,8 @@ def DisplayStockPrice(StockPrice=""):
     
     # Initialize blank screen arrays
     ScreenArray1 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
-    #ScreenArray2 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
-    ScreenArray2 = copy.deepcopy(ScreenArray) 
+    ScreenArray2 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+    #ScreenArray2 = copy.deepcopy(ScreenArray) 
 
     #Copy shadow sprite, then text sprite over top of it
     ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
