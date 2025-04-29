@@ -19490,6 +19490,11 @@ def DisplayStockPrice(Symbol="", Price=""):
     SymbolSprite = CreateBannerSprite(Symbol.upper())
     PriceSprite  = CreateBannerSprite(Price)
 
+    SymbolSprite.r = 150
+    SymbolSprite.G = 150
+    SymbolSprite.B = 00
+    
+
     ZoomFactor = 2
 
     # Estimate sprite heights
@@ -19506,7 +19511,7 @@ def DisplayStockPrice(Symbol="", Price=""):
 
     # Step 5 - Copy sprites to NewArray
     NewArray = SymbolSprite.CopySpriteToScreenArrayZoom(symbol_h, v_offset, ZoomFactor=ZoomFactor)
-    NewArray = PriceSprite.CopySpriteToScreenArrayZoom(price_h, v_offset + symbol_height, ZoomFactor=ZoomFactor)
+    NewArray = PriceSprite.CopySpriteToScreenArrayZoom(price_h, v_offset + symbol_height + 1, ZoomFactor=ZoomFactor)
 
     # Step 6 - Perform the transition
     TransitionBetweenScreenArrays(OldArray, NewArray, TransitionType=2)
