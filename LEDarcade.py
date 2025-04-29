@@ -19445,9 +19445,7 @@ def DisplayStockPrice(StockPrice):
     RGB = LowGreen,
     ShadowRGB        = ShadowGreen,
     ZoomFactor       = 3,
-    AnimationDelay   = AnimationDelay,
-    RunMinutes       = 1,
-    EventQueue       = EventQueue
+    RunMinutes       = 1
 
     ClearBigLED()
     ClearBuffers()
