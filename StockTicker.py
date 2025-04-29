@@ -199,7 +199,7 @@ def main():
   while 1==1:
 
     LED.DisplayStockPrice("123.45")
-
+    time.sleep 5
 
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CURRENT PRICESS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
 

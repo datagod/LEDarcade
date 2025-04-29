@@ -19444,7 +19444,7 @@ def DisplayStockPrice(StockPrice=""):
    
     RGB = (0,50,0)
     ShadowRGB        = ShadowGreen
-    ZoomFactor       = 3
+    ZoomFactor       = 2
     RunMinutes       = 1
     h = 10
     v = 10
