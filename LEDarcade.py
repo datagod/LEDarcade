@@ -19449,7 +19449,7 @@ def DisplayStockPrice(StockPrice=""):
     v = 10
 
     #ClearBigLED()
-    ClearBuffers()
+    #ClearBuffers()
     global ScreenArray
 
     StockSprite = CreateBannerSprite(StockPrice)
