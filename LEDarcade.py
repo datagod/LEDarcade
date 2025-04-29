@@ -19465,7 +19465,8 @@ def DisplayStockPrice(StockPrice=""):
     ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
     ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
     
-    TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=2)
+    #Transitions then copies the results to ScreenArray
+    TransitionBetweenScreenArrays(ScreenArray,ScreenArray1,TransitionType=2)
        
     
     #ScreenArray = copy.deepcopy(ScreenArray2)
