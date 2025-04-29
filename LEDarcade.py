@@ -19442,7 +19442,7 @@ def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
 
 def DisplayStockPrice(StockPrice=""):
    
-    RGB = (0,50,0)
+    RGB = (0,150,0)
     ShadowRGB        = ShadowGreen
     ZoomFactor       = 2
     RunMinutes       = 1
@@ -19461,7 +19461,7 @@ def DisplayStockPrice(StockPrice=""):
     ScreenArray2  = ([[]])
     ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
   
-    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v-1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
+    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
     ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
     TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=2)
   
