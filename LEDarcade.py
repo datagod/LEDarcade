@@ -19468,7 +19468,7 @@ def DisplayStockPrice(StockPrice=""):
     TransitionBetweenScreenArrays(ScreenArray,ScreenArray1,TransitionType=2)
        
     
-    ScreenArray = copy.deepcopy(ScreenArray1)
+    #ScreenArray = copy.deepcopy(ScreenArray1)
 
 
   
