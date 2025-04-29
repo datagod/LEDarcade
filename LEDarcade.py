@@ -19443,10 +19443,10 @@ def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
 def DisplayStockPrice(StockPrice=""):
    
     RGB = LowGreen,
-    ShadowRGB        = ShadowGreen,
-    ZoomFactor       = 3,
-    RunMinutes       = 1,
-    h = 10,
+    ShadowRGB        = ShadowGreen
+    ZoomFactor       = 3
+    RunMinutes       = 1
+    h = 10
     v = 10
 
     ClearBigLED()
