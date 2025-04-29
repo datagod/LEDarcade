@@ -19468,7 +19468,7 @@ def DisplayStockPrice(StockPrice=""):
     
     
     
-    ScreenArray = copy.deepcopy(ScreenArray1)
+    #ScreenArray = copy.deepcopy(ScreenArray1)
 
 
   
