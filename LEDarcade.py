@@ -19449,7 +19449,7 @@ def DisplayStockPrice(StockPrice=""):
     h = 10
     v = 10
 
-    ClearBigLED()
+    #ClearBigLED()
     ClearBuffers()
     global ScreenArray
 
