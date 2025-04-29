@@ -213,6 +213,8 @@ def main():
 
 
 
+
+
         except Exception as e:
             print(f"[Warning] Failed to get stock price for {symbol}. Error: {e}")
             continue
@@ -221,7 +223,9 @@ def main():
         print(f"{symbol}: ${StockPrice}")
 
 
-    
+        LED.DisplayStockPrice(StockPrice)
+        time.sleep(10)
+
     time.sleep(900)
 
 

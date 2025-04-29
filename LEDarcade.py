@@ -17511,7 +17511,7 @@ async def DisplayDigitalClock(
 
 
 # This function will be called by an asyncio process
-# The calling module will be able to continut to monitor Twitch stream and chat
+# The calling module will be able to continue to monitor Twitch stream and chat
 # This function will check a global variable to determine if it should exit early
 
 async def DisplayTwitchTimer(
@@ -19439,3 +19439,29 @@ def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
 
 
 
+
+def DisplayStockPrice(StockPrice):
+   
+    RGB = LowGreen,
+    ShadowRGB        = ShadowGreen,
+    ZoomFactor       = 3,
+    AnimationDelay   = AnimationDelay,
+    RunMinutes       = 1,
+    EventQueue       = EventQueue
+
+    ClearBigLED()
+    ClearBuffers()
+    global ScreenArray
+
+    StockSprite = CreateBannerSprite(StockPrice)
+    
+    #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
+    ScreenArray1  = ([[]])
+    ScreenArray1  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+    ScreenArray2  = ([[]])
+    ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+  
+    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v-1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
+    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
+    TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=2)
+  
