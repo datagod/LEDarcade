@@ -19443,14 +19443,13 @@ def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
 def DisplayStockPrice(StockPrice=""):
    
     RGB = (0,150,0)
-    ShadowRGB        = ShadowGreen
-    ZoomFactor       = 2
-    RunMinutes       = 1
+    ShadowRGB  = ShadowGreen
+    ZoomFactor = 2
     h = 10
     v = 10
 
     #ClearBigLED()
-    ClearBuffers()
+    #ClearBuffers()
     global ScreenArray
 
     StockSprite = CreateBannerSprite(StockPrice)
