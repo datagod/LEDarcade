@@ -19506,7 +19506,7 @@ def DisplayStockPrice(Symbol="", Price=""):
 
     # Step 5 - Copy sprites to NewArray
     NewArray = SymbolSprite.CopySpriteToScreenArrayZoom(symbol_h, v_offset, ZoomFactor=ZoomFactor)
-    NewArray = PriceSprite.CopySpriteToScreenArrayZoom(price_h, v_offset + symbol_height, ZoomFactor=ZoomFactor)
+    #NewArray = PriceSprite.CopySpriteToScreenArrayZoom(price_h, v_offset + symbol_height, ZoomFactor=ZoomFactor)
 
     # Step 6 - Perform the transition
     TransitionBetweenScreenArrays(OldArray, NewArray, TransitionType=2)
