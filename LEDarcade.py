@@ -15910,13 +15910,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0
             SpriteArray[1][y][x].velocityV = New_velocityV + random.random() / 2
             SpriteArray[1][y][x].v = New_next_v
             
-            # Apply a small chance of horizontal drift
-            #if random.random() < 0.2:  # 20% chance
-            #    drift = random.choice([-1, 0, 1])
-            #    new_h = SpriteArray[1][y][x].h + drift
-            #    if 0 <= new_h < HatWidth:
-            #        SpriteArray[1][y][x].h = new_h
-
+            
             
 
 
@@ -15932,16 +15926,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0
             SpriteArray[0][y][x].velocityV = Old_velocityV + random.random() / 2
             SpriteArray[0][y][x].v = Old_next_v
 
-            # Apply a small chance of horizontal drift
-            #if random.random() < 0.2:
-            #    drift = random.choice([-1, 0, 1])
-            #    new_h = SpriteArray[0][y][x].h + drift
-            #    if 0 <= new_h < HatWidth:
-            #        SpriteArray[0][y][x].h = new_h
-
-
-
-            
+                        
           #when particles fall, they are overwriting a spot that is marked as both.  This should not happen.
           #falling dots need to be erased.
           
