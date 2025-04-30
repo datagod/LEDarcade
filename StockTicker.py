@@ -196,42 +196,45 @@ def main():
   CheckConfigFiles()
   LoadConfigFiles()
 
-  while 1==1:
 
+  
+  
+  FETCH_INTERVAL = 900  # 15 minutes
+  DISPLAY_DELAY = 1     # Delay between displaying each stock
 
-    #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CURRENT PRICESS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+  stock_prices = {}
+  last_fetch_time = 0
 
-    stock_prices = {}
-    for symbol in STOCK_SYMBOLS:
-        try:
-            StockPrice = "{:.2f}".format(GetStockPrice(symbol))
-              
-            if StockPrice is not None:
-                stock_prices[symbol] = StockPrice
+  while True:
+      current_time = time.time()
 
-            
-            LED.DisplayStockPrice(symbol,StockPrice)
-            time.sleep(1)
+      # Fetch stock prices if interval has passed or first run
+      if current_time - last_fetch_time >= FETCH_INTERVAL or not stock_prices:
+          print("Fetching stock prices...")
+          stock_prices.clear()  # Reset the dictionary
 
+          for symbol in STOCK_SYMBOLS:
+              try:
+                  price_value = GetStockPrice(symbol)
+                  if price_value is None:
+                      raise ValueError("Price returned None")
 
+                  StockPrice = "{:.2f}".format(price_value)
+                  stock_prices[symbol] = StockPrice
+                  print(f"Fetched {symbol}: ${StockPrice}")
+              except Exception as e:
+                  print(f"[Warning] Failed to get stock price for {symbol}. Error: {e}")
 
-            #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,f"{symbol} {StockPrice}",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,200,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-            #LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=5)
+          last_fetch_time = current_time
+          print("Stock prices updated.\n")
 
-
-
-
-
-        except Exception as e:
-            print(f"[Warning] Failed to get stock price for {symbol}. Error: {e}")
-            continue
-    print("\nCollected Stock Prices:")
-    for symbol, StockPrice in stock_prices.items():
-        print(f"{symbol}: ${StockPrice}")
-
-
-
-    time.sleep(900)
+      # Display loop
+      for symbol, StockPrice in stock_prices.items():
+          try:
+              LED.DisplayStockPrice(symbol, StockPrice)
+              time.sleep(DISPLAY_DELAY)
+          except Exception as e:
+              print(f"[Warning] Display error for {symbol}. Error: {e}")
 
 
 
