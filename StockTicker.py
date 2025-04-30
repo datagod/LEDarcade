@@ -22,16 +22,6 @@ import random
 from configparser import ConfigParser
 import requests
 import traceback
-import socket
-
-
-
-import json
-
-
-
-
-import pprint
 
 
 import time
@@ -94,7 +84,6 @@ def CheckConfigFiles():
             print("We will attempt to create a file with default values")
             with open(KeyConfigFileName, 'a+') as KeyConfigFile:
                 KeyConfigFile.write("[KEYS]\n")
-                KeyConfigFile.write("ALPHA_API_KEY = YOUR API KEY HERE\n")
                 KeyConfigFile.write("STOCK_SYMBOLS = TSLA,MSFT,AAPL\n")
                 KeyConfigFile.write("\n")
             print("File created")
@@ -104,7 +93,6 @@ def CheckConfigFiles():
             print(f"[Error] {AdditionalInfo}\n{ErrorMessage}\n{TraceMessage}")
 
 def LoadConfigFiles():
-    global ALPHA_API_KEY
     global STOCK_SYMBOLS
 
     print("--Load Stock Keys--")
@@ -113,10 +101,8 @@ def LoadConfigFiles():
         KeyFile = ConfigParser()
         KeyFile.read(KeyConfigFileName)
 
-        ALPHA_API_KEY = KeyFile.get("KEYS", "ALPHA_API_KEY")
         STOCK_SYMBOLS = KeyFile.get("KEYS", "STOCK_SYMBOLS").replace(' ', '').split(',')
 
-        print("ALPHA_API_KEY:              ", ALPHA_API_KEY)
         print("STOCK_SYMBOLS:              ", ', '.join(STOCK_SYMBOLS))
         print("--------------------\n")
     else:
@@ -205,13 +191,14 @@ def main():
   stock_prices = {}
   last_fetch_time = 0
 
+  previous_prices = {}
+
   while True:
       current_time = time.time()
 
-      # Fetch stock prices if interval has passed or first run
       if current_time - last_fetch_time >= FETCH_INTERVAL or not stock_prices:
           print("Fetching stock prices...")
-          stock_prices.clear()  # Reset the dictionary
+          stock_prices.clear()
 
           for symbol in STOCK_SYMBOLS:
               try:
@@ -220,21 +207,28 @@ def main():
                       raise ValueError("Price returned None")
 
                   StockPrice = "{:.2f}".format(price_value)
-                  stock_prices[symbol] = StockPrice
-                  print(f"Fetched {symbol}: ${StockPrice}")
+
+                  # Determine price change symbol
+                  prev_price = previous_prices.get(symbol)
+                  if prev_price is not None:
+                      if price_value > prev_price:
+                          display_price = f"]{StockPrice}"  # Up
+                      elif price_value < prev_price:
+                          display_price = f"[{StockPrice}"  # Down
+                      else:
+                          display_price = f" {StockPrice}"  # No change
+                  else:
+                      display_price = f" {StockPrice}"      # First fetch
+
+                  previous_prices[symbol] = price_value
+                  stock_prices[symbol] = display_price
+                  print(f"Fetched {symbol}: {display_price}")
+
               except Exception as e:
                   print(f"[Warning] Failed to get stock price for {symbol}. Error: {e}")
 
           last_fetch_time = current_time
           print("Stock prices updated.\n")
-
-      # Display loop
-      for symbol, StockPrice in stock_prices.items():
-          try:
-              LED.DisplayStockPrice(symbol, StockPrice)
-              time.sleep(DISPLAY_DELAY)
-          except Exception as e:
-              print(f"[Warning] Display error for {symbol}. Error: {e}")
 
 
 
@@ -244,7 +238,3 @@ if __name__ == "__main__":
     main()
 
 
-
-
-
- 
