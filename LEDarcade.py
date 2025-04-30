@@ -4634,7 +4634,7 @@ CursorSprite = Sprite(
 )
 
 
-# ┴
+# chr(193)
 UpArrowSprite = Sprite(
   3,
   3,
@@ -4649,7 +4649,7 @@ UpArrowSprite = Sprite(
 )
 
 
-# ┬
+# chr(194)
 DownArrowSprite = Sprite(
   3,
   3,
