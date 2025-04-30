@@ -1777,7 +1777,7 @@ class Sprite(object):
     return ScreenArray
     
 
-def CopySpriteToScreenArrayZoom2(self,h,v,ZoomFactor,InputScreenArray):
+  def CopySpriteToScreenArrayZoom2(self,h,v,ZoomFactor,InputScreenArray):
 
 
     x = 0,
@@ -1805,21 +1805,6 @@ def CopySpriteToScreenArrayZoom2(self,h,v,ZoomFactor,InputScreenArray):
 
 
   
-
-    #Copy contents of sprite to a rgb matrix
-    x = 0,
-    y = 0
-    for count in range (0,(self.width * self.height)):
-      y,x = divmod(count,self.width)
-      #print("Count:",count,"xy",x,y)
-      if self.grid[count] == 1:
-        if (CheckBoundary(x+h1,y+v1) == 0):
-          TheMatrix.SetPixel(x+h1,y+v1,self.r,self.g,self.b)
-      elif self.grid[count] == 0:
-        if (CheckBoundary(x+h1,y+v1) == 0):
-          TheMatrix.SetPixel(x+h1,y+v1,0,0,0)
-    #unicorn.show()
-
 
 
 
