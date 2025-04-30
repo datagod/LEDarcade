@@ -4634,7 +4634,7 @@ CursorSprite = Sprite(
 )
 
 
-# [
+# ┴
 UpArrowSprite = Sprite(
   3,
   3,
@@ -4649,7 +4649,7 @@ UpArrowSprite = Sprite(
 )
 
 
-# [
+# ┬
 DownArrowSprite = Sprite(
   3,
   3,
@@ -12752,6 +12752,11 @@ def CreateBannerSprite(TheMessage):
 
     elif (c == '\\'):
       BannerSprite = JoinSprite(BannerSprite, BackSlashSprite,0)
+
+    elif (c == '┴'):
+      BannerSprite = JoinSprite(BannerSprite, UpArrowSprite,0)
+    elif (c == '┬'):
+      BannerSprite = JoinSprite(BannerSprite, DownArrowSprite,0)
 
     elif (c == ' '):
       BannerSprite = JoinSprite(BannerSprite, SpaceSprite,0)

@@ -212,9 +212,9 @@ def main():
                   prev_price = previous_prices.get(symbol)
                   if prev_price is not None:
                       if price_value > prev_price:
-                          display_price = f"]{StockPrice}"  # Up
+                          display_price = f"┴{StockPrice}"  # Up
                       elif price_value < prev_price:
-                          display_price = f"[{StockPrice}"  # Down
+                          display_price = f"┬{StockPrice}"  # Down
                       else:
                           display_price = f" {StockPrice}"  # No change
                   else:
