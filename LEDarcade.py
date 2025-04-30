@@ -19533,7 +19533,7 @@ def DisplayStockPrice(Symbol="", Price=""):
     )
 
     # Step 6 - Transition
-    TransitionBetweenScreenArrays(OldArray, NewArray, TransitionType=2)
+    TransitionBetweenScreenArrays(OldArray, NewArray, TransitionType=1)
 
     # Step 7 - Finalize
     CopyScreenArrayToCanvasVSync(NewArray)
