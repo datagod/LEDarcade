@@ -19504,6 +19504,10 @@ def DisplayStockPrice(Symbol="", Price=""):
     SymbolSprite.g = 150
     SymbolSprite.b = 0
 
+    PriceSprite.r = 0
+    PriceSprite.g = 175
+    PriceSprite.b = 0
+
     ZoomFactor = 2
 
     # Estimate sprite heights
@@ -19520,7 +19524,7 @@ def DisplayStockPrice(Symbol="", Price=""):
 
     # Step 5 - Draw both sprites onto the same NewArray
     NewArray = SymbolSprite.CopySpriteToScreenArrayZoom2(
-        symbol_h, v_offset, ZoomFactor=ZoomFactor, InputScreenArray=NewArray
+        symbol_h, v_offset -1, ZoomFactor=ZoomFactor, InputScreenArray=NewArray
     )
 
     NewArray = PriceSprite.CopySpriteToScreenArrayZoom2(

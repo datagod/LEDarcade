@@ -200,7 +200,7 @@ def main():
   
   
   FETCH_INTERVAL = 900  # 15 minutes
-  DISPLAY_DELAY = 1     # Delay between displaying each stock
+  DISPLAY_DELAY = 2     # Delay between displaying each stock
 
   stock_prices = {}
   last_fetch_time = 0
