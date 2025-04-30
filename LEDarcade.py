@@ -12753,9 +12753,9 @@ def CreateBannerSprite(TheMessage):
     elif (c == '\\'):
       BannerSprite = JoinSprite(BannerSprite, BackSlashSprite,0)
 
-    elif (c == '┴'):
+    elif (c == chr(193)):
       BannerSprite = JoinSprite(BannerSprite, UpArrowSprite,0)
-    elif (c == '┬'):
+    elif (c == chr(194)):
       BannerSprite = JoinSprite(BannerSprite, DownArrowSprite,0)
 
     elif (c == ' '):
