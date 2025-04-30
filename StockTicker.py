@@ -230,6 +230,9 @@ def main():
           last_fetch_time = current_time
           print("Stock prices updated.\n")
 
+          LED.DisplayStockPrice(symbol, display_price)
+
+
 
 
 #Call the main function if this script was executed directly
