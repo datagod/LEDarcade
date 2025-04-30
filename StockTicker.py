@@ -183,19 +183,19 @@ def main():
   LoadConfigFiles()
 
 
-  
-  
+    
+    
   FETCH_INTERVAL = 900  # 15 minutes
-  DISPLAY_DELAY = 2     # Delay between displaying each stock
+  DISPLAY_DELAY = 2     # 2 seconds between displaying each stock
 
   stock_prices = {}
-  last_fetch_time = 0
-
   previous_prices = {symbol: 0.0 for symbol in STOCK_SYMBOLS}
+  last_fetch_time = 0
 
   while True:
       current_time = time.time()
 
+      # Fetch stock prices if interval has passed or none are available
       if current_time - last_fetch_time >= FETCH_INTERVAL or not stock_prices:
           print("Fetching stock prices...")
           stock_prices.clear()
@@ -208,17 +208,14 @@ def main():
 
                   StockPrice = "{:.2f}".format(price_value)
 
-                  # Determine price change symbol
+                  # Determine price change symbol using extended ASCII
                   prev_price = previous_prices.get(symbol)
-                  if prev_price is not None:
-                      if price_value > prev_price:
-                          display_price = chr(193) +  f"{StockPrice}"  # Up
-                      elif price_value < prev_price:
-                          display_price = chr(194) + f"┬{StockPrice}"  # Down
-                      else:
-                          display_price = f" {StockPrice}"  # No change
+                  if price_value > prev_price:
+                      display_price = chr(193) + StockPrice  # Up arrow (example: '┴')
+                  elif price_value < prev_price:
+                      display_price = chr(194) + StockPrice  # Down arrow (example: '┬')
                   else:
-                      display_price = f" {StockPrice}"      # First fetch
+                      display_price = " " + StockPrice       # No change
 
                   previous_prices[symbol] = price_value
                   stock_prices[symbol] = display_price
@@ -230,12 +227,14 @@ def main():
           last_fetch_time = current_time
           print("Stock prices updated.\n")
 
-          LED.DisplayStockPrice(symbol, display_price)
+      # Display all current stock prices one at a time
+      for symbol, display_price in stock_prices.items():
+          try:
+              LED.DisplayStockPrice(symbol, display_price)
+              time.sleep(DISPLAY_DELAY)
+          except Exception as e:
+              print(f"[Warning] Display error for {symbol}. Error: {e}")
 
-
-
-
-#Call the main function if this script was executed directly
 #Otherwise it is part of a module and we don't execute it 
 if __name__ == "__main__":
     main()
