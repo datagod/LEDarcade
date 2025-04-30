@@ -191,7 +191,7 @@ def main():
   stock_prices = {}
   last_fetch_time = 0
 
-  previous_prices = {}
+  previous_prices = {symbol: 0.0 for symbol in STOCK_SYMBOLS}
 
   while True:
       current_time = time.time()
