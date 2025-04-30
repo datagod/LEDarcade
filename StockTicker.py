@@ -126,7 +126,7 @@ def GetStockPrice(symbol):
             raise KeyError(f"regularMarketPrice not found for {symbol}")
 
         price_formatted = "{:.2f}".format(price)
-        print(f"Current stock price of {symbol}: ${price_formatted}")
+        print(f"{symbol}: ${price_formatted}")
         return price
 
     except KeyError as ke:
