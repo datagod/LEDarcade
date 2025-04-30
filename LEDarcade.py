@@ -1777,6 +1777,31 @@ class Sprite(object):
     return ScreenArray
     
 
+def CopySpriteToScreenArrayZoom2(self,h,v,ZoomFactor,InputScreenArray):
+
+
+    x = 0,
+    y = 0
+
+    for count in range (0,(self.width * self.height) ):
+      y,x = divmod(count,self.width)
+
+      y = y * ZoomFactor
+      x = x * ZoomFactor
+
+      if (ZoomFactor >= 1):
+        for zv in range (0,ZoomFactor):
+          for zh in range (0,ZoomFactor):
+            H = x+h+zh
+            V = y+v+zv
+        
+            if(CheckBoundary(H,V) == 0):
+            #draw the sprite portion
+              if self.grid[count] != 0:
+                InputScreenArray[V][H]=(self.r,self.g,self.b)
+     
+    return InputScreenArray
+    
 
 
   
@@ -19509,11 +19534,11 @@ def DisplayStockPrice(Symbol="", Price=""):
     price_h  = max((HatWidth - PriceSprite.width  * ZoomFactor) // 2, 0)
 
     # Step 5 - Draw both sprites onto the same NewArray
-    SymbolSprite.CopySpriteToScreenArrayZoom(
+    NewArray = SymbolSprite.CopySpriteToScreenArrayZoom2(
         symbol_h, v_offset, ZoomFactor=ZoomFactor, InputScreenArray=NewArray
     )
 
-    PriceSprite.CopySpriteToScreenArrayZoom(
+    NewArray = PriceSprite.CopySpriteToScreenArrayZoom2(
         price_h, v_offset + symbol_height + 1, ZoomFactor=ZoomFactor, InputScreenArray=NewArray
     )
 
