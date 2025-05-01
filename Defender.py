@@ -242,7 +242,7 @@ def DebugRGBMap(map, h, v, width, height,BombH, BombV):
         for x in range(h, h + width):
             try:
                 if x == BombH - LED.HatWidth and y == BombV:
-                  row += fix'\/'
+                  row += '\/'
                 else:
                   pixel = map[y][x]
                   if pixel == (0,0,0):
