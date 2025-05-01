@@ -1059,7 +1059,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
         print(f"\nDEBUG: Bomb about to check explosion at V={BlastV}, H={BlastH + PlayfieldH}")
         pixel = Ground.map[BlastV][BlastH + PlayfieldH]
         print(f"Ground Pixel Color: {pixel}")
-        DebugPlayfield(Ground.map, BlastH + PlayfieldH - 10, BlastV - 5, 20, 10)
+        DebugRGBMap(Ground.map, BlastH + PlayfieldH - 10, BlastV - 5, 20, 10)
     except Exception as e:
         print(f"Debug display failed: {e}")
 
