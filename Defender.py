@@ -1654,58 +1654,59 @@ def PlayDefender(GameMaxMinutes):
       OldH = 0
       OldV = 0
       #MoveHumans
-      for i in range (0,HumanCount):
-        if(Humans[i].alive == True):
-          OldH = Humans[i].h
-          OldV = Humans[i].v
+      #for i in range (0,HumanCount):
+      for Human in Humans:
+        if(Human.alive == True):
+          OldH = Human.h
+          OldV = Human.v
 
           if(random.randint(0,HumanMoveChance) == 1):
-            if (abs(gx + Defender.h - Humans[i].h) < HumanRunDistance):
+            if (abs(gx + Defender.h - Human.h) < HumanRunDistance):
               #move human, but follow ground
-              Humans[i].h = Humans[i].h + Humans[i].direction
+              Human.h = Human.h + Human.direction
 
               #check boundaries
-              if(Humans[i].direction == 1):
-                if Humans[i].h >= DefenderPlayfield.width -2:
-                  Humans[i].h = 0
+              if(Human.direction == 1):
+                if Human.h >= DefenderPlayfield.width -2:
+                  Human.h = 0
               else:
-                if Humans[i].h <= 0:
-                  Humans[i].h = DefenderPlayfield.width -1
+                if Human.h <= 0:
+                  Human.h = DefenderPlayfield.width -1
 
 
-              if(Humans[i].v >= LED.HatHeight -1):
-                Humans[i].v = LED.HatHeight -2
+              if(Human.v >= LED.HatHeight -1):
+                Human.v = LED.HatHeight -2
 
-              #print(Humans[i].v,Humans[i].h)
+              #print(Human.v,Human.h)
 
               #check ground
               #If hole, move down
 
               try:
-                rgb = Ground.map[Humans[i].v][Humans[i].h + Humans[i].direction]
+                rgb = Ground.map[Human.v][Human.h + Human.direction]
               except:
-                print("Error moving human: i vh direction",i,Humans[i].v,Humans[i].h, Humans[i].direction,end="\r")
+                print("Error moving human: i vh direction",i,Human.v,Human.h, Human.direction,end="\r")
 
 
 
               if(rgb == (0,0,0)):
                 #if a hole at the bottom is encountered, run away
-                if(Humans[i].v > LED.HatHeight -4):
-                  Humans[i].direction = Humans[i].direction * -1
-                #print("Moving down:",Humans[i].v)
+                if(Human.v > LED.HatHeight -4):
+                  Human.direction = Human.direction * -1
+                #print("Moving down:",Human.v)
                 else:
-                  Humans[i].v = Humans[i].v + 1
+                  Human.v = Human.v + 1
               else:
                 if(random.randint(0,HumanMoveChance) == 1):
-                  Humans[i].v = Humans[i].v -1
+                  Human.v = Human.v -1
               
           
-          hH = Humans[i].h
-          hV = Humans[i].v
+          hH = Human.h
+          hV = Human.v
         
           #check if human is in currently displayed area
           if(DisplayH <=  hH  <= DisplayMaxH):
-            Canvas = Humans[i].PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
+            Canvas = Human.PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
 
          
 
@@ -1719,11 +1720,12 @@ def PlayDefender(GameMaxMinutes):
       NewV = 0
       #MoveEnemyShips
       
-      for i in range (0,EnemyShipCount):
+      #for i in range (0,EnemyShipCount):
+      for EnemyShip in EnemyShips:
 
-        if(EnemyShips[i].alive == True):
-          OldH = EnemyShips[i].h
-          OldV = EnemyShips[i].v
+        if(EnemyShip.alive == True):
+          OldH = EnemyShip.h
+          OldV = EnemyShip.v
         
           if(OldV < 0):
             print("Invalid V - EnemyShip HV",OldH, OldV)
@@ -1740,33 +1742,33 @@ def PlayDefender(GameMaxMinutes):
        
 
             #Move if within X pixels from Defender
-            if (abs(gx + Defender.h - EnemyShips[i].h) < AttackDistance):
+            if (abs(gx + Defender.h - EnemyShip.h) < AttackDistance):
 
 
               #check fear factor and change enemy fear status
               if(random.randint(0,EnemyFearFactor) == 1):
-                if(EnemyShips[i].afraid == True):
-                  EnemyShips[i].afraid = False
+                if(EnemyShip.afraid == True):
+                  EnemyShip.afraid = False
                 else:
-                  EnemyShips[i].afraid = True
+                  EnemyShip.afraid = True
               
               
               #Move towards defender if not afraid
-              if(EnemyShips[i].afraid == True) and (EnemyAliveCount >= 5):
-                EnemyShips[i].direction = LED.PointAwayFromObject8Way(OldH,OldV,Defender.h,Defender.v)
+              if(EnemyShip.afraid == True) and (EnemyAliveCount >= 5):
+                EnemyShip.direction = LED.PointAwayFromObject8Way(OldH,OldV,Defender.h,Defender.v)
               else:
-                EnemyShips[i].direction = LED.PointTowardsObject8Way(OldH,OldV,Defender.h,Defender.v)
+                EnemyShip.direction = LED.PointTowardsObject8Way(OldH,OldV,Defender.h,Defender.v)
 
               #move Enemy
-              NewH, NewV = LED.CalculateDotMovement8Way(OldH, OldV, EnemyShips[i].direction)
-              #print("NewH NewV direction:",NewH,NewV,EnemyShips[i].direction)
+              NewH, NewV = LED.CalculateDotMovement8Way(OldH, OldV, EnemyShip.direction)
+              #print("NewH NewV direction:",NewH,NewV,EnemyShip.direction)
 
 
               #check boundaries
-              if(NewH >= DefenderPlayfield.width - EnemyShips[i].width):
+              if(NewH >= DefenderPlayfield.width - EnemyShip.width):
                 NewH = 0
               elif(NewH <= 0):
-                NewH = DefenderPlayfield.width - EnemyShips[i].width
+                NewH = DefenderPlayfield.width - EnemyShip.width
               #Might need to adjust this for enemy ships
               if(NewV >= LED.HatHeight -2):
                 NewV = LED.HatHeight -3
@@ -1774,8 +1776,8 @@ def PlayDefender(GameMaxMinutes):
                 NewV = 3
               
             
-              EnemyShips[i].h = NewH
-              EnemyShips[i].v = NewV
+              EnemyShip.h = NewH
+              EnemyShip.v = NewV
           
 
               #Place EnemyShip on playfield
@@ -1785,42 +1787,42 @@ def PlayDefender(GameMaxMinutes):
               #and ends up getting erased.  To avoid this we can always draw sprites with a border
               #of nothing, which will get written as emptyObject dots
               
-              DefenderPlayfield.EraseAnimatedSpriteFromPlayfield(OldH,OldV,EnemyShips[i])
+              DefenderPlayfield.EraseAnimatedSpriteFromPlayfield(OldH,OldV,EnemyShip)
             
               try:
-                DefenderPlayfield.CopyAnimatedSpriteToPlayfield(NewH, NewV,EnemyShips[i])
+                DefenderPlayfield.CopyAnimatedSpriteToPlayfield(NewH, NewV,EnemyShip)
               except:
                 print("Something went wrong copying the enemy ship sprite to the playfield")
-                print("hv:",EnemyShips[i].h, EnemyShips[i].v)
+                print("hv:",EnemyShip.h, EnemyShip.v)
 
             
         
           #check if Enemy is in currently displayed area
-          if(DisplayH - EnemyShips[i].width <=  EnemyShips[i].h  <= (DisplayH + LED.HatWidth + EnemyShips[i].width)):
-            Canvas = EnemyShips[i].PaintAnimatedToCanvas(EnemyShips[i].h-DisplayH,EnemyShips[i].v,Canvas)
+          if(DisplayH - EnemyShip.width <=  EnemyShip.h  <= (DisplayH + LED.HatWidth + EnemyShip.width)):
+            Canvas = EnemyShip.PaintAnimatedToCanvas(EnemyShip.h-DisplayH,EnemyShip.v,Canvas)
             
           
 
         #If ship is dead, move particles
-        if(EnemyShips[i].alive == False):
-          for j in range (0, (len(EnemyShips[i].Particles))):
+        if(EnemyShip.alive == False):
+          for j in range (0, (len(EnemyShip.Particles))):
 
-            if (EnemyShips[i].Particles[j].alive == 1):
-              EnemyShips[i].Particles[j].UpdateLocationWithGravity(EnemyParticleGravity)
-              ph = EnemyShips[i].Particles[j].h
-              pv = EnemyShips[i].Particles[j].v
+            if (EnemyShip.Particles[j].alive == 1):
+              EnemyShip.Particles[j].UpdateLocationWithGravity(EnemyParticleGravity)
+              ph = EnemyShip.Particles[j].h
+              pv = EnemyShip.Particles[j].v
 
               #only display particles on screen
               if(DisplayH <=  ph  <= DisplayMaxH):
-                r  = EnemyShips[i].Particles[j].r
-                g  = EnemyShips[i].Particles[j].g
-                b  = EnemyShips[i].Particles[j].b
+                r  = EnemyShip.Particles[j].r
+                g  = EnemyShip.Particles[j].g
+                b  = EnemyShip.Particles[j].b
                 #print("Ship Particle:",i,j)  
                 Canvas.SetPixel(ph - DisplayH,pv,r,g,b)
               
               #kill the particle if the go off the screen
               else:
-                EnemyShips[i].Particles[j].alive == 0
+                EnemyShip.Particles[j].alive == 0
 
 
       
@@ -2290,50 +2292,50 @@ def PlayDefender(GameMaxMinutes):
    
 
 
-    #--------------------------------
-    #-- Garbage Cleanup            --
-    #--------------------------------
+      #--------------------------------
+      #-- Garbage Cleanup            --
+      #--------------------------------
 
-    # To reduce the amount of objects being tracked, we remove old
-    # ships and particles that are off-screen and no longer active.
+      # To reduce the amount of objects being tracked, we remove old
+      # ships and particles that are off-screen and no longer active.
 
-    DeleteH = DisplayH - LED.HatWidth
+      DeleteH = DisplayH - LED.HatWidth
 
-    # -- Enemy Ships Cleanup --
-    if random.randint(0, GarbageCleanupChance) == 1:
-        original_count = len(EnemyShips)
-        EnemyShips = [
-            ship for ship in EnemyShips
-            if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
-        ]
-        DeletedShips = original_count - len(EnemyShips)
-        # print("Garbage cleanup EnemyShips:", len(EnemyShips))
+      # -- Enemy Ships Cleanup --
+      if random.randint(0, GarbageCleanupChance) == 1:
+          original_count = len(EnemyShips)
+          EnemyShips = [
+              ship for ship in EnemyShips
+              if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
+          ]
+          DeletedShips = original_count - len(EnemyShips)
+          # print("Garbage cleanup EnemyShips:", len(EnemyShips))
 
-    # -- Ground Particles Cleanup --
-    if random.randint(0, 50) == 1:
-        GroundParticles = [
-            particle for particle in GroundParticles
-            if particle.h >= (DisplayH - 1)
-        ]
-        
-    #--------------------------------
-    #-- Human and Particle Cleanup --
-    #--------------------------------
+      # -- Ground Particles Cleanup --
+      if random.randint(0, 50) == 1:
+          GroundParticles = [
+              particle for particle in GroundParticles
+              if particle.h >= (DisplayH - 1)
+          ]
+          
+      #--------------------------------
+      #-- Human and Particle Cleanup --
+      #--------------------------------
 
-    if random.randint(0, GarbageCleanupChance) == 1:
-        # Clean up dead humans
-        Humans = [h for h in Humans if h.alive]
+      if random.randint(0, GarbageCleanupChance) == 1:
+          # Clean up dead humans
+          Humans = [h for h in Humans if h.alive]
 
-        # Optional debug print
-        # print("Garbage cleanup Human count:", len(Humans))
+          # Optional debug print
+          # print("Garbage cleanup Human count:", len(Humans))
 
-        # Clean up off-screen human particles
-        if random.randint(0, 50) == 1:
-            DeleteH = DisplayH - 1
-            HumanParticles = [
-                p for p in HumanParticles
-                if DeleteH <= p.h <= DeleteH + LED.HatWidth
-            ]
+          # Clean up off-screen human particles
+          if random.randint(0, 50) == 1:
+              DeleteH = DisplayH - 1
+              HumanParticles = [
+                  p for p in HumanParticles
+                  if DeleteH <= p.h <= DeleteH + LED.HatWidth
+              ]
 
 
 
