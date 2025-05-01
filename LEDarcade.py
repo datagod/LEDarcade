@@ -3418,14 +3418,6 @@ class Layer(object):
         self.map[y][x+HalfWidth] = self.map[y][HalfWidth -1 - x]
 
 
-    #just a temporary drawing
-    self.map[16][self.width-1]   = (100,100,255)
-    self.map[17][self.width-2]   = (100,100,255)
-    self.map[18][self.width-3]   = (100,100,255)
-    self.map[19][self.width-4]   = (100,100,255)
-    self.map[20][self.width-5]   = (100,100,255)
-    self.map[21][self.width-6]   = (100,100,255)
-    self.map[22][self.width-7]   = (100,100,255)
 
 
 
@@ -3457,7 +3449,7 @@ class Layer(object):
 
 def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
   
-  Canvas.Clear()
+  #Canvas.Clear()
   
   for x in range (0,HatWidth-1):
     for y in range (0,HatHeight):
@@ -3476,7 +3468,7 @@ def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
   
 
 
-def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
+def PaintFourLayerCanvas_old(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
   #DirectionOfTravel 1 = East, -1 = West
 
   bh = round(bh)
@@ -3484,7 +3476,7 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   fh = round(fh)
   gh = round(gh)
 
-  Canvas.Clear()
+  #Canvas.Clear()
   gwidth = Ground.width
   for x in range (0,HatWidth):
     for y in range (0,HatHeight):
@@ -3509,6 +3501,36 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   
   return Canvas
   
+
+def PaintFourLayerCanvas(Canvas, Foreground, Middleground, Background, Ground,
+                         fh, fwidth, mh, mwidth, bh, bwidth, gh, gwidth):
+    # Cache map arrays for faster access
+    fg_map = Foreground.map
+    mg_map = Middleground.map
+    bg_map = Background.map
+    gr_map = Ground.map
+
+    # Cache range objects to avoid regenerating per loop
+    range_w = range(HatWidth)
+    range_h = range(HatHeight)
+
+    for x in range_w:
+        gx = (x + gh) % gwidth
+        fx = (x + fh) % fwidth
+        mx = (x + mh) % mwidth
+        bx = (x + bh) % bwidth
+
+        for y in range_h:
+            rgb = gr_map[y][gx]
+            if rgb == (0, 0, 0):
+                rgb = fg_map[y][fx]
+                if rgb == (0, 0, 0):
+                    rgb = mg_map[y][mx]
+                    if rgb == (0, 0, 0):
+                        rgb = bg_map[y][bx]
+
+            if rgb != (0, 0, 0):
+                Canvas.SetPixel(x, y, *rgb)  
 
 
 def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
@@ -15821,7 +15843,6 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0
     #create an array of sprite objects (particles)
     SpriteArray = CreateSpriteArray(OldArray,NewArray)
     CopyScreenArrayToCanvasVSync(OldArray)
-    #Canvas.Clear()
     
     
     #Count particles to process
