@@ -3449,7 +3449,7 @@ class Layer(object):
 
 def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
   
-  #Canvas.Clear()
+  Canvas.Clear()
   
   for x in range (0,HatWidth-1):
     for y in range (0,HatHeight):
@@ -3476,7 +3476,7 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   fh = round(fh)
   gh = round(gh)
 
-  #Canvas.Clear()
+  Canvas.Clear()
   gwidth = Ground.width
   for x in range (0,HatWidth):
     for y in range (0,HatHeight):
@@ -15813,6 +15813,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0
     #create an array of sprite objects (particles)
     SpriteArray = CreateSpriteArray(OldArray,NewArray)
     CopyScreenArrayToCanvasVSync(OldArray)
+    #Canvas.Clear()
     
     
     #Count particles to process
