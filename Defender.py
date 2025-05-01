@@ -1037,7 +1037,18 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
     #Blow up bomb if it touches ground or runs out of velocity
     #try:
     #blow up pieces of ground
-    
+
+
+    #debug map
+    try:
+        print(f"\nDEBUG: Bomb about to check explosion at V={BlastV}, H={BlastH + PlayfieldH}")
+        pixel = Ground.map[BlastV][BlastH + PlayfieldH]
+        print(f"Ground Pixel Color: {pixel}")
+        DebugPlayfield(Ground.map, BlastH + PlayfieldH - 10, BlastV - 5, 20, 10)
+    except Exception as e:
+        print(f"Debug display failed: {e}")
+
+
     #print("Bounces:",DefenderBomb.bounces)
     if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
        or DefenderBomb.bounces >= MaxBombBounces
@@ -1053,7 +1064,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
               pixel_h = gh + i
 
               if 0 <= pixel_v < LED.HatHeight and 0 <= pixel_h < Ground.width:
-                  Ground.map[pixel_v][pixel_h] = (200, 0, 0)
+                  Ground.map[pixel_v][pixel_h] = (0, 0, 0)
 
           # Surface coloring only for j >= 0
           if j >= 0:
