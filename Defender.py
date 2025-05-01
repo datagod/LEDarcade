@@ -236,7 +236,7 @@ CheckTime        = 60
 
 def DebugRGBMap(map, h, v, width, height,BombH, BombV):
     print("===============================================================")
-    print(f"DEBUG RGB Map at origin H={h}, V={v}, width={width}, height={height}")
+    print(f"DEBUG RGB Map at origin H={h}  V={v}  width={width}  height={height}  BombH={BombH}  BombV={BombV}")
     for y in range(v, v + height):
         row = ''
         for x in range(h, h + width):
