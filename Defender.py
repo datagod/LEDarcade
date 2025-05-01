@@ -1051,6 +1051,9 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
       #destroy ground
       gv = BlastV
       gh = BlastH+PlayfieldH
+
+
+      '''
       for j in range (-4,BlastStrength):
         for i in range (-BlastStrength + j ,BlastStrength - j   ):
 
@@ -1073,6 +1076,34 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
               if(Ground.map[gv +j][gh + BlastStrength -j ] != (0,0,0)):
                 Ground.map[gv +j][gh + BlastStrength -j ] = (SurfaceR,SurfaceG,SurfaceB)
           
+      '''  
+
+
+      for j in range(-4, BlastStrength):
+          for i in range(-BlastStrength + j, BlastStrength - j):
+              pixel_v = gv + j
+              pixel_h = gh + i
+
+              if 0 <= pixel_v < LED.HatHeight and 0 <= pixel_h < Ground.width:
+                  Ground.map[pixel_v][pixel_h] = (0, 0, 0)
+              else:
+                  print(f"[Bomb out of bounds] Clear: H={pixel_h}, V={pixel_v}")
+
+          # Surface coloring only for j >= 0
+          if j >= 0:
+              left_h  = gh - BlastStrength + j - 1
+              right_h = gh + BlastStrength - j
+              pixel_v = gv + j
+
+              if 0 <= pixel_v < LED.HatHeight:
+                  if 0 <= left_h < Ground.width:
+                      if Ground.map[pixel_v][left_h] != (0, 0, 0):
+                          Ground.map[pixel_v][left_h] = (SurfaceR, SurfaceG, SurfaceB)
+
+                  if 0 <= right_h < Ground.width:
+                      if Ground.map[pixel_v][right_h] != (0, 0, 0):
+                          Ground.map[pixel_v][right_h] = (SurfaceR, SurfaceG, SurfaceB)
+
 
       #beside blast gets colored green
           
