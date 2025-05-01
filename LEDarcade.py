@@ -3510,10 +3510,6 @@ def PaintFourLayerCanvas(bh, mh, fh, gh, Background, Middleground, Foreground, G
     gr_map = Ground.map
 
     #make sure they are ints
-    bh = int(bh)
-    mh = int(mh)
-    fh = int(fh)
-    gh = int(gh)
 
 
     # Cache widths (assume .width exists or use len(map[0]))
@@ -3527,11 +3523,10 @@ def PaintFourLayerCanvas(bh, mh, fh, gh, Background, Middleground, Foreground, G
     range_h = range(HatHeight)
 
     for x in range_w:
-        bx = (x + bh) % bwidth
-        mx = (x + mh) % mwidth
-        fx = (x + fh) % fwidth
-        gx = (x + gh) % gwidth
-
+        bx = int((x + bh) % bwidth)
+        mx = int((x + mh) % mwidth)
+        fx = int((x + fh) % fwidth)
+        gx = int((x + gh) % gwidth)
         for y in range_h:
             rgb = gr_map[y][gx]
             if rgb == (0, 0, 0):
