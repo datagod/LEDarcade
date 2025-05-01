@@ -1031,6 +1031,9 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   BlastH = round(DefenderBomb.h)
   BlastV = round(DefenderBomb.v)
   
+
+
+
   #the further the bomb travels, the more power it gains
   if (DefenderDirection == 1):
     BlastStrength  = round(DefenderBomb.h / 10 + BlastFactor)
@@ -1076,6 +1079,15 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
     if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
        or DefenderBomb.bounces >= MaxBombBounces
        ):
+      
+      try:
+          pixel = Ground.map[BlastV][BlastH + PlayfieldH]
+          print(f"DEBUG: Bomb site RGB at V={BlastV}, H={BlastH + PlayfieldH} => {pixel}")
+      except IndexError:
+          print(f"DEBUG ERROR: Bomb site out of bounds at V={BlastV}, H={BlastH + PlayfieldH}")
+
+
+
       
       #destroy ground
       gv = BlastV
