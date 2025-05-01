@@ -1009,8 +1009,6 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   #Defenderbomb.h is relative to the  64x32 display
   #BlastHV is relative to the  64x32 display
 
-  Floor = LED.HatHeight
-  Finished = False
   
   BlastH = round(DefenderBomb.h)
   BlastV = round(DefenderBomb.v)
@@ -1026,17 +1024,14 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
       (255, 200, 0),    # yellow
       (255, 100, 0),    # orange
       (255, 0, 0),      # red
-      (175, 0, 175),      # purple smoke
+      (175, 0, 175),    # purple smoke
   ]
 
   
   
   SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
-  GroundR, GroundG, GroundB    = GroundRGB
-
+   
   
-  #print("BlastHV BombvelocityHV:",BlastH,BlastV,DefenderBomb.velocityH, DefenderBomb.velocityV)
-
   try:
 
     #Blow up bomb if it touches ground or runs out of velocity
@@ -1058,7 +1053,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
               pixel_h = gh + i
 
               if 0 <= pixel_v < LED.HatHeight and 0 <= pixel_h < Ground.width:
-                  Ground.map[pixel_v][pixel_h] = (0, 0, 0)
+                  Ground.map[pixel_v][pixel_h] = (200, 0, 0)
 
           # Surface coloring only for j >= 0
           if j >= 0:
