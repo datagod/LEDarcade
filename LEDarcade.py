@@ -3502,8 +3502,7 @@ def PaintFourLayerCanvas_old(bh,mh,fh,gh,Background,Middleground,Foreground,Grou
   return Canvas
   
 
-def PaintFourLayerCanvas(Canvas, Foreground, Middleground, Background, Ground,
-                         fh, fwidth, mh, mwidth, bh, bwidth, gh, gwidth):
+def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
     # Cache map arrays for faster access
     fg_map = Foreground.map
     mg_map = Middleground.map
