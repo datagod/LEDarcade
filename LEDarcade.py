@@ -3468,7 +3468,7 @@ def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
   
 
 
-def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
+def PaintFourLayerCanvas_old(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
   #DirectionOfTravel 1 = East, -1 = West
 
   bh = round(bh)
@@ -3501,6 +3501,51 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
   
   return Canvas
   
+
+
+
+
+def PaintFourLayerCanvas(bh, mh, fh, gh, Background, Middleground, Foreground, Ground, Canvas, DirectionOfTravel=1):
+    # Cache map arrays
+    bg_map = Background.map
+    mg_map = Middleground.map
+    fg_map = Foreground.map
+    gr_map = Ground.map
+
+    # Cache widths
+    bwidth = Background.width
+    mwidth = Middleground.width
+    fwidth = Foreground.width
+    gwidth = Ground.width
+
+    # Cache range objects
+    range_w = range(HatWidth)
+    range_h = range(HatHeight)
+
+    for x in range_w:
+        bx = int((x + bh) % bwidth)
+        mx = int((x + mh) % mwidth)
+        fx = int((x + fh) % fwidth)
+        gx = int((x + gh) % gwidth)
+
+        for y in range_h:
+            rgb = gr_map[y][gx]
+            if rgb == (0, 0, 0):
+                rgb = fg_map[y][fx]
+                if rgb == (0, 0, 0):
+                    rgb = mg_map[y][mx]
+                    if rgb == (0, 0, 0):
+                        rgb = bg_map[y][bx]
+
+            # Always write something, even if it's black
+            Canvas.SetPixel(x, y, *rgb)
+
+    return Canvas
+
+
+
+
+
 
 
 def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
