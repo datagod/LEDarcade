@@ -1174,24 +1174,25 @@ def MoveGroundParticles (GroundParticles,Canvas):
 
 def MoveHumanParticles (HumanParticles,Canvas):
   
-  ParticleCount = len(HumanParticles)
-  if(ParticleCount > 0):
-    for i in range (0,ParticleCount):
-      
-      #print("HumanParticle:",i," alive:",HumanParticles[i].alive)
+  #ParticleCount = len(HumanParticles)
+  #if(ParticleCount > 0):
+  #for i in range (0,ParticleCount):
+  for Particle in HumanParticles:
+    
+    #print("HumanParticle:",i," alive:",Particle.alive)
 
-      if(HumanParticles[i].alive == True):
-        HumanParticles[i].UpdateLocationWithGravity(HumanParticleGravity)
-        hph = HumanParticles[i].h
-        hpv = HumanParticles[i].v
-        
-            
-        #only display particles on screen
-        r  = HumanParticles[i].r
-        g  = HumanParticles[i].g
-        b  = HumanParticles[i].b
-        Canvas.SetPixel(hph,hpv,r,g,b)
+    if(Particle.alive == True):
+      Particle.UpdateLocationWithGravity(HumanParticleGravity)
+      hph = Particle.h
+      hpv = Particle.v
+      
           
+      #only display particles on screen
+      r  = Particle.r
+      g  = Particle.g
+      b  = Particle.b
+      Canvas.SetPixel(hph,hpv,r,g,b)
+        
 
 def DisplayCount(h,v,RGB, Header,Count,Canvas):
   CountSprite = LED.CreateBannerSprite(Header + str(Count))
