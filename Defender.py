@@ -149,7 +149,8 @@ DefenderReversing          = 0
 UpDownChance               = 150
 HumanMoveChance        = 3
 EnemyMoveSpeed         = 6
-GarbageCleanupChance   = 500
+GarbageCleanupChance   = 1000
+GroundCleanupChance    = 500
 GroundRadarChance      = 10
 FrontRadarChance       = 15
 ShootGroundShipCount   = 20
@@ -2303,16 +2304,14 @@ def PlayDefender(GameMaxMinutes):
 
       # -- Enemy Ships Cleanup --
       if random.randint(0, GarbageCleanupChance) == 1:
-          #original_count = len(EnemyShips)
           EnemyShips = [
               ship for ship in EnemyShips
               if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
           ]
-          #DeletedShips = original_count - len(EnemyShips)
           print("Garbage cleanup EnemyShips:", len(EnemyShips))
 
       # -- Ground Particles Cleanup --
-      if random.randint(0, 50) == 1:
+      if random.randint(0, GroundCleanupChance) == 1:
           GroundParticles = [
               particle for particle in GroundParticles
               if particle.h >= (DisplayH - 1)
