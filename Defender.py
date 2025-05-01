@@ -2181,30 +2181,37 @@ def PlayDefender(GameMaxMinutes):
       #Move bomb if it is alive
       if (DefenderBomb.alive == True):
         bh, bv, DefenderBomb, DefenderPlayfield, Canvas = MoveBomb(gx,DefenderBomb,DefenderPlayfield,Canvas)
-       
-        if(DefenderBomb.v >= BombDetonationHeight):
-          #Detonate Bomb if at ground
-          (DefenderBomb, 
-          GroundParticles, 
-          Humans,
-          HumanParticles,
-          EnemyShips,
-          Ground, 
-          DefenderPlayfield,
-          Canvas
-          )  = DetonateBombIfAtGround(DisplayH,
-                            0,
-                            DefenderBomb,
-                            Ground,
-                            GroundParticles,
-                            Humans,
-                            HumanParticles,
-                            EnemyShips,
-                            DefenderPlayfield,
-                            Canvas,
-                            GroundRGB,
-                            SurfaceRGB
-                            )
+
+
+        bh = round(DefenderBomb.h)
+        bv = round(DefenderBomb.v)
+
+        if 0 <= bv < LED.HatHeight and 0 <= (bh + DisplayH) < Ground.width:
+            pixel = Ground.map[bv][bh + DisplayH]
+        else:
+            pixel = (0, 0, 0)
+
+        if pixel != (0, 0, 0) or DefenderBomb.bounces >= MaxBombBounces:
+            (DefenderBomb,
+            GroundParticles,
+            Humans,
+            HumanParticles,
+            EnemyShips,
+            Ground,
+            DefenderPlayfield,
+            Canvas
+            ) = DetonateBombIfAtGround(DisplayH,
+                                        0,
+                                        DefenderBomb,
+                                        Ground,
+                                        GroundParticles,
+                                        Humans,
+                                        HumanParticles,
+                                        EnemyShips,
+                                        DefenderPlayfield,
+                                        Canvas,
+                                        GroundRGB,
+                                        SurfaceRGB)
         #reset the bomb
         if (DefenderBomb.alive == False):
           RequestBombDrop        = False
