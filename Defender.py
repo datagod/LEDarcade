@@ -1807,8 +1807,7 @@ def PlayDefender(GameMaxMinutes):
 
         #If ship is dead, move particles
         if(EnemyShip.alive == False):
-          #for j in range (0, (len(EnemyShip.Particles))):
-          for Particle in EnemyShips.Particles:
+          for Particle in EnemyShip.Particles:
             
 
             if (Particle.alive == 1):
