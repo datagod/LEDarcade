@@ -245,7 +245,7 @@ def DebugRGBMap(map, h, v, width, height):
                 if pixel == (0,0,0):
                     row += '  '  # empty
                 else:
-                    row += '██'  # filled pixel
+                    row += '##'  # filled pixel
             except IndexError:
                 row += '??'
         print(row)
