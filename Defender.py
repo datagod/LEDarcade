@@ -2309,7 +2309,7 @@ def PlayDefender(GameMaxMinutes):
               if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
           ]
           DeletedShips = original_count - len(EnemyShips)
-          # print("Garbage cleanup EnemyShips:", len(EnemyShips))
+          print("Garbage cleanup EnemyShips:", len(EnemyShips))
 
       # -- Ground Particles Cleanup --
       if random.randint(0, 50) == 1:
