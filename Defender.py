@@ -1055,14 +1055,13 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
     #blow up pieces of ground
 
 
-    #debug map
     try:
         print(f"\nDEBUG: Bomb about to check explosion at V={BlastV}, H={BlastH + PlayfieldH}")
         pixel = Ground.map[BlastV][BlastH + PlayfieldH]
         print(f"Ground Pixel Color: {pixel}")
-        DebugRGBMap(Ground.map, BlastH + PlayfieldH - 10, BlastV - 5, 20, 10)  
+        DebugPlayfield(Ground.map, BlastH + PlayfieldH - 10, BlastV - 5, 20, 10)
+    except Exception as e:
         print(f"Debug display failed: {e}")
-
 
     #print("Bounces:",DefenderBomb.bounces)
     if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
