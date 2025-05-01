@@ -1086,8 +1086,6 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
               if 0 <= pixel_v < LED.HatHeight and 0 <= pixel_h < Ground.width:
                   Ground.map[pixel_v][pixel_h] = (0, 0, 0)
-              else:
-                  print(f"[Bomb out of bounds] Clear: H={pixel_h}, V={pixel_v}")
 
           # Surface coloring only for j >= 0
           if j >= 0:
