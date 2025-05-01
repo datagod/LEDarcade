@@ -542,8 +542,6 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   Found = False
   for i in range (0,len(Humans)):
     if(StartX <= Humans[i].h <= StopX  and StartY <= Humans[i].v <=  StopY):
-      #print("Found Human[i]hv | StartStopX |:",Humans[i].h,Humans[i].v," | ",StartX, StopX )
-      #LED.TheMatrix.SetPixel(Humans[i].h - PlayfieldH,Humans[i].v,255,255,255)
       Found = True
       RequestGroundLaser = True
       RequestBombDrop    = True
@@ -551,8 +549,6 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
       
   for i in range (0,len(EnemyShips)):
     if(StartX <= EnemyShips[i].h <= StopX  and StartY <= EnemyShips[i].v <=  StopY):
-      #print("Found EnemyShip[i]hv | StartStopX |:",EnemyShips[i].h,EnemyShips[i].v," | ",StartX, StopX )
-      #LED.TheMatrix.SetPixel(EnemyShips[i].h - PlayfieldH,EnemyShips[i].v,255,255,255)
       Found = True
       RequestGroundLaser = True
       RequestBombDrop    = True
@@ -561,10 +557,6 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
 
       
       
-  #except:
-  #  print("A stupid error has occurred when ground finding targets.  Please fix this soon.")
-  #if(Found == False):
-  #  RequestGroundLaser = False
   
   return RequestGroundLaser, RequestBombDrop, GroundV, Humans,EnemyShips
 
@@ -1333,9 +1325,11 @@ def PlayDefender(GameMaxMinutes):
   OldHumanCount       = 0
   WaveCount           = 1
   
+
   #time
   random.seed()
-  start_time = time.time()
+  start_time       = time.time()
+  last_check_time  = time.time()
 
 
   ClockSprite   = LED.CreateClockSprite(24)
@@ -1522,7 +1516,7 @@ def PlayDefender(GameMaxMinutes):
   
   
 
-  while (finished == "N"):
+  while (finished == 'N'):
     
     count  = 0
     bx     = 0
@@ -1552,6 +1546,16 @@ def PlayDefender(GameMaxMinutes):
     while(1==1):
       #main counter
       count = count + 1
+
+      #Count alive humans and enemies
+      if time.time() - last_check_time > 5:  # check every 5 seconds
+          last_check_time = time.time()
+
+          if all(not ship.alive for ship in EnemyShips) and all(not human.alive for human in Humans):
+              print("Level complete. All enemies and humans cleared.")
+              finished = 'Y'
+              break
+
 
       
       #check the time once in a while
