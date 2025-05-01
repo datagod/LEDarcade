@@ -234,26 +234,25 @@ CheckTime        = 60
 #------------------------------
 
 
-def DebugRGBMap(map, h, v, width, height,BombH, BombV):
+def DebugRGBMap(map, h, v, width, height, bomb_h=None, bomb_v=None):
     print("===============================================================")
-    print(f"DEBUG RGB Map at origin H={h}  V={v}  width={width}  height={height}  BombH={BombH}  BombV={BombV}")
+    print(f"DEBUG RGB Map at origin H={h}, V={v}, width={width}, height={height}")
     for y in range(v, v + height):
         row = ''
         for x in range(h, h + width):
             try:
-                if y == BombV:
-                  row += '\/'
+                if bomb_h == x and bomb_v == y:
+                    row += '**'  # mark bomb position
                 else:
-                  pixel = map[y][x]
-                  if pixel == (0,0,0):
-                      row += '  '  # empty
-                  else:
-                      row += '##'  # filled pixel
+                    pixel = map[y][x]
+                    if pixel == (0,0,0):
+                        row += '  '  # empty
+                    else:
+                        row += '##'  # colored pixel
             except IndexError:
                 row += '??'
         print(row)
     print("===============================================================")
-
   
 
 
@@ -1062,7 +1061,14 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
         print(f"\nDEBUG: Bomb about to check explosion at V={BlastV}, H={BlastH + PlayfieldH}")
         pixel = Ground.map[BlastV][BlastH + PlayfieldH]
         print(f"Ground Pixel Color: {pixel}")
-        DebugRGBMap(Ground.map, BlastH + PlayfieldH - 10, BlastV - 6, 20, 12,BlastH + PlayfieldH, BlastV)
+
+        DebugRGBMap(Ground.map,
+            BlastH + PlayfieldH - 10,
+            BlastV - 5,
+            20, 10,
+            bomb_h = BlastH + PlayfieldH,
+            bomb_v = BlastV)
+
     except Exception as e:
         print(f"Debug display failed: {e}")
 
