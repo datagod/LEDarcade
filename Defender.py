@@ -2303,12 +2303,12 @@ def PlayDefender(GameMaxMinutes):
 
       # -- Enemy Ships Cleanup --
       if random.randint(0, GarbageCleanupChance) == 1:
-          original_count = len(EnemyShips)
+          #original_count = len(EnemyShips)
           EnemyShips = [
               ship for ship in EnemyShips
               if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
           ]
-          DeletedShips = original_count - len(EnemyShips)
+          #DeletedShips = original_count - len(EnemyShips)
           print("Garbage cleanup EnemyShips:", len(EnemyShips))
 
       # -- Ground Particles Cleanup --
@@ -2317,6 +2317,7 @@ def PlayDefender(GameMaxMinutes):
               particle for particle in GroundParticles
               if particle.h >= (DisplayH - 1)
           ]
+          print("Ground cleanup")
           
       #--------------------------------
       #-- Human and Particle Cleanup --
