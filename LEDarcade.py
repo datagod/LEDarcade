@@ -3509,6 +3509,13 @@ def PaintFourLayerCanvas(bh, mh, fh, gh, Background, Middleground, Foreground, G
     fg_map = Foreground.map
     gr_map = Ground.map
 
+    #make sure they are ints
+    bh = int(bh)
+    mh = int(mh)
+    fh = int(fh)
+    gh = int(gh)
+
+
     # Cache widths (assume .width exists or use len(map[0]))
     bwidth = Background.width
     mwidth = Middleground.width
