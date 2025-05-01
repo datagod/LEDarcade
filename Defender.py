@@ -1089,13 +1089,16 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
           color = graphics.Color(*explosion_colors[i])
           graphics.DrawCircle(Canvas, BlastH, BlastV, i + 1, color)
 
+  except:
+    print("Bomb error drawing explosion  BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
+
+  try:
 
       #Explode Ground
       for i in range(0,round(BlastStrength / 2)):
         GroundParticles = AddGroundParticles(BlastH,BlastV,ExplosionR, ExplosionG, ExplosionB,GroundParticles)
 
       Humans, HumanParticles, EnemyShips = KillEnemiesInBlastZone(BlastH + PlayfieldH,BlastV,BlastStrength, Humans, HumanParticles,EnemyShips, DefenderPlayfield)
-
      
       DefenderBomb.alive = False
       #DefenderBomb.bounces = 0
@@ -1103,7 +1106,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
 
   except:
-    print("Bomb error BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
+    print("Bomb error exploding ground  BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
 
 
   if(DefenderBomb.alive == False):
