@@ -1079,7 +1079,8 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
     if((Ground.map[BlastV][BlastH+PlayfieldH] != (0,0,0))
        or DefenderBomb.bounces >= MaxBombBounces
        ):
-      
+
+      print("**Detonating Bomb**")
       try:
           pixel = Ground.map[BlastV][BlastH + PlayfieldH]
           print(f"DEBUG: Bomb site RGB at V={BlastV}, H={BlastH + PlayfieldH} => {pixel}")
