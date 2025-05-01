@@ -1033,8 +1033,8 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
       (255, 255, 255),  # core
       (255, 200, 0),    # yellow
       (255, 100, 0),    # orange
-      (200, 0, 0),      # red
-      (75, 0, 75),      # purple smoke
+      (255, 0, 0),      # red
+      (175, 0, 175),      # purple smoke
   ]
 
   
