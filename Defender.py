@@ -1559,7 +1559,7 @@ def PlayDefender(GameMaxMinutes):
 
       
       #check the time once in a while
-      if(random.randint(0,1000) == 1):
+      if(random.randint(0,5000) == 1):
         if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
           ClockSprite   = LED.CreateClockSprite(24)
           ClockSprite.h = (LED.HatWidth - ClockSprite.width -2)
