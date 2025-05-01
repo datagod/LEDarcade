@@ -2290,9 +2290,54 @@ def PlayDefender(GameMaxMinutes):
    
 
 
-     
+      #--------------------------------
+      #-- Garbage Cleanup            --
+      #--------------------------------
 
-    
+      # To reduce the amount of objects being tracked, we remove old
+      # ships and particles that are off-screen and no longer active.
+
+      DeleteH = DisplayH - LED.HatWidth
+
+      # -- Enemy Ships Cleanup --
+      if random.randint(0, GarbageCleanupChance) == 1:
+          original_count = len(EnemyShips)
+          EnemyShips = [
+              ship for ship in EnemyShips
+              if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
+          ]
+          DeletedShips = original_count - len(EnemyShips)
+          # print("Garbage cleanup EnemyShips:", len(EnemyShips))
+
+      # -- Ground Particles Cleanup --
+      if random.randint(0, 50) == 1:
+          GroundParticles = [
+              particle for particle in GroundParticles
+              if particle.h >= (DisplayH - 1)
+          ]
+          
+      #--------------------------------
+      #-- Human and Particle Cleanup --
+      #--------------------------------
+
+      if random.randint(0, GarbageCleanupChance) == 1:
+          # Clean up dead humans
+          Humans = [h for h in Humans if h.alive]
+
+          # Optional debug print
+          # print("Garbage cleanup Human count:", len(Humans))
+
+          # Clean up off-screen human particles
+          if random.randint(0, 50) == 1:
+              DeleteH = DisplayH - 1
+              HumanParticles = [
+                  p for p in HumanParticles
+                  if DeleteH <= p.h <= DeleteH + LED.HatWidth
+              ]
+
+
+
+      '''   
       #--------------------------------
       #-- Garbage Cleanup            --
       #--------------------------------
@@ -2357,7 +2402,7 @@ def PlayDefender(GameMaxMinutes):
             
             j = j + 1
                 
-
+      
 
 
       DeletedHumans = 0
@@ -2383,7 +2428,7 @@ def PlayDefender(GameMaxMinutes):
               if(H < DeleteH or (H > DeleteH + LED.HatWidth)):
                 del HumanParticles[j]
 
-
+      '''
 
 
 
