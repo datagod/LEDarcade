@@ -1029,6 +1029,13 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   else:
     BlastStrength  = round( (LED.HatWidth - DefenderBomb.h)     / 10 + BlastFactor)
 
+  explosion_colors = [
+      (255, 255, 255),  # core
+      (255, 200, 0),    # yellow
+      (255, 100, 0),    # orange
+      (200, 0, 0),      # red
+      (75, 0, 75),      # purple smoke
+  ]
 
   
   
@@ -1081,9 +1088,18 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
       #Ground.map[gv +j][gh +i -j - 1] = (0,35,0)
 
 
-      #Big white flash
-      for i in range (1,BlastStrength):
-        graphics.DrawCircle(Canvas,BlastH,BlastV,i,graphics.Color(255,255,255))
+
+
+      # Limit how many rings we draw to avoid performance hit
+      max_rings = min(BlastStrength, len(explosion_colors))
+
+      for i in range(max_rings):
+          color = graphics.Color(*explosion_colors[i])
+          graphics.DrawCircle(Canvas, BlastH, BlastV, i + 1, color)
+
+
+
+
 
       #Explode Ground
       for i in range(0,round(BlastStrength / 2)):
