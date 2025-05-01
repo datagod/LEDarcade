@@ -1806,24 +1806,26 @@ def PlayDefender(GameMaxMinutes):
 
         #If ship is dead, move particles
         if(EnemyShip.alive == False):
-          for j in range (0, (len(EnemyShip.Particles))):
+          #for j in range (0, (len(EnemyShip.Particles))):
+          for Particle in EnemyShips.Particles:
+            
 
-            if (EnemyShip.Particles[j].alive == 1):
-              EnemyShip.Particles[j].UpdateLocationWithGravity(EnemyParticleGravity)
-              ph = EnemyShip.Particles[j].h
-              pv = EnemyShip.Particles[j].v
+            if (Particle.alive == 1):
+              Particle.UpdateLocationWithGravity(EnemyParticleGravity)
+              ph = Particle.h
+              pv = Particle.v
 
               #only display particles on screen
               if(DisplayH <=  ph  <= DisplayMaxH):
-                r  = EnemyShip.Particles[j].r
-                g  = EnemyShip.Particles[j].g
-                b  = EnemyShip.Particles[j].b
+                r  = Particle.r
+                g  = Particle.g
+                b  = Particle.b
                 #print("Ship Particle:",i,j)  
                 Canvas.SetPixel(ph - DisplayH,pv,r,g,b)
               
               #kill the particle if the go off the screen
               else:
-                EnemyShip.Particles[j].alive == 0
+                Particle.alive == 0
 
 
       
