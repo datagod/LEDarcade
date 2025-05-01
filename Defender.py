@@ -2337,7 +2337,7 @@ def PlayDefender(GameMaxMinutes):
 
 
 
-      '''   
+    '''   
       #--------------------------------
       #-- Garbage Cleanup            --
       #--------------------------------
@@ -2428,7 +2428,7 @@ def PlayDefender(GameMaxMinutes):
               if(H < DeleteH or (H > DeleteH + LED.HatWidth)):
                 del HumanParticles[j]
 
-      '''
+    '''
 
 
 
