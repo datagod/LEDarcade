@@ -1052,33 +1052,6 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
       gv = BlastV
       gh = BlastH+PlayfieldH
 
-
-      '''
-      for j in range (-4,BlastStrength):
-        for i in range (-BlastStrength + j ,BlastStrength - j   ):
-
-          #near to the blast gets erased
-          if(gv + j < LED.HatHeight and gh + i < Ground.width):
-            Ground.map[gv +j][gh +i] = (0,0,0)
-          else:
-            gv = gv -1
-            Finished = True
-            break
-        if(Finished == True):
-          break
-        #set ground outside the blast zone to different color
-        else:
-          if (j >= 0):         
-            if(gv + j < LED.HatHeight and (gh + BlastStrength + j) < Ground.width):
-              if(Ground.map[gv +j][gh - BlastStrength +j - 1] != (0,0,0)):
-                Ground.map[gv +j][gh - BlastStrength +j - 1] = (SurfaceR,SurfaceG,SurfaceB)
-              
-              if(Ground.map[gv +j][gh + BlastStrength -j ] != (0,0,0)):
-                Ground.map[gv +j][gh + BlastStrength -j ] = (SurfaceR,SurfaceG,SurfaceB)
-          
-      '''  
-
-
       for j in range(-4, BlastStrength):
           for i in range(-BlastStrength + j, BlastStrength - j):
               pixel_v = gv + j
@@ -1103,13 +1076,11 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
                           Ground.map[pixel_v][right_h] = (SurfaceR, SurfaceG, SurfaceB)
 
 
-      #beside blast gets colored green
-          
-      #Ground.map[gv +j][gh +i -j + 1] = (0,35,0)
-      #Ground.map[gv +j][gh +i -j - 1] = (0,35,0)
+  except:
+    print("Bomb error while destroying ground BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
 
 
-
+  try:
 
       # Limit how many rings we draw to avoid performance hit
       max_rings = min(BlastStrength, len(explosion_colors))
@@ -1117,9 +1088,6 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
       for i in range(max_rings):
           color = graphics.Color(*explosion_colors[i])
           graphics.DrawCircle(Canvas, BlastH, BlastV, i + 1, color)
-
-
-
 
 
       #Explode Ground
