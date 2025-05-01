@@ -3516,8 +3516,8 @@ def PaintFourLayerCanvas(bh, mh, fh, gh, Background, Middleground, Foreground, G
     gwidth = Ground.width
 
     # Cache range objects
-    range_w = range(LED.HatWidth)
-    range_h = range(LED.HatHeight)
+    range_w = range(HatWidth)
+    range_h = range(HatHeight)
 
     for x in range_w:
         bx = (x + bh) % bwidth
