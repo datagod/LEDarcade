@@ -3447,60 +3447,41 @@ class Layer(object):
   
 
 
-def PaintThreeLayerCanvas(bh,mh,fh,Background,Middleground,Foreground,Canvas):
+def PaintThreeLayerCanvas(bh, mh, fh, Background, Middleground, Foreground, Canvas):
+    # Cache map arrays for fast access
+    fg_map = Foreground.map
+    mg_map = Middleground.map
+    bg_map = Background.map
+
+    # Cache widths (assume .width attribute exists)
+    fwidth = Foreground.width
+    mwidth = Middleground.width
+    bwidth = Background.width
+
+    # Cache range objects
+    range_w = range(HatWidth)
+    range_h = range(HatHeight)
+
+
+    for x in range_w:
+        fx = int((x + fh) % fwidth)
+        mx = int((x + mh) % mwidth)
+        bx = int((x + bh) % bwidth)
+
+        for y in range_h:
+            rgb = fg_map[y][fx]
+            if rgb == (0, 0, 0):
+                rgb = mg_map[y][mx]
+                if rgb == (0, 0, 0):
+                    rgb = bg_map[y][bx]
+
+            # Always write something, even if it's black
+            Canvas.SetPixel(x, y, *rgb)
+
+    return Canvas
   
-  Canvas.Clear()
-  
-  for x in range (0,HatWidth-1):
-    for y in range (0,HatHeight):
-
-      r,g,b = rgb = Foreground.map[y][x+fh]
-      if(rgb == (0,0,0)):
-        r,g,b = rgb = Middleground.map[y][x+mh]
-        if(rgb == (0,0,0)):
-          r,g,b = rgb = Background.map[y][x+bh]
-
-      #if the pixel is not black, set the canvas
-      if (rgb != (0,0,0)):
-        Canvas.SetPixel(x,y,r,g,b)
-  
-  return Canvas
-  
 
 
-def PaintFourLayerCanvas_old(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
-  #DirectionOfTravel 1 = East, -1 = West
-
-  bh = round(bh)
-  mh = round(mh)
-  fh = round(fh)
-  gh = round(gh)
-
-  Canvas.Clear()
-  gwidth = Ground.width
-  for x in range (0,HatWidth):
-    for y in range (0,HatHeight):
-      #wrap around the ground (using modulo)
-      virtual_x = (x + gh) % gwidth
-      rgb = Ground.map[y][virtual_x]
-
-      if(rgb == (0,0,0)):
-        rgb = Foreground.map[y][(x+fh) % Foreground.width]
-        if(rgb == (0,0,0)):
-          rgb = Middleground.map[y][(x+mh) % Middleground.width]
-          if(rgb == (0,0,0)):
-            rgb = Background.map[y][(x+bh) % Background.width]
-
-
-
-
-      #if the pixel is not black, set the canvas
-      if (rgb != (0,0,0)):
-        r,g,b = rgb
-        Canvas.SetPixel(x,y,r,g,b)
-  
-  return Canvas
-  
 
 
 
