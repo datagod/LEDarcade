@@ -3502,22 +3502,28 @@ def PaintFourLayerCanvas_old(bh,mh,fh,gh,Background,Middleground,Foreground,Grou
   return Canvas
   
 
-def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas, DirectionOfTravel = 1):
+def PaintFourLayerCanvas(bh, mh, fh, gh, Background, Middleground, Foreground, Ground, Canvas, DirectionOfTravel=1):
     # Cache map arrays for faster access
-    fg_map = Foreground.map
-    mg_map = Middleground.map
     bg_map = Background.map
+    mg_map = Middleground.map
+    fg_map = Foreground.map
     gr_map = Ground.map
 
-    # Cache range objects to avoid regenerating per loop
-    range_w = range(HatWidth)
-    range_h = range(HatHeight)
+    # Cache widths (assume .width exists or use len(map[0]))
+    bwidth = Background.width
+    mwidth = Middleground.width
+    fwidth = Foreground.width
+    gwidth = Ground.width
+
+    # Cache range objects
+    range_w = range(LED.HatWidth)
+    range_h = range(LED.HatHeight)
 
     for x in range_w:
-        gx = (x + gh) % gwidth
-        fx = (x + fh) % fwidth
-        mx = (x + mh) % mwidth
         bx = (x + bh) % bwidth
+        mx = (x + mh) % mwidth
+        fx = (x + fh) % fwidth
+        gx = (x + gh) % gwidth
 
         for y in range_h:
             rgb = gr_map[y][gx]
@@ -3529,8 +3535,9 @@ def PaintFourLayerCanvas(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,C
                         rgb = bg_map[y][bx]
 
             if rgb != (0, 0, 0):
-                Canvas.SetPixel(x, y, *rgb)  
+                Canvas.SetPixel(x, y, *rgb)
 
+    return Canvas
 
 def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Ground,Canvas):
   #we can only write to a canvas, cannot query it
