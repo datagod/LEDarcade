@@ -124,66 +124,44 @@ def GetFlightsInBounds(Bounds):
 
 
 
-def GetNearbyFlights():
   
-  global OriginAirport
-  global DestinationAirport
+def GetNearbyFlights(DetailedFlightList):
+  global OriginAirport, DestinationAirport
 
-  print("")
-  print("--GetNearbyFlights--")
-  r = requests.get(URL, headers={'Content-Type': 'application/json'})
+  print("\n--GetNearbyFlights--")
 
-  print(f"Status Code: {r.status_code}")
-  print(f"Response Content: {r.text}")
-
-  #pp.pprint(r)
-  message = r.json()
-  #pp.pprint(message)
-  
   i = 0
   ShortestDistance = 10000000
   ClosestFlight = -1
 
-  AircraftDict = message.get('aircraft','NONE')
-  if(AircraftDict != "NONE"):
-    for flight in AircraftDict:
+  for flight in DetailedFlightList:
       try:
-        #print("")
-        #print("Analyzing flight data: ",i)
-        #print(flight['flight'])
-        #print(flight['alt_baro'])
-        #print(flight['lat'])
-        #print(flight['lon'])
+          lat = flight.latitude
+          lon = flight.longitude
 
-        lat = flight['lat']
-        lon = flight['lon']
-
-        distance = geopy.distance.geodesic((lat,lon), (BaseLat, BaseLon)).m / 1000
-        #print("Distance:",distance)
-        if (distance <= ShortestDistance):
-          ShortestDistance = distance
-          ClosestFlight = i
-
-    
+          distance = geopy.distance.geodesic((lat, lon), (BaseLat, BaseLon)).m / 1000
+          if distance <= ShortestDistance:
+              ShortestDistance = distance
+              ClosestFlight = i
       except:
-        print("Record:",i,"no flight info found")
+          print("Record:", i, "no flight info found")
+      i += 1
 
-      i = i + 1
     
 
   if(ClosestFlight >= 0) :
-    Flight   = AircraftDict[ClosestFlight].get('flight','none')
-    Category = AircraftDict[ClosestFlight].get('category','none')
+    Flight   = DetailedFlightList[ClosestFlight].get('flight','none')
+    Category = DetailedFlightList[ClosestFlight].get('category','none')
     Distance = ShortestDistance
-    #Mach     = AircraftDict[ClosestFlight]['mach']  
-    Speed    = AircraftDict[ClosestFlight].get('gs',0) * 1.8520
-    Messages = AircraftDict[ClosestFlight].get('messages',0) 
-    Squawk   = AircraftDict[ClosestFlight].get('squawk','none')
+    #Mach     = DetailedFlightList[ClosestFlight]['mach']  
+    Speed    = DetailedFlightList[ClosestFlight].get('gs',0) * 1.8520
+    Messages = DetailedFlightList[ClosestFlight].get('messages',0) 
+    Squawk   = DetailedFlightList[ClosestFlight].get('squawk','none')
     AircraftCount = i
-    Hex      = AircraftDict[ClosestFlight].get('hex','none').upper()
+    Hex      = DetailedFlightList[ClosestFlight].get('hex','none').upper()
 
     #print("****************************************")
-    #pp.pprint(AircraftDict[ClosestFlight])
+    #pp.pprint(DetailedFlightList[ClosestFlight])
     #print("****************************************")
 
     print("")
@@ -457,7 +435,9 @@ while(1==1):
     DetailedFlightList = GetFlightDetails(FlightList)
  
 
-  NearestFlightHex = GetNearbyFlights()
+  
+  NearestFlightHex = GetNearbyFlights(DetailedFlightList)
+
   LookupFlightDetails(NearestFlightHex,DetailedFlightList)
 
   print((OriginAirport + " " + DestinationAirport))  
