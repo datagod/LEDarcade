@@ -133,6 +133,10 @@ def GetNearbyFlights():
   print("--GetNearbyFlights--")
   r = requests.get(URL, headers={'Content-Type': 'application/json'})
 
+  response = requests.get(url)
+  print(f"Status Code: {response.status_code}")
+  print(f"Response Content: {response.text}")
+
   #pp.pprint(r)
   message = r.json()
   #pp.pprint(message)
@@ -386,8 +390,16 @@ def GetAirport(AirportIata):
   
 
 #------------------------------------------------------------------------------
-# MAIN SECTION                                                               --
+#  __  __    _    ___ _   _     ____  _____ ____ _____ ___ ___  _   _
+# |  \/  |  / \  |_ _| \ | |   / ___|| ____/ ___|_   _|_ _/ _ \| \ | |
+# | |\/| | / _ \  | ||  \| |   \___ \|  _|| |     | |  | | | | |  \| |
+# | |  | |/ ___ \ | || |\  |    ___) | |__| |___  | |  | | |_| | |\  |
+# |_|  |_/_/   \_\___|_| \_|   |____/|_____\____| |_| |___\___/|_| \_|
+#
 #------------------------------------------------------------------------------
+
+
+
 
 print ("")
 print ("")
