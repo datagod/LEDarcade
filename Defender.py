@@ -1934,8 +1934,9 @@ def PlayDefender(GameMaxMinutes):
       DefenderPlayfield.DisplayV = 0
 
 
-      hh, hv, nearest_human = get_alive_human_coords_with_target(Humans, Defender.h + DisplayH, Defender.v)
-      target_h, target_v = find_nearest_human(Defender.h + DisplayH, Defender.v, hh, hv)
+      # Fix JIT and NUMB later for performance reasons, look it up
+      #hh, hv, nearest_human = get_alive_human_coords_with_target(Humans, Defender.h + DisplayH, Defender.v)
+      #target_h, target_v = find_nearest_human(Defender.h + DisplayH, Defender.v, hh, hv)
 
 
 
