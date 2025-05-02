@@ -57,7 +57,7 @@ import copy
 import random
 import time
 
-from numba import njit  #high performance math
+#from numba import njit  #high performance math
 import numpy as np
 
 import math
