@@ -153,7 +153,7 @@ GarbageCleanupChance   = 1000
 GroundCleanupChance    = 500
 GroundRadarChance      = 10
 FrontRadarChance       = 15
-ShootGroundShipCount   = 20
+ShootGroundShipCount   = 50
 AttackDistance         = LED.HatWidth
 HumanRunDistance       = LED.HatWidth
 ShootTime              = time.time()
@@ -508,7 +508,7 @@ def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
 
 
 
-def LookForGroundTargets_old(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
+def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   global RequestBombDrop
   global RequestGroundLaser
 
@@ -521,12 +521,7 @@ def LookForGroundTargets_old(Defender,DefenderPlayfield,Ground,Humans,EnemyShips
   RadarAdjustV = 5
   GroundV      = 0
 
-
-  #To improve performance, we will not scan every pixel in radar range
-  #Radar scanning will be interlaced
-  #This procedure is called continuously so lets scan a net instead of a solid area
-  #The size of the holes in the net is determined by ScanStep
-
+  
   #avoid end of the playfield
   if(PlayfieldH + RadarAdjustH + RadarWidth >= DefenderPlayfield.width -1):
     PlayfieldH =  PlayfieldH - RadarAdjustH - RadarWidth
@@ -534,10 +529,8 @@ def LookForGroundTargets_old(Defender,DefenderPlayfield,Ground,Humans,EnemyShips
 
   #Find the ground
   for GroundV in range (Defender.v, LED.HatHeight-2):
-    #LED.TheMatrix.SetPixel(Defender.h,Defender.v + V,255,5,10)
     
     if(Ground.map[GroundV][PlayfieldH + RadarAdjustV] != (0,0,0)):
-      #print("Ground hit V H:",V,PlayfieldH + Defender.h)
       break
   
   #Radar box starts at the ground surface
@@ -553,8 +546,6 @@ def LookForGroundTargets_old(Defender,DefenderPlayfield,Ground,Humans,EnemyShips
   #Add a bit of randomness to the vertical start pixel
   if random.randint(0,1) == 1:
     StartY = StartY + 1
-
-
 
   #new method
   Found = False
@@ -572,77 +563,11 @@ def LookForGroundTargets_old(Defender,DefenderPlayfield,Ground,Humans,EnemyShips
       RequestBombDrop    = True
       #time.sleep(0.25)
 
-
-      
-      
+         
   
   return RequestGroundLaser, RequestBombDrop, GroundV, Humans,EnemyShips
 
   
-
-
-def LookForGroundTargets(Defender, DefenderPlayfield, Ground, Humans, EnemyShips):
-    global RequestBombDrop
-    global RequestGroundLaser
-
-    RequestGroundLaser = False
-    RequestBombDrop = False
-
-    PlayfieldH = round(DefenderPlayfield.DisplayH)
-    PlayfieldV = DefenderPlayfield.DisplayV
-    RadarWidth = 10
-    RadarHeight = 6
-    RadarAdjustH = 5
-    RadarAdjustV = 5
-    GroundV = 0
-
-    if (PlayfieldH + RadarAdjustH + RadarWidth >= DefenderPlayfield.width - 1):
-        PlayfieldH = PlayfieldH - RadarAdjustH - RadarWidth
-
-    # --- Locate ground ---
-    for GroundV in range(Defender.v, LED.HatHeight - 2):
-        if (Ground.map[GroundV][PlayfieldH + RadarAdjustV] != (0, 0, 0)):
-            print(f"🧱 Ground found at V={GroundV}, H={PlayfieldH + RadarAdjustV}")
-            break
-    else:
-        print("🚫 No ground detected below defender")
-
-    # Define radar box
-    StartX = PlayfieldH + RadarAdjustH
-    StopX = PlayfieldH + RadarAdjustH + RadarWidth
-    StartY = GroundV - 2
-    StopY = GroundV + RadarHeight
-    if StopY >= LED.HatHeight:
-        StopY = LED.HatHeight
-
-    if random.randint(0, 1) == 1:
-        StartY += 1
-
-    print(f"📡 Scanning radar box X={StartX}-{StopX}, Y={StartY}-{StopY}")
-
-    # Scan humans
-    for h in Humans:
-        if StartX <= h.h <= StopX and StartY <= h.v <= StopY:
-            print(f"👨 Human detected at H={h.h}, V={h.v}")
-            RequestGroundLaser = True
-            RequestBombDrop = True
-            break
-
-    # Scan enemies
-    for e in EnemyShips:
-        if StartX <= e.h <= StopX and StartY <= e.v <= StopY:
-            print(f"🚀 Enemy detected at H={e.h}, V={e.v}")
-            RequestGroundLaser = True
-            RequestBombDrop = True
-            break
-
-    if RequestGroundLaser:
-        print("✅ Ground laser requested!")
-    else:
-        print("❌ Nothing in radar box")
-
-    return RequestGroundLaser, RequestBombDrop, GroundV, Humans, EnemyShips
-
 
 
 
