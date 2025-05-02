@@ -264,7 +264,7 @@ def get_alive_human_coords_with_target(Humans, def_h, def_v):
 
 
 
-@njit
+#@njit
 def find_nearest_human(def_h, def_v, human_h_list, human_v_list):
     min_dist = 1e9
     target_h = -1
