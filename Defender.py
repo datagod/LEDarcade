@@ -56,7 +56,10 @@ import LEDarcade as LED
 import copy
 import random
 import time
-import numpy
+
+from numba import njit  #high performance math
+import numpy as np
+
 import math
 from datetime import datetime, timedelta
 from rgbmatrix import graphics
@@ -229,9 +232,58 @@ CheckTime        = 60
 
 
 
+
+
 #------------------------------
 # Sprites, Arrays, Functions --
 #------------------------------
+
+
+def get_alive_human_coords_with_target(Humans, def_h, def_v):
+    human_h = []
+    human_v = []
+    closest_human = None
+    min_dist = 1e9
+
+    for h in Humans:
+        if h.alive:
+            human_h.append(h.h)
+            human_v.append(h.v)
+
+            # Calculate Manhattan distance
+            dist = abs(h.h - def_h) + abs(h.v - def_v)
+            if dist < min_dist:
+                min_dist = dist
+                closest_human = h
+
+    return (
+        np.array(human_h, dtype=np.int32),
+        np.array(human_v, dtype=np.int32),
+        closest_human
+    )
+
+
+
+@njit
+def find_nearest_human(def_h, def_v, human_h_list, human_v_list):
+    min_dist = 1e9
+    target_h = -1
+    target_v = -1
+
+    for i in range(len(human_h_list)):
+        h = human_h_list[i]
+        v = human_v_list[i]
+        dx = h - def_h
+        dy = v - def_v
+        dist = abs(dx) + abs(dy)  # Manhattan distance
+
+        if dist < min_dist:
+            min_dist = dist
+            target_h = h
+            target_v = v
+
+    return target_h, target_v
+
 
 
 def DebugRGBMap(map, h, v, width, height, bomb_h=None, bomb_v=None):
@@ -1880,6 +1932,11 @@ def PlayDefender(GameMaxMinutes):
       
       DefenderPlayfield.DisplayH = round(gx)
       DefenderPlayfield.DisplayV = 0
+
+
+      hh, hv, nearest_human = get_alive_human_coords_with_target(Humans, Defender.h + DisplayH, Defender.v)
+      target_h, target_v = find_nearest_human(Defender.h + DisplayH, Defender.v, hh, hv)
+
 
 
       #move defender up or down randomly
