@@ -211,12 +211,12 @@ def GetNearbyFlights(DetailedFlightList):
     LED.Canvas = LED.CopySpriteToCanvasZoom(TitleDistance,0,6,TitleRGB,(0,5,0),1,False,LED.Canvas)
     LED.Canvas = LED.CopySpriteToCanvasZoom(ValueDistance,28,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
    
-    #H = LED.HatWidth - (ValueAircraftCount.width + TitleAircraftCount.width + 1)
-    #V = 0
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,H,V,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    #H = LED.HatWidth - ValueAircraftCount.width
-    #V = 0
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,H,V,ValueRGB,(0,5,0),1,False,LED.Canvas)
+    H = LED.HatWidth - (ValueAircraftCount.width + TitleAircraftCount.width + 1)
+    V = 0
+    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,H,V,TitleRGB,(0,5,0),1,False,LED.Canvas)
+    H = LED.HatWidth - ValueAircraftCount.width
+    V = 0
+    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,H,V,ValueRGB,(0,5,0),1,False,LED.Canvas)
 
 
     LED.Canvas = LED.CopySpriteToCanvasZoom(TitleCategory,63,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
