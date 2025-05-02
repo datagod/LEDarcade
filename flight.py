@@ -133,9 +133,8 @@ def GetNearbyFlights():
   print("--GetNearbyFlights--")
   r = requests.get(URL, headers={'Content-Type': 'application/json'})
 
-  response = requests.get(url)
-  print(f"Status Code: {response.status_code}")
-  print(f"Response Content: {response.text}")
+  print(f"Status Code: {r.status_code}")
+  print(f"Response Content: {r.text}")
 
   #pp.pprint(r)
   message = r.json()
