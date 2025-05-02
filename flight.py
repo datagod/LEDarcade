@@ -149,16 +149,18 @@ def GetNearbyFlights(DetailedFlightList):
 
     
 
-  if(ClosestFlight >= 0) :
-    Flight   = DetailedFlightList[ClosestFlight].get('flight','none')
-    Category = DetailedFlightList[ClosestFlight].get('category','none')
+  if ClosestFlight >= 0:
+    flight_obj = DetailedFlightList[ClosestFlight]
+
+    Flight   = flight_obj.callsign or "none"
+    Category = flight_obj.aircraft_code or "none"
     Distance = ShortestDistance
-    #Mach     = DetailedFlightList[ClosestFlight]['mach']  
-    Speed    = DetailedFlightList[ClosestFlight].get('gs',0) * 1.8520
-    Messages = DetailedFlightList[ClosestFlight].get('messages',0) 
-    Squawk   = DetailedFlightList[ClosestFlight].get('squawk','none')
+    Speed    = flight_obj.ground_speed * 1.852 if flight_obj.ground_speed else 0
+    Messages = flight_obj.number or 0
+    Squawk   = flight_obj.squawk or "none"
     AircraftCount = i
-    Hex      = DetailedFlightList[ClosestFlight].get('hex','none').upper()
+    Hex      = flight_obj.icao_24bit.upper() if flight_obj.icao_24bit else "none"
+
 
     #print("****************************************")
     #pp.pprint(DetailedFlightList[ClosestFlight])
