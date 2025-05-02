@@ -1928,7 +1928,7 @@ def PlayDefender(GameMaxMinutes):
       #defender needs to avoid the ground
       #shoot enemies
       #pick up humans
-      #GroundV = 0
+      GroundV = 0
       
       DefenderPlayfield.DisplayH = round(gx)
       DefenderPlayfield.DisplayV = 0
