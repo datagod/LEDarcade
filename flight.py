@@ -304,7 +304,8 @@ def LookupFlightDetails(Hex,DetailedFlightList):
     for flight in DetailedFlightList:
       print("Examining:",flight.icao_24bit)
     
-      if((flight.icao_24bit).upper() == NearestFlightHex.upper()):
+      if flight.icao_24bit and flight.icao_24bit.upper() == Hex.upper():
+
         #print("Flying to", flight.destination_airport_name)
         pp.pprint(flight.id)
         pp.pprint(flight.icao_24bit)   #Hex
@@ -470,7 +471,7 @@ while(1==1):
 
 
 
-    time.sleep(5)
+    time.sleep(10)
   
 
   
