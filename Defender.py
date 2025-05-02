@@ -547,21 +547,23 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   if random.randint(0,1) == 1:
     StartY = StartY + 1
 
-  #new method
-  Found = False
-  for i in range (0,len(Humans)):
-    if(StartX <= Humans[i].h <= StopX  and StartY <= Humans[i].v <=  StopY):
-      Found = True
-      RequestGroundLaser = True
-      RequestBombDrop    = True
-      #time.4(0.25)
-      
-  for i in range (0,len(EnemyShips)):
-    if(StartX <= EnemyShips[i].h <= StopX  and StartY <= EnemyShips[i].v <=  StopY):
-      Found = True
-      RequestGroundLaser = True
-      RequestBombDrop    = True
-      #time.sleep(0.25)
+Found = False
+
+for human in Humans:
+    if StartX <= human.h <= StopX and StartY <= human.v <= StopY:
+        print(f"👨 Human in laser range at H={human.h}, V={human.v}")
+        RequestGroundLaser = True
+        RequestBombDrop = True
+        Found = True
+        break  # optional: stop after first target
+
+for ship in EnemyShips:
+    if StartX <= ship.h <= StopX and StartY <= ship.v <= StopY:
+        print(f"🚀 Enemy in laser range at H={ship.h}, V={ship.v}")
+        RequestGroundLaser = True
+        RequestBombDrop = True
+        Found = True
+        break
 
          
   
