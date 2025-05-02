@@ -1066,31 +1066,6 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
        or DefenderBomb.bounces >= MaxBombBounces
        ):
 
-      print("**Detonating Bomb**")
-      try:
-          pixel = Ground.map[BlastV][BlastH + PlayfieldH]
-          print(f"DEBUG: Bomb site RGB at V={BlastV}, H={BlastH + PlayfieldH} => {pixel}")
-      except IndexError:
-          print(f"DEBUG ERROR: Bomb site out of bounds at V={BlastV}, H={BlastH + PlayfieldH}")
-
-
-
-      try:
-          print(f"\nDEBUG: Bomb about to check explosion at V={BlastV}, H={BlastH + PlayfieldH}")
-          pixel = Ground.map[BlastV][BlastH + PlayfieldH]
-          print(f"Ground Pixel Color: {pixel}")
-
-          DebugRGBMap(Ground.map,
-              BlastH + PlayfieldH - 10,
-              BlastV - 5,
-              20, 10,
-              bomb_h = BlastH + PlayfieldH,
-              bomb_v = BlastV)
-
-      except Exception as e:
-          print(f"Debug display failed: {e}")
-
-
       
       #destroy ground
       gv = BlastV
