@@ -137,20 +137,6 @@ BrightColorCount = 27
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #-----------------------------
 # Arcade Games              --
 #-----------------------------
@@ -364,11 +350,6 @@ def LoadConfigData():
   
 
 
- 
-
-
-
-
 
 #--------------------------------------
 # RGB Matrix Options                 --
@@ -406,7 +387,7 @@ options.chain_length = 1
 options.parallel = 1
 options.hardware_mapping = 'adafruit-hat'       # Adafruit HAT specific
 options.gpio_slowdown = 3                       # Adjust if you see flicker
-options.brightness = 60                         # Keep this moderate
+options.brightness = 100                         # Keep this moderate
 options.pwm_bits = 7                            # Lower for better timing
 options.pwm_lsb_nanoseconds = 250               # Tweak this if needed
 options.scan_mode = 0                           # Progressive
