@@ -38,6 +38,15 @@ green = graphics.Color(0, 255, 0)
 blue  = graphics.Color(0, 0, 255)
 white = graphics.Color(255, 255, 255)
 
+
+
+# -------------------------------
+# Color generator
+# -------------------------------
+def random_color():
+    return graphics.Color(random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
+
+
 # -------------------------------
 # Main loop
 # -------------------------------
