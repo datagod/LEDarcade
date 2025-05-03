@@ -1,4 +1,4 @@
-from rgbmatrix import RGBMatrix, graphics
+from rgbmatrix import RGBMatrix, graphics,RGBMatrixOptions
 
 options = graphics.ParseOptions()
 matrix = RGBMatrix(options=options)
