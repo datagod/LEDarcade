@@ -5,6 +5,8 @@
  LED Stock Ticker Display - Powered by LEDarcade
 ================================================================================
 
+
+
  Description:
  ------------
  This program fetches real-time stock prices using the yfinance library and 
