@@ -68,9 +68,11 @@ import inspect
 
 
 #RGB Matrix and graphics
-from rgbmatrix import graphics
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
+
+
+
 
 
 #URL
@@ -393,15 +395,26 @@ SpriteFillerRGB = (0,0,0)
 
 
 
+
+# Use command-line args to configure LED matrix (like the demo does)
+options = graphics.ParseOptions()
+
+# Create the matrix object
+TheMatrix = RGBMatrix(options=options)
+
+# Optional: Create the canvas
+Canvas = TheMatrix.CreateFrameCanvas()
+
+
+
 #Initialize Matrix objects
-options = RGBMatrixOptions()
+#options = RGBMatrixOptions()
 
-options.rows       = HatHeight
-options.cols       = HatWidth
-options.brightness = 100
-#stops sparkling 
-options.gpio_slowdown = 5
-
+#options.rows       = HatHeight
+#options.cols       = HatWidth
+#options.brightness = 100
+##stops sparkling 
+#options.gpio_slowdown = 5
 
 
 #options.chain_length = self.args.led_chain
