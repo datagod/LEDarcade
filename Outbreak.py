@@ -1679,7 +1679,7 @@ def MoveVirus(Virus,Playfield):
 def CreateDinnerPlate(MapLevel):
   global mutationrate
   
-  MapLevel = 12
+  
 
   print ("CreateDinnerPlate Map: ",MapLevel)
 
@@ -2864,9 +2864,8 @@ def PlayOutbreak(GameMaxMinutes):
   #print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
   print("*****************************************************")
 
-  #LevelCount = random.randint(1,MaxLevel)
-  
-  LevelCount = 12
+  LevelCount = random.randint(1,MaxLevel)
+    
 
   DinnerPlate = CreateDinnerPlate(LevelCount)
 
@@ -3184,8 +3183,8 @@ def PlayOutbreak(GameMaxMinutes):
 
         #Prepare new level
         DominanceCount    = 0
-        #LevelCount        = random.randint(1,MaxLevel)
-        LevelCount        = 12
+        LevelCount        = random.randint(1,MaxLevel)
+        
 
         replicationrate   = OriginalReplicationRate
         mutationdeathrate = OriginalMutationDeathRate
@@ -3309,8 +3308,8 @@ def PlayOutbreak(GameMaxMinutes):
       LED.SaveConfigData()
       
       
-      #LevelCount = random.randint(1,MaxLevel)
-      LevelCount = 12
+      LevelCount = random.randint(1,MaxLevel)
+      
       
       
       DinnerPlate = CreateDinnerPlate(LevelCount)
