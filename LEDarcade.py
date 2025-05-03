@@ -401,7 +401,7 @@ options.cols       = HatWidth
 options.brightness = 100
 #stops sparkling 
 options.gpio_slowdown = 5
-options.gpio_mapping = "adafruit-hat"
+
 
 
 #options.chain_length = self.args.led_chain
