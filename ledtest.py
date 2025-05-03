@@ -27,8 +27,6 @@ canvas = matrix.CreateFrameCanvas()
 # -------------------------------
 # Load font
 # -------------------------------
-font = graphics.Font()
-font.LoadFont("rpi-rgb-led-matrix/fonts/6x10.bdf")
 
 # -------------------------------
 # Colors
@@ -48,10 +46,6 @@ while True:
     graphics.DrawLine(canvas, 0, 0, 63, 31, red)
     graphics.DrawLine(canvas, 0, 31, 63, 0, green)
     graphics.DrawLine(canvas, 0, 16, 63, 16, blue)
-
-    # Draw some text
-    graphics.DrawText(canvas, font, 2, 10, white, "Hello")
-    graphics.DrawText(canvas, font, 2, 22, red,   "Datagod")
 
     canvas = matrix.SwapOnVSync(canvas)
     time.sleep(0.05)
