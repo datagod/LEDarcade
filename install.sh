@@ -12,7 +12,7 @@ SYSTEM_PACKAGES=(
     python3-dev
     build-essential
     libopenjp2-7
-    libtiff5
+    libtiff-dev
     libatlas-base-dev
     libjpeg-dev
     libfreetype6-dev
