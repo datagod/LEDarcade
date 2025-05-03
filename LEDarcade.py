@@ -74,18 +74,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageSequence
 
 
 
-# Draw a test pixel
-canvas.Clear()
-canvas.SetPixel(10, 10, 255, 0, 0)  # red at (10,10)
-canvas.SetPixel(10, 11, 255, 0, 0)  # red at (10,10)
-canvas.SetPixel(10, 12, 255, 0, 0)  # red at (10,10)
-canvas.SetPixel(10, 13, 255, 0, 0)  # red at (10,10)
-canvas.SetPixel(10, 14, 255, 0, 0)  # red at (10,10)
-matrix.SwapOnVSync(canvas)
-
-input("✅ Red pixel drawn. Press Enter to exit...")
-
-
 
 
 
