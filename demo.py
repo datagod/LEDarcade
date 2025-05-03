@@ -30,6 +30,10 @@ print ("")
 #--------------------------------------
 
 
+LED.TheMatrix.Clear()
+LED.TheMatrix.SetPixel(10, 10, 255, 0, 0)
+time.sleep(20)
+
 while (1==1):
 
 
