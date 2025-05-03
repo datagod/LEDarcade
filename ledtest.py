@@ -51,7 +51,6 @@ def random_color():
 # Main loop
 # -------------------------------
 while True:
-    canvas.Clear()
 
     for _ in range(10):  # draw 10 random lines
         x1 = random.randint(0, 63)
@@ -63,4 +62,4 @@ while True:
 
 
     canvas = matrix.SwapOnVSync(canvas)
-    time.sleep(0.05)
+    
