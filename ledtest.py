@@ -1,5 +1,7 @@
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 import time
+import random
+
 
 # -------------------------------
 # Matrix Options
@@ -42,10 +44,14 @@ white = graphics.Color(255, 255, 255)
 while True:
     canvas.Clear()
 
-    # Draw some lines
-    graphics.DrawLine(canvas, 0, 0, 63, 31, red)
-    graphics.DrawLine(canvas, 0, 31, 63, 0, green)
-    graphics.DrawLine(canvas, 0, 16, 63, 16, blue)
+    for _ in range(10):  # draw 10 random lines
+        x1 = random.randint(0, 63)
+        y1 = random.randint(0, 31)
+        x2 = random.randint(0, 63)
+        y2 = random.randint(0, 31)
+        color = random_color()
+        graphics.DrawLine(canvas, x1, y1, x2, y2, color)    
+
 
     canvas = matrix.SwapOnVSync(canvas)
     time.sleep(0.05)
