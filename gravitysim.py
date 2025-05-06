@@ -11,10 +11,10 @@ G = 1.0
 SunMass = 500.0
 TimeStep = 0.2
 ScrollSleep = 0.01
-MaxSpeed = 12.0
-SpawnInterval = 50
+MaxSpeed = 20.0
+SpawnInterval = 100
 MergeDistance = 1.5
-NumParticles = 50
+NumParticles = 5
 
 HatWidth = LED.HatWidth
 HatHeight = LED.HatHeight
