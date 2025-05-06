@@ -57,7 +57,7 @@ import time
 import gc
 import random
 import os
-os.system('cls||clear')
+os.system('clear')
 
 from configparser import SafeConfigParser
 import sys
@@ -223,7 +223,7 @@ TwitchTimerOn = False
 # Used in all games         --
 #-----------------------------
 
-class EmptyObject(object):
+class EmptyObjectClass(object):
   def __init__(self,name='EmptyObject'):
     self.name  = name
     self.alive = 0
@@ -241,7 +241,10 @@ class EmptyObject(object):
     self.exploding  = 0
     self.dropped    = 0
 
-EmptyObject = EmptyObject()
+EmptyObject       = EmptyObjectClass()
+OutOfBoundsObject = EmptyObjectClass()
+OutOfBoundsObject.name = 'OutOfBounds'
+
 
 
 
@@ -377,6 +380,38 @@ SpriteFillerRGB = (0,0,0)
 
 
 
+
+# ------------------------------------------------------------------------------
+# RGBMatrixOptions Explanation
+# ------------------------------------------------------------------------------
+# The RGBMatrixOptions class is used to configure how the LED matrix behaves.
+# This object is passed to the RGBMatrix constructor to define display settings.
+
+# Common options include:
+#
+#   rows              - Number of rows per panel (e.g., 32, 64)
+#   cols              - Number of columns per panel (e.g., 64, 128)
+#   chain_length      - Number of daisy-chained panels horizontally
+#   parallel          - Number of parallel chains (for larger displays)
+#   brightness        - LED brightness (0–100)
+#   gpio_slowdown     - Reduces signal speed for hardware compatibility (0–4)
+#   disable_hardware_pulsing - Set to True to avoid PWM interference
+#   show_refresh_rate - Display refresh rate on console (for debugging)
+
+# Example:
+# options = RGBMatrixOptions()
+# options.rows = 32
+# options.cols = 64
+# options.chain_length = 2
+# options.parallel = 1
+# options.brightness = 75
+# matrix = RGBMatrix(options=options)
+# ------------------------------------------------------------------------------
+
+
+
+
+
 # -------------------------------
 # Matrix Options
 # -------------------------------
@@ -388,8 +423,8 @@ options.parallel = 1
 options.hardware_mapping = 'adafruit-hat'       # Adafruit HAT specific
 options.gpio_slowdown = 3                       # Adjust if you see flicker
 options.brightness = 100                         # Keep this moderate
-options.pwm_bits = 7                            # Lower for better timing
-options.pwm_lsb_nanoseconds = 250               # Tweak this if needed
+options.pwm_bits = 11                           # Lower for better timing
+options.pwm_lsb_nanoseconds = 500               # Tweak this if needed
 options.scan_mode = 0                           # Progressive
 options.disable_hardware_pulsing = False
 options.drop_privileges = False                 # Avoid permission issues

@@ -54,6 +54,7 @@ import random
 import time
 import numpy
 import math
+from numba import njit
 
 
 #For displaying crypto currency
@@ -74,8 +75,8 @@ start_time = time.time()
 # Outbreak Global Variables --
 #-----------------------------
 VirusTopSpeed     = 1
-VirusBottomSpeed  = 25
-VirusStartSpeed   = 10  #starting speed of the viruses
+VirusBottomSpeed  = 15
+VirusStartSpeed   = 15  #starting speed of the viruses
 MinBright         = 50
 MaxBright         = 255
 
@@ -86,38 +87,38 @@ MutationTypes             = 10     #Number of different types of mutations
 OriginalReplicationRate   = 5000
 replicationrate           = OriginalReplicationRate
 FreakoutReplicationRate   = 10     #new replication rate when a virus freaksout
-MaxVirusMoves             = 100000 #after this many moves the level is over
+MaxVirusMoves             = 1000000 #after this many moves the level is over
 FreakoutMoves             = 10000  #after this many moves, the viruses will replicate and mutate at a much greater rate
 VirusMoves                = 0      #used to count how many times the viruses have moved
 ClumpingSpeed             = 25     #This modifies the speed of viruses that contact each other
 ReplicationSpeed          = 5      #When a virus replicates, it will be a bit slower.  This number is added to current speed.
-ChanceOfSpeedup           = 10     #determines how often a lone virus will spontaneously speed up
+ChanceOfSpeedup           = 50     #determines how often a lone virus will spontaneously speed up
 SlowTurnMinMoves          = 1      #number of moves a mutated virus moves before turning
 SlowTurnMaxMoves          = 40     #number of moves a mutated virus moves before turning
 MaxReplications           = 5      #Maximum number of replications, if surpassed the virus dies
 InfectionChance           = 5     #Chance of one virus infecting another, lower the number greater the chance
-DominanceMaxCount         = 5000   #how many ticks with there being only one virus, when reached level over
-VirusNameSpeedupCount     = 500    #when this many virus strains are on the board, speed them up
-ChanceOfDying             = 1000   #random chance of a virus dying
-GreatChanceOfDying        = 500    #random chance of a virus dying when too many straings are alive
-ChanceOfHeadingToHV       = 50000  #random chance of all viruses being interested in the same location
-ChanceOfHeadingToFood     = 50     #random chance of a virus heading towards the nearest food
-FoodCheckRadius           = 5      #radius around the virus when looking for food
+DominanceMaxCount         = 250000   #how many ticks with there being only one virus, when reached level over
+VirusNameSpeedupCount     = 1000    #when this many virus strains are on the board, speed them up
+ChanceOfDying             = 5000   #random chance of a virus dying
+GreatChanceOfDying        = 5000    #random chance of a virus dying when too many straings are alive
+ChanceOfHeadingToHV       = 250000  #random chance of all viruses being interested in the same location
+ChanceOfHeadingToFood     = 100     #random chance of a virus heading towards the nearest food
+FoodCheckRadius           = 15      #radius around the virus when looking for food
 ChanceOfTurningIntoFood   = 5      #Random chance of a dying mutating virus to turn into food
 ChanceOfTurningIntoWall   = 5      #Random chance of a dying mutating virus to turn into food
 VirusFoodWallLives        = 5      #Lives of food before it gets eaten and disappears
-AuditSpeed                = 100    #Every X tick, an audit text window is displayed for debugging purposes
-EatingSpeedAdjustment     = 5     #When a virus eats, it gets full and slows down             
-SpeedIncrements           = 50     #how many chunks the speed range is cut up into, for increasing gradually
+AuditSpeed                = 2000   #Every X tick, an audit text window is displayed for debugging purposes
+EatingSpeedAdjustment     = 0     #When a virus eats, it gets full and slows down             
+SpeedIncrements           = 20     #how many chunks the speed range is cut up into, for increasing gradually
 FoodBrightnessSteps       = 25     #each time a food loses life, it gets brighter by this many units
 ChanceToStopEating        = 100    #chance that a virus decides to stop eating and carry on with life
-ChanceOfRandomFood        = 750000  #chance that random food will show up, which will draw the viruses to it
+ChanceOfRandomFood        = 250000  #chance that random food will show up, which will draw the viruses to it
 MapOffset                 = 20     #how many pixels from the left screen does the map really start (so we don't overwrite clocks and other things)
 BigFoodLives              = 500    #lives for the big food particle
 BigFoodRGB                = (255,0,0)
-MaxRandomViruses          = 20     #maximum number of random viruses to place on big food maps
-VirusMaxCount             = 20      #maximum number of unique virus strains allowed
-MaxLevelsPlayed           = 5      #quit after 5 maps are played
+MaxRandomViruses          = 50     #maximum number of random viruses to place on big food maps
+VirusMaxCount             = 500      #maximum number of unique virus strains allowed
+MaxLevelsPlayed           = 25      #quit after 5 maps are played
 
 #Sprite display locations
 ClockH,      ClockV,      ClockRGB      = 0,0,  (0,150,0)
@@ -129,6 +130,14 @@ CurrencyH,   CurrencyV,   CurrencyRGB   = 0,27, (0,150,0)
 #Sprite filler tuple
 SpriteFillerRGB = (0,4,0)
 
+  
+#RGB Objects
+#Canvas = LED.TheMatrix.CreateFrameCanvas()
+#Canvas.Fill(0,0,0)
+
+#PreviousFrame = [[(-1, -1, -1) for _ in range(LED.HatWidth)] for _ in range(LED.HatHeight)]
+#ScreenArray = [[(0, 0, 0) for _ in range(LED.HatWidth)] for _ in range(LED.HatHeight)]
+
 
 
 #---------------------------------------
@@ -139,7 +148,7 @@ TerminalTypeSpeed   = 0.02  #pause in seconds between characters
 TerminalScrollSpeed = 0.02  #pause in seconds between new lines
 CursorRGB           = (0,255,0)
 CursorDarkRGB       = (0,50,0)
-
+fast_rng            = None  #a faster implementation of random
 
 
 BrightRGB  = (0,200,0)
@@ -168,6 +177,44 @@ start_time = time.time()
 # - virus will slow down to eat
 
 
+
+
+
+
+
+
+
+
+class FastRandom:
+    def __init__(self, seed=1):
+        self.state = seed
+
+    def randint(self, low, high):
+        self.state = (1103515245 * self.state + 12345) & 0x7FFFFFFF
+        return low + (self.state % (high - low + 1))
+
+    def random(self):
+        self.state = (1103515245 * self.state + 12345) & 0x7FFFFFFF
+        return self.state / 0x7FFFFFFF
+
+    def choice(self, seq):
+        index = self.randint(0, len(seq) - 1)
+        return seq[index]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #--------------------------------------
 # VirusWorld                         --
 #--------------------------------------
@@ -184,6 +231,75 @@ start_time = time.time()
 
 class VirusWorld(object):
 #Started out as an attempt to make cars follow shapes.  I was not happy with the results so I converted into a petri dish of viruses
+  DefaultColorList = {
+        ' ' : (  0,  0,  0),
+        '-' : ( 10, 10, 10),
+        '.' : ( 20, 20, 20),
+        'o' : ( 30, 30, 30),
+        'O' : ( 40, 40, 40),
+        '@' : ( 50, 60, 60),
+        '$' : ( 60, 60, 60),
+        'A' : (  0,  0, 40),
+        'B' : ( 10, 10, 50),
+        'C' : ( 20, 20, 60),
+        'D' : ( 30, 30, 70),
+        'E' : ( 40, 40, 80),
+        'F' : ( 50, 50, 90),
+        'G' : ( 60, 60,100),
+        'H' : ( 70, 70,110),
+        'I' : ( 80, 80,120),
+        'J' : ( 90, 90,130),
+        'K' : (100,100,140),
+        'L' : (110,110,150),
+        '|' : (150,150,175),
+        '*' : (175,175,175),
+        '=' : (200,200,200),
+        '#' : (150,150,150),
+        '1' : (  0,200,  0),
+        '2' : (150,  0,  0),
+        '3' : (150,100,  0),
+        '4' : (  0,  0,100),
+        '5' : (200,  0, 50),
+        '6' : (125,185,  0),
+        '7' : (200,  0,200),
+        '8' : ( 50,150, 75)
+    }
+
+  DefaultTypeList = {
+        ' ' : 'EmptyObject',
+        '-' : 'wall',
+        '.' : 'wall',
+        'o' : 'wall',
+        'O' : 'wall',
+        '@' : 'wall',
+        '#' : 'wall',
+        '$' : 'wall',
+        '*' : 'wallbreakable',
+        'A' : 'wallbreakable',
+        'B' : 'wallbreakable',
+        'C' : 'wallbreakable',
+        'D' : 'wallbreakable',
+        'E' : 'wallbreakable',
+        'F' : 'wallbreakable',
+        'G' : 'wallbreakable',
+        'H' : 'wallbreakable',
+        'I' : 'wallbreakable',
+        'J' : 'wallbreakable',
+        'K' : 'wallbreakable',
+        'L' : 'wallbreakable',
+        '|' : 'wall',
+        '1' : 'virus',
+        '2' : 'virus',
+        '3' : 'virus',
+        '4' : 'virus',
+        '5' : 'virus',
+        '6' : 'virus',
+        '7' : 'virus',
+        '8' : 'virus'
+    }
+
+
+
   def __init__(self,name,width,height,Map,Playfield,CurrentRoomH,CurrentRoomV,DisplayH, DisplayV, mutationrate, replicationrate,mutationdeathrate,VirusStartSpeed):
     self.name      = name
     self.width     = width
@@ -199,35 +315,67 @@ class VirusWorld(object):
     self.mutationdeathrate = mutationdeathrate
     self.VirusStartSpeed   = VirusStartSpeed
 
-    self.Map             = [[0 for i in range(self.width)] for i in range(self.height)]
-    self.Playfield       = [[LED.EmptyObject for i in range(self.width)] for i in range(self.height)]
-    self.walllives       = VirusFoodWallLives
-    self.Viruses = []
+    self.Map              = [[0 for i in range(self.width)] for i in range(self.height)]
+    self.Playfield        = [[LED.EmptyObject for i in range(self.width)] for i in range(self.height)]
+    self.walllives        = VirusFoodWallLives
+    self.Viruses          = []
 
 
+  @staticmethod
+  def GenerateEmptyMap(width, height, fill_char=' '):
+      """
+      Generates a text-based empty map.
+
+      Returns:
+          list[str]: A list of strings representing the empty map.
+      """
+      if len(fill_char) != 1:
+          raise ValueError("fill_char must be a single character.")
+      return [fill_char * width for _ in range(height)]
+
+  @staticmethod
+  def GenerateEmptyMapWithBorder(width, height, wall_char='-', fill_char=' '):
+      """
+      Generates a map with a solid border of wall characters.
+
+      Returns:
+          list[str]: A list of strings representing the bordered map.
+      """
+      if len(wall_char) != 1 or len(fill_char) != 1:
+          raise ValueError("Characters must be single characters.")
+      if width < 3 or height < 3:
+          raise ValueError("Minimum map size with border is 3x3.")
+      map_rows = [wall_char * width]
+      for _ in range(height - 2):
+          map_rows.append(wall_char + fill_char * (width - 2) + wall_char)
+      map_rows.append(wall_char * width)
+      return map_rows
 
   def AddRandomVirusesToPlayfield(self,VirusesToAdd=25):
+    global fast_rng
+
     AddedCount = 0
     
     while (AddedCount <= VirusesToAdd):
-      h = random.randint(15,self.width-2) #we use a 15 pixel offset because of other display items
-      v = random.randint(2,self.height-2)
+      h = fast_rng.randint(15,self.width-2) #we use a 15 pixel offset because of other display items
+      v = fast_rng.randint(2,self.height-2)
       #print ("hv",h,v,self.Playfield[v][h].name)
       if (self.Playfield[v][h].name == 'EmptyObject' or
           self.Playfield[v][h].name == 'WallBreakable'
         ):
         #print("empty")
-        r,g,b = LED.BrightColorList[random.randint(1,27)]
+        r,g,b = LED.BrightColorList[fast_rng.randint(1,27)]
         VirusName = str(r) + '-' + str(g) + '-' + str(b)
         self.Playfield[v][h] = Virus(h,v,0,0,r,g,b,1,1, self.VirusStartSpeed   ,1,10,VirusName,0,0,10,'West',0,self.mutationrate,0,self.replicationrate,self.mutationdeathrate)
         self.Viruses.append(self.Playfield[v][h])
         AddedCount = AddedCount + 1
           
           
-      
-
 
   def CopyTextMapToPlayfield(self,TextMap):
+    global fast_rng
+
+    
     mapchar = ""
     r = 0
     g = 0
@@ -277,6 +425,8 @@ class VirusWorld(object):
   def CopyMapToPlayfield(self):
     #This function is run once to populate the playfield with viruses, based on the map drawing
     #XY is actually implemented as YX.  Counter intuitive, but it works.
+
+    global fast_rng
 
     width   = self.width 
     height  = self.height
@@ -344,7 +494,7 @@ class VirusWorld(object):
           self.Playfield[y][x] = Virus(x,y,x,y,r,g,b,1,1, self.VirusStartSpeed   ,1,10,VirusName,0,0,10,'West',0,self.mutationrate,0,self.replicationrate,self.mutationdeathrate)
 
 
-          #self.Playfield[y][x].direction = random.randint(1,8)
+          #self.Playfield[y][x].direction = fast_rng.randint(1,8)
           self.Playfield[y][x].direction = PointTowardsObject8Way(x,y,height/2,width/2)
           self.Viruses.append(self.Playfield[y][x])
         else:
@@ -384,11 +534,14 @@ class VirusWorld(object):
     #I was young and new when I first wrote the first sprite functions, and did not understand arrays in python.  :)
       if TheSprite.grid[count] != 0:
         if (ObjectType == 'Wall'):
-          self.Playfield[y+v][x+h] = LED.Wall(x,y,r,g,b,1,1,'Wall')
+          #self.Playfield[y+v][x+h] = LED.Wall(x,y,r,g,b,1,1,'Wall')
+          SetPlayfieldObject(v=y+v, h=x+h, obj=LED.Wall(x,y,r,g,b,1,1,'Wall'), Playfield=self.Playfield)
         elif(ObjectType == 'WallBreakable'):
-          self.Playfield[y+v][x+h] = LED.Wall(x,y,r,g,b,1,1,'WallBreakable')
+          #self.Playfield[y+v][x+h] = LED.Wall(x,y,r,g,b,1,1,'WallBreakable')
+          SetPlayfieldObject(v=y+v, h=x+h, obj=LED.Wall(x,y,r,g,b,1,1,'WallBreakable'), Playfield=self.Playfield)          
         elif(ObjectType == 'Virus'):
-          self.Playfield[y+v][x+h] = Virus(x,y,x,y,r,g,b,1,1, self.VirusStartSpeed   ,1,10,'?',0,0,10,'West',0,self.mutationrate,0,self.replicationrate,self.mutationdeathrate)
+          #self.Playfield[y+v][x+h] = Virus(x,y,x,y,r,g,b,1,1, self.VirusStartSpeed   ,1,10,'?',0,0,10,'West',0,self.mutationrate,0,self.replicationrate,self.mutationdeathrate)
+          SetPlayfieldObject(v=y+v, h=x+h, obj=Virus(x,y,x,y,r,g,b,1,1, self.VirusStartSpeed   ,1,10,'?',0,0,10,'West',0,self.mutationrate,0,self.replicationrate,self.mutationdeathrate), Playfield=self.Playfield)
       else:
         if (Filler == 'EmptyObject'):
           self.Playfield[y+v][x+h] = LED.EmptyObject
@@ -494,18 +647,26 @@ class VirusWorld(object):
 
 
 
+
+
+
+
+
+
+
   def DisplayWindowZoom(self,h,v,Z1=8,Z2=1,ZoomSleep=0.05):
     #uses playfield to display items
 
+
     if (Z1 <= Z2):
       for Z in range (Z1,Z2):
-        LED.TheMatrix.Clear()
+        #LED.TheMatrix.Clear()
         self.DisplayWindow(h,v,Z)
         #time.sleep(ZoomSleep)
         
     else:
       for Z in reversed(range(Z2,Z1)):
-        LED.TheMatrix.Clear()        
+        #LED.TheMatrix.Clear()        
         self.DisplayWindow(h,v,Z)
         #time.sleep(ZoomSleep)
         
@@ -521,11 +682,13 @@ class VirusWorld(object):
     count = 0
         
 
-    for V in range(0,LED.HatWidth):
-      for H in range (0,LED.HatHeight):
-         
+    maxV = min(LED.HatHeight, self.height - v)
+    maxH = min(LED.HatWidth, self.width - h)
+
+    for V in range(maxV):
+      for H in range(maxH):
         name = self.Playfield[v+V][h+H].name
-        #print ("Display: ",name,V,H)
+
         if (name == 'EmptyObject'):
           r = 0
           g = 0
@@ -556,9 +719,11 @@ class VirusWorld(object):
     #and counts how many items are in the area
     count = 0
         
-    for V in range(0,LED.HatWidth):
-      for H in range (0,LED.HatHeight):
-         
+    maxV = min(LED.HatHeight, self.height - v)
+    maxH = min(LED.HatWidth, self.width - h)
+
+    for V in range(maxV):
+      for H in range(maxH):
         name = self.Playfield[v+V][h+H].name
         #print ("Display: ",name,V,H)
         if (name not in ('EmptyObject',"Wall","WallBreakable")):
@@ -573,8 +738,12 @@ class VirusWorld(object):
   def DebugPlayfield(self):
     #Show contents of playfield - in text window, for debugging purposes
     
-    width   = self.width 
-    height  = self.height
+
+    height = len(self.Playfield)
+    width = len(self.Playfield[0]) if height > 0 else 0
+    print("DebugPlayfield - actual dimensions:", width, "x", height)
+    
+    
     print ("Map width height:",width,height)
   
     x = 0
@@ -618,7 +787,7 @@ class VirusWorld(object):
 
 
 
-  def FindClosestObject(self,SourceH,SourceV, Radius = 10, ObjectType = 'WallBreakable'):
+  def FindClosestObject_old(self,SourceH,SourceV, Radius = 10, ObjectType = 'WallBreakable'):
     #Find the HV co-ordinates of the closest playfield object
     #
     #print("Searching for nearby food SourceH SourceV Radius ObjectType",SourceH, SourceV, Radius, ObjectType)
@@ -658,8 +827,6 @@ class VirusWorld(object):
     
     for x in range(StartX,StopX):
       for y in range(StartY, StopY):
-        #Look for object on the playfield
-        #print ("searching xy: ",x,y, " found ",self.Playfield[y][x].name)
 
         #remember playfield coordinates are swapped
         if (self.Playfield[y][x].name == ObjectType):
@@ -670,17 +837,45 @@ class VirusWorld(object):
             ClosestX = x
             ClosestY = y
       
-    #FlashDot5(ClosestX,ClosestY,0.003)
     return ClosestX,ClosestY;
 
 
 
 
+  @njit
+  def GetDistanceSquared(self, h1, v1, h2, v2):
+      dx = h1 - h2
+      dy = v1 - v2
+      return dx * dx + dy * dy
 
+  def GetDistanceSquared(self, h1, v1, h2, v2):
+      dx = h1 - h2
+      dy = v1 - v2
+      return dx * dx + dy * dy
 
+  def FindClosestObject(self, SourceH, SourceV, Radius=10, ObjectType='WallBreakable'):
+      """
+      Find the HV coordinates of the closest object of a given type within a radius.
+      Uses squared distance comparison to avoid slow math.sqrt calls.
+      """
+      StartX = max(0, SourceH - Radius)
+      StopX  = min(LED.HatWidth, SourceH + Radius + 1)
+      StartY = max(0, SourceV - Radius)
+      StopY  = min(LED.HatHeight, SourceV + Radius + 1)
 
+      ClosestX = -1
+      ClosestY = -1
+      MinDistanceSquared = Radius * Radius + 1
 
+      for x in range(StartX, StopX):
+          for y in range(StartY, StopY):
+              if self.Playfield[y][x].name == ObjectType:
+                  dist_sq = self.GetDistanceSquared(SourceH, SourceV, x, y)
+                  if dist_sq < MinDistanceSquared:
+                      MinDistanceSquared = dist_sq
+                      ClosestX, ClosestY = x, y
 
+      return ClosestX, ClosestY
 
 
 
@@ -728,15 +923,10 @@ class Virus(object):
   def Display(self):
     if (self.alive == 1):
       LED.TheMatrix.SetPixel(self.h,self.v,self.r,self.g,self.b)
-     # print("display HV:", self.h,self.v)
-      #unicorn.show()
-      #SendBufferPacket(RemoteDisplay,LED.HatHeight,LED.HatWidth)
   
       
   def Erase(self):
     LED.TheMatrix.SetPixel(self.h,self.v,0,0,0)
-    #unicorn.show()
-    #SendBufferPacket(RemoteDisplay,LED.HatHeight,LED.HatWidth)
 
 
   #Lower is faster!
@@ -797,7 +987,7 @@ class Virus(object):
 
     #Mutations can be deadly
     self.mutations += 1
-    if ((random.randint(1,self.mutationdeathrate) == 1)
+    if ((           fast_rng.randint(1,self.mutationdeathrate)          == 1)
        or (self.mutations >= MaxMutations)):
       self.alive = 0
       self.lives = 0
@@ -810,46 +1000,46 @@ class Virus(object):
 
 
       #print ("--Virus mutation!--")
-      mutationtype = random.randint(1,MutationTypes)
+      mutationtype = fast_rng.randint(1,MutationTypes)
 
       
       #Mutations get a new name and color
-      x = random.randint(1,MutationTypes)
+      x = fast_rng.randint(1,MutationTypes)
       if (x == 1):
         #Big Red
-        r = random.randint(MinBright,MaxBright)
+        r = fast_rng.randint(MinBright,MaxBright)
         g = 0
         b = 0
         
       if (x == 2):
         #booger
         r = 0
-        g = random.randint(MinBright,MaxBright)
+        g = fast_rng.randint(MinBright,MaxBright)
         b = 0
 
       if (x == 3):
         #BlueWhale
         r = 0
         g = 0
-        b = random.randint(MinBright,MaxBright)
+        b = fast_rng.randint(MinBright,MaxBright)
 
       if (x == 4):
         #pinky
-        r = random.randint(MinBright,MaxBright)
+        r = fast_rng.randint(MinBright,MaxBright)
         g = 0
-        b = random.randint(MinBright,MaxBright)
+        b = fast_rng.randint(MinBright,MaxBright)
 
       if (x == 5):
         #MellowYellow
-        r = random.randint(MinBright,MaxBright)
-        g = random.randint(MinBright,MaxBright)
+        r = fast_rng.randint(MinBright,MaxBright)
+        g = fast_rng.randint(MinBright,MaxBright)
         b = 0
 
       if (x == 6):
         #undead
         r = 0
-        g = random.randint(MinBright,MaxBright)
-        b = random.randint(MinBright,MaxBright)
+        g = fast_rng.randint(MinBright,MaxBright)
+        b = fast_rng.randint(MinBright,MaxBright)
 
 
 
@@ -857,25 +1047,25 @@ class Virus(object):
       #Directional Behavior - turns left a little
       if (mutationtype == 1):
         #print ("Mutation: turn left a little", self.speed, mutationfactor)
-        mutationfactor       = random.randint(1,2)
+        mutationfactor       = fast_rng.randint(1,2)
         self.AdjustInfectionChance(mutationfactor * -1)
 
       #Directional Behavior - turns left a lot
       elif (mutationtype == 2):
         #print ("Mutation: turn left a lot", self.speed, mutationfactor)
-        mutationfactor       = random.randint(2,3)
+        mutationfactor       = fast_rng.randint(2,3)
         self.AdjustInfectionChance(mutationfactor * -1)
 
       #Directional Behavior - turns right a little
       elif (mutationtype == 3):
         #print ("Mutation: turn right a little", self.speed, mutationfactor)
-        mutationfactor    = random.randint(1,2)
+        mutationfactor    = fast_rng.randint(1,2)
         self.AdjustInfectionChance(mutationfactor * -1)
 
       #Directional Behavior - turns right a lot
       elif (mutationtype == 4):
         #print ("Mutation: turn right a lot", self.speed, mutationfactor)
-        mutationfactor       = random.randint(2,3)
+        mutationfactor       = fast_rng.randint(2,3)
         self.AdjustInfectionChance(mutationfactor * -1)
 
       #Speed up and infect at a higher rate
@@ -897,38 +1087,38 @@ class Virus(object):
 
       #wobble
       elif (mutationtype == 7):
-        mutationfactor = random.randint(1,10)
+        mutationfactor = fast_rng.randint(1,10)
         self.clumping  = False
         #print ("Mutation: wobble",mutationfactor)
         self.AdjustSpeed(mutationfactor)
         self.AdjustInfectionChance(mutationfactor * -1)
 
         #swamp mix
-        r = random.randint(MinBright,MaxBright)
-        g = random.randint(MinBright,MaxBright)
-        b = random.randint(MinBright,MaxBright)
+        r = fast_rng.randint(MinBright,MaxBright)
+        g = fast_rng.randint(MinBright,MaxBright)
+        b = fast_rng.randint(MinBright,MaxBright)
 
 
       #slow turn left
       elif (mutationtype == 8):
-        mutationfactor = random.randint(SlowTurnMinMoves,SlowTurnMaxMoves)  #higher is slower!
+        mutationfactor = fast_rng.randint(SlowTurnMinMoves,SlowTurnMaxMoves)  #higher is slower!
         #print ("Mutation: slow LEFT turn every (",mutationfactor,") moves")
         self.AdjustSpeed(1)
         #swamp mix
-        r = random.randint(MinBright,MaxBright)
-        g = random.randint(MinBright,MaxBright)
-        b = random.randint(MinBright,MaxBright)
+        r = fast_rng.randint(MinBright,MaxBright)
+        g = fast_rng.randint(MinBright,MaxBright)
+        b = fast_rng.randint(MinBright,MaxBright)
 
 
       #slow turn right
       elif (mutationtype == 9):
-        mutationfactor = random.randint(SlowTurnMinMoves,SlowTurnMaxMoves)  #higher is slower!
+        mutationfactor = fast_rng.randint(SlowTurnMinMoves,SlowTurnMaxMoves)  #higher is slower!
         #print ("Mutation: slow righ turn every (",mutationfactor,") moves")
         self.AdjustSpeed(1)
         #swamp mix
-        r = random.randint(MinBright,MaxBright)
-        g = random.randint(MinBright,MaxBright)
-        b = random.randint(MinBright,MaxBright)
+        r = fast_rng.randint(MinBright,MaxBright)
+        g = fast_rng.randint(MinBright,MaxBright)
+        b = fast_rng.randint(MinBright,MaxBright)
 
 
       #Clumping on
@@ -936,7 +1126,7 @@ class Virus(object):
         self.clumping = True
         self.AdjustSpeed(mutationfactor)
         #Purple Haze
-        r = random.randint(MinBright,MaxBright)
+        r = fast_rng.randint(MinBright,MaxBright)
         g = 0
         b = 255
 
@@ -973,7 +1163,103 @@ class Virus(object):
 
 
 
-def IsThereAVirusNearby(h,v,direction,VirusName,Playfield):
+
+        
+def CreateSimpleObstacleMap(width, height, block_count=8, min_size=4, max_size=8, virus_count=10):
+    
+    global fast_rng
+
+    #shading_gradient = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+    shading_gradient = ['L', 'K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A']
+
+    hall = ' '
+    border = '='
+
+    grid = [[hall for _ in range(width)] for _ in range(height)]
+
+    for _ in range(block_count):
+        w = fast_rng.randint(min_size, max_size)
+        h = fast_rng.randint(min_size, max_size)
+        x = fast_rng.randint(1, width - w - 2)
+        y = fast_rng.randint(1, height - h - 2)
+
+        cx, cy = w / 2, h / 2
+        max_dist = ((cx) ** 2 + (cy) ** 2) ** 0.5
+
+        for dy in range(h):
+            for dx in range(w):
+                gx = x + dx
+                gy = y + dy
+
+                if (dx == 0 and dy == 0) or (dx == 0 and dy == h - 1) or (dx == w - 1 and dy == 0) or (dx == w - 1 and dy == h - 1):
+                    continue  # rounded corner
+
+                dist = ((dx - cx) ** 2 + (dy - cy) ** 2) ** 0.5
+                shade_index = int((dist / max_dist) * (len(shading_gradient) - 1))
+                grid[gy][gx] = shading_gradient[shade_index]
+
+    # Borders
+    for x in range(width):
+        grid[0][x] = border
+        grid[-1][x] = border
+    for y in range(height):
+        grid[y][0] = border
+        grid[y][-1] = border
+
+    # Viruses
+    placed = 0
+    tries = 0
+    max_tries = 500
+    while placed < virus_count and tries < max_tries:
+        x = fast_rng.randint(2, width - 3)
+        y = fast_rng.randint(2, height - 3)
+        if grid[y][x] == hall:
+            grid[y][x] = str((placed % 8) + 1)
+            placed += 1
+        tries += 1
+
+    return [''.join(row) for row in grid]
+
+
+
+
+
+
+def FlashAllViruses(Viruses,VirusCount,DinnerPlate,CameraH,CameraV):
+  x = 0
+  r = 0
+  g = 0
+  b = 0
+  highcolor = 0
+  count = 0
+  increment = 50
+  H = 0
+  V = 0
+  name = ""
+
+  for x in range (0,VirusCount):
+    highcolor = max(DinnerPlate.Viruses[x].r, DinnerPlate.Viruses[x].g, DinnerPlate.Viruses[x].b)
+    while (DinnerPlate.Viruses[x].r < 255  and DinnerPlate.Viruses[x].g < 255 and DinnerPlate.Viruses[x].b < 255):
+      if (DinnerPlate.Viruses[x].r == highcolor):
+        DinnerPlate.Viruses[x].r = min(255,DinnerPlate.Viruses[x].r + increment)
+      elif (DinnerPlate.Viruses[x].g == highcolor):
+        DinnerPlate.Viruses[x].g = min(255,DinnerPlate.Viruses[x].g + increment)
+      elif (DinnerPlate.Viruses[x].b == highcolor):
+        DinnerPlate.Viruses[x].b = min(255,DinnerPlate.Viruses[x].b + increment)
+
+      highcolor = highcolor + increment
+
+      #setpixel(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,DinnerPlate.Viruses[x].r,DinnerPlate.Viruses[x].g,DinnerPlate.Viruses[x].b)
+      #unicorn.show()
+      #time.sleep(0.01)
+      
+    DinnerPlate.DisplayWindow(CameraH,CameraV)
+    #unicorn.show()
+
+
+
+
+def IsThereAVirusNearby_old(h,v,direction,VirusName,Playfield):
   # hv represent desired target location
   # ScanH and ScanV is where we are scanning
   
@@ -1045,8 +1331,7 @@ def IsThereAVirusNearby(h,v,direction,VirusName,Playfield):
 
 
 
-
-def VirusWorldScanAround(Virus,Playfield):
+def VirusWorldScanAround_old(Virus,Playfield):
   # hv represent car location
   # ScanH and ScanV is where we are scanning
   
@@ -1102,6 +1387,40 @@ def VirusWorldScanAround(Virus,Playfield):
   return ItemList;
 
 
+
+
+
+def SafeGetName(Playfield, h, v):
+    if 0 <= v < len(Playfield) and 0 <= h < len(Playfield[0]):
+        return Playfield[v][h].name
+    else:
+        return 'OutOfBounds'
+
+
+
+def VirusWorldScanAround(Virus, Playfield):
+    h, v = Virus.h, Virus.v
+    ItemList = ['EmptyObject']
+
+    directions = [
+        Virus.direction,
+        LED.TurnLeft8Way(Virus.direction),
+        LED.TurnRight8Way(Virus.direction),
+        LED.ReverseDirection8Way(Virus.direction),
+        LED.TurnLeft8Way(LED.TurnLeft8Way(Virus.direction)),
+        LED.TurnRight8Way(LED.TurnRight8Way(Virus.direction))
+    ]
+
+    for dir in directions:
+        ScanH, ScanV = LED.CalculateDotMovement8Way(h, v, dir)
+        ItemList.append(SafeGetName(Playfield, ScanH, ScanV))
+
+    return ItemList
+
+
+
+
+
 def GetDistanceBetweenDots(h1,v1,h2,v2):
   a = abs(h1 - h2)
   b = abs(v1 - v2)
@@ -1111,7 +1430,11 @@ def GetDistanceBetweenDots(h1,v1,h2,v2):
 
 
 
-def IsThereAVirusNearby(h,v,direction,VirusName,Playfield):
+def IsThereAVirusNearby(ScanH, ScanV, direction, VirusName, Playfield):
+    return 1 if SafeGetName(Playfield, ScanH, ScanV) == VirusName else 0
+
+
+def IsThereAVirusNearby_old(h,v,direction,VirusName,Playfield):
   # hv represent desired target location
   # ScanH and ScanV is where we are scanning
   
@@ -1269,19 +1592,25 @@ def CountVirusesBehind(h,v,direction,VirusName,Playfield):
   ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
   ScanDirection = LED.TurnLeft8Way(ScanDirection)
   ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
-  if (Playfield[ScanV][ScanH].name == VirusName):
+
+
+  TheObject = GetPlayfieldObject(h=ScanH,v=ScanV,Playfield=Playfield)
+  if (TheObject.name == VirusName):
     count = count + 1
-  
+
   
   #Scan behind
   ScanDirection = LED.TurnLeft8Way(ScanDirection)
   ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
-  if (Playfield[ScanV][ScanH].name == VirusName):
+  TheObject = GetPlayfieldObject(h=ScanH,v=ScanV,Playfield=Playfield)
+
+  if (TheObject.name == VirusName):
     count = count + 1
   
   #Scan behind right diagonal
   ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
-  if (Playfield[ScanV][ScanH].name == VirusName):
+  TheObject = GetPlayfieldObject(h=ScanH,v=ScanV,Playfield=Playfield)
+  if (TheObject.name == VirusName):
     count = count + 1
   
 
@@ -1338,7 +1667,7 @@ def SpreadInfection(Virus1,Virus2,direction):
 
   else:
 
-    if(random.randint(1,InfectionChance) == 1):
+    if(fast_rng.randint(1,InfectionChance) == 1):
 
       Virus2.name = Virus1.name
       Virus2.r    = Virus1.r   
@@ -1357,7 +1686,7 @@ def SpreadInfection(Virus1,Virus2,direction):
       #  LED.FlashDot6(Virus2.h,Virus2.v)
       
       #Infected virus slows down, attempt to increase clumping
-      Virus2.AdjustSpeed(+ClumpingSpeed)
+      #Virus2.AdjustSpeed(+ClumpingSpeed)
       
     
       
@@ -1408,11 +1737,22 @@ def ReplicateVirus(Virus,DinnerPlate):
   return LED.EmptyObject;
 
   
-  
+def SetVirusPositionSafely(Virus, h, v, Playfield):
+    if 0 <= v < len(Playfield) and 0 <= h < len(Playfield[0]):
+        Virus.v = v
+        Virus.h = h
+        return True
+    else:
+        # Optional: log for debug
+        # print(f"[Warning] Attempted to place virus out of bounds at ({v},{h})")
+        return False  
+
+
 
 def MoveVirus(Virus,Playfield):
   global VirusMoves
   global ChanceOfTurningIntoFood
+  global fast_rng
 
   #print ("== MoveVirus : ",Virus.name," hv dh dv alive--",Virus.h,Virus.v,Virus.dh,Virus.dv,Virus.alive)
   
@@ -1448,39 +1788,40 @@ def MoveVirus(Virus,Playfield):
   ItemList = VirusWorldScanAround(Virus,Playfield)
   #print (ItemList)
   
+  
 
   #Grab breakable wall object
   if (ItemList[1] == "WallBreakable"):
     ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,Virus.direction)
-    WallInFront = Playfield[ScanV][ScanH]
+    WallInFront = GetPlayfieldObject(ScanH, ScanV, Playfield)
 
 
   #Grab potential viruses in scan zones NW N NE S
   #Grab Virus in front
-  if (ItemList[1] != "Wall" and ItemList[1] != "WallBreakable" and ItemList[1] != 'EmptyObject'):
+  if (ItemList[1] != "Wall" and ItemList[1] != "WallBreakable" and ItemList[1] != 'EmptyObject' and ItemList[1] != 'OutOfBounds'):
     ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,Virus.direction)
-    VirusInFront = Playfield[ScanV][ScanH]
+    VirusInFront = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanFront    ",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
 
   #Grab Virus left diagonal
-  if (ItemList[2] != "Wall" and ItemList[1] != "WallBreakable" and ItemList[2] != 'EmptyObject'):
+  if (ItemList[2] != "Wall" and ItemList[2] != "WallBreakable" and ItemList[2] != 'EmptyObject' and ItemList[2] != 'OutOfBounds'):
     ScanDirection = LED.TurnLeft8Way(Virus.direction)
     ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
-    VirusLeftDiag = Playfield[ScanV][ScanH]
+    VirusLeftDiag = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanLeftDiag ",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
 
   #Grab Virus right diagonal
-  if (ItemList[3] != "Wall" and ItemList[1] != "WallBreakable" and ItemList[3] != 'EmptyObject'):
+  if (ItemList[3] != "Wall" and ItemList[3] != "WallBreakable" and ItemList[3] != 'EmptyObject' and ItemList[3] != 'OutOfBounds'):
     ScanDirection = LED.TurnRight8Way(Virus.direction)
     ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
-    VirusRightDiag = Playfield[ScanV][ScanH]
+    VirusRightDiag = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanRightDiag",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
   
         
-  if (ItemList[4] != "Wall" and ItemList[1] != "WallBreakable" and ItemList[4] != 'EmptyObject'):
+  if (ItemList[4] != "Wall" and ItemList[4] != "WallBreakable" and ItemList[4] != 'EmptyObject' and ItemList[4] != 'OutOfBounds'):
     ScanDirection = LED.ReverseDirection8Way(Virus.direction)
     ScanH,ScanV   = LED.CalculateDotMovement8Way(h,v,ScanDirection)
-    VirusInRear     = Playfield[ScanV][ScanH]
+    VirusInRear     = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanRear",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
   
 
@@ -1540,7 +1881,7 @@ def MoveVirus(Virus,Playfield):
 
   #If no viruses around, increase speed and wander around
   if (all('EmptyObject' == Item for Item in ItemList)):
-    if (random.randint(1,ChanceOfSpeedup) == 1):
+    if (fast_rng.randint(1,ChanceOfSpeedup) == 1):
       Virus.AdjustSpeed(-1)
   
 
@@ -1582,7 +1923,7 @@ def MoveVirus(Virus,Playfield):
 
   #Mutate virus
   #print ("MV - mutationrate type factor",Virus.mutationrate, Virus.mutationtype, Virus.mutationfactor)
-  if (random.randint(0,Virus.mutationrate) == 1):
+  if (fast_rng.randint(0,Virus.mutationrate) == 1):
     Virus.Mutate()
 
     if (Virus.alive == 0):
@@ -1595,9 +1936,9 @@ def MoveVirus(Virus,Playfield):
 
 
     #If after a mutation the virus dies, there is a small chance to turn into food or a wall
-    if (random.randint(0,ChanceOfTurningIntoFood) == 1):
+    if (fast_rng.randint(0,ChanceOfTurningIntoFood) == 1):
       Playfield[Virus.v][Virus.h] = LED.Wall(Virus.h,Virus.v,LED.SDDarkWhiteR,LED.SDDarkWhiteG,(LED.SDDarkWhiteB + 60),1,VirusFoodWallLives,'WallBreakable')
-    elif (random.randint(0,ChanceOfTurningIntoWall) == 1):
+    elif (fast_rng.randint(0,ChanceOfTurningIntoWall) == 1):
       Playfield[Virus.v][Virus.h] = LED.Wall(Virus.h,Virus.v,LED.SDDarkWhiteR,LED.SDDarkWhiteG,LED.SDDarkWhiteB,1,VirusFoodWallLives,'Wall')
     else:
       Playfield[Virus.v][Virus.h] = LED.EmptyObject
@@ -1627,7 +1968,7 @@ def MoveVirus(Virus,Playfield):
 
   #A virus can be in eating mode, but another virus eats the food.  The first virus will stay in eating mode
   #as a work around, we will randomly tell the virus to stop eating
-  if (random.randint(1,ChanceToStopEating) == 1):
+  if (fast_rng.randint(1,ChanceToStopEating) == 1):
     Virus.eating = False
 
 
@@ -1635,9 +1976,13 @@ def MoveVirus(Virus,Playfield):
 
     #Only move if the space decided upon is actually empty!
     ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,Virus.direction)
-    if (Playfield[ScanV][ScanH].name == 'EmptyObject'):
+    
+    TargetObject = GetPlayfieldObject(ScanH,ScanV,Playfield)
+    
+    if (TargetObject.name == 'EmptyObject'):
+      #print("target object:",TargetObject.name)
       #print ("Spot moving to is empty ScanV ScanH",ScanV,ScanH)
-      #print ("Virus moved!!!!!!!!!!!!!")
+      #print ("Virus direction:",Virus.direction)
       
 
       #If virus is in clumping mode, only move if the target space is bordering on a virus of the same name
@@ -1650,25 +1995,23 @@ def MoveVirus(Virus,Playfield):
           Playfield[oldv][oldh] = LED.EmptyObject
 
         elif(CountVirusesBehind(Virus.h, Virus.v, Virus.direction,Virus.name,Playfield) == 0):
-          Virus.h = ScanH
-          Virus.v = ScanV
-          Playfield[ScanV][ScanH] = Virus
-          Playfield[oldv][oldh] = LED.EmptyObject
+          if(SetVirusPositionSafely(Virus,ScanH,ScanV,Playfield)):
+            Playfield[ScanV][ScanH] = Virus
+            Playfield[oldv][oldh] = LED.EmptyObject
 
       else:
-        Virus.h = ScanH
-        Virus.v = ScanV
-        Playfield[ScanV][ScanH] = Virus
-        Playfield[oldv][oldh] = LED.EmptyObject
+        if(SetVirusPositionSafely(Virus,ScanH,ScanV,Playfield)):
+          Playfield[ScanV][ScanH] = Virus
+          Playfield[oldv][oldh] = LED.EmptyObject
 
 
 
     else:
       #print ("spot moving to is not empty: ",Playfield[ScanV][ScanH].name, ScanV,ScanH)
       #Introduce some instability into the virus
-      if (random.randint(0,InstabilityFactor) == 1):
+      if (fast_rng.randint(0,InstabilityFactor) == 1):
         Virus.direction = LED.TurnLeftOrRight8Way(Virus.direction)
-        Virus.AdjustSpeed(random.randint(-1,1))
+        Virus.AdjustSpeed(fast_rng.randint(-1,1))
 
 
 
@@ -1676,7 +2019,35 @@ def MoveVirus(Virus,Playfield):
 
 
 
-def CreateDinnerPlate(MapLevel):
+def GenerateEmptyMapWithBorder(width, height, wall_char='-', fill_char=' '):
+    """
+    Generates a map with a solid border of walls.
+
+    Parameters:
+        width (int): Total width of the map including borders.
+        height (int): Total height of the map including borders.
+        wall_char (str): Character to use for the border (typically a wall).
+        fill_char (str): Character to fill the inner area (typically empty space).
+
+    Returns:
+        list[str]: A list of strings representing the map with walls.
+    """
+    if len(wall_char) != 1 or len(fill_char) != 1:
+        raise ValueError("wall_char and fill_char must be single characters.")
+    if width < 3 or height < 3:
+        raise ValueError("Minimum size for bordered map is 3x3.")
+
+    map_rows = []
+    for y in range(height):
+        if y == 0 or y == height - 1:
+            map_rows.append(wall_char * width)
+        else:
+            map_rows.append(wall_char + (fill_char * (width - 2)) + wall_char)
+    return map_rows
+
+
+
+def CreateDinnerPlate_old(MapLevel):
   global mutationrate
   
   
@@ -1972,8 +2343,9 @@ def CreateDinnerPlate(MapLevel):
                                mutationdeathrate = mutationdeathrate,
                                VirusStartSpeed = VirusStartSpeed)
 
-    DinnerPlate.walllives = random.randint(1,25) 
+    DinnerPlate.walllives = fast_rng.randint(1,25) 
     TheMap.ColorList['*']  =  (5,5,5)
+    TheMap.ColorList['.']  =  (15,15,15)
 
     TheMap.map= (
       #0         1   ......2.........3.........4.........5.........6....65    
@@ -2032,7 +2404,7 @@ def CreateDinnerPlate(MapLevel):
                                mutationdeathrate = mutationdeathrate,
                                VirusStartSpeed = VirusStartSpeed)
 
-    DinnerPlate.walllives = random.randint(1,25) 
+    DinnerPlate.walllives = fast_rng.randint(1,25) 
     TheMap.ColorList['.']  =  (0,10,0)
     TheMap.ColorList['*']  =  (0,10,0)
 
@@ -2090,7 +2462,7 @@ def CreateDinnerPlate(MapLevel):
                                mutationdeathrate = mutationdeathrate,
                                VirusStartSpeed = VirusStartSpeed)
 
-    DinnerPlate.walllives = random.randint(1,25) 
+    DinnerPlate.walllives = fast_rng.randint(1,25) 
     TheMap.ColorList['*']  =  (0,15,0)
 
     TheMap.map= (
@@ -2148,7 +2520,7 @@ def CreateDinnerPlate(MapLevel):
                                mutationdeathrate = mutationdeathrate,
                                VirusStartSpeed = VirusStartSpeed)
 
-    DinnerPlate.walllives = random.randint(1,25) 
+    DinnerPlate.walllives = fast_rng.randint(1,25) 
     TheMap.ColorList['*']  =  (10,0,10)
 
     TheMap.map= (
@@ -2204,7 +2576,7 @@ def CreateDinnerPlate(MapLevel):
                                mutationdeathrate = mutationdeathrate,
                                VirusStartSpeed = VirusStartSpeed)
 
-    DinnerPlate.walllives = random.randint(1,25) 
+    DinnerPlate.walllives = fast_rng.randint(1,25) 
     TheMap.ColorList['*']  =  (15,0,0)
 
     TheMap.map= (
@@ -2720,53 +3092,324 @@ def CreateDinnerPlate(MapLevel):
    )
 
 
+  if (MapLevel == 13):
+    
+    #GenerateEmptyMapWithBorder(width, height, wall_char='-', fill_char=' '):
+
+    TheMap = LED.TextMap(
+      h      = 1,
+      v      = 1,
+      width  = 80, 
+      height = 48
+      )
+
+
+    DinnerPlate = VirusWorld(name='Oversized',
+                               width        = 80, #we want the playfield to be 1 pixel larger on all sides than the display
+                               height       = 48,
+                               Map          = [[]],
+                               Playfield    = [[]],
+                               CurrentRoomH = 1,
+                               CurrentRoomV = 1,
+                               DisplayH     = 1,
+                               DisplayV     = 1,
+                               mutationrate = mutationrate,
+                               replicationrate = replicationrate,
+                               mutationdeathrate = mutationdeathrate,
+                               VirusStartSpeed = VirusStartSpeed)
+
+
+    TheMap.ColorList = {
+      ' ' : (  0,  0,  0),
+      '-' : ( 10, 10, 10),  
+      '.' : ( 20, 20, 20),
+      'o' : ( 30, 30, 30),
+      'O' : ( 40, 40, 40),
+      '@' : ( 50, 60, 60),
+      '$' : ( 60, 60, 60),
+      'A' : ( 70, 70, 70),
+      'B' : ( 80, 80, 80),
+      'C' : ( 90, 90, 90),
+      'D' : (100,100,100),
+      'E' : (110,110,110),
+      'F' : (120,120,120),
+      'G' : (130,130,130),
+      'H' : (140,140,140),
+      'I' : (150,150,150),
+      'J' : (160,160,160),
+      'K' : (170,170,170),
+      'L' : (180,180,180),
+      '|' : (  0,  0,  0),
+      '*' : (  5,  5,  5),
+      '#' : (150,150,150),
+      '1' : (  0,200,  0),
+      '2' : (150,  0,  0),
+      '3' : (150,100,  0),
+      '4' : (  0,  0,100),
+      '5' : (200,  0, 50),
+      '6' : (125,185,  0),
+      '7' : (200,  0,200),
+      '8' : ( 50,150, 75)
+    }
+
+    TheMap.TypeList = {
+      ' ' : 'EmptyObject',
+      '-' : 'wall',
+      '.' : 'wall',
+      'o' : 'wall',
+      'O' : 'wall',
+      '@' : 'wall',
+      '#' : 'wall',
+      '$' : 'wall',
+      '#' : 'wall',
+      '*' : 'wallbreakable',
+      'A' : 'wallbreakable',
+      'B' : 'wallbreakable',
+      'C' : 'wallbreakable',
+      'D' : 'wallbreakable',
+      'E' : 'wallbreakable',
+      'F' : 'wallbreakable',
+      'G' : 'wallbreakable',
+      'H' : 'wallbreakable',
+      'I' : 'wallbreakable',
+      'J' : 'wallbreakable',
+      'K' : 'wallbreakable',
+      'L' : 'wallbreakable',
+      '|' : 'wall',
+      '1' : 'virus',
+      '2' : 'virus',
+      '3' : 'virus',
+      '4' : 'virus',
+      '5' : 'virus',
+      '6' : 'virus',
+      '7' : 'virus',
+      '8' : 'virus'
+    }
+
+
+    TheMap.map= (
+     #0         1  .......2.........3.........4.........5.........6.........7.........8    
+     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO", #0  
+     "O            |                                                                 O",
+     "O            |                                                                 O",
+     "O            |       AAAAAAAAAAAAAAAAAAAAAAA           11                      O",
+     "O            |       ABBBBBBBBBBBBBBBBBBBBBA                                   O",
+     "O            |       ABCCCCCCCCCCCCCCCCCCCBA                                   O",
+     "O            |       ABCDDDDDDDDDDDDDDDDDCBA                                   O",
+     "O            |       ABCDEEEEEEEEEEEEEEEDCBA                                   O",
+     "O            |       ABCDEFFFFFFFFFFFFFEDCBA           22                      O", 
+     "O            |       ABCDEFGGGGGGGGGGGFEDCBA                                   O", 
+     "O            |       ABCDEFGIIIIIIIIIHFEDCBA                                   O", #10
+     "O            |       ABCDEFGIJJJJJJJIHFEDCBA                                   O",
+     "O            |       ABCDEFGIJKKKKKJIHFEDCBA                                   O",
+     "O            |       ABCDEFGIJK444KJIHFEDCBA           33                      O",
+     "O            |       ABCDEFGIJK444KJIHFEDCBA                                   O",
+     "O            |       ABCDEFGIJKKKKKJIHFEDCBA                                   O",
+     "O            |       ABCDEFGIJJJJJJJIHFEDCBA                                   O",
+     "O            |       ABCDEFGIIIIIIIIIHFEDCBA                                   O",    
+     "O            |       ABCDEFGHHHHHHHHHHFEDCBA          44                       O",
+     "O            |       ABCDEFGFFFFFFFFFFFEDCBA                                   O", 
+     "O            |       ABCDEEEEEEEEEEEEEEEDCBA                                   O", #20
+     "O            |       ABCDDDDDDDDDDDDDDDDDCBA                                   O",
+     "O            |       ABCCCCCCCCCCCCCCCCCCCBA                                   O",
+     "O            |       ABBBBBBBBBBBBBBBBBBBBBA       55                          O",
+     "O            |       AAAAAAAAAAAAAAAAAAAAAAA                                   O",
+     "O|||||||||||||                                                                 O",
+     "O                                                                              O",
+     "O                                            66                                O",
+     "O 111111                                                                       O",
+     "O 1   11                        77                        888888               O",
+     "O 1    1                                                  888888               O", #30
+     "O 1   11                                                  888888               O",
+     "O 111111                                                  888888               O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O", #40
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "O                                                                              O",
+     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" #47
+   )
+
     
 
+  if (MapLevel == 14):
+       
+
+    TheMap = LED.TextMap(
+      h      = 1,
+      v      = 1,
+      width  = 100, 
+      height = 100
+      )
 
 
+    DinnerPlate = VirusWorld(name='Oversized',
+                               width        = 80, #we want the playfield to be 1 pixel larger on all sides than the display
+                               height       = 48,
+                               Map          = [[]],
+                               Playfield    = [[]],
+                               CurrentRoomH = 1,
+                               CurrentRoomV = 1,
+                               DisplayH     = 1,
+                               DisplayV     = 1,
+                               mutationrate = mutationrate,
+                               replicationrate = replicationrate,
+                               mutationdeathrate = mutationdeathrate,
+                               VirusStartSpeed = VirusStartSpeed)
 
 
+    TheMap.ColorList = {
+      ' ' : (  0,  0,  0),
+      '-' : ( 10, 10, 10),  
+      '.' : ( 20, 20, 20),
+      'o' : ( 30, 30, 30),
+      'O' : ( 40, 40, 40),
+      '@' : ( 50, 60, 60),
+      '$' : ( 60, 60, 60),
+      'A' : ( 10, 10, 10),
+      'B' : ( 20, 20, 20),
+      'C' : ( 30, 30, 30),
+      'D' : ( 40, 40, 40),
+      'E' : ( 50, 50, 50),
+      'F' : ( 60, 60, 60),
+      'G' : ( 70, 70, 70),
+      'H' : ( 80, 80, 80),
+      'I' : ( 90, 90, 90),
+      'J' : (100,100,100),
+      'K' : (110,110,110),
+      'L' : (120,120,120),
+      '|' : (  0,  0,  0),
+      '*' : (  5,  5,  5),
+      '#' : (150,150,150),
+      '1' : (  0,200,  0),
+      '2' : (150,  0,  0),
+      '3' : (150,100,  0),
+      '4' : (  0,  0,100),
+      '5' : (200,  0, 50),
+      '6' : (125,185,  0),
+      '7' : (200,  0,200),
+      '8' : ( 50,150, 75)
+    }
 
+    TheMap.TypeList = {
+      ' ' : 'EmptyObject',
+      '-' : 'wall',
+      '.' : 'wall',
+      'o' : 'wall',
+      'O' : 'wall',
+      '@' : 'wall',
+      '#' : 'wall',
+      '$' : 'wall',
+      '#' : 'wall',
+      '*' : 'wallbreakable',
+      'A' : 'wallbreakable',
+      'B' : 'wallbreakable',
+      'C' : 'wallbreakable',
+      'D' : 'wallbreakable',
+      'E' : 'wallbreakable',
+      'F' : 'wallbreakable',
+      'G' : 'wallbreakable',
+      'H' : 'wallbreakable',
+      'I' : 'wallbreakable',
+      'J' : 'wallbreakable',
+      'K' : 'wallbreakable',
+      'L' : 'wallbreakable',
+      '|' : 'wall',
+      '1' : 'virus',
+      '2' : 'virus',
+      '3' : 'virus',
+      '4' : 'virus',
+      '5' : 'virus',
+      '6' : 'virus',
+      '7' : 'virus',
+      '8' : 'virus'
+    }
+
+    TheMap.map = GenerateEmptyMapWithBorder(TheMap.width, TheMap.height, wall_char='-', fill_char=' ')
+
+  
   DinnerPlate.CopyTextMapToPlayfield(TheMap)
 
   #we add random viruses to a plate of big food
   if(DinnerPlate.name == 'BigFood'):
-    DinnerPlate.AddRandomVirusesToPlayfield(random.randint(1,MaxRandomViruses))
+    DinnerPlate.AddRandomVirusesToPlayfield(fast_rng.randint(1,MaxRandomViruses))
 
   return DinnerPlate;
 
 
 
-def FlashAllViruses(Viruses,VirusCount,DinnerPlate,CameraH,CameraV):
-  x = 0
-  r = 0
-  g = 0
-  b = 0
-  highcolor = 0
-  count = 0
-  increment = 50
-  H = 0
-  V = 0
-  name = ""
 
-  for x in range (0,VirusCount):
-    highcolor = max(DinnerPlate.Viruses[x].r, DinnerPlate.Viruses[x].g, DinnerPlate.Viruses[x].b)
-    while (DinnerPlate.Viruses[x].r < 255  and DinnerPlate.Viruses[x].g < 255 and DinnerPlate.Viruses[x].b < 255):
-      if (DinnerPlate.Viruses[x].r == highcolor):
-        DinnerPlate.Viruses[x].r = min(255,DinnerPlate.Viruses[x].r + increment)
-      elif (DinnerPlate.Viruses[x].g == highcolor):
-        DinnerPlate.Viruses[x].g = min(255,DinnerPlate.Viruses[x].g + increment)
-      elif (DinnerPlate.Viruses[x].b == highcolor):
-        DinnerPlate.Viruses[x].b = min(255,DinnerPlate.Viruses[x].b + increment)
 
-      highcolor = highcolor + increment
 
-      #setpixel(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,DinnerPlate.Viruses[x].r,DinnerPlate.Viruses[x].g,DinnerPlate.Viruses[x].b)
-      #unicorn.show()
-      #time.sleep(0.01)
-      
-    DinnerPlate.DisplayWindow(CameraH,CameraV)
-    #unicorn.show()
+
+
+def CreateDinnerPlate(width=66, height=34, virus_count=8):
+    DinnerPlate = VirusWorld(
+        name='BigFood',
+        width=width,
+        height=height,
+        Map=[[]],
+        Playfield=[[]],
+        CurrentRoomH=1,
+        CurrentRoomV=1,
+        DisplayH=1,
+        DisplayV=1,
+        mutationrate=mutationrate,
+        replicationrate=replicationrate,
+        mutationdeathrate=mutationdeathrate,
+        VirusStartSpeed=VirusStartSpeed
+    )
+
+    TheMap = LED.TextMap(
+        h=1,
+        v=1,
+        width=width,
+        height=height
+    )
+
+    TheMap.ColorList = DinnerPlate.DefaultColorList.copy()
+    TheMap.TypeList = DinnerPlate.DefaultTypeList.copy()
+
+    
+    TheMap.map = CreateSimpleObstacleMap(width=width, height=height, block_count=(fast_rng.randint(4,10)), virus_count=virus_count )
+
+
+
+    print(f"TheMap dimensions: {TheMap.width}x{TheMap.height}")
+
+    DinnerPlate.CopyTextMapToPlayfield(TheMap)
+    return DinnerPlate
+
+
+
+
+
+
+def GetPlayfieldObject(h, v, Playfield):
+    if 0 <= v < len(Playfield) and 0 <= h < len(Playfield[0]):
+        return Playfield[v][h]
+    else:
+        return LED.OutOfBoundsObject  # safe default
+
+
+
+def SetPlayfieldObject(v, h, obj, Playfield):
+    if 0 <= v < len(Playfield) and 0 <= h < len(Playfield[0]):
+        Playfield[v][h] = obj
+        return True
+    else:
+        # Optional: log for debugging
+        # print(f"[Warning] Out-of-bounds write attempt at ({v},{h})")
+        return False
 
 
 
@@ -2799,7 +3442,8 @@ def PlayOutbreak(GameMaxMinutes):
   global MaxVirusMoves
   global VirusTopSpeed
   global VirusBottomSpeed
-
+  #global Canvas
+  global PreviousFrame
   
 
   replicationrate   = OriginalReplicationRate
@@ -2810,7 +3454,7 @@ def PlayOutbreak(GameMaxMinutes):
   finished      = 'N'
   VirusMoves = 0
   LevelCount    = 0
-  MaxLevel      = 12 #number of available mazes
+  MaxLevel      = 14 #number of available mazes
   NameCount     = 0
   Viruses       = []
   VirusCount    = 0
@@ -2839,9 +3483,9 @@ def PlayOutbreak(GameMaxMinutes):
   
   #CameraH, CameraV, CameraSpeed = CameraPath[0]
   
-  LED.TheMatrix.Clear()
-  LED.Canvas.Clear()
+
   
+
 
 
 
@@ -2864,10 +3508,12 @@ def PlayOutbreak(GameMaxMinutes):
   #print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
   print("*****************************************************")
 
-  LevelCount = random.randint(1,MaxLevel)
-    
+  LevelCount = fast_rng.randint(1,MaxLevel)
+  LevelCount = 14    
 
-  DinnerPlate = CreateDinnerPlate(LevelCount)
+#  DinnerPlate = CreateDinnerPlate(LevelCount)
+  DinnerPlate = CreateDinnerPlate(width=80, height=45, virus_count=200)
+
 
 
   VirusCount = len(DinnerPlate.Viruses)
@@ -2886,16 +3532,16 @@ def PlayOutbreak(GameMaxMinutes):
   LevelsPlayed = 1
 
   #Show Custom sprites
-  DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV+1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-  DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
-  DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-  DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
+  #DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV+1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+  #DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
+  #DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+  #DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
 
 
 
   #Zoom out, just a little bit too much then zoom back in.  Nice effect.
-  DinnerPlate.DisplayWindowZoom(CameraH,CameraV,2,96,0)
-  DinnerPlate.DisplayWindowZoom(CameraH,CameraV,96,32,0)
+  #DinnerPlate.DisplayWindowZoom(CameraH,CameraV,2,96,0)
+  #DinnerPlate.DisplayWindowZoom(CameraH,CameraV,96,32,0)
 
 
 
@@ -2943,7 +3589,7 @@ def PlayOutbreak(GameMaxMinutes):
 
 
       #update text window
-      print ("Moves:",VirusMoves," VirusCount:",VirusCount,"NameCount:",NameCount," VirusTopSpeed:",VirusTopSpeed," VirusBottomSpeed:",VirusBottomSpeed,"      ",end="\r")      
+      #print ("Moves:",VirusMoves," VirusCount:",VirusCount,"NameCount:",NameCount," VirusTopSpeed:",VirusTopSpeed," VirusBottomSpeed:",VirusBottomSpeed,"      ",end="\r")      
 
 
     
@@ -2966,118 +3612,70 @@ def PlayOutbreak(GameMaxMinutes):
 
     #Changed the for loop to a while loop
     x = 0
-    while (x < VirusCount):
+
+
+    x = 0
+    while x < VirusCount:
+      virus = DinnerPlate.Viruses[x]
       VirusDeleted = 0
-      #Viruses freakout when near the end of max moves
-      if (VirusMoves == FreakoutMoves):
-        DinnerPlate.Viruses[x].replicationrate = FreakoutReplicationRate
 
+      if VirusMoves == FreakoutMoves:
+          virus.replicationrate = FreakoutReplicationRate
 
-      #-------------------------
-      #-- Check for dominance --  
-      #-------------------------
-      if (DinnerPlate.Viruses[x].name != firstname):
-        NameCount = NameCount + 1
+      if virus.name != firstname:
+          NameCount += 1
 
-      
-      #----------------------
-      #-- Movement         --  
-      #----------------------
-      #print ("Speed:",DinnerPlate.Viruses[x].speed)
-      m,r = divmod(VirusMoves,DinnerPlate.Viruses[x].speed)
-      if (r == 0):
-        #print ("Virus name alive x:",DinnerPlate.Viruses[x].name,DinnerPlate.Viruses[x].alive,x)
-        if (DinnerPlate.Viruses[x].alive == 1):
-          MoveVirus(DinnerPlate.Viruses[x],DinnerPlate.Playfield)
-        
-      #After a move, we need to see if it is still alive, becaus a lot of things could have happened
-      if (DinnerPlate.Viruses[x].alive == 0):
-          #print ("Removing virus from the list: ",x)
-          #print ("VirusCount:",VirusCount)
-        VirusDeleted = 1
-        DinnerPlate.Playfield[(DinnerPlate.Viruses[x].v)][(DinnerPlate.Viruses[x].h)] = LED.EmptyObject
-        #DinnerPlate.Viruses[x] = LED.EmptyObject
-        del DinnerPlate.Viruses[x]
-        VirusCount = VirusCount -1
-          
+      m, r = divmod(VirusMoves, virus.speed)
+      if r == 0 and virus.alive == 1:
+          MoveVirus(virus, DinnerPlate.Playfield)
 
+      if virus.alive == 0:
+          VirusDeleted = 1
+          DinnerPlate.Playfield[virus.v][virus.h] = LED.EmptyObject
+          del DinnerPlate.Viruses[x]
+          VirusCount -= 1
+          continue
 
-  
-      #if virus not deleted, replicate
-      if (VirusDeleted == 0):
-        #----------------------
-        #-- Replication      --  
-        #----------------------
-        #check virus internal replication rate, or if only one type of virus left check
-        #the main rate as an override
-        if ((random.randint(0,DinnerPlate.Viruses[x].replicationrate) == 1) or (VirusCount == 1 and (random.randint(0,replicationrate) == 1))):
-          Virus = ReplicateVirus(DinnerPlate.Viruses[x],DinnerPlate)
-          if (Virus.name != 'EmptyObject'):
-            #print("Virus replicated")
-            DinnerPlate.Viruses.append(Virus)
-            VirusCount = len(DinnerPlate.Viruses)
+      # Replication logic
+      if (fast_rng.randint(0, virus.replicationrate) == 1 or 
+          (VirusCount == 1 and fast_rng.randint(0, replicationrate) == 1)):
+          NewVirus = ReplicateVirus(virus, DinnerPlate)
+          if NewVirus.name != 'EmptyObject':
+              DinnerPlate.Viruses.append(NewVirus)
+              VirusCount = len(DinnerPlate.Viruses)
 
+      # Move toward food
+      if fast_rng.randint(1, ChanceOfHeadingToFood) == 1:
+          FoodH, FoodV = DinnerPlate.FindClosestObject(
+              SourceH=virus.h, SourceV=virus.v, Radius=FoodCheckRadius,
+              ObjectType='WallBreakable')
+          if LED.CheckBoundary(FoodH, FoodV) == 0:
+              virus.direction = LED.PointTowardsObject8Way(virus.h, virus.v, FoodH, FoodV)
 
-
-        #-------------------------------
-        #-- Move towards food         --
-        #-------------------------------
-        #
-        if (random.randint(1,ChanceOfHeadingToFood) == 1):
-          #print("Chance to move towards food")
-          FoodH = 0
-          FoodV = 0
-          FoodH,FoodV = DinnerPlate.FindClosestObject(
-            SourceH    = DinnerPlate.Viruses[x].h,
-            SourceV    = DinnerPlate.Viruses[x].v,
-            Radius     = FoodCheckRadius,
-            ObjectType = 'WallBreakable' 
-          )
-
-          #print("Closest Object: ",FoodH, FoodV,"                    ")
-          
-          if (LED.CheckBoundary(FoodH,FoodV) == 0):
-            #print("Move Towards food: ",FoodH, FoodV,"                    ")
-            DinnerPlate.Viruses[x].direction = LED.PointTowardsObject8Way(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,FoodH,FoodV)
-
-
-
-      #----------------------
-      #-- Random Death     --  
-      #----------------------
-      #check virus internal death rate
-      if (VirusDeleted == 0):
-
-        #Too many strains?  Kick them in the butt.  Greater chance of dying, then reset
-        if ((random.randint(0,DinnerPlate.Viruses[x].chanceofdying) == 1)):
-          DinnerPlate.Viruses[x].alive = 0
-          DinnerPlate.Viruses[x].lives = 0
+      # Random death
+      if fast_rng.randint(0, virus.chanceofdying) == 1:
+          virus.alive = 0
+          virus.lives = 0
           DinnerPlate.Viruses[x] = LED.EmptyObject
           del DinnerPlate.Viruses[x]
-          VirusCount = VirusCount -1
-          #print ("VirusCount:",VirusCount)
-          VirusDeleted = 1
+          VirusCount -= 1
+          continue
+      else:
+          if NameCount >= VirusNameSpeedupCount:
+              virus.chanceofdying = GreatChanceOfDying
+
+      x += 1
 
 
-        else:
-          if(NameCount >= VirusNameSpeedupCount):
-            DinnerPlate.Viruses[x].chanceofdying = GreatChanceOfDying
-            DinnerPlate.Viruses[x].chanceofdying = ChanceOfDying
-       
-
-      #---------------------------
-      #-- End Virus loop        --
-      #---------------------------
-      x = x + 1
-      
 
 
       #-------------------------------------------------
       #-- Random food appears!                        --
       #-------------------------------------------------
      
+      '''  I just don't like this 
       #Point viruses towards the food
-      if (random.randint(1,ChanceOfRandomFood) == 1 and BigFoodAlive == False):
+      if (fast_rng.randint(1,ChanceOfRandomFood) == 1 and BigFoodAlive == False):
         BigFoodH,BigFoodV = 0,0
         r,g,b = BigFoodRGB
         FreeSpotFound = False
@@ -3085,11 +3683,16 @@ def PlayOutbreak(GameMaxMinutes):
         
         while (FreeSpotFound == False and Tries <= 20):
           Tries = Tries + 1
-          BigFoodH = random.randint(20,LED.HatWidth)
-          BigFoodV = random.randint(5,LED.HatHeight - 8)
+          BigFoodH = fast_rng.randint(20,LED.HatWidth)
+          BigFoodV = fast_rng.randint(5,LED.HatHeight - 8)
 
-          if (DinnerPlate.Playfield[BigFoodV][BigFoodH].name == 'EmptyObject'):
+
+          TheObject = GetPlayfieldObject(h=BigFoodH,v=BigFoodV,Playfield=DinnerPlate.Playfield)
+        
+          if (TheObject.name == 'EmptyObject'):
             FreeSpotFound = True
+            print("BigFood HV",BigFoodH,BigFoodV)
+            print("TheObject name",TheObject.name)
             DinnerPlate.Playfield[BigFoodV][BigFoodH] = LED.Wall(BigFoodH,BigFoodV,r,g,b,1,BigFoodLives,'WallBreakable')
             print ("Random food appears:",BigFoodH,BigFoodV)
             for x in range(0,VirusCount):
@@ -3101,15 +3704,16 @@ def PlayOutbreak(GameMaxMinutes):
               BigFoodAlive = True
       #if the big food is alive, we check to see if the spot is still occupied.  
       #If it is, turn all viruses towardsit
-      if (BigFoodAlive == True and random.randint(1,50) == 1):
+      if (BigFoodAlive == True and fast_rng.randint(1,50) == 1):
         if (DinnerPlate.Playfield[BigFoodV][BigFoodH].name == 'WallBreakable'):
             for x in range(0,VirusCount):
               DinnerPlate.Viruses[x].direction = LED.PointTowardsObject8Way(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,BigFoodH,BigFoodV)
-              DinnerPlate.Viruses[x].AdjustSpeed(-5) 
+              #DinnerPlate.Viruses[x].AdjustSpeed(-5) 
               DinnerPlate.Viruses[x].eating = 0
-              DinnerPlate.Viruses[x].clumping = False
+              #DinnerPlate.Viruses[x].clumping = False
         else:
           BigFoodAlive = False
+      '''
 
       #-------------------------------------------------
       #-- Adjust parameters if too many viruses alive --
@@ -3143,29 +3747,19 @@ def PlayOutbreak(GameMaxMinutes):
     #-------------------------------------------
   
     if (NameCount == 1 or NextMaze == True):
-      #Erase clock if present
-      #DinnerPlate.DisplayWindow(CameraH, CameraV)
       DominanceCount = DominanceCount + 1
-      #print ("NameCount:",NameCount,"DominanceCount:",DominanceCount,"DominanceMaxCount:",DominanceMaxCount)
      
       #one virus remains, increase chance of spreading
       replicationrate   = 1
       mutationdeathrate = mutationdeathrate * 25
       
 
-      
-      #This particular virus is a successful strain, we want to collect it to the center
-      #Point viruses towards the center
-      # if (StrainCreated == 0):
-        # for x in range(0,VirusCount):
-          # DinnerPlate.Viruses[x].direction = LED.PointTowardsObject8Way(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,(DinnerPlate.width/2),(DinnerPlate.height/2))
-          # StrainCreated == 1
     
 
       #print ("DominanceCount:",DominanceCount,"DominanceMaxCount:",DominanceMaxCount,"VirusCount:",VirusCount,"VirusMaxCount:",VirusMaxCount)
       #if one virus dominates for X ticks, reset and load next level
       if (DominanceCount >= DominanceMaxCount) or(VirusCount >= VirusMaxCount) or (NextMaze == True):
-        print ("VirusCount:",VirusCount)
+        print ("VirusCount:",VirusCount," DominanceCount:",DominanceCount,"NextMaze:",NextMaze)
         #print ("Flashdot hv: ",DinnerPlate.Viruses[0].h,DinnerPlate.Viruses[0].v)
         #FlashDot (DinnerPlate.Viruses[0].h - CameraH,DinnerPlate.Viruses[0].v + CameraV,0.5)
         time.sleep(1)
@@ -3183,14 +3777,15 @@ def PlayOutbreak(GameMaxMinutes):
 
         #Prepare new level
         DominanceCount    = 0
-        LevelCount        = random.randint(1,MaxLevel)
+        LevelCount        = fast_rng.randint(1,MaxLevel)
         
 
         replicationrate   = OriginalReplicationRate
         mutationdeathrate = OriginalMutationDeathRate
         VirusTopSpeed    = OldVirusTopSpeed
         VirusBottomSpeed = OldVirusBottomSpeed
-        DinnerPlate         = CreateDinnerPlate(LevelCount)
+        DinnerPlate = CreateDinnerPlate(width=80, height=45, virus_count=250) 
+
         CameraH             = DinnerPlate.DisplayH
         CameraV             = DinnerPlate.DisplayV
         
@@ -3201,10 +3796,10 @@ def PlayOutbreak(GameMaxMinutes):
 
 
         #Show Custom sprites
-        DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV+1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-        DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
-        DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-        DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
+        #DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV+1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+        #DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
+        #DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+        #DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
 
         ClockSprite.on      = 0
         DinnerPlate.DisplayWindowZoom(CameraH,CameraV,2,32,0.025)
@@ -3234,10 +3829,10 @@ def PlayOutbreak(GameMaxMinutes):
       TheTime = LED.CreateClockSprite(12)
 
       #Show Custom sprites
-      DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV +1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-      DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
-      DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-      DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV +1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
 
   
     # #print ("Camera HV:",CameraH, CameraV)
@@ -3247,7 +3842,8 @@ def PlayOutbreak(GameMaxMinutes):
       # MoveMessageSprite(VirusMoves,ClockSprite)
     # # else:
     DinnerPlate.DisplayWindow(CameraH, CameraV)
-    
+    #frame = DinnerPlate.BuildRGBFrame(CameraH, CameraV)
+    #Canvas = DinnerPlate.DisplayWindow(    h=CameraH,    v=CameraV,    PreviousFrame=PreviousFrame,    Canvas=Canvas,    ZoomFactor=0)
   
     
     #-------------------------
@@ -3288,7 +3884,7 @@ def PlayOutbreak(GameMaxMinutes):
         print("Elapsed Time:  mm:ss",m,s)
         LED.SaveConfigData()
         print("Ending game after",m," minutes")
-        #LED.ShowFireworks(FireworksExplosion,(random.randint(5,10)),0.02)
+        #LED.ShowFireworks(FireworksExplosion,(fast_rng.randint(5,10)),0.02)
 
         LED.ClearBigLED()
         LED.ClearBuffers()
@@ -3308,11 +3904,11 @@ def PlayOutbreak(GameMaxMinutes):
       LED.SaveConfigData()
       
       
-      LevelCount = random.randint(1,MaxLevel)
+      LevelCount = fast_rng.randint(1,MaxLevel)
       
       
       
-      DinnerPlate = CreateDinnerPlate(LevelCount)
+      DinnerPlate = CreateDinnerPlate(width=80, height=44, virus_count=250) 
       VirusCount = len(DinnerPlate.Viruses)
       firstname = DinnerPlate.Viruses[0].name
       print("VirusCount: ",VirusCount)
@@ -3324,10 +3920,10 @@ def PlayOutbreak(GameMaxMinutes):
       VirusMoves = 0
 
       #Show Custom sprites
-      DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV+1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-      DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
-      DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
-      DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(ClockSprite,      ClockH +1,      ClockV+1,      ClockRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(DayOfWeekSprite,  DayOfWeekH +1,  DayOfWeekV+1,  DayOfWeekRGB,   ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(MonthSprite,      MonthH +1,      MonthV+1,      MonthRGB,       ObjectType = 'Wall',  Filler = 'DarkWall')
+      #DinnerPlate.CopySpriteToPlayfield(DayOfMonthSprite, DayOfMonthH +1, DayOfMonthV+1, DayOfMonthRGB , ObjectType = 'Wall',  Filler = 'DarkWall')
       #Zoom out, just a little bit too much then zoom back in.  Nice effect.
       DinnerPlate.DisplayWindowZoom(CameraH,CameraV,2,96,0)
       DinnerPlate.DisplayWindowZoom(CameraH,CameraV,96,32,0)
@@ -3385,7 +3981,13 @@ def LaunchOutbreak(GameMaxMinutes = 10000, ShowIntro = True):
   #--------------------------------------
 
   print("ShowIntro:",ShowIntro)
-
+  
+  
+  # Our own customized fast random implementation
+  global fast_rng
+  fast_rng = FastRandom(seed=1234)  
+  
+  
   if(ShowIntro == True):
 
     LED.ShowTitleScreen(

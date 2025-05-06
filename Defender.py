@@ -1,7 +1,8 @@
 
 #Standardize alive = True/False not 1/0
 #change enemyship garbage collection to the same as human
-#have some enemies fligh away from defender fast
+
+
 
 #!/usr/bin/env python
 #print("moves:",moves,end='\r', flush=True)
