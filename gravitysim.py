@@ -165,5 +165,5 @@ while True:
         p.draw()
 
     LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
-    time.sleep(ScrollSleep)
+    #time.sleep(ScrollSleep)
     frame += 1
