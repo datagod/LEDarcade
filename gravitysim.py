@@ -70,17 +70,19 @@ import termios
 
 # Configuration
 G = 10.0
-TimeStep = 0.05
+TimeStep = 0.1
 ScrollSleep = 0.01
-MaxSpeed = 50.0
+MaxSpeed = 100.0
 SpawnInterval = 100
 MergeDistance = 1.5
 NumParticles = 10
+max_particles = 50
+
 MinMass = 0.01
 MaxMass = 50.0
 MinSpeed = 1.0
 MaxSpeed = 150.0
-SunMass = 500000.0
+SunMass = 100000.0
 TrailFade = 5  # lower numbers mean slower fading
 OffscreenLimit = 1.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
 SmoothFactor = 0.05
@@ -99,7 +101,6 @@ MaxZoom = 256
 zoom_direction = -0.01
 
 # Particle fields: x, y, vx, vy, mass, r, g, b, flash
-max_particles = 10
 particles = np.zeros((max_particles, 9), dtype=np.float32)
 active_mask = np.zeros(max_particles, dtype=np.bool_)
 
@@ -188,6 +189,32 @@ def update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, M
         particles[i,1] = y
         particles[i,2] = vx
         particles[i,3] = vy
+
+
+        # Destroy particles that are too slow
+        speed_sq = particles[i,2]**2 + particles[i,3]**2
+
+
+        if speed_sq < 0.001:
+            particles[i,8] = 5  # Flash this particle
+            active_mask[i] = False
+
+            # Explosion destroys nearby particles
+            blast_radius_sq = 16.0  # Adjust as needed (4 units squared)
+            xi, yi = particles[i,0], particles[i,1]
+            for j in range(particles.shape[0]):
+                if i == j or not active_mask[j]:
+                    continue
+                dx = particles[j,0] - xi
+                dy = particles[j,1] - yi
+                dist_sq = dx*dx + dy*dy
+                if dist_sq < blast_radius_sq:
+                    particles[j,8] = 5  # Flash victim
+                    active_mask[j] = False  # Destroy victim
+
+
+            continue
+
         if particles[i,8] > 0:
             particles[i,8] -= 1
 
@@ -275,8 +302,19 @@ def spawn_particle():
     init_particle_array(i, x, y, vx, vy, mass, r, g, b, particles)
     active_mask[i] = True
 
+    print(f"Spawn: Particle {i}")
 
 
+
+
+
+    # Ensure minimum movement to prevent accidental explosion
+    speed_sq = vx**2 + vy**2
+    if speed_sq < 0.01:
+        angle = angle_to_sun + math.pi / 2  # Tangential direction
+        vx = 1.0 * math.cos(angle)
+        vy = 1.0 * math.sin(angle)
+        print("Spawn kick applied")  # Optional debug
 
 
 def draw_particles():
@@ -288,8 +326,20 @@ def draw_particles():
         x = int(round((particles[i,0] - offset_x) / zoom))
         y = int(round((particles[i,1] - offset_y) / zoom))
         r, g, b = (255,255,255) if particles[i,8] > 0 else tuple(map(int, particles[i,5:8]))
+
+
         if 0 <= x < HatWidth and 0 <= y < HatHeight:
-            LED.setpixel(x, y, r, g, b)
+            if particles[i,8] > 0:
+                # Draw bright flash as a 3x3 explosion
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        sx = x + dx
+                        sy = y + dy
+                        if 0 <= sx < HatWidth and 0 <= sy < HatHeight:
+                            LED.setpixel(sx, sy, 255, 255, 255)
+            else:
+                LED.setpixel(x, y, r, g, b)
+
 
 
 
