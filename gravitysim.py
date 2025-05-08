@@ -67,14 +67,14 @@ ScrollSleep = 0.01
 MaxSpeed = 50.0
 SpawnInterval = 100
 MergeDistance = 1.5
-NumParticles = 1
+NumParticles = 10
 MinMass = 0.01
 MaxMass = 50.0
 MinSpeed = 1.0
 MaxSpeed = 150.0
 SunMass = 100000.0
 TrailFade = 15
-OffscreenLimit = 3.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
+OffscreenLimit = 1.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
 SmoothFactor = 0.05
 
 HatWidth = LED.HatWidth
@@ -87,7 +87,7 @@ SunRGB = LED.HighYellow
 
 zoom = 1.0
 MinZoom = 1
-MaxZoom = 5
+MaxZoom = 20
 zoom_direction = -0.01
 
 # Particle fields: x, y, vx, vy, mass, r, g, b, flash
@@ -107,13 +107,16 @@ def update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, M
         dy_sun = SunY - y
         dist_to_sun_sq = dx_sun * dx_sun + dy_sun * dy_sun
         if dist_to_sun_sq < MergeDistance * MergeDistance:
+            particles[i,8] = 5  # Set flash first
             active_mask[i] = False
             continue
-        # Remove particle if too far from sun
+
         if dist_to_sun_sq > (SimWidth * OffscreenLimit) ** 2:
-            particles[i,8] = 5  # flash brightly before being deactivated
+            particles[i,8] = 5  # Set flash first
             active_mask[i] = False
             continue
+
+
         dx = SunX - x
         dy = SunY - y
         dist_sq = dx*dx + dy*dy + 0.01
@@ -175,15 +178,17 @@ def init_particle_array(i, x, y, vx, vy, mass, r, g, b, particles):
     speed_mag = np.sqrt(vx**2 + vy**2)
     particles[i,8] = int(min(10, max(1, (mass + speed_mag) / 10)))
 
+
+
 def spawn_particle():
     i = find_empty_slot(active_mask)
     if i == -1:
         return
 
     # Adjust spawn margin based on zoom level
-    scaled_margin = 20 * zoom
-    scaled_sim_width = SimWidth * zoom
-    scaled_sim_height = SimHeight * zoom
+    scaled_margin = 1 
+    scaled_sim_width = SimWidth 
+    scaled_sim_height = SimHeight 
 
     side = random.choice(['left', 'right', 'top', 'bottom'])
 
