@@ -191,33 +191,8 @@ def update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, M
         particles[i,3] = vy
 
 
-        # Destroy particles that are too slow
-        speed_sq = particles[i,2]**2 + particles[i,3]**2
-
-
-        if speed_sq < 0.001:
-            particles[i,8] = 5  # Flash this particle
-            active_mask[i] = False
-
-            # Explosion destroys nearby particles
-            blast_radius_sq = 16.0  # Adjust as needed (4 units squared)
-            xi, yi = particles[i,0], particles[i,1]
-            for j in range(particles.shape[0]):
-                if i == j or not active_mask[j]:
-                    continue
-                dx = particles[j,0] - xi
-                dy = particles[j,1] - yi
-                dist_sq = dx*dx + dy*dy
-                if dist_sq < blast_radius_sq:
-                    particles[j,8] = 5  # Flash victim
-                    active_mask[j] = False  # Destroy victim
-
-
-            continue
-
-        if particles[i,8] > 0:
-            particles[i,8] -= 1
-
+        
+        
         
 
 @njit
@@ -328,18 +303,7 @@ def draw_particles():
         r, g, b = (255,255,255) if particles[i,8] > 0 else tuple(map(int, particles[i,5:8]))
 
 
-        if 0 <= x < HatWidth and 0 <= y < HatHeight:
-            if particles[i,8] > 0:
-                # Draw bright flash as a 3x3 explosion
-                for dx in range(-1, 2):
-                    for dy in range(-1, 2):
-                        sx = x + dx
-                        sy = y + dy
-                        if 0 <= sx < HatWidth and 0 <= sy < HatHeight:
-                            LED.setpixel(sx, sy, 255, 255, 255)
-            else:
-                LED.setpixel(x, y, r, g, b)
-
+        
 
 
 
