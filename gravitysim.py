@@ -79,7 +79,7 @@ NumParticles = 10
 max_particles = 50
 
 MinMass = 0.01
-MaxMass = 50.0
+MaxMass = 10000.0
 MinSpeed = 1.0
 MaxSpeed = 150.0
 SunMass = 100000.0
@@ -89,13 +89,18 @@ SmoothFactor = 0.05
 
 HatWidth = LED.HatWidth
 HatHeight = LED.HatHeight
-SimWidth = HatWidth * 10  # Simulation space (max zoom out)
-SimHeight = HatHeight * 10
+SimWidth = HatWidth * 12  # Simulation space (max zoom out)
+SimHeight = HatHeight * 12
 SunX = SimWidth / 2
 SunY = SimHeight / 2
 SunRGB = LED.HighYellow
-SunRadius = 1
+SunRadius = 2
 SunRadiusIncrease = 0.05
+sun_draw_counter = 0
+sun_draw_interval = 3  # recalculate radius every 3 frames
+cached_sun_radius = 0
+cached_sun_mask = []
+GravityCutoffDistance = 20.0  # Only consider particle gravity within this range
 
 
 zoom = 1.0
@@ -127,9 +132,15 @@ def get_keypress():
         return sys.stdin.read(1)
     return None
 
-# Set terminal to raw mode to capture single keypresses
-old_settings = termios.tcgetattr(sys.stdin)
-tty.setcbreak(sys.stdin.fileno())
+
+try:
+    old_settings = termios.tcgetattr(sys.stdin)
+    tty.setcbreak(sys.stdin.fileno())
+except Exception as e:
+    print("Failed to set raw terminal mode:", e)
+    old_settings = None
+
+
 
 
 def compute_sun_radius(mass):
@@ -207,25 +218,77 @@ def update_particles(particles, active_mask, G, sun_mass, sun_x, sun_y,
 
 
 
-# Parallel-safe: only apply sun+gravity physics, not inter-particle forces
-@njit(parallel=True)
-def apply_gravity_and_motion(particles, active_mask, G, sun_mass, sun_x, sun_y,
-                             timestep, max_speed, sim_width, sim_height,
-                             offscreen_limit, sun_radius_sq):
+
+@njit
+def build_particle_grid(particles, active_mask, sim_width, sim_height, merge_distance, max_per_cell):
     n = particles.shape[0]
+    cell_size = merge_distance
+    grid_width = int(sim_width // cell_size) + 2
+    grid_height = int(sim_height // cell_size) + 2
+
+    grid = -1 * np.ones((grid_width, grid_height, max_per_cell), dtype=np.int32)
+    counts = np.zeros((grid_width, grid_height), dtype=np.int32)
+
+    for i in range(n):
+        if not active_mask[i]:
+            continue
+        cx = int(particles[i, 0] // cell_size)
+        cy = int(particles[i, 1] // cell_size)
+        if 0 <= cx < grid_width and 0 <= cy < grid_height:
+            count = counts[cx, cy]
+            if count < max_per_cell:
+                grid[cx, cy, count] = i
+                counts[cx, cy] += 1
+
+    return grid, counts, grid_width, grid_height
+
+
+@njit(parallel=True)
+def apply_gravity_parallel(particles, active_mask, G, sun_mass, sun_x, sun_y,
+                           timestep, max_speed, grid, counts,
+                           grid_width, grid_height, cell_size,
+                           cutoff_distance_sq):
+    n = particles.shape[0]
+
     for i in prange(n):
         if not active_mask[i]:
             continue
 
-        x, y, vx, vy = particles[i, 0], particles[i, 1], particles[i, 2], particles[i, 3]
+        x, y, vx, vy, m = particles[i, :5]
+
+        # Sun gravity
         dx = sun_x - x
         dy = sun_y - y
-        inv_dist_sq = 1.0 / (dx * dx + dy * dy + 0.01)
-        inv_dist = 1.0 / np.sqrt(1.0 / inv_dist_sq)
-        force = G * sun_mass * inv_dist_sq
+        dist_sq = dx * dx + dy * dy + 0.01
+        inv_dist = 1.0 / np.sqrt(dist_sq)
+        force = G * sun_mass / dist_sq
         ax = force * dx * inv_dist
         ay = force * dy * inv_dist
 
+        # Inter-particle gravity
+        ci = int(x // cell_size)
+        cj = int(y // cell_size)
+
+        for dxg in (-1, 0, 1):
+            for dyg in (-1, 0, 1):
+                ni = ci + dxg
+                nj = cj + dyg
+                if 0 <= ni < grid_width and 0 <= nj < grid_height:
+                    for k in range(counts[ni, nj]):
+                        j = grid[ni, nj, k]
+                        if j == i or not active_mask[j]:
+                            continue
+                        dxp = particles[j, 0] - x
+                        dyp = particles[j, 1] - y
+                        distsq = dxp * dxp + dyp * dyp
+                        if distsq > cutoff_distance_sq:
+                            continue
+                        inv_d = 1.0 / np.sqrt(distsq + 0.01)
+                        f = G * particles[j, 4] / distsq
+                        ax += f * dxp * inv_d
+                        ay += f * dyp * inv_d
+
+        # Update motion
         vx += ax * timestep
         vy += ay * timestep
         speed_sq = vx * vx + vy * vy
@@ -233,7 +296,6 @@ def apply_gravity_and_motion(particles, active_mask, G, sun_mass, sun_x, sun_y,
             scale = max_speed / np.sqrt(speed_sq)
             vx *= scale
             vy *= scale
-
         x += vx * timestep
         y += vy * timestep
 
@@ -241,6 +303,7 @@ def apply_gravity_and_motion(particles, active_mask, G, sun_mass, sun_x, sun_y,
         particles[i, 1] = y
         particles[i, 2] = vx
         particles[i, 3] = vy
+
 
 
 
@@ -289,24 +352,34 @@ def post_process_particles(
 
 
 def draw_sun():
+    global sun_draw_counter, cached_sun_radius, cached_sun_mask
     global SunMass, SunX, SunY, zoom
-    radius = compute_sun_radius(SunMass)
+
+    sun_draw_counter += 1
+    if sun_draw_counter % sun_draw_interval == 0:
+        # Recalculate radius and mask
+        radius = compute_sun_radius(SunMass)
+        cached_sun_radius = max(1, int(radius / zoom))
+        cached_sun_mask = []
+        for dx in range(-cached_sun_radius, cached_sun_radius + 1):
+            for dy in range(-cached_sun_radius, cached_sun_radius + 1):
+                if dx * dx + dy * dy <= cached_sun_radius * cached_sun_radius:
+                    cached_sun_mask.append((dx, dy))
+
     offset_x = SunX - (HatWidth / 2) * zoom
     offset_y = SunY - (HatHeight / 2) * zoom
-
     cx = int((SunX - offset_x) / zoom)
     cy = int((SunY - offset_y) / zoom)
-    screen_radius = max(1, int(radius / zoom))
 
-    for dx in range(-screen_radius, screen_radius + 1):
-        for dy in range(-screen_radius, screen_radius + 1):
-            if dx * dx + dy * dy <= screen_radius * screen_radius:
-                x = cx + dx
-                y = cy + dy
-                if 0 <= x < HatWidth and 0 <= y < HatHeight:
-                    LED.setpixel(x, y, *SunRGB)
+    for dx, dy in cached_sun_mask:
+        x = cx + dx
+        y = cy + dy
+        if 0 <= x < HatWidth and 0 <= y < HatHeight:
+            LED.setpixel(x, y, *SunRGB)
 
 
+
+    
 
 
 
@@ -410,6 +483,9 @@ def spawn_particle():
     if vx**2 + vy**2 < 0.01:
         vx = 1.0 * math.cos(orbit_angle)
         vy = 1.0 * math.sin(orbit_angle)
+        print("Spawn kick applied")
+
+
 
     mass = np.random.uniform(MinMass, MaxMass)
     r, g, b = [np.random.randint(50, 256) for _ in range(3)]
@@ -420,15 +496,6 @@ def spawn_particle():
 
 
 
-
-
-    # Ensure minimum movement to prevent accidental explosion
-    speed_sq = vx**2 + vy**2
-    if speed_sq < 0.01:
-        angle = angle_to_sun + np.pi / 2  # Tangential direction
-        vx = 1.0 * np.cos(angle)
-        vy = 1.0 * np.sin(angle)
-        print("Spawn kick applied")  # Optional debug
 
 
 def draw_particles():
@@ -446,7 +513,7 @@ def draw_particles():
 
 
 
-@njit
+@njit(parallel=True)
 def compute_max_distance(particles, active_mask, SunX, SunY):
     max_distance = 0.0
     for i in range(particles.shape[0]):
@@ -461,11 +528,12 @@ def compute_max_distance(particles, active_mask, SunX, SunY):
 
 
 
+# Optimized particle merging using grid bucket system
 @njit
-def merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHeight):
-    cell_size = MergeDistance
-    grid_width = int(SimWidth // cell_size) + 2
-    grid_height = int(SimHeight // cell_size) + 2
+def merge_particles_grid(particles, active_mask, merge_distance, sim_width, sim_height, sun_x, sun_y):
+    cell_size = merge_distance
+    grid_width = int(sim_width // cell_size) + 2
+    grid_height = int(sim_height // cell_size) + 2
     max_per_cell = 16
 
     grid = -1 * np.ones((grid_width, grid_height, max_per_cell), dtype=np.int32)
@@ -503,32 +571,31 @@ def merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHei
                         xj, yj = particles[j, 0], particles[j, 1]
                         dx_ = xi - xj
                         dy_ = yi - yj
-                        dist = np.sqrt(dx_ * dx_ + dy_ * dy_)
-                        if dist < MergeDistance:
-                            mi, mj = particles[i,4], particles[j,4]
+                        dist_sq = dx_ * dx_ + dy_ * dy_
+                        if dist_sq < merge_distance * merge_distance:
+                            mi, mj = particles[i, 4], particles[j, 4]
                             mtot = mi + mj
-                            particles[i,0] = (xi*mi + xj*mj)/mtot
-                            particles[i,1] = (yi*mi + yj*mj)/mtot
-                            particles[i,2] = (particles[i,2]*mi + particles[j,2]*mj)/mtot
-                            particles[i,3] = (particles[i,3]*mi + particles[j,3]*mj)/mtot
-                            particles[i,4] = mtot
+                            if mtot == 0:
+                                continue
+                            particles[i, 0] = (xi * mi + xj * mj) / mtot
+                            particles[i, 1] = (yi * mi + yj * mj) / mtot
+                            particles[i, 2] = (particles[i, 2] * mi + particles[j, 2] * mj) / mtot
+                            particles[i, 3] = (particles[i, 3] * mi + particles[j, 3] * mj) / mtot
+                            particles[i, 4] = mtot
 
-                            # Ensure merged particle keeps moving
-                            v2 = particles[i,2]**2 + particles[i,3]**2
-                            if v2 < 0.01:  # Too slow = nearly frozen
-                                # Add tiny tangential nudge
-                                angle = np.atan2(particles[i,1] - SunY, particles[i,0] - SunX) + np.pi / 2
-                                particles[i,2] += 0.5 * np.cos(angle)
-                                particles[i,3] += 0.5 * np.sin(angle)
+                            v2 = particles[i, 2] ** 2 + particles[i, 3] ** 2
+                            if v2 < 0.01:
+                                angle = math.atan2(particles[i, 1] - sun_y, particles[i, 0] - sun_x) + math.pi / 2
+                                particles[i, 2] += 0.5 * math.cos(angle)
+                                particles[i, 3] += 0.5 * math.sin(angle)
 
+                            for c in range(5, 8):
+                                particles[i, c] = (particles[i, c] + particles[j, c]) / 2
 
-                            for c in range(5,8):
-                                particles[i,c] = (particles[i,c] + particles[j,c]) / 2
-                            particles[i,8] = 3
+                            particles[i, 8] = 3
                             active_mask[j] = False
                             merged_mask[i] = True
                             break
-
 
 for _ in range(NumParticles):
     spawn_particle()
@@ -557,7 +624,9 @@ try:
 
         offset_x = SunX - (HatWidth / 2) * zoom
         offset_y = SunY - (HatHeight / 2) * zoom
+
         draw_sun()
+
 
         if frame % SpawnInterval == 0:
             spawn_particle()
@@ -566,8 +635,22 @@ try:
         # Replace update_particles(...) with two calls:
         sun_radius = compute_sun_radius(SunMass)
         sun_radius_sq = sun_radius * sun_radius
-        apply_gravity_and_motion(particles, active_mask, G, SunMass, SunX, SunY, TimeStep,
-                                MaxSpeed, SimWidth, SimHeight, OffscreenLimit, sun_radius_sq)
+        
+        
+        
+        
+        grid, counts, gw, gh = build_particle_grid(
+            particles, active_mask, SimWidth, SimHeight, MergeDistance, max_per_cell=16
+        )
+
+        apply_gravity_parallel(
+            particles, active_mask, G, SunMass, SunX, SunY,
+            TimeStep, MaxSpeed,
+            grid, counts, gw, gh, MergeDistance,
+            GravityCutoffDistance ** 2
+        )
+
+
         min_x = -SimWidth * OffscreenLimit
         max_x = SimWidth * (1 + OffscreenLimit)
         min_y = -SimHeight * OffscreenLimit
@@ -584,7 +667,9 @@ try:
 
 
 
-        merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHeight)
+        merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHeight, SunX, SunY)
+
+
 
         draw_particles()
         LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
@@ -608,4 +693,8 @@ try:
         frame += 1
 
 finally:
-    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+    if old_settings:
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+
+
+
