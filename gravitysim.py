@@ -247,9 +247,12 @@ def apply_gravity_and_motion(particles, active_mask, G, sun_mass, sun_x, sun_y,
 
 # Serial: absorb into sun, check bounds, apply particle decay, and accumulate mass gain
 @njit
-def post_process_particles(particles, active_mask, sun_x, sun_y,
-                           sim_width, sim_height, offscreen_limit,
-                           sun_radius_sq):
+def post_process_particles(
+    particles, active_mask, sun_x, sun_y,
+    sim_width, sim_height, offscreen_limit,
+    sun_radius_sq,
+    min_x, max_x, min_y, max_y, max_radius_sq
+):
     mass_gain = 0.0
     n = particles.shape[0]
     for i in range(n):
@@ -267,13 +270,12 @@ def post_process_particles(particles, active_mask, sun_x, sun_y,
             mass_gain += particles[i, 4]
             continue
 
-        if dist_to_sun_sq > (sim_width * offscreen_limit) ** 2:
+        if dist_to_sun_sq > max_radius_sq:
             particles[i, 8] = 5
             active_mask[i] = False
             continue
 
-        if (x < -sim_width * offscreen_limit or x > sim_width * (1 + offscreen_limit) or
-            y < -sim_height * offscreen_limit or y > sim_height * (1 + offscreen_limit)):
+        if x < min_x or x > max_x or y < min_y or y > max_y:
             active_mask[i] = False
             continue
 
@@ -281,6 +283,7 @@ def post_process_particles(particles, active_mask, sun_x, sun_y,
             particles[i, 8] -= 1
 
     return mass_gain
+
 
 
 
@@ -560,12 +563,23 @@ try:
             spawn_particle()
 
         
+        # Replace update_particles(...) with two calls:
         sun_radius = compute_sun_radius(SunMass)
         sun_radius_sq = sun_radius * sun_radius
         apply_gravity_and_motion(particles, active_mask, G, SunMass, SunX, SunY, TimeStep,
                                 MaxSpeed, SimWidth, SimHeight, OffscreenLimit, sun_radius_sq)
-        mass_gain = post_process_particles(particles, active_mask, SunX, SunY,
-                                        SimWidth, SimHeight, OffscreenLimit, sun_radius_sq)
+        min_x = -SimWidth * OffscreenLimit
+        max_x = SimWidth * (1 + OffscreenLimit)
+        min_y = -SimHeight * OffscreenLimit
+        max_y = SimHeight * (1 + OffscreenLimit)
+        max_radius_sq = (SimWidth * OffscreenLimit) ** 2
+
+        mass_gain = post_process_particles(
+            particles, active_mask, SunX, SunY,
+            SimWidth, SimHeight, OffscreenLimit,
+            sun_radius_sq,
+            min_x, max_x, min_y, max_y, max_radius_sq
+        )
         SunMass += mass_gain
 
 
