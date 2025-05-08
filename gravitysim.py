@@ -94,6 +94,9 @@ SimHeight = HatHeight * 10
 SunX = SimWidth / 2
 SunY = SimHeight / 2
 SunRGB = LED.HighYellow
+SunRadius = 2
+SunRadiusIncrease = 0.05
+
 
 zoom = 1.0
 MinZoom = 1
@@ -129,71 +132,178 @@ old_settings = termios.tcgetattr(sys.stdin)
 tty.setcbreak(sys.stdin.fileno())
 
 
+def compute_sun_radius(mass):
+    return SunRadius + SunRadiusIncrease * math.sqrt(mass)
 
 
 @njit(parallel=True)
-def update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, MaxSpeed, SimWidth, SimHeight, OffscreenLimit):
+def update_particles(particles, active_mask, G, sun_mass, sun_x, sun_y,
+                     timestep, max_speed, sim_width, sim_height,
+                     offscreen_limit, sun_radius_sq):
+    mass_gain = 0.0
+    n = particles.shape[0]
+    for i in range(n):
+        if not active_mask[i]:
+            continue
+        x, y, vx, vy, m = particles[i, :5]
+
+        dx_sun = sun_x - x
+        dy_sun = sun_y - y
+        dist_to_sun_sq = dx_sun * dx_sun + dy_sun * dy_sun
+        if dist_to_sun_sq < sun_radius_sq:
+            particles[i, 8] = 5
+            active_mask[i] = False
+            mass_gain += m
+            continue
+
+        if dist_to_sun_sq > (sim_width * offscreen_limit) ** 2:
+            particles[i, 8] = 5
+            active_mask[i] = False
+            continue
+
+        dx = sun_x - x
+        dy = sun_y - y
+        dist_sq = dx * dx + dy * dy + 0.01
+        dist = np.sqrt(dist_sq)
+        force = G * sun_mass / dist_sq
+        ax = force * dx / dist
+        ay = force * dy / dist
+
+        for j in range(n):
+            if i == j or not active_mask[j]:
+                continue
+            dx = particles[j, 0] - x
+            dy = particles[j, 1] - y
+            dist_sq = dx * dx + dy * dy + 0.01
+            dist = np.sqrt(dist_sq)
+            f = G * particles[j, 4] / dist_sq
+            ax += f * dx / dist
+            ay += f * dy / dist
+
+        vx += ax * timestep
+        vy += ay * timestep
+        speed = np.sqrt(vx * vx + vy * vy)
+        if speed > max_speed:
+            scale = max_speed / speed
+            vx *= scale
+            vy *= scale
+        x += vx * timestep
+        y += vy * timestep
+
+        if (x < -sim_width * offscreen_limit or x > sim_width * (1 + offscreen_limit) or
+            y < -sim_height * offscreen_limit or y > sim_height * (1 + offscreen_limit)):
+            active_mask[i] = False
+            continue
+
+        particles[i, 0] = x
+        particles[i, 1] = y
+        particles[i, 2] = vx
+        particles[i, 3] = vy
+
+        if particles[i, 8] > 0:
+            particles[i, 8] -= 1
+
+    return mass_gain        
+
+
+
+# Parallel-safe: only apply sun+gravity physics, not inter-particle forces
+@njit(parallel=True)
+def apply_gravity_and_motion(particles, active_mask, G, sun_mass, sun_x, sun_y,
+                             timestep, max_speed, sim_width, sim_height,
+                             offscreen_limit, sun_radius_sq):
     n = particles.shape[0]
     for i in prange(n):
         if not active_mask[i]:
             continue
-        x, y, vx, vy, m = particles[i, :5]
-        # Absorb into sun if too close
-        dx_sun = SunX - x
-        dy_sun = SunY - y
-        dist_to_sun_sq = dx_sun * dx_sun + dy_sun * dy_sun
-        if dist_to_sun_sq < MergeDistance * MergeDistance:
-            particles[i,8] = 5  # Set flash first
-            active_mask[i] = False
-            continue
 
-        if dist_to_sun_sq > (SimWidth * OffscreenLimit) ** 2:
-            particles[i,8] = 5  # Set flash first
-            active_mask[i] = False
-            continue
-
-
-        dx = SunX - x
-        dy = SunY - y
-        dist_sq = dx*dx + dy*dy + 0.01
+        x, y, vx, vy = particles[i, 0], particles[i, 1], particles[i, 2], particles[i, 3]
+        dx = sun_x - x
+        dy = sun_y - y
+        dist_sq = dx * dx + dy * dy + 0.01
         dist = np.sqrt(dist_sq)
-        force = G * SunMass / dist_sq
+        force = G * sun_mass / dist_sq
         ax = force * dx / dist
         ay = force * dy / dist
-        for j in range(n):
-            if i == j or not active_mask[j]:
-                continue
-            dx = particles[j,0] - x
-            dy = particles[j,1] - y
-            dist_sq = dx*dx + dy*dy + 0.01
-            dist = np.sqrt(dist_sq)
-            f = G * particles[j,4] / dist_sq
-            ax += f * dx / dist
-            ay += f * dy / dist
-        vx += ax * TimeStep
-        vy += ay * TimeStep
-        speed = np.sqrt(vx*vx + vy*vy)
-        if speed > MaxSpeed:
-            scale = MaxSpeed / speed
+
+        vx += ax * timestep
+        vy += ay * timestep
+        speed = np.sqrt(vx * vx + vy * vy)
+        if speed > max_speed:
+            scale = max_speed / speed
             vx *= scale
             vy *= scale
-        x += vx * TimeStep
-        y += vy * TimeStep
 
-        if (x < -SimWidth * OffscreenLimit or x > SimWidth * (1 + OffscreenLimit) or
-            y < -SimHeight * OffscreenLimit or y > SimHeight * (1 + OffscreenLimit)):
+        x += vx * timestep
+        y += vy * timestep
+
+        particles[i, 0] = x
+        particles[i, 1] = y
+        particles[i, 2] = vx
+        particles[i, 3] = vy
+
+
+# Serial: absorb into sun, check bounds, apply particle decay, and accumulate mass gain
+@njit
+def post_process_particles(particles, active_mask, sun_x, sun_y,
+                           sim_width, sim_height, offscreen_limit,
+                           sun_radius_sq):
+    mass_gain = 0.0
+    n = particles.shape[0]
+    for i in range(n):
+        if not active_mask[i]:
+            continue
+
+        x, y = particles[i, 0], particles[i, 1]
+        dx = sun_x - x
+        dy = sun_y - y
+        dist_to_sun_sq = dx * dx + dy * dy
+
+        if dist_to_sun_sq < sun_radius_sq:
+            particles[i, 8] = 5
+            active_mask[i] = False
+            mass_gain += particles[i, 4]
+            continue
+
+        if dist_to_sun_sq > (sim_width * offscreen_limit) ** 2:
+            particles[i, 8] = 5
             active_mask[i] = False
             continue
 
-        particles[i,0] = x
-        particles[i,1] = y
-        particles[i,2] = vx
-        particles[i,3] = vy
+        if (x < -sim_width * offscreen_limit or x > sim_width * (1 + offscreen_limit) or
+            y < -sim_height * offscreen_limit or y > sim_height * (1 + offscreen_limit)):
+            active_mask[i] = False
+            continue
+
+        if particles[i, 8] > 0:
+            particles[i, 8] -= 1
+
+    return mass_gain
 
 
-        
-        
-        
+
+
+def draw_sun():
+    global SunMass, SunX, SunY, zoom
+    radius = compute_sun_radius(SunMass)
+    offset_x = SunX - (HatWidth / 2) * zoom
+    offset_y = SunY - (HatHeight / 2) * zoom
+
+    cx = int((SunX - offset_x) / zoom)
+    cy = int((SunY - offset_y) / zoom)
+    screen_radius = max(1, int(radius / zoom))
+
+    for dx in range(-screen_radius, screen_radius + 1):
+        for dy in range(-screen_radius, screen_radius + 1):
+            if dx * dx + dy * dy <= screen_radius * screen_radius:
+                x = cx + dx
+                y = cy + dy
+                if 0 <= x < HatWidth and 0 <= y < HatHeight:
+                    LED.setpixel(x, y, *SunRGB)
+
+
+
+
 
 @njit
 def find_empty_slot(active_mask):
@@ -217,6 +327,39 @@ def init_particle_array(i, x, y, vx, vy, mass, r, g, b, particles):
 
 
 
+@njit
+def _spawn_particle(
+    i, side, x_spawn, y_spawn,
+    vx, vy, mass, r, g, b,
+    SunX, SunY, particles, active_mask
+):
+    if side == 0:   # left
+        x = -1
+        y = y_spawn
+    elif side == 1:  # right
+        x = SimWidth + 1
+        y = y_spawn
+    elif side == 2:  # top
+        x = x_spawn
+        y = -1
+    else:           # bottom
+        x = x_spawn
+        y = SimHeight + 1
+
+    particles[i, 0] = x
+    particles[i, 1] = y
+    particles[i, 2] = vx
+    particles[i, 3] = vy
+    particles[i, 4] = mass
+    particles[i, 5] = r
+    particles[i, 6] = g
+    particles[i, 7] = b
+    particles[i, 8] = 5
+    active_mask[i] = True
+
+
+
+
 def spawn_particle():
     global burst_bias, burst_timer
 
@@ -224,60 +367,51 @@ def spawn_particle():
     if i == -1:
         return
 
-    # Choose spawn edge
-    side = random.choice(['left', 'right', 'top', 'bottom'])
+    side = np.random.randint(0, 4)
+    direction = -1 if np.random.rand() < 0.5 else 1
 
-    if side == 'left':
-        x = -1
-        y = random.uniform(0, SimHeight)
-    elif side == 'right':
-        x = SimWidth + 1
-        y = random.uniform(0, SimHeight)
-    elif side == 'top':
-        x = random.uniform(0, SimWidth)
-        y = -1
-    else:
-        x = random.uniform(0, SimWidth)
-        y = SimHeight + 1
+    if side in [0, 1]:  # left or right
+        x_spawn = 0
+        y_spawn = np.random.uniform(0, SimHeight)
+    else:  # top or bottom
+        x_spawn = np.random.uniform(0, SimWidth)
+        y_spawn = 0
 
-    dx = SunX - x
-    dy = SunY - y
+    # Approximate spawn position toward sun
+    dx = SunX - (0 if side == 0 else SimWidth if side == 1 else x_spawn)
+    dy = SunY - (y_spawn if side in [0, 1] else 0 if side == 2 else SimHeight)
     distance = math.sqrt(dx**2 + dy**2)
     angle_to_sun = math.atan2(dy, dx)
 
-    # Apply burst bias if active
+    orbit_angle = angle_to_sun + direction * math.pi / 2
+    speed = math.sqrt(G * SunMass / max(distance, 1)) * np.random.uniform(0.9, 1.1)
+
+    # Bias burst logic (optional)
     if burst_bias and burst_timer > 0:
-        orbit_angle = math.atan2(burst_bias[1], burst_bias[0])
-        speed = np.linalg.norm(burst_bias)
+        vx, vy = burst_bias
         burst_timer -= 1
     else:
-        direction = random.choice([-1, 1])
-        orbit_angle = angle_to_sun + direction * math.pi / 2
-        speed = math.sqrt(G * SunMass / distance) * random.uniform(0.9, 1.1)
-
-        # Start a new burst occasionally
-        if random.random() < BurstBiasChance:
-            burst_bias = (
-                speed * math.cos(orbit_angle),
-                speed * math.sin(orbit_angle)
-            )
-            burst_timer = BiasDuration
-
-    vx = speed * math.cos(orbit_angle)
-    vy = speed * math.sin(orbit_angle)
-
-    # Occasionally spawn rogue high-speed eccentric object
-    if random.random() < 0.1:
-        speed *= 2.0
         vx = speed * math.cos(orbit_angle)
         vy = speed * math.sin(orbit_angle)
+        if np.random.rand() < BurstBiasChance:
+            burst_bias = (vx, vy)
+            burst_timer = BiasDuration
 
-    mass = random.uniform(MinMass, MaxMass)
-    r, g, b = [random.randint(50, 255) for _ in range(3)]
-    init_particle_array(i, x, y, vx, vy, mass, r, g, b, particles)
-    active_mask[i] = True
+    if np.random.rand() < 0.1:
+        vx *= 2
+        vy *= 2
 
-    print(f"Spawn: Particle {i}")
+    # Safety minimum velocity
+    if vx**2 + vy**2 < 0.01:
+        vx = 1.0 * math.cos(orbit_angle)
+        vy = 1.0 * math.sin(orbit_angle)
+
+    mass = np.random.uniform(MinMass, MaxMass)
+    r, g, b = [np.random.randint(50, 256) for _ in range(3)]
+
+    _spawn_particle(i, side, x_spawn, y_spawn, vx, vy, mass, r, g, b, SunX, SunY, particles, active_mask)
+
+    print(f"Spawn: Particle {i} Mass {mass:.2f}")
 
 
 
@@ -286,9 +420,9 @@ def spawn_particle():
     # Ensure minimum movement to prevent accidental explosion
     speed_sq = vx**2 + vy**2
     if speed_sq < 0.01:
-        angle = angle_to_sun + math.pi / 2  # Tangential direction
-        vx = 1.0 * math.cos(angle)
-        vy = 1.0 * math.sin(angle)
+        angle = angle_to_sun + np.pi / 2  # Tangential direction
+        vx = 1.0 * np.cos(angle)
+        vy = 1.0 * np.sin(angle)
         print("Spawn kick applied")  # Optional debug
 
 
@@ -302,8 +436,8 @@ def draw_particles():
         y = int(round((particles[i,1] - offset_y) / zoom))
         r, g, b = (255,255,255) if particles[i,8] > 0 else tuple(map(int, particles[i,5:8]))
 
+        LED.setpixel(x, y, r, g, b)
 
-        
 
 
 
@@ -378,9 +512,9 @@ def merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHei
                             v2 = particles[i,2]**2 + particles[i,3]**2
                             if v2 < 0.01:  # Too slow = nearly frozen
                                 # Add tiny tangential nudge
-                                angle = math.atan2(particles[i,1] - SunY, particles[i,0] - SunX) + math.pi / 2
-                                particles[i,2] += 0.5 * math.cos(angle)
-                                particles[i,3] += 0.5 * math.sin(angle)
+                                angle = np.atan2(particles[i,1] - SunY, particles[i,0] - SunX) + np.pi / 2
+                                particles[i,2] += 0.5 * np.cos(angle)
+                                particles[i,3] += 0.5 * np.sin(angle)
 
 
                             for c in range(5,8):
@@ -418,12 +552,22 @@ try:
 
         offset_x = SunX - (HatWidth / 2) * zoom
         offset_y = SunY - (HatHeight / 2) * zoom
-        LED.setpixel(int((SunX - offset_x) / zoom), int((SunY - offset_y) / zoom), *SunRGB)
+        draw_sun()
 
         if frame % SpawnInterval == 0:
             spawn_particle()
 
-        update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, MaxSpeed, SimWidth, SimHeight, OffscreenLimit)
+        
+        sun_radius = compute_sun_radius(SunMass)
+        sun_radius_sq = sun_radius * sun_radius
+        apply_gravity_and_motion(particles, active_mask, G, SunMass, SunX, SunY, TimeStep,
+                                MaxSpeed, SimWidth, SimHeight, OffscreenLimit, sun_radius_sq)
+        mass_gain = post_process_particles(particles, active_mask, SunX, SunY,
+                                        SimWidth, SimHeight, OffscreenLimit, sun_radius_sq)
+        SunMass += mass_gain
+
+
+
         merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHeight)
 
         draw_particles()
@@ -441,7 +585,7 @@ try:
         fps_counter += 1
         current_time = time.time()
         if current_time - last_time >= 1.0:
-            print(f"FPS: {fps_counter} Zoom: {zoom}")
+            print(f"FPS: {fps_counter} Zoom: {zoom:.2f} SunMass: {SunMass:.2f}")
             fps_counter = 0
             last_time = current_time
 
