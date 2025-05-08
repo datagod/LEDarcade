@@ -79,7 +79,7 @@ NumParticles = 10
 max_particles = 50
 
 MinMass = 0.01
-MaxMass = 50.0
+MaxMass = 50000.0
 MinSpeed = 1.0
 MaxSpeed = 150.0
 SunMass = 100000.0
@@ -87,10 +87,11 @@ TrailFade = 5  # lower numbers mean slower fading
 OffscreenLimit = 1.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
 SmoothFactor = 0.05
 
-HatWidth = LED.HatWidth
-HatHeight = LED.HatHeight
-SimWidth = HatWidth * 10  # Simulation space (max zoom out)
-SimHeight = HatHeight * 10
+HatWidth      = LED.HatWidth
+HatHeight     = LED.HatHeight
+SimMultiplier = 12
+SimWidth      = HatWidth  * SimMultiplier  # Simulation space (max zoom out)
+SimHeight     = HatHeight * SimMultiplier
 SunX = SimWidth / 2
 SunY = SimHeight / 2
 SunRGB = LED.HighYellow
@@ -119,6 +120,8 @@ manual_zoom_level = 1.0
 
 
 ScreenBuffer = np.zeros((HatHeight, HatWidth, 3), dtype=np.uint8)
+InterParticleForceEnabled = True
+
 
 
 
@@ -137,10 +140,11 @@ def compute_sun_radius(mass):
     return SunRadius + SunRadiusIncrease * math.sqrt(mass)
 
 
-@njit(parallel=True)
+@njit
 def update_particles(particles, active_mask, G, sun_mass, sun_x, sun_y,
                      timestep, max_speed, sim_width, sim_height,
-                     offscreen_limit, sun_radius_sq):
+                     offscreen_limit, sun_radius_sq, enable_interaction):
+    
     mass_gain = 0.0
     n = particles.shape[0]
     for i in range(n):
@@ -170,16 +174,20 @@ def update_particles(particles, active_mask, G, sun_mass, sun_x, sun_y,
         ax = force * dx / dist
         ay = force * dy / dist
 
-        for j in range(n):
-            if i == j or not active_mask[j]:
-                continue
-            dx = particles[j, 0] - x
-            dy = particles[j, 1] - y
-            dist_sq = dx * dx + dy * dy + 0.01
-            dist = np.sqrt(dist_sq)
-            f = G * particles[j, 4] / dist_sq
-            ax += f * dx / dist
-            ay += f * dy / dist
+
+        if enable_interaction:
+            for j in range(n):
+                if i == j or not active_mask[j]:
+                    continue
+                dx = particles[j, 0] - x
+                dy = particles[j, 1] - y
+                dist_sq = dx * dx + dy * dy + 0.01
+                dist = np.sqrt(dist_sq)
+                f = G * particles[j, 4] / dist_sq
+                ax += f * dx / dist
+                ay += f * dy / dist
+
+
 
         vx += ax * timestep
         vy += ay * timestep
@@ -563,6 +571,12 @@ def merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHei
                             break
 
 
+
+
+
+
+
+
 for _ in range(NumParticles):
     spawn_particle()
 
@@ -599,8 +613,16 @@ try:
         # Replace update_particles(...) with two calls:
         sun_radius = compute_sun_radius(SunMass)
         sun_radius_sq = sun_radius * sun_radius
-        apply_gravity_and_motion(particles, active_mask, G, SunMass, SunX, SunY, TimeStep,
-                                MaxSpeed, SimWidth, SimHeight, OffscreenLimit, sun_radius_sq)
+
+
+        mass_gain = update_particles(
+            particles, active_mask, G, SunMass, SunX, SunY, TimeStep,
+            MaxSpeed, SimWidth, SimHeight, OffscreenLimit, sun_radius_sq,
+            InterParticleForceEnabled
+)
+
+
+
         min_x = -SimWidth * OffscreenLimit
         max_x = SimWidth * (1 + OffscreenLimit)
         min_y = -SimHeight * OffscreenLimit
@@ -638,7 +660,9 @@ try:
             fps_counter = 0
             last_time = current_time
 
+        InterParticleForceEnabled = not InterParticleForceEnabled
         frame += 1
+
 
 finally:
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
