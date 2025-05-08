@@ -79,12 +79,12 @@ NumParticles = 10
 max_particles = 50
 
 MinMass = 0.01
-MaxMass = 50000.0
+MaxMass = 500.0
 MinSpeed = 1.0
 MaxSpeed = 150.0
 SunMass = 100000.0
-TrailFade = 5  # lower numbers mean slower fading
-OffscreenLimit = 1.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
+TrailFade = 7  # lower numbers mean slower fading
+OffscreenLimit = 5.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
 SmoothFactor = 0.05
 
 HatWidth      = LED.HatWidth
