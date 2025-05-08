@@ -118,6 +118,7 @@ manual_zoom_active = False
 manual_zoom_level = 1.0
 
 
+ScreenBuffer = np.zeros((HatHeight, HatWidth, 3), dtype=np.uint8)
 
 
 
@@ -204,6 +205,48 @@ def update_particles(particles, active_mask, G, sun_mass, sun_x, sun_y,
             particles[i, 8] -= 1
 
     return mass_gain        
+
+
+def apply_fast_fade():
+    for y in range(HatHeight):
+        for x in range(HatWidth):
+            r, g, b = LED.ScreenArray[y][x]
+            r = max(0, int(r) - TrailFade)
+            g = max(0, int(g) - TrailFade)
+            b = max(0, int(b) - TrailFade)
+            if (r, g, b) != LED.ScreenArray[y][x]:
+                LED.setpixel(x, y, r, g, b)
+
+
+
+@njit
+def fade_trails(buffer_in, buffer_out, fade):
+    for y in range(buffer_in.shape[0]):
+        for x in range(buffer_in.shape[1]):
+            r, g, b = buffer_in[y, x]
+            r = max(0, r - fade)
+            g = max(0, g - fade)
+            b = max(0, b - fade)
+            buffer_out[y, x] = (r, g, b)
+
+def apply_fade():
+    # Copy from ScreenArray into buffer
+    for y in range(HatHeight):
+        for x in range(HatWidth):
+            ScreenBuffer[y, x] = LED.ScreenArray[y][x]
+
+    # Apply fading
+    fade_trails(ScreenBuffer, ScreenBuffer, TrailFade)
+
+    # Write back to screen and buffer
+    for y in range(HatHeight):
+        for x in range(HatWidth):
+            r, g, b = ScreenBuffer[y, x]
+            LED.setpixel(x, y, r, g, b)
+
+
+
+
 
 
 
@@ -550,10 +593,9 @@ try:
                 manual_zoom_active = True
 
 
-        for v in range(HatHeight):
-            for h in range(HatWidth):
-                r,g,b = LED.ScreenArray[v][h]
-                LED.setpixel(h, v, max(0,r-TrailFade), max(0,g-TrailFade), max(0,b-TrailFade))
+
+        apply_fast_fade()
+                
 
         offset_x = SunX - (HatWidth / 2) * zoom
         offset_y = SunY - (HatHeight / 2) * zoom
