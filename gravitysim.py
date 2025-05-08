@@ -94,7 +94,7 @@ SimHeight = HatHeight * 10
 SunX = SimWidth / 2
 SunY = SimHeight / 2
 SunRGB = LED.HighYellow
-SunRadius = 2
+SunRadius = 1
 SunRadiusIncrease = 0.05
 
 
@@ -220,17 +220,17 @@ def apply_gravity_and_motion(particles, active_mask, G, sun_mass, sun_x, sun_y,
         x, y, vx, vy = particles[i, 0], particles[i, 1], particles[i, 2], particles[i, 3]
         dx = sun_x - x
         dy = sun_y - y
-        dist_sq = dx * dx + dy * dy + 0.01
-        dist = np.sqrt(dist_sq)
-        force = G * sun_mass / dist_sq
-        ax = force * dx / dist
-        ay = force * dy / dist
+        inv_dist_sq = 1.0 / (dx * dx + dy * dy + 0.01)
+        inv_dist = 1.0 / np.sqrt(1.0 / inv_dist_sq)
+        force = G * sun_mass * inv_dist_sq
+        ax = force * dx * inv_dist
+        ay = force * dy * inv_dist
 
         vx += ax * timestep
         vy += ay * timestep
-        speed = np.sqrt(vx * vx + vy * vy)
-        if speed > max_speed:
-            scale = max_speed / speed
+        speed_sq = vx * vx + vy * vy
+        if speed_sq > max_speed * max_speed:
+            scale = max_speed / np.sqrt(speed_sq)
             vx *= scale
             vy *= scale
 
@@ -241,6 +241,8 @@ def apply_gravity_and_motion(particles, active_mask, G, sun_mass, sun_x, sun_y,
         particles[i, 1] = y
         particles[i, 2] = vx
         particles[i, 3] = vy
+
+
 
 
 # Serial: absorb into sun, check bounds, apply particle decay, and accumulate mass gain
@@ -585,7 +587,7 @@ try:
         fps_counter += 1
         current_time = time.time()
         if current_time - last_time >= 1.0:
-            print(f"FPS: {fps_counter} Zoom: {zoom:.2f} SunMass: {SunMass:.2f}")
+            print(f"FPS: {fps_counter} Zoom: {zoom:.2f} SunMass: {SunMass:.2f} SunRadius: {SunRadius:.4f}")
             fps_counter = 0
             last_time = current_time
 
