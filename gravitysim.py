@@ -60,8 +60,16 @@ import random
 import numpy as np
 from numba import njit, prange
 
+
+import sys
+import select
+import tty
+import termios
+
+
+
 # Configuration
-G = 5.0
+G = 10.0
 TimeStep = 0.05
 ScrollSleep = 0.01
 MaxSpeed = 50.0
@@ -72,28 +80,55 @@ MinMass = 0.01
 MaxMass = 50.0
 MinSpeed = 1.0
 MaxSpeed = 150.0
-SunMass = 100000.0
-TrailFade = 15
+SunMass = 500000.0
+TrailFade = 5  # lower numbers mean slower fading
 OffscreenLimit = 1.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
 SmoothFactor = 0.05
 
 HatWidth = LED.HatWidth
 HatHeight = LED.HatHeight
-SimWidth = HatWidth * 3  # Simulation space (max zoom out)
-SimHeight = HatHeight * 3
+SimWidth = HatWidth * 10  # Simulation space (max zoom out)
+SimHeight = HatHeight * 10
 SunX = SimWidth / 2
 SunY = SimHeight / 2
 SunRGB = LED.HighYellow
 
 zoom = 1.0
 MinZoom = 1
-MaxZoom = 20
+MaxZoom = 256
 zoom_direction = -0.01
 
 # Particle fields: x, y, vx, vy, mass, r, g, b, flash
 max_particles = 10
 particles = np.zeros((max_particles, 9), dtype=np.float32)
 active_mask = np.zeros(max_particles, dtype=np.bool_)
+
+
+BurstBiasChance = 0.25
+BurstSize = 5
+BiasDuration = 50  # frames
+burst_bias = None  # Will hold a (vx, vy) direction
+burst_timer = 0
+
+manual_zoom_active = False
+manual_zoom_level = 1.0
+
+
+
+
+
+def get_keypress():
+    dr, _, _ = select.select([sys.stdin], [], [], 0)
+    if dr:
+        return sys.stdin.read(1)
+    return None
+
+# Set terminal to raw mode to capture single keypresses
+old_settings = termios.tcgetattr(sys.stdin)
+tty.setcbreak(sys.stdin.fileno())
+
+
+
 
 @njit(parallel=True)
 def update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, MaxSpeed, SimWidth, SimHeight, OffscreenLimit):
@@ -181,43 +216,68 @@ def init_particle_array(i, x, y, vx, vy, mass, r, g, b, particles):
 
 
 def spawn_particle():
+    global burst_bias, burst_timer
+
     i = find_empty_slot(active_mask)
     if i == -1:
         return
 
-    # Adjust spawn margin based on zoom level
-    scaled_margin = 1 
-    scaled_sim_width = SimWidth 
-    scaled_sim_height = SimHeight 
-
+    # Choose spawn edge
     side = random.choice(['left', 'right', 'top', 'bottom'])
 
     if side == 'left':
-        x = -scaled_margin
-        y = random.uniform(0, scaled_sim_height)
+        x = -1
+        y = random.uniform(0, SimHeight)
     elif side == 'right':
-        x = SimWidth + scaled_margin
-        y = random.uniform(0, scaled_sim_height)
+        x = SimWidth + 1
+        y = random.uniform(0, SimHeight)
     elif side == 'top':
-        x = random.uniform(0, scaled_sim_width)
-        y = -scaled_margin
+        x = random.uniform(0, SimWidth)
+        y = -1
     else:
-        x = random.uniform(0, scaled_sim_width)
-        y = SimHeight + scaled_margin
+        x = random.uniform(0, SimWidth)
+        y = SimHeight + 1
 
     dx = SunX - x
     dy = SunY - y
     distance = math.sqrt(dx**2 + dy**2)
     angle_to_sun = math.atan2(dy, dx)
-    direction = random.choice([-1, 1])
-    orbit_angle = angle_to_sun + direction * math.pi / 2
-    speed = math.sqrt(G * SunMass / distance) * random.uniform(0.9, 1.1)
+
+    # Apply burst bias if active
+    if burst_bias and burst_timer > 0:
+        orbit_angle = math.atan2(burst_bias[1], burst_bias[0])
+        speed = np.linalg.norm(burst_bias)
+        burst_timer -= 1
+    else:
+        direction = random.choice([-1, 1])
+        orbit_angle = angle_to_sun + direction * math.pi / 2
+        speed = math.sqrt(G * SunMass / distance) * random.uniform(0.9, 1.1)
+
+        # Start a new burst occasionally
+        if random.random() < BurstBiasChance:
+            burst_bias = (
+                speed * math.cos(orbit_angle),
+                speed * math.sin(orbit_angle)
+            )
+            burst_timer = BiasDuration
+
     vx = speed * math.cos(orbit_angle)
     vy = speed * math.sin(orbit_angle)
+
+    # Occasionally spawn rogue high-speed eccentric object
+    if random.random() < 0.1:
+        speed *= 2.0
+        vx = speed * math.cos(orbit_angle)
+        vy = speed * math.sin(orbit_angle)
+
     mass = random.uniform(MinMass, MaxMass)
     r, g, b = [random.randint(50, 255) for _ in range(3)]
     init_particle_array(i, x, y, vx, vy, mass, r, g, b, particles)
     active_mask[i] = True
+
+
+
+
 
 def draw_particles():
     offset_x = SunX - (HatWidth / 2) * zoom
@@ -299,6 +359,16 @@ def merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHei
                             particles[i,2] = (particles[i,2]*mi + particles[j,2]*mj)/mtot
                             particles[i,3] = (particles[i,3]*mi + particles[j,3]*mj)/mtot
                             particles[i,4] = mtot
+
+                            # Ensure merged particle keeps moving
+                            v2 = particles[i,2]**2 + particles[i,3]**2
+                            if v2 < 0.01:  # Too slow = nearly frozen
+                                # Add tiny tangential nudge
+                                angle = math.atan2(particles[i,1] - SunY, particles[i,0] - SunX) + math.pi / 2
+                                particles[i,2] += 0.5 * math.cos(angle)
+                                particles[i,3] += 0.5 * math.sin(angle)
+
+
                             for c in range(5,8):
                                 particles[i,c] = (particles[i,c] + particles[j,c]) / 2
                             particles[i,8] = 3
@@ -315,44 +385,53 @@ last_time = time.time()
 fps_counter = 0
 
 
-while True:
-    for v in range(HatHeight):
-        for h in range(HatWidth):
-            r,g,b = LED.ScreenArray[v][h]
-            LED.setpixel(h, v, max(0,r-TrailFade), max(0,g-TrailFade), max(0,b-TrailFade))
-
-    offset_x = SunX - (HatWidth / 2) * zoom
-    offset_y = SunY - (HatHeight / 2) * zoom
-    LED.setpixel(int((SunX - offset_x) / zoom), int((SunY - offset_y) / zoom), *SunRGB)
-
-    if frame % SpawnInterval == 0:
-        spawn_particle()
-
-    update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, MaxSpeed, SimWidth, SimHeight, OffscreenLimit)
-    merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHeight)
-
-    draw_particles()
-    LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+try:
+    while True:
+        key = get_keypress()
+        if key:
+            if key == '0':
+                manual_zoom_active = False
+            elif key in '123456789':
+                level = int(key)
+                manual_zoom_level = min(MaxZoom, 2 ** (level - 1))  # 1→1, 2→2, 3→4, ..., 9→256
+                manual_zoom_active = True
 
 
-    max_distance = compute_max_distance(particles, active_mask, SunX, SunY)
-    target_radius = max(HatWidth, HatHeight) * 0.45
-    target_zoom = max(MinZoom, min(MaxZoom, max_distance / target_radius))
-    zoom = zoom + SmoothFactor * (target_zoom - zoom)
+        for v in range(HatHeight):
+            for h in range(HatWidth):
+                r,g,b = LED.ScreenArray[v][h]
+                LED.setpixel(h, v, max(0,r-TrailFade), max(0,g-TrailFade), max(0,b-TrailFade))
 
+        offset_x = SunX - (HatWidth / 2) * zoom
+        offset_y = SunY - (HatHeight / 2) * zoom
+        LED.setpixel(int((SunX - offset_x) / zoom), int((SunY - offset_y) / zoom), *SunRGB)
 
-    #zoom += zoom_direction
-    #if zoom <= MinZoom or zoom >= MaxZoom:
-    #    zoom_direction *= -1
+        if frame % SpawnInterval == 0:
+            spawn_particle()
 
+        update_particles(particles, active_mask, G, SunMass, SunX, SunY, TimeStep, MaxSpeed, SimWidth, SimHeight, OffscreenLimit)
+        merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHeight)
 
+        draw_particles()
+        LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
 
+        max_distance = compute_max_distance(particles, active_mask, SunX, SunY)
+        target_radius = max(HatWidth, HatHeight) * 0.45
+        target_zoom = max(MinZoom, min(MaxZoom, max_distance / target_radius))
 
-    fps_counter += 1
-    current_time = time.time()
-    if current_time - last_time >= 1.0:
-        print(f"FPS: {fps_counter} Zoom: {zoom}")
-        fps_counter = 0
-        last_time = current_time
+        if manual_zoom_active:
+            zoom = manual_zoom_level
+        else:
+            zoom = zoom + SmoothFactor * (target_zoom - zoom)
 
-    frame += 1
+        fps_counter += 1
+        current_time = time.time()
+        if current_time - last_time >= 1.0:
+            print(f"FPS: {fps_counter} Zoom: {zoom}")
+            fps_counter = 0
+            last_time = current_time
+
+        frame += 1
+
+finally:
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
