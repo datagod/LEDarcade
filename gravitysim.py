@@ -94,7 +94,7 @@ SimHeight = HatHeight * 10
 SunX = SimWidth / 2
 SunY = SimHeight / 2
 SunRGB = LED.HighYellow
-SunRadius = 1
+SunRadius = 0.05
 SunRadiusIncrease = 0.05
 
 
