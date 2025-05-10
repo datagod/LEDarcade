@@ -8,33 +8,42 @@ Requirements: geopy
 
 import os
 os.system('cls||clear')
-
+import sys
 import requests
 import json
 import time
-import pprint as pp
 import geopy.distance
 import LEDarcade as LED
 from configparser import SafeConfigParser
 
-from FlightRadar24.api import FlightRadar24API 
 
-
-fr_api = FlightRadar24API()
-
+from opensky_api import OpenSkyApi
+api = OpenSkyApi()
+s = api.get_states()
+print(s)
 
 
 
 #---------------------------------------
 #Variable declaration section
 #---------------------------------------
-ScrollSleep         = 0.015
-TerminalTypeSpeed   = 0  #pause in seconds between characters
-TerminalScrollSpeed = 0  #pause in seconds between new lines
-CursorRGB           = (0,0,0)
-CursorDarkRGB       = (0,0,0)
-LastGetFlightsTime    = time.time()
+
+ConfigFileName = "FlightConfig.ini"
+ScrollSleep = 0.015
+TerminalTypeSpeed = 0
+TerminalScrollSpeed = 0
+CursorRGB = (0, 0, 0)
+CursorDarkRGB = (0, 0, 0)
+LastGetFlightsTime = time.time()
 GetFlightsWaitMinutes = 5
+
+URL = ''
+BaseLat = 0.0
+BaseLon = 0.0
+Bounds = ''
+Dump1090URL = ''
+
+
 
 OriginAirport         = ''
 DestinationAirport    = ''
@@ -49,12 +58,8 @@ ConfigFileName = "FlightConfig.ini"
 
 
 
-URL             = ''
-BaseLat         = ''
-BaseLon         = ''
-BoundUpperLeft  = ''
-BoundLowerRight = ''
-Bounds          = ''
+
+
 
 
 
@@ -62,13 +67,62 @@ Bounds          = ''
 #-- FILE ACCESS Functions              --
 #----------------------------------------
 
+
+ConfigFileName = "FlightConfig.ini"
+ScrollSleep = 0.015
+TerminalTypeSpeed = 0
+TerminalScrollSpeed = 0
+CursorRGB = (0, 0, 0)
+CursorDarkRGB = (0, 0, 0)
+LastGetFlightsTime = time.time()
+GetFlightsWaitMinutes = 5
+
+URL = ''
+BaseLat = 0.0
+BaseLon = 0.0
+Bounds = ''
+Dump1090URL = ''
+
 def LoadConfigFile():
+    global URL, BaseLat, BaseLon, Bounds, Dump1090URL
+
+    print("--Load Config values--")
+    
+    if os.path.exists(ConfigFileName):
+        print(f"Config file ({ConfigFileName}): found")
+        KeyFile = SafeConfigParser()
+        KeyFile.read(ConfigFileName)
+
+        URL = KeyFile.get("FLIGHT", "URL", fallback="")
+        BaseLat = float(KeyFile.get("FLIGHT", "BaseLat"))
+        BaseLon = float(KeyFile.get("FLIGHT", "BaseLon"))
+        Bounds = KeyFile.get("FLIGHT", "Bounds")
+        Dump1090URL = KeyFile.get("FLIGHT", "Dump1090URL", fallback="http://localhost:8080/data/aircraft.json")
+
+        print("---------------------------------------------")
+        print(f"URL:            {URL}")
+        print(f"BaseLat:        {BaseLat}")
+        print(f"BaseLon:        {BaseLon}")
+        print(f"Bounds:         {Bounds}")
+        print(f"Dump1090URL:    {Dump1090URL}")
+        print("---------------------------------------------")
+    else:
+        print(f"ERROR: Could not locate Key file ({ConfigFileName}).")
+        sys.exit(1)
+
+
+
+
+
+
+
+
+
+def LoadConfigFile_old():
 
   global URL
   global BaseLat
   global BaseLon
-  global BoundUpperLeft
-  global BoundLowerRight
   global Bounds
 
 
@@ -83,18 +137,14 @@ def LoadConfigFile():
     URL             = KeyFile.get("FLIGHT","URL")
     BaseLat         = KeyFile.get("FLIGHT","BaseLat")
     BaseLon         = KeyFile.get("FLIGHT","BaseLon")
-    BoundUpperLeft  = KeyFile.get("FLIGHT","BoundUpperLeft")
-    BoundLowerRight = KeyFile.get("FLIGHT","BoundLowerRight")
     Bounds          = KeyFile.get("FLIGHT","Bounds")
 
     print (" ")
 
     print ("---------------------------------------------")
-    print("URL:            ",URL)   
+    print("Dump1090URL:    ",URL)   
     print("BaseLat:        ",BaseLat)   
     print("BaseLon:        ",BaseLon)   
-    print("BoundUpperLeft: ",BoundUpperLeft)
-    print("BoundLowerRight:",BoundLowerRight)
     print ("---------------------------------------------")
     print (" ")
 
@@ -108,184 +158,165 @@ def LoadConfigFile():
 
 
 
-#Get a list of flights in a lat/lon box
 def GetFlightsInBounds(Bounds):
-  print("")
-  print("--GetFlightsInBounds--")
-  print("Bounds:",Bounds)
-  FlightList = fr_api.get_flights(airline= None, bounds=Bounds)
-  print("Flights:"+str(len(FlightList)))
-  time.sleep(2)
-  #pp.pprint(FlightList)
-  
-  return FlightList
-  
+    print("\n--GetFlightsInBounds--")
+    print(f"Bounds: {Bounds}")
+    
+    try:
+        print(f"Fetching data from: {Dump1090URL}")
+        response = requests.get(Dump1090URL, timeout=5)
+        print(f"HTTP Status Code: {response.status_code}")
+        print(f"Raw Response: {response.text}")
+        response.raise_for_status()
+        aircraft_list = response.json()
+        print(f"Aircraft List: {aircraft_list}")
+        
+        # Log detailed aircraft data
+        print("\n--Aircraft Details--")
+        aircraft_data = aircraft_list.get('aircraft', [])
+        print(f"Total Aircraft: {len(aircraft_data)}")
+        for i, ac in enumerate(aircraft_data):
+            print(f"Aircraft {i}:")
+            print(f"  Hex: {ac.get('hex', 'N/A')}")
+            print(f"  Lat: {ac.get('lat', 'N/A')}")
+            print(f"  Lon: {ac.get('lon', 'N/A')}")
+            print(f"  Altitude: {ac.get('altitude', 'N/A')}")
+            print(f"  Speed: {ac.get('speed', 'N/A')}")
+            print(f"  Squawk: {ac.get('squawk', 'N/A')}")
+            print(f"  Flight: {ac.get('flight', 'N/A')}")
+            print(f"  Track: {ac.get('track', 'N/A')}")
+            print(f"  All Keys: {list(ac.keys())}")
+        
+        lat1, lat2, lon1, lon2 = map(float, Bounds.split(','))
+        lat_min, lat_max = min(lat1, lat2), max(lat1, lat2)
+        lon_min, lon_max = min(lon1, lon2), max(lon1, lon2)
+        print(f"\nBounds Filter: Lat [{lat_min}, {lat_max}], Lon [{lon_min}, {lon_max}]")
+        
+        filtered_aircraft = [
+            {
+                'hex': ac.get('hex', ''),
+                'latitude': ac.get('lat', 0),
+                'longitude': ac.get('lon', 0),
+                'altitude': ac.get('altitude', 0),
+                'ground_speed': ac.get('speed', 0),
+                'squawk': ac.get('squawk', '0000'),
+                'callsign': ac.get('flight', 'UNKNOWN').strip(),
+                'track': ac.get('track', 0),
+                'id': ac.get('hex', '')
+            }
+            for ac in aircraft_data
+            if 'lat' in ac and 'lon' in ac
+            and isinstance(ac['lat'], (int, float)) and isinstance(ac['lon'], (int, float))
+            and lat_min <= ac['lat'] <= lat_max
+            and lon_min <= ac['lon'] <= lon_max
+        ]
+        
+        print(f"\nFiltered Aircraft: {filtered_aircraft}")
+        print(f"Flights: {len(filtered_aircraft)}")
+        if not filtered_aircraft and aircraft_data:
+            print("Warning: No aircraft within bounds. Check Bounds or aircraft coordinates.")
+        
+        return filtered_aircraft
+    except Exception as e:
+        print(f"Error fetching Dump1090 data: {e}")
+        return []
 
 
-
-
-  
 def GetNearbyFlights(DetailedFlightList):
-  global OriginAirport, DestinationAirport
+    print("\n--GetNearbyFlights--")
 
-  print("\n--GetNearbyFlights--")
+    if not DetailedFlightList:
+        print("**No flight data available**")
+        LED.Canvas.Clear()
+        no_data_sprite = LED.CreateBannerSprite("NO DATA")
+        LED.Canvas = LED.CopySpriteToCanvasZoom(no_data_sprite, 0, 0, (255, 0, 0), (0, 0, 0), 1, False, LED.Canvas)
+        LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+        return None
 
-  i = 0
-  ShortestDistance = 10000000
-  ClosestFlight = -1
+    i = 0
+    ShortestDistance = 10000000
+    ClosestFlight = -1
 
-  for flight in DetailedFlightList:
-      try:
-          lat = flight.latitude
-          lon = flight.longitude
+    for flight in DetailedFlightList:
+        try:
+            lat = flight['latitude']
+            lon = flight['longitude']
+            distance = geopy.distance.geodesic((lat, lon), (BaseLat, BaseLon)).m / 1000
+            if distance <= ShortestDistance:
+                ShortestDistance = distance
+                ClosestFlight = i
+        except Exception as e:
+            print(f"Record: {i}, error: {e}")
+        i += 1
 
-          distance = geopy.distance.geodesic((lat, lon), (BaseLat, BaseLon)).m / 1000
-          if distance <= ShortestDistance:
-              ShortestDistance = distance
-              ClosestFlight = i
-      except:
-          print("Record:", i, "no flight info found")
-      i += 1
+    if ClosestFlight >= 0:
+        flight = DetailedFlightList[ClosestFlight]
 
-    
+        Flight = flight['callsign'] or "UNKNOWN"
+        Category = "N/A"
+        Distance = ShortestDistance
+        Speed = flight['ground_speed'] * 1.852 if flight['ground_speed'] else 0
+        Squawk = flight['squawk'] or "0000"
+        AircraftCount = i
+        Hex = flight['hex'].upper()
 
-  if ClosestFlight >= 0:
-    flight_obj = DetailedFlightList[ClosestFlight]
+        print("\n** Closest Aircraft **")
+        print(f'Record:   {ClosestFlight}')
+        print(f'Hex:      {Hex}')
+        print(f'Flight:   {Flight}')
+        print(f'Category: {Category}')
+        print(f'Distance: {Distance:.2f} km')
+        print(f'Speed:    {Speed:.2f} km/h')
+        print(f'Squawk:   {Squawk}')
+        print(f'Aircraft: {AircraftCount}')
 
-    Flight   = flight_obj.callsign or "none"
-    Category = flight_obj.aircraft_code or "none"
-    Distance = ShortestDistance
-    Speed    = flight_obj.ground_speed * 1.852 if flight_obj.ground_speed else 0
-    Messages = flight_obj.number or 0
-    Squawk   = flight_obj.squawk or "none"
-    AircraftCount = i
-    Hex      = flight_obj.icao_24bit.upper() if flight_obj.icao_24bit else "none"
+        TitleRGB = (0, 150, 0)
+        ValueRGB = (150, 75, 0)
 
+        TitleFlight = LED.CreateBannerSprite("Flight")
+        TitleDistance = LED.CreateBannerSprite("Dist")
+        TitleSpeed = LED.CreateBannerSprite("kph")
+        TitleSquawk = LED.CreateBannerSprite("Sqwk")
+        TitleAircraftCount = LED.CreateBannerSprite("UP")
+        TitleCategory = LED.CreateBannerSprite("CAT")
 
-    #print("****************************************")
-    #pp.pprint(DetailedFlightList[ClosestFlight])
-    #print("****************************************")
+        ValueFlight = LED.CreateBannerSprite(Flight)
+        ValueDistance = LED.CreateBannerSprite(f"{Distance:.2f}")
+        ValueSpeed = LED.CreateBannerSprite(f"{Speed:.1f}")
+        ValueSquawk = LED.CreateBannerSprite(Squawk)
+        ValueAircraftCount = LED.CreateBannerSprite(str(AircraftCount))
+        ValueCategory = LED.CreateBannerSprite(Category)
 
-    print("")
-    print("")
-    print("")
-    print("** Closest Aircraft **")
-    print('Record:   ',ClosestFlight)
-    print('Hex:      ',Hex)
-    print('Flight:   ',Flight)
-    print('Category: ',Category)
-    print('Distance: ',Distance)
-    #print('Mach:     ',Mach)
-    print('Speed:    ',Speed,'km/h')
-    print('Messages: ',Messages)
-    print('Sqauwk:   ',Squawk)
-    print('Aircraft: ',AircraftCount)
+        LED.Canvas.Clear()
+        LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight, 0, 0, TitleRGB, (0, 5, 0), 1, False, LED.Canvas)
+        LED.Canvas = LED.CopySpriteToCanvasZoom(ValueFlight, 28, 0, ValueRGB, (0, 5, 0), 1, False, LED.Canvas)
 
-    TitleRGB = (0,150,0)
-    ValueRGB = (150,75,0)
+        LED.Canvas = LED.CopySpriteToCanvasZoom(TitleDistance, 0, 6, TitleRGB, (0, 5, 0), 1, False, LED.Canvas)
+        LED.Canvas = LED.CopySpriteToCanvasZoom(ValueDistance, 28, 6, ValueRGB, (0, 5, 0), 1, False, LED.Canvas)
 
+        LED.Canvas = LED.CopySpriteToCanvasZoom(TitleCategory, 63, 0, TitleRGB, (0, 5, 0), 1, False, LED.Canvas)
+        LED.Canvas = LED.CopySpriteToCanvasZoom(ValueCategory, 81, 0, ValueRGB, (0, 5, 0), 1, False, LED.Canvas)
 
-    TitleFlight        = LED.CreateBannerSprite("Flight")
-    TitleDistance      = LED.CreateBannerSprite("Dist")
-    TitleSpeed         = LED.CreateBannerSprite("kph")
-    TitleSquawk        = LED.CreateBannerSprite("Sqwk")
-    TitleAircraftCount = LED.CreateBannerSprite("UP")
-    TitleAircraftType  = LED.CreateBannerSprite("Type")
-    TitleCategory      = LED.CreateBannerSprite("CAT")
-    
-    ValueFlight        = LED.CreateBannerSprite(Flight)
-    ValueDistance      = LED.CreateBannerSprite(str(Distance)[0:5])
-    ValueSpeed         = LED.CreateBannerSprite(str(Speed)[0:6])
-    ValueSquawk        = LED.CreateBannerSprite(Squawk)
-    ValueAircraftCount = LED.CreateBannerSprite(str(AircraftCount))
-    ValueAircraftType  = LED.CreateBannerSprite(AircraftType)
-    ValueAirlineShort  = LED.CreateBannerSprite(AirlineShortName)
-    ValueCategory      = LED.CreateBannerSprite(Category)
-    
-    OriginDestination  = LED.CreateBannerSprite("  " + OriginAirport + " " + DestinationAirport)
+        LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSpeed, 63, 6, TitleRGB, (0, 5, 0), 1, False, LED.Canvas)
+        LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed, 81, 6, ValueRGB, (0, 5, 0), 1, False, LED.Canvas)
 
-    LED.Canvas.Clear()    
-    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleFlight,0,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueFlight,28,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
+        LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+    else:
+        print("**No flight data found**")
+        LED.Canvas.Clear()
+        no_data_sprite = LED.CreateBannerSprite("NO DATA")
+        LED.Canvas = LED.CopySpriteToCanvasZoom(no_data_sprite, 0, 0, (255, 0, 0), (0, 0, 0), 1, False, LED.Canvas)
+        LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+        return None
 
-    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleDistance,0,6,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueDistance,28,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
-   
-    #H = LED.HatWidth - (ValueAircraftCount.width + TitleAircraftCount.width + 1)
-    #V = 0
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftCount,H,V,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    #H = LED.HatWidth - ValueAircraftCount.width
-    #V = 0
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftCount,H,V,ValueRGB,(0,5,0),1,False,LED.Canvas)
-
-
-    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleCategory,63,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueCategory,81,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
-
-    LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSpeed,63,6,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSpeed,81,6,ValueRGB,(0,5,0),1,False,LED.Canvas)
-
-    
-    
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleSquawk,56,0,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(ValueSquawk,80,0,ValueRGB,(0,5,0),1,False,LED.Canvas)
-
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(TitleAircraftType,0,24,TitleRGB,(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAircraftType,0,12,(75,0,200),(0,5,0),1,False,LED.Canvas)
-    LED.Canvas = LED.CopySpriteToCanvasZoom(ValueAirlineShort,0,18,(75,0,200),(0,5,0),1,False,LED.Canvas)
-
-    
-
-
-
-    #ScrollText = ScrollText + " - " + AircraftType
-    #ScrollText = ScrollText + " - " + AirlineName
-    #ScrollText = ScrollText + " - " + AirlineShortName
-
-
-
-    #LED.Canvas = LED.CopySpriteToCanvasZoom(OriginDestination,0,24,(100,150,0),(0,5,0),1,False,LED.Canvas)
-
-
-    LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
-
-
-  else:
-    print("**No flight data found**")
-    return None
-
-
-  return Hex
-
+    return Hex
   
 
 
 def GetFlightDetails(FlightList):
-  print("")
-  print("--GetFlightDetails-")
-  print("FlightList length: ",len(FlightList))
-  
-  DetailedFlightList = []
-  
-  for flight in FlightList:
-    print(flight)
-    details = fr_api.get_flight_details(flight.id)
-    
-    try:
-      flight.set_flight_details(details)
-    except:
-      print("not a valid flight object")
-   
-    try:
-      DetailedFlightList.append(flight)
-      print("Appending flight")
-    except:
-      print("Processing",end='\r')
-
-
-  return DetailedFlightList
-
-
+    print("\n--GetFlightDetails--")
+    print(f"FlightList length: {len(FlightList)}")
+    return FlightList
 
 
 
@@ -402,89 +433,37 @@ LED.ClearBuffers()
 CursorH = 0
 CursorV = 0
 
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"LOADING CONFIG FILES",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+    LED.ScreenArray, "LOADING CONFIG FILES", CursorH=CursorH, CursorV=CursorV,
+    MessageRGB=(0, 150, 0), CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0),
+    StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
+)
 LoadConfigFile()
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RETREIVING LIST OF AIRPORTS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-GetAirportList()
 
-#pp.pprint(AirportList)
-
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"GETTING LIST OF FLIGHTS WITHIN SPECIFIED BOUNDARY",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-FlightList = GetFlightsInBounds(Bounds)
-LastGetFlightsTime = time.time()
-LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RETRIEVING FLIGHT DETAILS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-DetailedFlightList = GetFlightDetails(FlightList)
-
-
-
-# an example "flight"
-# [<(B350) C-GSYC - Altitude: 4375 - Ground Speed: 206 - Heading: 129>
-#details = fr_api.get_flight_details('B350')
-#pp.pprint(details)
-#time.sleep(2)
+LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+    LED.ScreenArray, "GETTING LIST OF FLIGHTS FROM DUMP1090", CursorH=CursorH, CursorV=CursorV,
+    MessageRGB=(0, 150, 0), CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0),
+    StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
+)
 
 LED.ClearBigLED()
 LED.ClearBuffers()
 
-while(1==1):
-  h,m,s = LED.GetElapsedTime(LastGetFlightsTime,time.time())
-  
-  #update master list of flights every X minutes
-  print("HMS",h,m,s)
-  print("LastGetFlightsTime",LastGetFlightsTime)
-  if (m >= GetFlightsWaitMinutes):
-    FlightList = GetFlightsInBounds(Bounds)
-    LastGetFlightsTime = time.time()
-    DetailedFlightList = GetFlightDetails(FlightList)
- 
 
-  
-  NearestFlightHex = GetNearbyFlights(DetailedFlightList)
 
-  LookupFlightDetails(NearestFlightHex,DetailedFlightList)
+# Initialize DetailedFlightList
+DetailedFlightList = []
 
-  print((OriginAirport + " " + DestinationAirport))  
-  
-  
-  
-  OriginText      = GetAirport(OriginAirport)
-  DestinationText = GetAirport(DestinationAirport)
-  
-  #--------------------------------------------------
-  #Create scrolling text with additional information
-  #--------------------------------------------------
-  
-
-  try:
-    ScrollText = OriginAirport + "-" + DestinationAirport + " " + OriginText.split()[0] + " " + OriginText.split()[1] + " --> " + DestinationText.split()[0] + " " + DestinationText.split()[1]
-    #ScrollText = ScrollText + " - " + AircraftType
-    #ScrollText = ScrollText + " - " + AirlineName
-    #ScrollText = ScrollText + " - " + AirlineShortName
-    print(ScrollText)
-
-    LED.ShowScrollingBanner2(ScrollText,(100,150,0),ScrollSpeed=ScrollSleep,v=26)
-  except:
-    print("ScrollText not found")
+while True:
+    h, m, s = LED.GetElapsedTime(LastGetFlightsTime, time.time())
+    if m >= GetFlightsWaitMinutes:
+        FlightList = GetFlightsInBounds(Bounds)
+        LastGetFlightsTime = time.time()
+        DetailedFlightList = GetFlightDetails(FlightList)
     
+    NearestFlightHex = GetNearbyFlights(DetailedFlightList)
     
-    
-
-
-
-    time.sleep(10)
-  
+    time.sleep(5)  
 
   
 
-
-
-
-'''
-[{'alt': 326,
-  'country': 'Spain',
-  'iata': 'LCG',
-  'icao': 'LECO',
-  'lat': 43.302059,
-  'lon': -8.37725,
-1  'name': 'A Coruna Airport'},
-'''

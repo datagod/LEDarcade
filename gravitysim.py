@@ -69,22 +69,22 @@ import termios
 
 
 # Configuration
-G = 10.0
-TimeStep = 0.1
+G           = 10.0
+TimeStep    = .1
 ScrollSleep = 0.01
-MaxSpeed = 100.0
+MaxSpeed    = 500.0
 SpawnInterval = 100
 MergeDistance = 1.5
-NumParticles = 10
-max_particles = 50
+NumParticles = 5
+max_particles = 10
 
 MinMass = 0.01
-MaxMass = 500.0
+MaxMass = 25.0
 MinSpeed = 1.0
 MaxSpeed = 150.0
 SunMass = 100000.0
-TrailFade = 7  # lower numbers mean slower fading
-OffscreenLimit = 5.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
+TrailFade = 10  # lower numbers mean slower fading
+OffscreenLimit = 1.0  # Multiplier that defines how far particles can drift beyond SimWidth before being removed
 SmoothFactor = 0.05
 
 HatWidth      = LED.HatWidth
