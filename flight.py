@@ -117,7 +117,7 @@ def GenerateRouteString(Hex, CallSign):
         print(f"ArrivalAirport: {ArrivalAirport}")
         
         RouteString = f"{DepartureAirport} --> {ArrivalAirport} "
-        if (DepartureCountry != 'Canada'):
+        if (DepartureCountry != 'Canada' and DepartureCountry != '?'):
           RouteString = RouteString + f' {DepartureCountry}'
         print(f"RouteString: {RouteString}")
         print(f"[Route Lookup] Hex: {Hex}, CallSign: {CallSign} → {RouteString}")
@@ -699,7 +699,7 @@ while True:
   #Create scrolling text with additional information
   #--------------------------------------------------
   LED.ShowScrollingBanner2(RouteString,(100,150,0),ScrollSpeed=ScrollSleep,v=26)
- 
+  time.sleep(1) 
 
     
   
