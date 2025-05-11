@@ -1893,9 +1893,7 @@ class Sprite(object):
     #print("Flipped :", str(flipgrid))
     self.grid = flipgrid      
 
-    
-
-
+  
 
 
 
@@ -1908,8 +1906,6 @@ class Sprite(object):
     #flickering.
 
     
-      
-
 
     #print("Entering Scroll")
     x = 0
@@ -1986,9 +1982,10 @@ class Sprite(object):
         if (r == 0):
           Key = PollKeyboard()
         
-
-        
   
+
+
+
   def ScrollAcrossScreen(self,h,v,direction,ScrollSleep):
     #print ("--ScrollAcrossScreen--")
     #print ("width height",self.width,self.height)
@@ -2001,7 +1998,7 @@ class Sprite(object):
 
 
   def DisplayNoBlack(self,h1,v1):
-    x = 0,
+    x = 0
     y = 0
 
     #print ("Display:",self.width, self.height, self.r, self.g, self.b,v1,h1)
