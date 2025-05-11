@@ -35,13 +35,13 @@ from bs4 import BeautifulSoup
 #Variable declaration section
 #---------------------------------------
 
-ConfigFileName = "FlightConfig.ini"
-ScrollSleep = 0.03
-TerminalTypeSpeed = 0
-TerminalScrollSpeed = 0
-CursorRGB = (0, 0, 0)
-CursorDarkRGB = (0, 0, 0)
-LastGetFlightsTime = time.time()
+ConfigFileName        = "FlightConfig.ini"
+ScrollSleep           = 0.02
+TerminalTypeSpeed     = 0
+TerminalScrollSpeed   = 0
+CursorRGB             = (0, 0, 0)
+CursorDarkRGB         = (0, 0, 0)
+LastGetFlightsTime    = time.time()
 GetFlightsWaitMinutes = 5
 
 
@@ -90,9 +90,10 @@ DEFAULT_HEADERS = {
 
 def GenerateRouteString(Hex, CallSign):
 
-    RouteString = ''
-    DepartureAirport = 'N/A'
-    ArrivalAirport   = 'N/A'
+    RouteString      = ''
+    DepartureAirport = '?'
+    ArrivalAirport   = '?'
+    DepartureCountry = '?'
 
     try:
 
@@ -102,6 +103,8 @@ def GenerateRouteString(Hex, CallSign):
 
         DepartureDetails = GetAirport(Departure)
         DepartureAirport = DepartureDetails['city']
+        DepartureCountry = DepartureDetails['country']
+        
         print(f"DepartureDetails:{DepartureDetails}")
         print(f"DepartureAirport: {DepartureAirport}")
     except Exception as e:
@@ -113,7 +116,9 @@ def GenerateRouteString(Hex, CallSign):
         print(f"ArrivalDetails:{ArrivalDetails}")
         print(f"ArrivalAirport: {ArrivalAirport}")
         
-        RouteString = f"Dep: {DepartureAirport} Arr: {ArrivalAirport} "
+        RouteString = f"{DepartureAirport} --> {ArrivalAirport} "
+        if (DepartureCountry != 'Canada'):
+          RouteString = RouteString + f' {DepartureCountry}'
         print(f"RouteString: {RouteString}")
         print(f"[Route Lookup] Hex: {Hex}, CallSign: {CallSign} → {RouteString}")
         print("--Route------------------------")
@@ -693,7 +698,6 @@ while True:
   #--------------------------------------------------
   #Create scrolling text with additional information
   #--------------------------------------------------
-  LED.ShowScrollingBanner2(RouteString,(100,150,0),ScrollSpeed=ScrollSleep,v=26)
   LED.ShowScrollingBanner2(RouteString,(100,150,0),ScrollSpeed=ScrollSleep,v=26)
  
 

@@ -90,6 +90,10 @@ from random import randint
 import argparse
 import copy
 import numpy
+from numba import njit
+import numpy as np
+
+
 import math
 import subprocess
 import traceback
@@ -421,7 +425,7 @@ options.cols = 64
 options.chain_length = 1
 options.parallel = 1
 options.hardware_mapping = 'adafruit-hat'       # Adafruit HAT specific
-options.gpio_slowdown = 3                       # Adjust if you see flicker
+options.gpio_slowdown = 4                       # Adjust if you see flicker
 options.brightness = 100                         # Keep this moderate
 options.pwm_bits = 11                           # Lower for better timing
 options.pwm_lsb_nanoseconds = 500               # Tweak this if needed
@@ -1686,9 +1690,16 @@ class Ship(object):
 
 
 
+
+
+@njit
+def compute_scroll_positions(start_h, moves, modifier):
+    return np.array([start_h + i * modifier for i in range(moves)])
   
   
 class Sprite(object):
+  
+
   def __init__(self,width,height,r,g,b,grid=[]):
     self.width  = width
     self.height = height
@@ -1838,7 +1849,7 @@ class Sprite(object):
           TheMatrix.SetPixel(x+h1,y+v1,0,0,0)
 
     
-  def Erase(self,h1,v1):
+  def Erase_old(self,h1,v1):
     #This function draws a black sprite, erasing the sprite.  This may be useful for
     #a future "floating over the screen" type of sprite motion
     #It is pretty fast now, seems just as fast as blanking whole screen using off() or clear()
@@ -1897,20 +1908,18 @@ class Sprite(object):
 
 
 
-  def Scroll(self,h,v,direction,moves,delay):
+  def Scroll_old(self,h,v,direction,moves,delay):
     global Canvas
 
     #When we scroll, we want to write to the canvas first, then swap it with
     #the active display.  However, we want to copy the active display first
     #so we can write to the canvas and not lose what was on the screen or get
     #flickering.
-
     
 
     #print("Entering Scroll")
     x = 0
     oldh = 0
-    #Buffer = copy.deepcopy(unicorn.get_pixels())
     
     #modifier is used to increment or decrement the location
     if direction == "right" or direction == "down":
@@ -1983,6 +1992,65 @@ class Sprite(object):
           Key = PollKeyboard()
         
   
+
+  def Scroll(self, start_h=None, start_v=None, direction="right", moves=1, sleep=0.01):
+        #AI created this one, but it flickers
+        global Canvas, TheMatrix
+
+        if start_h is not None:
+            self.h = start_h
+        if start_v is not None:
+            self.v = start_v
+
+        # Sync display and buffer once before scrolling
+        TempCanvas = TheMatrix.SwapOnVSync(Canvas)
+        Canvas = TheMatrix.SwapOnVSync(TempCanvas)
+        Canvas = TempCanvas
+
+        if direction == "right":
+            modifier = 1
+            axis = 'h'
+        elif direction == "left":
+            modifier = -1
+            axis = 'h'
+        elif direction == "down":
+            modifier = 1
+            axis = 'v'
+        elif direction == "up":
+            modifier = -1
+            axis = 'v'
+        else:
+            modifier = 1
+            axis = 'h'
+
+        start_pos = self.h if axis == 'h' else self.v
+        positions = compute_scroll_positions(start_pos, moves, modifier)
+
+        for pos in positions:
+            self.Erase(Canvas)
+            if axis == 'h':
+                self.h = pos
+            else:
+                self.v = pos
+            self.DisplayToCanvas(Canvas)
+            time.sleep(sleep)
+
+        # Swap once at the end of scroll
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+
+  def Erase(self, Canvas):
+        for count in range(self.width * self.height):
+            y, x = divmod(count, self.width)
+            if self.grid[count] == 1:
+                Canvas.SetPixel(self.h + x, self.v + y, 0, 0, 0)
+
+  def DisplayToCanvas(self, Canvas):
+        for count in range(self.width * self.height):
+            y, x = divmod(count, self.width)
+            if self.grid[count] == 1:
+                setpixelCanvas(self.h + x, self.v + y, self.r, self.g, self.b)
+
+
 
 
 
