@@ -94,6 +94,8 @@ def GenerateRouteString(Hex, CallSign):
     DepartureAirport = '?'
     ArrivalAirport   = '?'
     DepartureCountry = '?'
+    ArrivalCountry   = '?'
+    
 
     try:
 
@@ -113,12 +115,30 @@ def GenerateRouteString(Hex, CallSign):
     try:    
         ArrivalDetails = GetAirport(Arrival)
         ArrivalAirport = ArrivalDetails['city']
+        ArrivalCountry = ArrivalDetails['country']
+
         print(f"ArrivalDetails:{ArrivalDetails}")
         print(f"ArrivalAirport: {ArrivalAirport}")
         
-        RouteString = f"{DepartureAirport} --> {ArrivalAirport} "
+
+
+
+
         if (DepartureCountry != 'Canada' and DepartureCountry != '?'):
-          RouteString = RouteString + f' {DepartureCountry}'
+          RouteString = f"{DepartureAirport} ({DepartureCountry}) --> "
+        elif (DepartureCountry == '?'):
+          RouteString = "Heading to "
+        else:
+          RouteString = f"{DepartureAirport} --> "
+
+        if (ArrivalCountry != 'Canada' and ArrivalCountry != '?'):
+          RouteString = RouteString +  f"{ArrivalAirport} ({ArrivalCountry})"
+        else:
+          RouteString = RouteString + f"{ArrivalAirport}"
+        
+
+
+
         print(f"RouteString: {RouteString}")
         print(f"[Route Lookup] Hex: {Hex}, CallSign: {CallSign} → {RouteString}")
         print("--Route------------------------")
