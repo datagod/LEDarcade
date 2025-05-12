@@ -81,6 +81,8 @@ DEFAULT_HEADERS = {
 
 
 
+FlightRouteCache = {}
+
 
 
 #-------------------------------------------------------------------------------
@@ -236,19 +238,28 @@ def extract_airports_from_url(url):
     departure_airport = path_parts[-2]
     arrival_airport = path_parts[-1]
 
+
+
     return departure_airport, arrival_airport
 
 
 
 def get_flight_origin_destination(hex_code, CallSign):
+    global FlightRouteCache
+
+    cache_key = (hex_code.upper(), CallSign.upper())
+    if cache_key in FlightRouteCache:
+        print("** CACHE HIT **")
+        print(f"Cache Key: {cache_key}")
+        return FlightRouteCache[cache_key]
+
+    
     try:
         dep = ''
         arr = ''
 
         # Step 1: Construct URL
         url = f"https://flightaware.com/live/modes/{hex_code.lower()}/ident/{CallSign}/redirect"
-
-
         
         headers = {"User-Agent": "Mozilla/5.0"}
         print(f"[DEBUG] Requesting URL: {url}")
@@ -284,17 +295,12 @@ def get_flight_origin_destination(hex_code, CallSign):
             print(f"[DEBUG] Found route element: {route_summary}")
             text = route_summary.get_text(" ", strip=True)
             print(f"[DEBUG] Extracted text: {text}")
+            FlightRouteCache[cache_key] = (text, dep, arr)
             return text, dep, arr
         else:
             print("[DEBUG] Route summary div not found.")
+            FlightRouteCache[cache_key] = ("Route info not found", dep, arr)
             return "Route info not found", dep, arr
-
-
-
-
-
-
-
 
 
     except Exception as e:
@@ -490,12 +496,12 @@ def GetNearbyFlights(DetailedFlightList):
         i += 1
 
     if ClosestFlight >= 0:
-        flight = DetailedFlightList[ClosestFlight]
-        Flight   = flight['CallSign'] or "UNKNOWN"
-        CallSign = flight['CallSign'] or "UNKNOWN"
-        Category  = flight.get('category', 'Unknown')
-        Distance  = ShortestDistance
-        Speed     = flight['ground_speed'] * 1.852 if flight['ground_speed'] else 0
+        flight    = DetailedFlightList[ClosestFlight]
+        Flight    = flight['CallSign'] or "UNKNOWN"
+        CallSign  = flight['CallSign'] or "UNKNOWN"
+        Category  = flight['category'] or 'Unknown'
+        Distance  = ShortestDistance or 'UNKNOWN'
+        Speed     = flight['ground_speed'] * 1.852 if flight['ground_speed'] else '?'
         Squawk    = flight['squawk'] or "0000"
         Hex       = flight['hex'] or "UNKNOWN"
         AircraftCount = i

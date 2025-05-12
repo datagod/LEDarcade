@@ -252,8 +252,26 @@ OutOfBoundsObject.name = 'OutOfBounds'
 
 
 
+#-----------------------------
+# LEDarcade Starup Banner   --
+#-----------------------------
 
 
+print("\n" + "=" * 65)
+print("🚀 LEDarcade Initialized")
+print("=" * 65)
+print("A retro-inspired LED matrix graphics engine.")
+print("Created by William McEvoy (@datagod) for Raspberry Pi systems.")
+print("Features:")
+print(" - Real-time graphics and animations")
+print(" - Flight tracking, gaming, and Twitch integrations")
+print(" - Supports 32x32, 32x64, 32x128 LED panel arrays")
+print(" - Easily extensible with sprite and animation APIs")
+print("-------------------------------------------------------------")
+print("Explore the pixel universe with LEDarcade!")
+print("=" * 65 + "\n")
+print("")
+print("")
 
 
 #-----------------------------
@@ -12772,6 +12790,11 @@ def CreateBannerSprite(TheMessage):
   #We need to dissect the message and build our banner sprite one letter at a time
   #We need to initialize the banner sprite object first, so we pick the first letter
   x = -1
+
+  if (TheMessage == None):
+        TheMessage = "UNKNOWN"
+    
+
   TheMessage = TheMessage.upper()
   
   if (len(TheMessage) == 1):
