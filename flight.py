@@ -447,7 +447,7 @@ def GetFlightsInBounds(_unused=None):
                 'altitude': ac.get('alt_baro', ac.get('alt_geom', 0)),
                 'ground_speed': ac.get('gs', 0),
                 'squawk': ac.get('squawk', '0000'),
-                'CallSign': ac.get('flight', 'UNKNOWN').strip(),
+                'CallSign': ac.get('flight', ac.get('hex', 'UNKNOWN') ).strip(),
                 'track': ac.get('track', 0),
                 'id': ac.get('hex', ''),
                 'category': decode_aircraft_category(ac.get('category')),
