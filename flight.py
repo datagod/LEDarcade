@@ -48,7 +48,6 @@ GetFlightsWaitMinutes = 5
 URL = ''
 BaseLat = 0.0
 BaseLon = 0.0
-Bounds = ''
 Dump1090URL = ''
 
 
@@ -337,25 +336,24 @@ def get_enroute_info(flightaware_url):
 
 
 def decode_aircraft_category(raw_category):
-    numeric_map = {
-        0: "No Info",
-        1: "Light (< 15.5k lbs)",
-        2: "Small (15.5k–75k lbs)",
-        3: "Large (75k–300k lbs)",
-        4: "High Vortex",
-        5: "Heavy (> 300k lbs)",
-        6: "High Performance",
-        7: "Rotorcraft",
-        8: "Glider",
-        9: "Lighter-than-air",
-        10: "Parachutist",
-        11: "Ultralight",
-        12: "Reserved",
-        13: "UAV",
-        14: "Spacecraft"
-    }
+    print("Raw Category: ",raw_category)
     
-    letter_map = {
+    category_map = {
+        '0': "No Info",
+        '1': "Light (< 15.5k lbs)",
+        '2': "Small (15.5k–75k lbs)",
+        '3': "Large (75k–300k lbs)",
+        '4': "High Vortex",
+        '5': "Heavy (> 300k lbs)",
+        '6': "High Performance",
+        '7': "Rotorcraft",
+        '8': "Glider",
+        '9': "Lighter-than-air",
+        '10': "Parachutist",
+        '11': "Ultralight",
+        '12': "Reserved",
+        '13': "UAV",
+        '14': "Spacecraft",
         "A0": "No Info",
         "A1": "Light",
         "A2": "Small",
@@ -366,12 +364,8 @@ def decode_aircraft_category(raw_category):
         "A7": "Rotorcraft"
     }
 
-    if isinstance(raw_category, int):
-        return numeric_map.get(raw_category, "Unknown")
-    elif isinstance(raw_category, str):
-        return letter_map.get(raw_category.upper(), f"Unknown ({raw_category})")
-    return "Unknown"
-
+    return category_map.get(raw_category, raw_category)
+    
 
 
 
@@ -392,7 +386,7 @@ GetFlightsWaitMinutes = 5
 URL = ''
 BaseLat = 0.0
 BaseLon = 0.0
-Bounds = ''
+#Bounds = ''
 Dump1090URL = ''
 
 def LoadConfigFile():
@@ -408,14 +402,13 @@ def LoadConfigFile():
         URL = KeyFile.get("FLIGHT", "URL", fallback="")
         BaseLat = float(KeyFile.get("FLIGHT", "BaseLat"))
         BaseLon = float(KeyFile.get("FLIGHT", "BaseLon"))
-        Bounds = KeyFile.get("FLIGHT", "Bounds")
+        #Bounds = KeyFile.get("FLIGHT", "Bounds")
         Dump1090URL = KeyFile.get("FLIGHT", "Dump1090URL", fallback="http://localhost:8080/data/aircraft.json")
 
         print("---------------------------------------------")
         print(f"URL:            {URL}")
         print(f"BaseLat:        {BaseLat}")
         print(f"BaseLon:        {BaseLon}")
-        print(f"Bounds:         {Bounds}")
         print(f"Dump1090URL:    {Dump1090URL}")
         print("---------------------------------------------")
     else:
@@ -430,43 +423,16 @@ def LoadConfigFile():
 
 
 
-
-def GetFlightsInBounds(Bounds):
+def GetFlightsInBounds(_unused=None):
     print("\n--GetFlightsInBounds--")
-    print(f"Bounds: {Bounds}")
-    
     try:
         print(f"Fetching data from: {Dump1090URL}")
         response = requests.get(Dump1090URL, timeout=5)
-        #print(f"HTTP Status Code: {response.status_code}")
-        #print(f"Raw Response: {response.text}")
         response.raise_for_status()
         aircraft_list = response.json()
-        #print(f"Aircraft List: {aircraft_list}")
-        
-        # Log detailed aircraft data
-        #print("\n--Aircraft Details--")
         aircraft_data = aircraft_list.get('aircraft', [])
         print(f"Total Aircraft: {len(aircraft_data)}")
-        #for i, ac in enumerate(aircraft_data):
-            #print(f"Aircraft {i}:")
-            #print(f"  Hex: {ac.get('hex', 'N/A')}")
-            #print(f"  Lat: {ac.get('lat', 'N/A')}")
-            #print(f"  Lon: {ac.get('lon', 'N/A')}")
-            #print(f"  Altitude: {ac.get('altitude', 'N/A')}")
-            #print(f"  Speed: {ac.get('speed', 'N/A')}")
-            #print(f"  Squawk: {ac.get('squawk', 'N/A')}")
-            #print(f"  Flight: {ac.get('flight', 'N/A')}")
-            #print(f"  Track: {ac.get('track', 'N/A')}")
-            #print(f"  Category: {ac.get('category', 'N/A')}")
-            
-            #print(f"  All Keys: {list(ac.keys())}")
-        
-        lat1, lat2, lon1, lon2 = map(float, Bounds.split(','))
-        lat_min, lat_max = min(lat1, lat2), max(lat1, lat2)
-        lon_min, lon_max = min(lon1, lon2), max(lon1, lon2)
-        print(f"\nBounds Filter: Lat [{lat_min}, {lat_max}], Lon [{lon_min}, {lon_max}]")
-        
+
         filtered_aircraft = [
             {
                 'hex': ac.get('hex', ''),
@@ -479,61 +445,20 @@ def GetFlightsInBounds(Bounds):
                 'track': ac.get('track', 0),
                 'id': ac.get('hex', ''),
                 'category': decode_aircraft_category(ac.get('category')),
-
             }
             for ac in aircraft_data
             if 'lat' in ac and 'lon' in ac
-            and isinstance(ac['lat'], (int, float)) and isinstance(ac['lon'], (int, float))
-            and lat_min <= ac['lat'] <= lat_max
-            and lon_min <= ac['lon'] <= lon_max
-        ]        
-        # Log aircraft excluded by bounds
-        excluded_aircraft = [
-            ac for ac in aircraft_data
-            if 'lat' in ac and 'lon' in ac
-            and isinstance(ac['lat'], (int, float)) and isinstance(ac['lon'], (int, float))
-            and not (lat_min <= ac['lat'] <= lat_max and lon_min <= ac['lon'] <= lon_max)
+                and isinstance(ac['lat'], (int, float))
+                and isinstance(ac['lon'], (int, float))
         ]
-        if excluded_aircraft:
-            print("\n--Excluded Aircraft (Outside Bounds)--")
-            for i, ac in enumerate(excluded_aircraft):
-                print(f"Excluded Aircraft {i}:")
-                print(f"  Hex: {ac.get('hex', 'N/A')}")
-                print(f"  Lat: {ac.get('lat', 'N/A')}")
-                print(f"  Lon: {ac.get('lon', 'N/A')}")
-        
-        
-        
-        
-        # Collect and print all raw category codes
-        raw_categories = set()
-        for ac in aircraft_data:
-            if 'category' in ac:
-                raw_categories.add(ac['category'])
 
-        print("\n--Unique Raw Category Codes Detected--")
-        for cat in sorted(raw_categories):
-            print(f"  Category: {cat}")
-
-        
-        
-        
-        
-        #print(f"\nFiltered Aircraft: {filtered_aircraft}")
-        print(f"Flights: {len(filtered_aircraft)}")
-        if not filtered_aircraft and aircraft_data:
-            print("Warning: No aircraft within bounds. Check Bounds or aircraft coordinates.")
-        elif not aircraft_data:
-            print("Warning: No aircraft data in JSON response. Check Dump1090 feed.")
-        
-
-
-
+        print(f"Returning {len(filtered_aircraft)} aircraft")
         return filtered_aircraft
     except Exception as e:
         print(f"Error fetching Dump1090 data: {e}")
         return []
-
+              
+        
 
 
 
@@ -575,6 +500,10 @@ def GetNearbyFlights(DetailedFlightList):
         Hex       = flight['hex'] or "UNKNOWN"
         AircraftCount = i
         Hex = flight['hex'].upper()
+
+        if Flight == 'UNKNOWN':
+          Flight = CallSign
+
 
         print("\n** Closest Aircraft **")
         print(f'Record:   {ClosestFlight}')
@@ -711,7 +640,7 @@ DetailedFlightList = []
 
 
 while True:
-  FlightList    = GetFlightsInBounds(Bounds)
+  FlightList    = GetFlightsInBounds()
   Hex, CallSign = GetNearbyFlights(FlightList)
   RouteString   = GenerateRouteString(Hex,CallSign)
     
