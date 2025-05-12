@@ -1,9 +1,78 @@
+# =============================================================================
+#  FLIGHT TRACKER + LED DISPLAY
+# =============================================================================
+#
+#  Title:      LEDarcade Flight Tracker Integration
+#  Author:     William McEvoy (github.com/datagod)
+#  Project:    LEDarcade - Raspberry Pi Powered LED Matrix Display Suite
+#  License:    Non-commercial use only (contact for commercial licensing)
+#
+# -----------------------------------------------------------------------------
+#  OVERVIEW:
+#  ----------------------------------------------------------------------------
+#  This program combines real-time aircraft data from a local ADS-B receiver
+#  (via dump1090), global flight route lookup (via FlightAware), and dynamic
+#  pixel rendering (via LEDarcade) to provide a real-time aircraft proximity
+#  display on a connected LED matrix panel.
+#
+#  Closest aircraft are identified using geographic distance calculations and
+#  presented visually with scrolling route banners and static telemetry such as
+#  squawk, category, speed, and callsign.
+#
+# -----------------------------------------------------------------------------
+#  FEATURES:
+#  ----------------------------------------------------------------------------
+#  ✔ Local aircraft detection using dump1090 JSON endpoint
+#  ✔ Distance calculations using geopy's geodesic method
+#  ✔ Dynamic rendering of aircraft telemetry to an LED matrix
+#  ✔ Real-time route info scraping from FlightAware via HTTPS redirect tracing
+#  ✔ Configurable via `FlightConfig.ini` with base lat/lon and data URLs
+#  ✔ Robust airport lookup using open-source airport dataset (airports.dat)
+#  ✔ Fallback handling and display logic for untracked/missing aircraft data
+#
+# -----------------------------------------------------------------------------
+#  DEPENDENCIES:
+#  ----------------------------------------------------------------------------
+#  - Python 3.x
+#  - LEDarcade library (github.com/datagod/LEDarcade)
+#  - geopy               → `sudo pip3 install geopy`
+#  - FlightRadar24API    → `sudo pip3 install FlightRadar24API`
+#  - requests
+#  - BeautifulSoup (bs4)
+#  - configparser
+#
+# -----------------------------------------------------------------------------
+#  FILES & RESOURCES:
+#  ----------------------------------------------------------------------------
+#  - FlightConfig.ini         : contains local config (lat/lon, dump1090 URL)
+#  - ./localdata/airports.dat : source file for airport city/country lookups
+#
+# -----------------------------------------------------------------------------
+#  USAGE:
+#  ----------------------------------------------------------------------------
+#  1. Ensure dump1090 is installed and running on your Pi (or host system).
+#  2. Edit `FlightConfig.ini` with correct `BaseLat`, `BaseLon`, and URLs.
+#  3. Place `airports.dat` in `./localdata/`
+#  4. Run this script:
+#     $ python3 flighttracker.py
+#  5. Watch your LED matrix update in real-time with aircraft and route info.
+#
+# -----------------------------------------------------------------------------
+#  KNOWN LIMITATIONS:
+#  ----------------------------------------------------------------------------
+#  ✘ Relies on web scraping from FlightAware, which is brittle to HTML changes
+#  ✘ Only the single closest aircraft is shown per refresh
+#  ✘ Some local/military flights may not appear online (FLARM, encrypted modes)
+#
+# -----------------------------------------------------------------------------
+#  CREDITS:
+#  ----------------------------------------------------------------------------
+#  This module is part of the larger LEDarcade project.
+#  Huge thanks to open data providers: FlightAware, OpenFlights, and the FOSS
+#  community behind geopy, BeautifulSoup, and Raspberry Pi.
+#
+# =============================================================================
 
-'''
-Requirements: geopy
-> sudo pip3 install geopy
-> sudo pip3 install FlightRadar24API
-'''
 
 
 import os
@@ -35,7 +104,6 @@ from bs4 import BeautifulSoup
 #Variable declaration section
 #---------------------------------------
 
-ConfigFileName        = "FlightConfig.ini"
 ScrollSleep           = 0.02
 TerminalTypeSpeed     = 0
 TerminalScrollSpeed   = 0
@@ -61,8 +129,6 @@ AirportDict           = {}
 
 
 
-#Files
-ConfigFileName = "FlightConfig.ini" 
 
 
 
@@ -501,7 +567,8 @@ def GetNearbyFlights(DetailedFlightList):
         CallSign  = flight['CallSign'] or "UNKNOWN"
         Category  = flight['category'] or 'Unknown'
         Distance  = ShortestDistance or 'UNKNOWN'
-        Speed     = flight['ground_speed'] * 1.852 if flight['ground_speed'] else '?'
+        Speed     = flight['ground_speed'] * 1.852 if flight['ground_speed'] else 0
+        Speed     = f"{Speed:.2f}"
         Squawk    = flight['squawk'] or "0000"
         Hex       = flight['hex'] or "UNKNOWN"
         AircraftCount = i
@@ -517,7 +584,7 @@ def GetNearbyFlights(DetailedFlightList):
         print(f'Flight:   {Flight}')
         print(f'Category: {Category}')
         print(f'Distance: {Distance:.2f} km')
-        print(f'Speed:    {Speed:.2f} km/h')
+        print(f'Speed:    {Speed} km/h')
         print(f'Squawk:   {Squawk}')
         print(f'Aircraft: {AircraftCount}')
 
@@ -533,7 +600,7 @@ def GetNearbyFlights(DetailedFlightList):
 
         ValueFlight = LED.CreateBannerSprite(Flight)
         ValueDistance = LED.CreateBannerSprite(f"{Distance:.2f}")
-        ValueSpeed = LED.CreateBannerSprite(f"{Speed:.1f}")
+        ValueSpeed = LED.CreateBannerSprite(f"{Speed}")
         ValueSquawk = LED.CreateBannerSprite(Squawk)
         ValueAircraftCount = LED.CreateBannerSprite(str(AircraftCount))
         ValueCategory = LED.CreateBannerSprite(Category)
@@ -584,78 +651,84 @@ def GetFlightDetails(FlightList):
 
 
 
-#------------------------------------------------------------------------------
-#  __  __    _    ___ _   _     ____  _____ ____ _____ ___ ___  _   _
-# |  \/  |  / \  |_ _| \ | |   / ___|| ____/ ___|_   _|_ _/ _ \| \ | |
-# | |\/| | / _ \  | ||  \| |   \___ \|  _|| |     | |  | | | | |  \| |
-# | |  | |/ ___ \ | || |\  |    ___) | |__| |___  | |  | | |_| | |\  |
-# |_|  |_/_/   \_\___|_| \_|   |____/|_____\____| |_| |___\___/|_| \_|
-#
-#------------------------------------------------------------------------------
+
+
+
+if __name__ == "__main__":
+
+
+    #------------------------------------------------------------------------------
+    #  __  __    _    ___ _   _     ____  _____ ____ _____ ___ ___  _   _
+    # |  \/  |  / \  |_ _| \ | |   / ___|| ____/ ___|_   _|_ _/ _ \| \ | |
+    # | |\/| | / _ \  | ||  \| |   \___ \|  _|| |     | |  | | | | |  \| |
+    # | |  | |/ ___ \ | || |\  |    ___) | |__| |___  | |  | | |_| | |\  |
+    # |_|  |_/_/   \_\___|_| \_|   |____/|_____\____| |_| |___\___/|_| \_|
+    #
+    #------------------------------------------------------------------------------
 
 
 
 
 
-print ("")
-print ("")
-print ("---------------------------------------------------------------")
-print ("Flight - Display nearby aircraft                               ")
-print ("")
-print ("BY DATAGOD")
-print ("")
-print ("This program access a local dump1090 installation to get a     ")
-print ("list of local aircraft.  It also gets a list of aircraft from  ")
-print ("flightradar24 which has more details.                          ")
-print ("There are some local flights which may not appear in           ")
-print ("the online data (i.e. flightradar24 doesn't track military)    ")
-print ("---------------------------------------------------------------")
-print ("")
-print ("")
+    print ("")
+    print ("")
+    print ("---------------------------------------------------------------")
+    print ("Flight - Display nearby aircraft                               ")
+    print ("")
+    print ("BY DATAGOD")
+    print ("")
+    print ("This program access a local dump1090 installation to get a     ")
+    print ("list of local aircraft.  It also gets a list of aircraft from  ")
+    print ("flightradar24 which has more details.                          ")
+    print ("There are some local flights which may not appear in           ")
+    print ("the online data (i.e. flightradar24 doesn't track military)    ")
+    print ("---------------------------------------------------------------")
+    print ("")
+    print ("")
 
-LED.ClearBigLED()
-LED.ClearBuffers()
-CursorH = 0
-CursorV = 0
+    LED.ClearBigLED()
+    LED.ClearBuffers()
+    CursorH = 0
+    CursorV = 0
 
-print ("Loading airports")
-AirportDict = LoadAirportDict()
+    print ("Loading airports")
+    AirportDict = LoadAirportDict()
 
-LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-    LED.ScreenArray, "LOADING CONFIG FILES", CursorH=CursorH, CursorV=CursorV,
-    MessageRGB=(0, 150, 0), CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0),
-    StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
-)
-
-
-LoadConfigFile()
-
-LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-    LED.ScreenArray, "GETTING LIST OF FLIGHTS FROM DUMP1090", CursorH=CursorH, CursorV=CursorV,
-    MessageRGB=(0, 150, 0), CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0),
-    StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
-)
-
-LED.ClearBigLED()
-LED.ClearBuffers()
+    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+        LED.ScreenArray, "LOADING CONFIG FILES", CursorH=CursorH, CursorV=CursorV,
+        MessageRGB=(0, 150, 0), CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0),
+        StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
+    )
 
 
+    LoadConfigFile()
 
-# Initialize DetailedFlightList
-DetailedFlightList = []
+    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+        LED.ScreenArray, "GETTING LIST OF FLIGHTS FROM DUMP1090", CursorH=CursorH, CursorV=CursorV,
+        MessageRGB=(0, 150, 0), CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0),
+        StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
+    )
+
+    LED.ClearBigLED()
+    LED.ClearBuffers()
 
 
-while True:
-  FlightList    = GetFlightsInBounds()
-  Hex, CallSign = GetNearbyFlights(FlightList)
-  RouteString   = GenerateRouteString(Hex,CallSign)
+
+    # Initialize DetailedFlightList
+    DetailedFlightList = []
+
+
+    while True:
+        FlightList    = GetFlightsInBounds()
+        Hex, CallSign = GetNearbyFlights(FlightList)
+        RouteString   = GenerateRouteString(Hex,CallSign)
+            
+        #--------------------------------------------------
+        #Create scrolling text with additional information
+        #--------------------------------------------------
+        LED.ShowScrollingBanner2(RouteString,(100,150,0),ScrollSpeed=ScrollSleep,v=26)
+        time.sleep(1) 
+
+        
     
-  #--------------------------------------------------
-  #Create scrolling text with additional information
-  #--------------------------------------------------
-  LED.ShowScrollingBanner2(RouteString,(100,150,0),ScrollSpeed=ScrollSleep,v=26)
-  time.sleep(1) 
-
-    
-  
 
