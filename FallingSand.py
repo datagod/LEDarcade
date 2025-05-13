@@ -135,3 +135,44 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
             vy = 0.0
 
         particles[i] = [x_new, y_new, vx, vy, r, g, b, lifetime, absorb_count, cooldown]
+
+# === MAIN LOOP ===
+from numba.typed import List
+frame = 1
+try:
+    while True:
+        if frame % SPAWN_RATE == 0:
+            spawn_particle()
+
+        exploded_xs = List.empty_list(types.float32)
+        exploded_ys = List.empty_list(types.float32)
+        update_particles(particles, active_mask, exploded_xs, exploded_ys)
+
+        for idx in range(len(exploded_xs)):
+            x = exploded_xs[idx]
+            y = exploded_ys[idx]
+            for _ in range(PARTICLES_PER_EXPLOSION):
+                spawn_particle_at(x, y)
+
+        for v in range(HEIGHT):
+            for h in range(WIDTH):
+                r, g, b = LED.ScreenArray[v][h]
+                LED.setpixel(h, v, max(0, r - TRAIL_FADE), max(0, g - TRAIL_FADE), max(0, b - TRAIL_FADE))
+
+        for i in range(MAX_PARTICLES):
+            if not active_mask[i]:
+                continue
+            x, y, _, _, r, g, b, _, _, _ = particles[i]
+            if not np.isfinite(x) or not np.isfinite(y):
+                continue
+            h, v = int(round(x)), int(round(y))
+            if 0 <= h < WIDTH and 0 <= v < HEIGHT:
+                LED.setpixel(h, v, int(r), int(g), int(b))
+
+        LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+        frame += 1
+        time.sleep(0.01)
+except KeyboardInterrupt:
+    LED.ClearBuffers()
+    LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+    print("Exiting Falling Sand Game.")
