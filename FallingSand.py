@@ -20,7 +20,8 @@ COEFF_RESTITUTION = 0.6
 ABSORB_LIMIT = 3
 PARTICLES_PER_EXPLOSION = 2
 COOLDOWN_FRAMES = 10
-
+ 
+ 
 # Particle fields:
 # x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown, exploded_flag, explosion_r, explosion_g, explosion_b
 particles = np.zeros((MAX_PARTICLES, 14), dtype=np.float32)
