@@ -7,10 +7,8 @@ from numba.typed import List
 
 # Configuration
 PARTICLE_COLOR = (150, 150, 0)
-EXPLOSION_COLOR = (255, 50, 50)
-COLOR_DELTA_RANGE = 10
-SPAWN_RATE = 30  # spawn a new particle every X frames
-MAX_PARTICLES = 50
+SPAWN_RATE = 30
+MAX_PARTICLES = 10
 MAX_LIFETIME = 200
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
@@ -18,25 +16,19 @@ RADIUS = 1
 GRAVITY = 0.05
 DAMPING = 0.99
 TRAIL_FADE = 15
-COEFF_RESTITUTION = 0.6  # realistic bounce energy retention
+COEFF_RESTITUTION = 0.6
 ABSORB_LIMIT = 3
 PARTICLES_PER_EXPLOSION = 2
-COOLDOWN_FRAMES = 10  # cooldown time before particle can absorb others
+COOLDOWN_FRAMES = 10
 
-# Particle fields: x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown
-particles = np.zeros((MAX_PARTICLES, 10), dtype=np.float32)
+# Particle fields:
+# x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown, exploded_flag, explosion_r, explosion_g, explosion_b
+particles = np.zeros((MAX_PARTICLES, 14), dtype=np.float32)
 active_mask = np.zeros(MAX_PARTICLES, dtype=np.bool_)
 
 @njit
 def clip(x):
     return max(0, min(255, int(x)))
-
-@njit
-def mutate_color(r, g, b):
-    r += random.randint(-COLOR_DELTA_RANGE, COLOR_DELTA_RANGE)
-    g += random.randint(-COLOR_DELTA_RANGE, COLOR_DELTA_RANGE)
-    b += random.randint(-COLOR_DELTA_RANGE, COLOR_DELTA_RANGE)
-    return clip(r), clip(g), clip(b)
 
 @njit
 def find_empty_slot(mask):
@@ -45,17 +37,26 @@ def find_empty_slot(mask):
             return i
     return -1
 
+def random_explosion_color():
+    return (
+        float(random.randint(100, 255)),
+        float(random.randint(0, 200)),
+        float(random.randint(0, 200))
+    )
+
 def spawn_particle():
     i = find_empty_slot(active_mask)
     if i == -1:
         return
-    x = random.uniform(0, WIDTH - 1)
+    x = float(random.uniform(0, WIDTH - 1))
     y = 0.0
-    vx = random.uniform(-1.0, 1.0)
+    vx = float(random.uniform(-1.0, 1.0))
     vy = 0.0
-    r, g, b = PARTICLE_COLOR
-    lifetime = MAX_LIFETIME
-    particles[i] = [x, y, vx, vy, r, g, b, lifetime, 0, 0]
+    r, g, b = map(float, PARTICLE_COLOR)
+    lifetime = float(MAX_LIFETIME)
+    exploded_flag = 0.0
+    explosion_r, explosion_g, explosion_b = 0.0, 0.0, 0.0
+    particles[i] = [x, y, vx, vy, r, g, b, lifetime, 0.0, 0.0, exploded_flag, explosion_r, explosion_g, explosion_b]
     active_mask[i] = True
 
 def spawn_particle_at(x, y):
@@ -64,11 +65,11 @@ def spawn_particle_at(x, y):
         return
     angle = random.uniform(0, 2 * np.pi)
     speed = random.uniform(1.0, 3.0)
-    vx = speed * np.cos(angle)
-    vy = speed * np.sin(angle)
-    r, g, b = EXPLOSION_COLOR
-    lifetime = MAX_LIFETIME
-    particles[i] = [x, y, vx, vy, r, g, b, lifetime, 0, COOLDOWN_FRAMES]
+    vx = float(speed * np.cos(angle))
+    vy = float(speed * np.sin(angle))
+    r, g, b = random_explosion_color()
+    lifetime = float(MAX_LIFETIME)
+    particles[i] = [x, y, vx, vy, r, g, b, lifetime, 0.0, float(COOLDOWN_FRAMES), 1.0, r, g, b]
     active_mask[i] = True
 
 @njit
@@ -77,7 +78,7 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
         if not active_mask[i]:
             continue
 
-        x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown = particles[i]
+        x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown, exploded_flag, explosion_r, explosion_g, explosion_b = particles[i]
 
         lifetime -= 1
         if lifetime <= 0:
@@ -116,24 +117,29 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
                 dist_sq = dx * dx + dy * dy
                 if dist_sq < RADIUS * RADIUS:
                     absorb_count += 1
-                    r, g, b = mutate_color(r, g, b)
                     if absorb_count >= ABSORB_LIMIT:
                         active_mask[i] = False
                         exploded_xs.append(np.float32(x_new))
                         exploded_ys.append(np.float32(y_new))
                         exploded = True
                         break
-                    vx = -vx * COEFF_RESTITUTION
-                    vy = -vy * COEFF_RESTITUTION
+                    else:
+                        vx = -vx * COEFF_RESTITUTION
+                        vy = -vy * COEFF_RESTITUTION
+                        if exploded_flag == 0:
+                            explosion_r = float(random.randint(100, 255))
+                            explosion_g = float(random.randint(0, 200))
+                            explosion_b = float(random.randint(0, 200))
+                        r = explosion_r
+                        g = explosion_g
+                        b = explosion_b
+                        exploded_flag = 1.0
 
         if exploded:
             continue
 
+        particles[i] = [x_new, y_new, vx, vy, r, g, b, lifetime, absorb_count, cooldown, exploded_flag, explosion_r, explosion_g, explosion_b]
 
-        particles[i] = [x_new, y_new, vx, vy, r, g, b, lifetime, absorb_count, cooldown]
-
-# === MAIN LOOP ===
-from numba.typed import List
 frame = 1
 try:
     while True:
@@ -158,7 +164,7 @@ try:
         for i in range(MAX_PARTICLES):
             if not active_mask[i]:
                 continue
-            x, y, _, _, r, g, b, _, _, _ = particles[i]
+            x, y, _, _, r, g, b, _, _, _, _, _, _, _ = particles[i]
             if not np.isfinite(x) or not np.isfinite(y):
                 continue
             h, v = int(round(x)), int(round(y))
