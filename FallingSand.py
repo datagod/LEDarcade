@@ -10,18 +10,17 @@ PARTICLE_COLOR = (150, 150, 0)
 EXPLOSION_COLOR = (255, 50, 50)
 COLOR_DELTA_RANGE = 10
 SPAWN_RATE = 30  # spawn a new particle every X frames
-MAX_PARTICLES = 100
+MAX_PARTICLES = 50
 MAX_LIFETIME = 200
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
 RADIUS = 1
 GRAVITY = 0.05
 DAMPING = 0.99
-STOP_THRESHOLD = 0.1  # minimum speed below which a particle sticks
 TRAIL_FADE = 15
 COEFF_RESTITUTION = 0.6  # realistic bounce energy retention
 ABSORB_LIMIT = 3
-PARTICLES_PER_EXPLOSION = 4
+PARTICLES_PER_EXPLOSION = 2
 COOLDOWN_FRAMES = 10  # cooldown time before particle can absorb others
 
 # Particle fields: x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown
@@ -130,9 +129,6 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
         if exploded:
             continue
 
-        if abs(vx) < STOP_THRESHOLD and abs(vy) < STOP_THRESHOLD:
-            vx = 0.0
-            vy = 0.0
 
         particles[i] = [x_new, y_new, vx, vy, r, g, b, lifetime, absorb_count, cooldown]
 
