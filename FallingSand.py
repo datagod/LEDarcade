@@ -17,7 +17,7 @@ GRAVITY = 0.05
 DAMPING = 0.99
 TRAIL_FADE = 15
 COEFF_RESTITUTION = 0.6
-ABSORB_LIMIT = 3
+ABSORB_LIMIT = 5
 PARTICLES_PER_EXPLOSION = 2
 COOLDOWN_FRAMES = 10
  
@@ -174,7 +174,7 @@ try:
 
         LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
         frame += 1
-        time.sleep(0.01)
+        #time.sleep(0.01)
 except KeyboardInterrupt:
     LED.ClearBuffers()
     LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
