@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import LEDarcade as LED
 import time
 import random
