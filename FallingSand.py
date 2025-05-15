@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import LEDarcade as LED
 import time
 import random
@@ -9,21 +7,22 @@ from numba.typed import List
 
 # Configuration
 PARTICLE_COLOR = (150, 150, 0)
-SPAWN_RATE = 30
-MAX_PARTICLES = 10
-MAX_LIFETIME = 200
+SPAWN_RATE = 60
+MAX_PARTICLES = 20
+MAX_LIFETIME = 1000
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
+SIM_WIDTH = WIDTH * 2
+SIM_HEIGHT = HEIGHT * 2
 RADIUS = 1
 GRAVITY = 0.05
 DAMPING = 0.99
 TRAIL_FADE = 15
 COEFF_RESTITUTION = 0.6
 ABSORB_LIMIT = 5
-PARTICLES_PER_EXPLOSION = 2
+PARTICLES_PER_EXPLOSION = 3
 COOLDOWN_FRAMES = 10
- 
- 
+
 # Particle fields:
 # x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown, exploded_flag, explosion_r, explosion_g, explosion_b
 particles = np.zeros((MAX_PARTICLES, 14), dtype=np.float32)
@@ -51,8 +50,8 @@ def spawn_particle():
     i = find_empty_slot(active_mask)
     if i == -1:
         return
-    x = float(random.uniform(0, WIDTH - 1))
-    y = 0.0
+    x = float(random.uniform((SIM_WIDTH - WIDTH) // 2, (SIM_WIDTH + WIDTH) // 2))
+    y = float(SIM_HEIGHT - HEIGHT - 1)  # 1 pixel above the visible screen
     vx = float(random.uniform(-1.0, 1.0))
     vy = 0.0
     r, g, b = map(float, PARTICLE_COLOR)
@@ -97,13 +96,11 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
         x_new = x + vx
         y_new = y + vy
 
-        if x_new < 0 or x_new >= WIDTH:
-            vx *= -COEFF_RESTITUTION
-            x_new = max(0, min(WIDTH - 1, x_new))
+        # Allow particles to leave the left/right edges
 
-        if y_new >= HEIGHT:
+        if y_new >= SIM_HEIGHT:
             vy = -abs(vy) * COEFF_RESTITUTION
-            y_new = HEIGHT - 1
+            y_new = SIM_HEIGHT - 1
 
         if y_new < 0:
             vy = abs(vy) * COEFF_RESTITUTION
@@ -145,6 +142,11 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
 
 frame = 1
 try:
+    print("Compiling... Please wait for JIT warm-up.")
+    dummy_xs = List.empty_list(types.float32)
+    dummy_ys = List.empty_list(types.float32)
+    update_particles(particles, active_mask, dummy_xs, dummy_ys)
+    print("JIT warm-up complete. Starting simulation.")
     while True:
         if frame % SPAWN_RATE == 0:
             spawn_particle()
@@ -159,6 +161,9 @@ try:
             for _ in range(PARTICLES_PER_EXPLOSION):
                 spawn_particle_at(x, y)
 
+        CAMERA_X = (SIM_WIDTH - WIDTH) // 2
+        CAMERA_Y = SIM_HEIGHT - HEIGHT
+
         for v in range(HEIGHT):
             for h in range(WIDTH):
                 r, g, b = LED.ScreenArray[v][h]
@@ -170,13 +175,13 @@ try:
             x, y, _, _, r, g, b, _, _, _, _, _, _, _ = particles[i]
             if not np.isfinite(x) or not np.isfinite(y):
                 continue
-            h, v = int(round(x)), int(round(y))
+            h = int(round(x)) - CAMERA_X
+            v = int(round(y)) - CAMERA_Y
             if 0 <= h < WIDTH and 0 <= v < HEIGHT:
                 LED.setpixel(h, v, int(r), int(g), int(b))
 
         LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
         frame += 1
-        #time.sleep(0.01)
 except KeyboardInterrupt:
     LED.ClearBuffers()
     LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
