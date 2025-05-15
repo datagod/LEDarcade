@@ -16472,12 +16472,13 @@ async def DisplayDigitalClock(
         for i in range (0,AnimationDelay):
           #print("Checking the EventQueue for any incoming requests")
           QueueCount = EventQueue.qsize()
-          #print("QueueCount: ",QueueCount)
+          print("QueueCount: ",QueueCount)
           if (QueueCount > 0):
             print ("Queue is not empty.  Setting Done = True")
             Done = True
   
-          time.sleep(1)
+          #time.sleep(1)
+          await asyncio.sleep(1)
 
 
 
@@ -16814,7 +16815,7 @@ async def DisplayDigitalClock(
         elapsed_minutes, elapsed_seconds = divmod(rem, 60)
 
         print(datetime.now().strftime('%H:%M:%S'))
-        
+     
 
 
         if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
@@ -16946,7 +16947,8 @@ async def DisplayDigitalClock(
             DotZerkRobotWalking.IncrementFrame()
             CopyAnimatedSpriteToPixelsZoom(DotZerkRobotWalkingSmall,h=40,v=22, ZoomFactor=2)
             DotZerkRobotWalkingSmall.IncrementFrame()
-            time.sleep(0.08)
+            #time.sleep(0.08)
+            await asyncio.sleep(0.08)
           DotZerkRobotWalking.HorizontalFlip()
 
           #Check Time
@@ -17002,7 +17004,8 @@ async def DisplayDigitalClock(
             SmallInvader.IncrementFrame()
             CopyAnimatedSpriteToPixelsZoom(TinyInvader,h=45,v=17, ZoomFactor=2)
             TinyInvader.IncrementFrame()
-            time.sleep(0.08)
+            #time.sleep(0.08)
+            await asyncio.sleep(0.08)
 
           #Check Time
           if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
@@ -17277,7 +17280,8 @@ async def DisplayDigitalClock(
 
 
 
-            time.sleep(0.03)
+            #time.sleep(0.03)
+            await asyncio.sleep(0.03)
           
 
           ClockSprite = CreateClockSprite(hh)
@@ -17411,8 +17415,8 @@ async def DisplayDigitalClock(
               ShipSprites[ship1].IncrementFrame()
               ShipSprites[ship2].IncrementFrame()
               ShipSprites[ship3].IncrementFrame()
-            time.sleep(0.007)
-
+            #time.sleep(0.007)
+            await asyncio.sleep(0.07)
             
 
             #Check Time
@@ -17465,7 +17469,8 @@ async def DisplayDigitalClock(
           for x in range (1,200):
             CopyAnimatedSpriteToPixelsZoom(BigSpiderLegOutSprite,h=0,v=HatHeight-BigSpiderLegOutSprite.height, ZoomFactor=1)
             BigSpiderLegOutSprite.IncrementFrame()
-            time.sleep(0.05)
+            #time.sleep(0.05)
+            await asyncio.sleep(0.05)
           
 
           #Check Time
@@ -17515,6 +17520,25 @@ async def DisplayDigitalClock(
 
     #Starry Night Clock
     elif (ClockStyle == 3):
+
+      #This will end the while loop
+      elapsed_time = time.time() - StartTime
+      elapsed_hours, rem = divmod(elapsed_time, 3600)
+      elapsed_minutes, elapsed_seconds = divmod(rem, 60)
+
+      #print ("StartTime:    ",StartTime, " Now:",time.time())
+      print("ElapsedMinutes: ",elapsed_minutes)
+      if elapsed_minutes >= RunMinutes:
+        Done = True
+
+
+      #Check EventQueue (webhook data from twitch and patreon)
+      #print("Checking the EventQueue for any incoming requests")
+      QueueCount = EventQueue.qsize()
+      #print("QueueCount: ",QueueCount)
+      if (QueueCount > 0):
+        Done = True
+
 
 
       ClockH = HatWidth - (ClockSprite.width * 2)
@@ -17633,7 +17657,10 @@ async def DisplayDigitalClock(
             print ("Queue is not empty.  Setting Done = True")
             Done = True
 
-        time.sleep(ScrollSleep)
+
+
+        #time.sleep(ScrollSleep)
+        await asyncio.sleep(ScrollSleep)
 
 
 
@@ -19001,7 +19028,14 @@ def CreateCreditImage(names):
   #write header
   Text = "PATRONS"
   fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",12)
-  header_width, header_height = draw.textsize(Text, font=fnt)
+  
+
+  #header_width, header_height = draw.textsize(Text, font=fnt)
+
+  bbox = draw.textbbox((0, 0), Text, font=fnt)
+  header_width = bbox[2] - bbox[0]
+  header_height = bbox[3] - bbox[1]
+
   draw.text(
     ( 
       (image_width - header_width) / 2,  text_y_position ),
@@ -19014,7 +19048,11 @@ def CreateCreditImage(names):
 
   #write patron names
   for name in names:
-     text_width, text_height = draw.textsize(name, font=fnt)
+     #text_width, text_height = draw.textsize(name, font=fnt)
+     bbox = draw.textbbox((0, 0), name, font=fnt)
+     text_width = bbox[2] - bbox[0]
+     text_height = bbox[3] - bbox[1]
+
      fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",10)
      draw.text(
        ( 
@@ -19128,7 +19166,12 @@ def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
   #write header
   Text = "WELCOME"
   fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",12)
-  header_width, header_height = draw.textsize(Text, font=fnt)
+  #header_width, header_height = draw.textsize(Text, font=fnt)
+  bbox = draw.textbbox((0, 0), Text, font=fnt)
+  header_width = bbox[2] - bbox[0]
+  header_height = bbox[3] - bbox[1]
+
+  
   draw.text(
     ( 
       (image_width - header_width) / 2,  text_y_position ),
@@ -19152,7 +19195,12 @@ def CreateJustJoinedImage(names=[],ImageName='JustJoined.png'):
       NameFontSize = 11
 
      fnt = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf",NameFontSize)
-     text_width, text_height = draw.textsize(name, font=fnt)
+     #text_width, text_height = draw.textsize(name, font=fnt)
+
+     bbox = draw.textbbox((0, 0), name, font=fnt)
+     text_width = bbox[2] - bbox[0]
+     text_height = bbox[3] - bbox[1]
+
 
      draw.text(
        ( 

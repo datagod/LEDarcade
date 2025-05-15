@@ -4,7 +4,7 @@
 TO DO:
 
 
-The EventSub is so complex to keep going...OATH, reverse DNS, Packet Riot, LetsEncrypt, custom domain....
+The EventSub is so complex to keep going...OAUTH, reverse DNS, Packet Riot, LetsEncrypt, custom domain....
 I might just read the chat and react there.
 
 Read StreamElements messages
@@ -575,6 +575,9 @@ class Bot(commands.Bot ):
     #---------------------------------------
     async def event_message(self, message):
         
+
+        print("Reading chat messages")
+
         # Messages with echo set to True are messages sent by the bot...
         # For now we just want to ignore them...
         if message.echo:
@@ -593,13 +596,6 @@ class Bot(commands.Bot ):
 
         #Log Chat
         print('CHAT| ',author,':',message.content)
-
-
-
-
-
-
-
 
 
         #---------------------------------------
@@ -2260,10 +2256,147 @@ def GetTwitchCounts():
 
 
 
+import requests
+import traceback
+from datetime import datetime
+import LEDarcade as LED
 
+# Globals assumed to be defined somewhere else
+CLOCKBOT_X_CLIENT_ID = ''
+CLOCKBOT_X_SECRET = ''
+CLOCKBOT_X_ACCESS_TOKEN = ''
+BROADCASTER_CHANNEL = ''
+BROADCASTER_ID = ''
+
+GameName = ''
+Title = ''
+PROFILE_IMAGE_URL = ''
+VIEW_COUNT = ''
+StreamStartedAt = ''
+StreamStartedDateTime = ''
+StreamDurationHHMMSS = ''
+StreamType = ''
+ViewerCount = 0
+StreamActive = False
+Followers = 0
+HypeTrainStartTime = ''
+HypeTrainExpireTime = ''
+HypeTrainGoal = ''
+HypeTrainLevel = 0
+HypeTrainTotal = ''
 
 
 def GetBasicTwitchInfo():
+    global CLOCKBOT_X_ACCESS_TOKEN, GameName, Title, PROFILE_IMAGE_URL, VIEW_COUNT
+    global StreamStartedAt, StreamStartedDateTime, StreamDurationHHMMSS, StreamType, ViewerCount, StreamActive
+    global Followers, HypeTrainStartTime, HypeTrainExpireTime, HypeTrainGoal, HypeTrainLevel, HypeTrainTotal
+
+    print("--GetBasicTwitchInfo--")
+
+    # Get OAuth Token
+    print("Get OAUTH ACCESS Token")
+    token_url = "https://id.twitch.tv/oauth2/token"
+    token_data = {
+        'client_id': CLOCKBOT_X_CLIENT_ID,
+        'client_secret': CLOCKBOT_X_SECRET,
+        'grant_type': 'client_credentials'
+    }
+    token_headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+    token_resp = requests.post(url=token_url, data=token_data, headers=token_headers)
+    print("Status Code:", token_resp.status_code)
+    print("Response Text:", token_resp.text)
+
+    try:
+        token_json = token_resp.json()
+        CLOCKBOT_X_ACCESS_TOKEN = token_json.get('access_token', '')
+        if not CLOCKBOT_X_ACCESS_TOKEN:
+            print("ERROR: access_token not found")
+            return
+    except requests.exceptions.JSONDecodeError:
+        print("ERROR: Failed to parse token response")
+        return
+
+    # Get Channel Info
+    print("Get CHANNEL info")
+    user_url = f"https://api.twitch.tv/helix/users?login={BROADCASTER_CHANNEL}"
+    headers = {
+        'Client-ID': CLOCKBOT_X_CLIENT_ID,
+        'Authorization': f'Bearer {CLOCKBOT_X_ACCESS_TOKEN}'
+    }
+
+    user_resp = requests.get(url=user_url, headers=headers)
+    print("Status Code:", user_resp.status_code)
+    print("Response Text:", user_resp.text)
+
+    try:
+        user_data = user_resp.json().get('data', [{}])[0]
+        PROFILE_IMAGE_URL = user_data.get('profile_image_url', '')
+        VIEW_COUNT = user_data.get('view_count', '')
+        broadcaster_id = user_data.get('id', '')
+        if broadcaster_id:
+            global BROADCASTER_ID
+            BROADCASTER_ID = broadcaster_id
+    except Exception as e:
+        LED.ErrorHandler(e, traceback.format_exc(), "Getting CHANNEL info")
+        return
+
+    # Get Broadcaster Info
+    print("Get BROADCASTER info")
+    broadcast_url = f"https://api.twitch.tv/helix/channels?broadcaster_id={BROADCASTER_ID}"
+    broadcast_resp = requests.get(url=broadcast_url, headers=headers)
+    print("Status Code:", broadcast_resp.status_code)
+    print("Response Text:", broadcast_resp.text)
+
+    try:
+        broadcast_data = broadcast_resp.json().get('data', [{}])[0]
+        GameName = broadcast_data.get('game_name', '')
+        Title = broadcast_data.get('title', '')
+    except Exception as e:
+        LED.ErrorHandler(e, traceback.format_exc(), "Getting BROADCASTER info")
+
+
+    # Check Stream Status
+    print("Check STREAM STATUS")
+    stream_url = f"https://api.twitch.tv/helix/streams?user_id={BROADCASTER_ID}"
+    stream_resp = requests.get(url=stream_url, headers=headers)
+    print("Status Code:", stream_resp.status_code)
+    print("Response Text:", stream_resp.text)
+    
+    try:
+        stream_data = stream_resp.json().get('data', [])
+        if stream_data:
+            StreamActive = True
+            stream_info = stream_data[0]
+            StreamStartedAt = stream_info.get('started_at', '')
+            StreamType = stream_info.get('type', '')
+            ViewerCount = stream_info.get('viewer_count', 0)
+
+            if StreamStartedAt:
+                StreamStartedDateTime = datetime.strptime(StreamStartedAt, '%Y-%m-%dT%H:%M:%SZ')
+                hh, mm, ss, StreamDurationHHMMSS = LED.CalculateElapsedTime(StreamStartedDateTime)
+        else:
+            StreamActive = False
+    except Exception as e:
+        LED.ErrorHandler(e, traceback.format_exc(), "Checking STREAM status")
+        StreamActive = False
+
+
+
+    # Stream Summary Output
+    print("---------------------------------------")
+    print("Title:", Title)
+    print("GameName:", GameName)
+    print("StreamStartedAt:", StreamStartedAt)
+    print("StreamDurationHHMMSS:", StreamDurationHHMMSS)
+    print("StreamType:", StreamType)
+    print("ViewerCount:", ViewerCount)
+    print("Followers:", Followers)
+    print("---------------------------------------")
+
+
+
+def GetBasicTwitchInfo_OLD():
     
     #User / Channel Info
     global GameName        
@@ -2296,16 +2429,12 @@ def GetBasicTwitchInfo():
     print ("--GetBasicTwitchInfo--")
 
 
-
-
-
-
-    '''
+    
     #----------------------------------------
     # GET ACCESS TOKEN
     #----------------------------------------
-    print("Get OATH ACCESS Token")
-    API_ENDPOINT = "https://id.twitch.tv/oath2/token"
+    print("Get OAUTH ACCESS Token")
+    API_ENDPOINT = "https://id.twitch.tv/oauth2/token"
     head = {
     'client_id': CLOCKBOT_X_CLIENT_ID,
     'client_secret' : CLOCKBOT_X_SECRET,
@@ -2314,17 +2443,20 @@ def GetBasicTwitchInfo():
 
     print ("URL: ",API_ENDPOINT, 'data:',head)
     r = requests.get(url = API_ENDPOINT, headers = head)
+
+    print("Status Code:", r.status_code)
+    print("Response Headers:", r.headers)
+    print("Response Text:", r.text)
+
+
     results = r.json()
     pprint.pprint(results)
     print(" ")
-    '''
+    
+
 
 
   
-
-
-
-
 
     #----------------------------------------
     # GET CHANNEL INFO
@@ -2862,9 +2994,17 @@ def DisplayPatreon():
 
 
 
+
+'''
+These are part of EventSub and will be removed.
+
+
 #----------------------------------------
 #-- ASYNCIO Functions                  --
 #----------------------------------------
+
+
+
 
 #this allows us to collect data from asynchronous generators
 #Generated by CHATGPT
@@ -2909,7 +3049,7 @@ async def on_hype_train_end(data:dict):
 async def on_channel_subscription_gift(data:dict):
     EventQueue.put(('EVENTSUB_SUBSCRIPTION_GIFT',data))
 
-
+'''
 
 #----------------------------------------
 #-- MULTIPROCESSING Functions          --
@@ -3103,7 +3243,7 @@ def GetAccessTokenUsingOAUTHCode_TheClockBot():
     print("")
     print("")
     print("=================================================================================")
-    print("TWITCH ERROR - Could not extract ACCESS TOKEN from OATH results") 
+    print("TWITCH ERROR - Could not extract ACCESS TOKEN from OAUTH results") 
     print("")
     print(results)
     print("=================================================================================")
@@ -3195,7 +3335,7 @@ def GetAccessTokenUsingRefreshToken_TheClockBot():
     print("")
     print("")
     print("=================================================================================")
-    print("TWITCH ERROR - Could not extract access TOKEN from OATH results") 
+    print("TWITCH ERROR - Could not extract access TOKEN from OAUTH results") 
     print("")
     print(results)
     print("=================================================================================")
@@ -3289,7 +3429,7 @@ def GetAccessTokenUsingOAUTHCode_ClockBotX():
     print("")
     print("")
     print("=================================================================================")
-    print("TWITCH ERROR - Could not extract ACCESS TOKEN from OATH results") 
+    print("TWITCH ERROR - Could not extract ACCESS TOKEN from OAUTH results") 
     print("")
     print(results)
     print("=================================================================================")
@@ -3381,7 +3521,7 @@ def GetAccessTokenUsingRefreshToken_ClockBotX():
     print("")
     print("")
     print("=================================================================================")
-    print("TWITCH ERROR - Could not extract access TOKEN from OATH results") 
+    print("TWITCH ERROR - Could not extract access TOKEN from OAUTH results") 
     print("")
     print(results)
     print("=================================================================================")
@@ -3475,7 +3615,7 @@ LoadConfigFiles()
 
 
 #----------------------------------------
-# USE OATH CODE TO GET NEW TOKEN
+# USE OAUTH CODE TO GET NEW TOKEN
 #----------------------------------------
 
 #This assumes the user has already granted us access via URL and we were given a CODE
@@ -3535,12 +3675,11 @@ else:
 
 
 
-print("")
-print("--Spawning WebHook process--------------")
+#print("")
+#print("--Spawning WebHook process--------------")
 #Spawn the webhook process
 #PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
 #PatreonWebHookProcess.start()
-
 
 # 2023-09-28
 #Temporarily removing webhooks this because it is crazy complex to keep it running
@@ -3548,12 +3687,12 @@ print("--Spawning WebHook process--------------")
 #TwitchEventSubProcess.start()
 
 
-print("----------------------------------------")
+#print("----------------------------------------")
 
 
 
 
-
+'''
 print ("--StartBot--")
 #skip all this if running datagod
 if (BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL != 'XtianNinja'):
@@ -3575,7 +3714,7 @@ if (BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL != 'XtianNinja'):
   IPAddress = LED.ShowIPAddress(Wait=5)
 else:
   print("Skipping boot up sequence")
-
+'''
 
 
 
