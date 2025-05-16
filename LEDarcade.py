@@ -16388,17 +16388,17 @@ async def DisplayDigitalClock(
   ShadowRGB   = ShadowBlue,
   ZoomFactor  = 2,
   AnimationDelay = 10,
-  ScrollSleep    = 0.01,
+  ScrollSleep    = 0.05,
   RunMinutes     = 1,
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
   DisplayNumber2    = 0,
-  EventQueue        = multiprocessing.Manager().Queue()
+  EventQueue        = asyncio.Queue()
+
   ):
 
 
-    
 
     ClearBigLED()
     ClearBuffers()
@@ -16469,23 +16469,27 @@ async def DisplayDigitalClock(
       while (Done == False):
         
         #Check the EventQueue every second, then sleep
+        #We want the clock to be ticking away, and the animation delay indicates how long to wait before
+        #showign the next animation on the screen
+        #we use asyncio to let other processes carry on (such as loading the event queue)
         for i in range (0,AnimationDelay):
           #print("Checking the EventQueue for any incoming requests")
           QueueCount = EventQueue.qsize()
-          print("QueueCount: ",QueueCount)
+          
+          print("QueueCount: ",QueueCount," i:",i)
+          await asyncio.sleep(1)
+          print("I waited...")
+
           if (QueueCount > 0):
             print ("Queue is not empty.  Setting Done = True")
             Done = True
-  
-          #time.sleep(1)
-          await asyncio.sleep(1)
 
 
-
+        #If the time has changed since we started the animation delay loop, update the sprite
         ClockSprite = UpdateClockWithTransition(ClockSprite,hh,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2)
 
 
-        
+        #Pick a random animation        
         r = random.randint(1,11)
         if (r == 1):
           ClockSprite = UpdateClockWithTransition(ClockSprite,hh,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True)
@@ -16736,7 +16740,7 @@ async def DisplayDigitalClock(
             direction     = "left",
             StepsPerFrame = 2,
             ZoomFactor    = 1,
-            sleep         = 0.005
+            sleep         = 0.05
             )
           LightBike.HorizontalFlip()
           MoveAnimatedSpriteAcrossScreenStepsPerFrame(
@@ -16745,7 +16749,7 @@ async def DisplayDigitalClock(
             direction     = "right",
             StepsPerFrame = 2,
             ZoomFactor    = 1,
-            sleep         = 0.005
+            sleep         = 0.05
             )
           LightBike.HorizontalFlip()
 
@@ -16761,7 +16765,7 @@ async def DisplayDigitalClock(
             direction     = "left",
             StepsPerFrame = 2,
             ZoomFactor    = 1,
-            sleep         = 0.003
+            sleep         = 0.03
             )
           LightBike.HorizontalFlip()
 
@@ -16771,7 +16775,7 @@ async def DisplayDigitalClock(
             direction     = "left",
             StepsPerFrame = 2,
             ZoomFactor    = 1,
-            sleep         = 0.005
+            sleep         = 0.05
             )
 
           MoveAnimatedSpriteAcrossScreenStepsPerFrame(
@@ -16780,7 +16784,7 @@ async def DisplayDigitalClock(
             direction     = "right",
             StepsPerFrame = 2,
             ZoomFactor    = 1,
-            sleep         = 0.001
+            sleep         = 0.01
             )
           LightBike.HorizontalFlip()
 
@@ -16891,7 +16895,7 @@ async def DisplayDigitalClock(
 
 
 
-          for x in range (1,500):
+          for x in range (1,5000):
             #RunningMan3Sprite.Erase()
             CopyAnimatedSpriteToPixelsZoom(RunningMan3Sprite,h=-4,v=16, ZoomFactor=1)
             RunningMan3Sprite.IncrementFrame()
@@ -16903,7 +16907,7 @@ async def DisplayDigitalClock(
             #RunningManSprite.EraseFrame(46,14)
             CopyAnimatedSpriteToPixelsZoom(RunningManSprite,h=46,v=16, ZoomFactor=1)
             RunningManSprite.IncrementFrame()
-            #time.sleep(0.001)
+            await asyncio.sleep(0.05)
 
           #Check Time
           if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):

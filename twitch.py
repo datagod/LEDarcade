@@ -179,9 +179,9 @@ HypeTrainTotal       = ''
 
 HatHeight = 32
 HatWidth  = 64
-StreamBrightness = 20
-GifBrightness    = 25
-MaxBrightness    = 80
+StreamBrightness = 80
+GifBrightness    = 80
+MaxBrightness    = 100
 
   
 
@@ -210,9 +210,11 @@ CursorRGB = (0,75,0)
 
 
 #Data structures
-#EventQueue = asyncio.Queue()  #used to store and process webhook messages
-MPM = multiprocessing.Manager()
-EventQueue = MPM.Queue()       #used to store and process webhook messages
+EventQueue = asyncio.Queue()  #used to store and process chat messages
+
+
+#MPM = multiprocessing.Manager()
+#EventQueue = MPM.Queue()       #used to store and process webhook messages
 
 
 
@@ -235,7 +237,7 @@ class Bot(commands.Bot ):
     LastChatInfoTime    = time.time()
     MinutesToWaitBeforeCheckingStream = 5       #check the stream this often
     MinutesToWaitBeforeChatInfo       = 180     #send info message to viewers about clock commands
-    MinutesToWaitBeforeClosing        = 1       #close chat after X minutes of inactivity
+    MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
     #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
     SendStartupMessage  = True
@@ -1493,9 +1495,9 @@ class Bot(commands.Bot ):
         message = "Now scrolling: Most recent viewers".format(ViewerCount)
         await self.Channel.send(message)
 
-      LED.TheMatrix.brightness = StreamBrightness
-      LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
       LED.TheMatrix.brightness = MaxBrightness
+      LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
+      LED.TheMatrix.brightness = StreamBrightness
     
       #clean up the screen using animations
       LED.SweepClean()
