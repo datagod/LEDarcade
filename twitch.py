@@ -210,11 +210,11 @@ CursorRGB = (0,75,0)
 
 
 #Data structures
-EventQueue = asyncio.Queue()  #used to store and process chat messages
+#EventQueue = asyncio.Queue()  #used to store and process chat messages
 
 
-#MPM = multiprocessing.Manager()
-#EventQueue = MPM.Queue()       #used to store and process webhook messages
+MPM = multiprocessing.Manager()
+EventQueue = MPM.Queue() 
 
 
 
@@ -420,15 +420,16 @@ class Bot(commands.Bot ):
             # we want to display a regular clock (random styles) for 1 minutes 
             if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
               #await self.DisplayDigitalClock()
-              self.TwitchTimerTask = asyncio.create_task(self.DisplayDigitalClock())              
-              
-
+              #self.TwitchTimerTask = asyncio.create_task(self.DisplayDigitalClock())              
+              print("Creating multiprocess DisplayDigitalClock()")
+              clock_proc.start()
+              clock_proc_stop()
 
 
           #If the stream is not live, display a regular clock 
           if (StreamActive == False):
             print("StreamActive == False, displaying regular clock")
-            await self.DisplayDigitalClock()
+            clock_proc.start()
             #Check Twitch advanced info 
             await self.CheckStream()
 
@@ -1078,7 +1079,7 @@ class Bot(commands.Bot ):
           ShadowRGB        = LED.ShadowGreen,
           ZoomFactor       = 2,
           AnimationDelay   = self.AnimationDelay,
-          RunMinutes       = 10,
+          RunMinutes       = 1,
           EventQueue       = EventQueue
           )
         print("Clock function completed")
@@ -3612,6 +3613,9 @@ LoadConfigFiles()
 
 
 
+#Spawn a process to run the clock
+#clock_proc = multiprocessing.Process(target=Bot.DisplayDigitalClock())
+  
 
 
 

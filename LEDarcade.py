@@ -114,7 +114,7 @@ import requests
 
 #Asynchronous / Multiprocessing
 import asyncio
-import multiprocessing 
+import multiprocessing as MPM
 
 
 
@@ -16377,7 +16377,7 @@ def UpdateTimerWithTransition(TimerSprite,BannerSprite,h=0,v=0,RGB=HighGreen,Sha
 
 
 #I added the async for twitch.py.  I might need to make a different version for non twitch clocks
-async def DisplayDigitalClock(
+def DisplayDigitalClock(
   ClockStyle  = 1,
   CenterHoriz = False,
   CenterVert  = False,
@@ -16394,7 +16394,7 @@ async def DisplayDigitalClock(
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
   DisplayNumber2    = 0,
-  EventQueue        = asyncio.Queue()
+  EventQueue        = MPM.Queue() 
 
   ):
 
@@ -16471,13 +16471,12 @@ async def DisplayDigitalClock(
         #Check the EventQueue every second, then sleep
         #We want the clock to be ticking away, and the animation delay indicates how long to wait before
         #showign the next animation on the screen
-        #we use asyncio to let other processes carry on (such as loading the event queue)
         for i in range (0,AnimationDelay):
           #print("Checking the EventQueue for any incoming requests")
           QueueCount = EventQueue.qsize()
           
           print("QueueCount: ",QueueCount," i:",i)
-          await asyncio.sleep(1)
+          time.sleep(1)
           print("I waited...")
 
           if (QueueCount > 0):
@@ -16907,7 +16906,7 @@ async def DisplayDigitalClock(
             #RunningManSprite.EraseFrame(46,14)
             CopyAnimatedSpriteToPixelsZoom(RunningManSprite,h=46,v=16, ZoomFactor=1)
             RunningManSprite.IncrementFrame()
-            await asyncio.sleep(0.05)
+            time.sleep(0.05)
 
           #Check Time
           if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
@@ -16952,7 +16951,7 @@ async def DisplayDigitalClock(
             CopyAnimatedSpriteToPixelsZoom(DotZerkRobotWalkingSmall,h=40,v=22, ZoomFactor=2)
             DotZerkRobotWalkingSmall.IncrementFrame()
             #time.sleep(0.08)
-            await asyncio.sleep(0.08)
+            time.sleep(0.08)
           DotZerkRobotWalking.HorizontalFlip()
 
           #Check Time
@@ -17008,8 +17007,7 @@ async def DisplayDigitalClock(
             SmallInvader.IncrementFrame()
             CopyAnimatedSpriteToPixelsZoom(TinyInvader,h=45,v=17, ZoomFactor=2)
             TinyInvader.IncrementFrame()
-            #time.sleep(0.08)
-            await asyncio.sleep(0.08)
+            time.sleep(0.08)
 
           #Check Time
           if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
@@ -17284,8 +17282,8 @@ async def DisplayDigitalClock(
 
 
 
-            #time.sleep(0.03)
-            await asyncio.sleep(0.03)
+            time.sleep(0.03)
+            
           
 
           ClockSprite = CreateClockSprite(hh)
@@ -17419,8 +17417,8 @@ async def DisplayDigitalClock(
               ShipSprites[ship1].IncrementFrame()
               ShipSprites[ship2].IncrementFrame()
               ShipSprites[ship3].IncrementFrame()
-            #time.sleep(0.007)
-            await asyncio.sleep(0.07)
+            time.sleep(0.007)
+            
             
 
             #Check Time
@@ -17473,8 +17471,8 @@ async def DisplayDigitalClock(
           for x in range (1,200):
             CopyAnimatedSpriteToPixelsZoom(BigSpiderLegOutSprite,h=0,v=HatHeight-BigSpiderLegOutSprite.height, ZoomFactor=1)
             BigSpiderLegOutSprite.IncrementFrame()
-            #time.sleep(0.05)
-            await asyncio.sleep(0.05)
+            time.sleep(0.05)
+            
           
 
           #Check Time
@@ -17664,7 +17662,7 @@ async def DisplayDigitalClock(
 
 
         #time.sleep(ScrollSleep)
-        await asyncio.sleep(ScrollSleep)
+        time.sleep(ScrollSleep)
 
 
 
@@ -17683,7 +17681,7 @@ async def DisplayDigitalClock(
 # The calling module will be able to continue to monitor Twitch stream and chat
 # This function will check a global variable to determine if it should exit early
 
-async def DisplayTwitchTimer(
+def DisplayTwitchTimer(
   CenterHoriz = False,
   CenterVert  = False,
   h           = 0,
@@ -17699,7 +17697,7 @@ async def DisplayTwitchTimer(
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
   DisplayNumber2    = 0,
-  EventQueue        = multiprocessing.Manager().Queue()
+  EventQueue        = MPM.Manager().Queue()
   
   ):
     
@@ -17785,7 +17783,7 @@ async def DisplayTwitchTimer(
           Done = True
           TwitchTimerOn = False
           break
-        await asyncio.sleep(1)
+        time.sleep(1)
         
       #check and exit
       if(TwitchTimerOn == False or Done == True):
