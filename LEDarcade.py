@@ -114,7 +114,7 @@ import requests
 
 #Asynchronous / Multiprocessing
 import asyncio
-import multiprocessing as MPM
+#import multiprocessing as MPM
 
 
 
@@ -16394,8 +16394,7 @@ def DisplayDigitalClock(
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
   DisplayNumber2    = 0,
-  EventQueue        = MPM.Queue() 
-
+  EventQueue        = ''
   ):
 
 
@@ -16436,7 +16435,6 @@ def DisplayDigitalClock(
       DateSprite.v =  (v + ClockSprite.height * ZoomFactor) + 4
         
 
-
   
     # Clock at top, random scrolling animations
     if (ClockStyle == 1):
@@ -16451,8 +16449,10 @@ def DisplayDigitalClock(
 
       ScreenArray1 = CopySpriteToScreenArrayZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
       ScreenArray1 = CopySpriteToScreenArrayZoom(ClockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
-      TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=2)
-  
+      try:
+        TransitionBetweenScreenArrays(ScreenArray2,ScreenArray1,TransitionType=2)
+      except Exception as e:
+            print(f"[ERROR] LED.DisplayTwitchTimer crashed: {e}")
 
       #CopySpriteToPixelsZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor,          Fill=False)
       #CopySpriteToPixelsZoom(ClockSprite,h,v,    RGB,      (0,0,0),ZoomFactor=ZoomFactor,Fill=False)
@@ -17700,7 +17700,7 @@ def DisplayTwitchTimer(
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
   DisplayNumber2    = 0,
-  EventQueue        = MPM.Manager().Queue()
+  EventQueue        = ''
   
   ):
     
@@ -17754,10 +17754,12 @@ def DisplayTwitchTimer(
     ScreenArray = CopySpriteToScreenArrayZoom(BannerSprite,BannerSprite.h,BannerSprite.v,BannerSprite.RGB,(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray1)
 
 
-      
-    #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
-    TimerSprite = UpdateTimerWithTransition(TimerSprite,BannerSprite,h,v,    RGB,          ShadowRGB,            ZoomFactor,  Fill=True, TransitionType=2,StartDateTimeUTC = StartDateTimeUTC,ForceUpdate=True)
-    
+    try:  
+      #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=True)
+      TimerSprite = UpdateTimerWithTransition(TimerSprite,BannerSprite,h,v,    RGB,          ShadowRGB,            ZoomFactor,  Fill=True, TransitionType=2,StartDateTimeUTC = StartDateTimeUTC,ForceUpdate=True)
+    except Exception as e:
+            print(f"[ERROR] LED.DisplayTwitchTimer crashed: {e}")
+
     
     #TransitionBetweenScreenArrays(ScreenArray2,ScreenArray,TransitionType=2)
     #CopyScreenArrayToCanvasVSync(ScreenArray)

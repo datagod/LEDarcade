@@ -149,13 +149,6 @@ PATREON_WEBHOOK_URL          = ''
 PATREON_WEBHOOK_SECRET       = ''
 
 
-#MULTIPROCESSING
-MPM         = multiprocessing.Manager()
-EventQueue  = MPM.Queue() 
-SharedState = MPM.dict()
-SharedState['DigitalClockSpawned'] = False
-
-
 
 
 #User / Channel Info
@@ -228,42 +221,82 @@ CursorRGB = (0,75,0)
 #----------------------------------------------------------------------------
 
 
+
+
 #We are now spawning a separate process to control the LED display
 def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
-    print("SpawnClock - Begin")
-
-    SharedState['DigitalClockSpawned'] = True
-    print(f"SpawnClock - DigitalClockSpawned: {SharedState['DigitalClockSpawned']}")
-
-    # Skip the buggy clockstyle 2
-    r = random.choice([1, 3])
-    print(f"SpawnClock - Random clock style: {r}")
-
-    # Set zoom level based on stream activity
-    zoom = 3 if StreamActive else 2
-
+    log_path = "/tmp/spawnclock.log"
     try:
-        print(f"[SpawnClock] PID:  - Hello from subprocess")
-     
-        SharedState['DigitalClockSpawned'] = True
-        LED.DisplayDigitalClock(
-            ClockStyle=r,
-            CenterHoriz=True,
-            v=1, 
-            hh=24,
-            RGB=LED.LowGreen,
-            ShadowRGB=LED.ShadowGreen,
-            ZoomFactor=zoom,
-            AnimationDelay=AnimationDelay,
-            RunMinutes=1,
-            EventQueue=EventQueue
-        )
+        with open(log_path, "a") as log:
+            print("SpawnClock - Begin", file=log)
+            SharedState['DigitalClockSpawned'] = True
+            print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}", file=log)
+
+            r = random.choice([1, 3])
+            zoom = 3 if StreamActive else 2
+
+            print(f"ClockStyle: {r}, Zoom: {zoom}", file=log)
+            log.flush()
+
+            LED.DisplayDigitalClock(
+                ClockStyle=1,  # change back to r later
+                CenterHoriz=True,
+                v=1,
+                hh=24,
+                RGB=LED.LowGreen,
+                ShadowRGB=LED.ShadowGreen,
+                ZoomFactor=zoom,
+                AnimationDelay=AnimationDelay,
+                RunMinutes=1,
+                EventQueue=EventQueue
+            )
+
     except Exception as e:
-        print(f"SpawnClock - Error during clock display: {e}")
+        with open(log_path, "a") as log:
+            print(f"[ERROR] SpawnClock crashed: {e}", file=log)
+            traceback.print_exc(file=log)
+            log.flush()
     finally:
         SharedState['DigitalClockSpawned'] = False
-        print(f"SpawnClock - DigitalClockSpawned: {SharedState['DigitalClockSpawned']}")
-        print("SpawnClock - Completed")
+        with open(log_path, "a") as log:
+            print("SpawnClock - Completed", file=log)
+            print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}", file=log)
+            log.flush()
+
+
+
+
+
+#---------------------------------------
+# Turn on RegularClock                --
+#---------------------------------------
+
+def TestDisplayDigitalClock():
+    
+    AnimationDelay = 0.01
+    StreamActive = False
+        
+    print("Starting: DisplayDigitalClock")
+    print("DigitalClockSpawned:", SharedState.get('DigitalClockSpawned', False))
+
+    
+    try:
+        print("Spawning new DigitalClock process...")
+        
+        clock_proc = multiprocessing.Process(
+            target=SpawnClock,
+            args=(EventQueue, AnimationDelay, StreamActive, SharedState)
+        )
+        clock_proc.start()
+        print(f"Spawned clock process with PID: {clock_proc.pid}")
+    except Exception as e:
+        print(f"[ERROR] Failed to spawn DigitalClock: {e}")
+        traceback.print_exc()
+
+
+
+
+
 
 
 
@@ -1098,26 +1131,27 @@ class Bot(commands.Bot ):
     # Turn on RegularClock                --
     #---------------------------------------
 
-
     def DisplayDigitalClock(self):
         print("Starting: DisplayDigitalClock")
-        print("DigitalClockSpawned:", SharedState['DigitalClockSpawned'])
-        print("Launching multiprocessing target")
-        
-        if SharedState['DigitalClockSpawned'] == True:
-          print("DigitalClock already spawned.  Skipping.")
-        else:
-          try:
-              print("Spawning Digital clock")
-              clock_proc = multiprocessing.Process(
-                  target=SpawnClock,
-                  args=(EventQueue, self.AnimationDelay, StreamActive, SharedState)
-              )
-              print("Starting the spawned process")
-              clock_proc.start()
-              print(f"Started clock process with PID: {clock_proc.pid}")
-          except Exception as e:
-              print(f"Failed to start clock process: {e}")
+        print("DigitalClockSpawned:", SharedState.get('DigitalClockSpawned', False))
+
+        if SharedState.get('DigitalClockSpawned', False):
+            print("Digital clock already running. Skipping spawn.")
+            return
+
+        try:
+            print("Spawning new DigitalClock process...")
+            self.clock_proc = multiprocessing.Process(
+                target=SpawnClock,
+                args=(EventQueue, self.AnimationDelay, StreamActive, SharedState)
+            )
+            self.clock_proc.start()
+            print(f"Spawned clock process with PID: {self.clock_proc.pid}")
+        except Exception as e:
+            print(f"[ERROR] Failed to spawn DigitalClock: {e}")
+            traceback.print_exc()
+
+
 
 
     #---------------------------------------
@@ -3625,157 +3659,173 @@ def run_coroutine_in_new_loop(EventQueue):
 #------------------------------------------------------------------------------
 
 
-
-print ("---------------------------------------------------------------")
-print ("WELCOME TO THE LED ARCADE - Twitch Version                     ")
-print ("")
-print ("BY DATAGOD")
-print ("")
-print ("This program will display Twitch activity using the LEDArcade ")
-print ("library.")
-print ("---------------------------------------------------------------")
-print ("")
-print ("")
-
-
-
-#load keys and settings
-CheckConfigFiles()
-LoadConfigFiles()
+def main():
+    
+  print ("---------------------------------------------------------------")
+  print ("WELCOME TO THE LED ARCADE - Twitch Version                     ")
+  print ("")
+  print ("BY DATAGOD")
+  print ("")
+  print ("This program will display Twitch activity using the LEDArcade ")
+  print ("library.")
+  print ("---------------------------------------------------------------")
+  print ("")
+  print ("")
 
 
 
-#Spawn a process to run the clock
-#clock_proc = multiprocessing.Process(target=Bot.DisplayDigitalClock())
-  
+  #load keys and settings
+  CheckConfigFiles()
+  LoadConfigFiles()
+
+  #Spawn a process to run the clock
+  #clock_proc = multiprocessing.Process(target=Bot.DisplayDigitalClock())
+    
 
 
+  #----------------------------------------
+  # USE OAUTH CODE TO GET NEW TOKEN
+  #----------------------------------------
 
+  #This assumes the user has already granted us access via URL and we were given a CODE
+  # https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=xxxxxx&scope=chat%3Aread+chat%3Aedit&redirect_uri=http://localhost
 
-#----------------------------------------
-# USE OAUTH CODE TO GET NEW TOKEN
-#----------------------------------------
+  print("  ___    _   _   _ _____ _   _ ")
+  print(" / _ \  / \ | | | |_   _| | | |")
+  print("| | | |/ _ \| | | | | | | |_| |")
+  print("| |_| / ___ \ |_| | | | |  _  |")
+  print(" \___/_/   \_\___/  |_| |_| |_|")
+  print("")
 
-#This assumes the user has already granted us access via URL and we were given a CODE
-# https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=xxxxxx&scope=chat%3Aread+chat%3Aedit&redirect_uri=http://localhost
+  # TheClockBot Tokens
+  # 1.  Do we have an authentication token yet?
+  #       No  - get one using CODE
+  #       Yes - refresh before use
+  # 2.  Did the refresh work?
+  #       No  - Maybe it was too old.  get new tokens using CODE
 
-print("  ___    _   _   _ _____ _   _ ")
-print(" / _ \  / \ | | | |_   _| | | |")
-print("| | | |/ _ \| | | | | | | |_| |")
-print("| |_| / ___ \ |_| | | | |  _  |")
-print(" \___/_/   \_\___/  |_| |_| |_|")
-print("")
-
-# TheClockBot Tokens
-# 1.  Do we have an authentication token yet?
-#       No  - get one using CODE
-#       Yes - refresh before use
-# 2.  Did the refresh work?
-#       No  - Maybe it was too old.  get new tokens using CODE
-
-if(THECLOCKBOT_ACCESS_TOKEN == 'NONE'):
-  print("Access token not found")
-  GetAccessTokenUsingOAUTHCode_TheClockBot()
-else:
-  print("Access token found.  Refreshing...")
-  GetAccessTokenUsingRefreshToken_TheClockBot()
-  
   if(THECLOCKBOT_ACCESS_TOKEN == 'NONE'):
-    print("Refresh failed.  Attempting to generate new ACCESS_TOKEN and REFRESH_TOKEN using CODE")
+    print("Access token not found")
     GetAccessTokenUsingOAUTHCode_TheClockBot()
-  
+  else:
+    print("Access token found.  Refreshing...")
+    GetAccessTokenUsingRefreshToken_TheClockBot()
+    
+    if(THECLOCKBOT_ACCESS_TOKEN == 'NONE'):
+      print("Refresh failed.  Attempting to generate new ACCESS_TOKEN and REFRESH_TOKEN using CODE")
+      GetAccessTokenUsingOAUTHCode_TheClockBot()
+    
 
 
 
-print("")
-print("")
-print("")
+  print("")
+  print("")
+  print("")
 
-# ClockBot_X Tokens
-# 1.  Do we have an authentication token yet?
-#       No  - get one using CODE
-#       Yes - refresh before use
-# 1.  Did the refresh work?
-#       No  - Maybe it was too old.  get new tokens using CODE
+  # ClockBot_X Tokens
+  # 1.  Do we have an authentication token yet?
+  #       No  - get one using CODE
+  #       Yes - refresh before use
+  # 1.  Did the refresh work?
+  #       No  - Maybe it was too old.  get new tokens using CODE
 
-if(CLOCKBOT_X_ACCESS_TOKEN == 'NONE'):
-  print("Access token not found")
-  GetAccessTokenUsingOAUTHCode_ClockBotX()
-else:
-  print("Access token found.  Refreshing...")
-  GetAccessTokenUsingRefreshToken_ClockBotX()
-  
   if(CLOCKBOT_X_ACCESS_TOKEN == 'NONE'):
-    print("Refresh failed.  Attempting to generate new ACCESS_TOKEN and REFRESH_TOKEN using CODE")
+    print("Access token not found")
     GetAccessTokenUsingOAUTHCode_ClockBotX()
+  else:
+    print("Access token found.  Refreshing...")
+    GetAccessTokenUsingRefreshToken_ClockBotX()
+    
+    if(CLOCKBOT_X_ACCESS_TOKEN == 'NONE'):
+      print("Refresh failed.  Attempting to generate new ACCESS_TOKEN and REFRESH_TOKEN using CODE")
+      GetAccessTokenUsingOAUTHCode_ClockBotX()
+
+
+  #print("")
+  #print("--Spawning WebHook process--------------")
+  #Spawn the webhook process
+  #PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
+  #PatreonWebHookProcess.start()
+
+  # 2023-09-28
+  #Temporarily removing webhooks this because it is crazy complex to keep it running
+  #TwitchEventSubProcess = multiprocessing.Process(target = run_coroutine_in_new_loop, args=(EventQueue,))
+  #TwitchEventSubProcess.start()
+
+
+  #print("----------------------------------------")
+
+
+
+
+  '''
+  print ("--StartBot--")
+  #skip all this if running datagod
+  if (BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL != 'XtianNinja'):
+    #Fake boot sequence
+    LED.ClearBigLED()
+    LED.ClearBuffers()
+    CursorH = 0
+    CursorV = 0
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"by datagod",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Boot sequence initiated",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RAM CHECK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"STORAGE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
+    IPAddress = LED.ShowIPAddress(Wait=5)
+  else:
+    print("Skipping boot up sequence")
+  '''
 
 
 
 
 
-#print("")
-#print("--Spawning WebHook process--------------")
-#Spawn the webhook process
-#PatreonWebHookProcess = multiprocessing.Process(target = PatreonWebHook, args=(EventQueue,))
-#PatreonWebHookProcess.start()
+  '''
+  LED.DisplayDigitalClock(
+      ClockStyle=3,
+      CenterHoriz=True,
+      v=1, 
+      hh=24,
+      RGB=LED.LowGreen,
+      ShadowRGB=LED.ShadowGreen,
+      ZoomFactor=2,
+      AnimationDelay=0.05,
+      RunMinutes=1,
+      EventQueue=EventQueue
+  )
+  '''
+   
+    
+  multiprocessing.set_start_method("spawn", force=True)
+  
+  manager = multiprocessing.Manager()
+  queue = manager.Queue()
+  SharedState = manager.dict()
+  SharedState["DigitalClockSpawned"] = False
 
-# 2023-09-28
-#Temporarily removing webhooks this because it is crazy complex to keep it running
-#TwitchEventSubProcess = multiprocessing.Process(target = run_coroutine_in_new_loop, args=(EventQueue,))
-#TwitchEventSubProcess.start()
+  proc = multiprocessing.Process(
+      target=SpawnClock,
+      args=(queue, 5, False, SharedState)
+  )
+  proc.start()
+  proc.join()
+  print("Final state:", SharedState["DigitalClockSpawned"])
 
-
-#print("----------------------------------------")
-
-
-
-
-'''
-print ("--StartBot--")
-#skip all this if running datagod
-if (BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL != 'XtianNinja'):
-  #Fake boot sequence
-  LED.ClearBigLED()
-  LED.ClearBuffers()
-  CursorH = 0
-  CursorV = 0
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"by datagod",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".........................",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.025,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Boot sequence initiated",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"RAM CHECK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"STORAGE",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"OK",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-  LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-
-  IPAddress = LED.ShowIPAddress(Wait=5)
-else:
-  print("Skipping boot up sequence")
-'''
+  mybot = Bot()
+  mybot.run()
 
 
 
+if __name__ == "__main__":
+    main()
 
 
-'''
-LED.DisplayDigitalClock(
-    ClockStyle=3,
-    CenterHoriz=True,
-    v=1, 
-    hh=24,
-    RGB=LED.LowGreen,
-    ShadowRGB=LED.ShadowGreen,
-    ZoomFactor=2,
-    AnimationDelay=0.05,
-    RunMinutes=1,
-    EventQueue=EventQueue
-)
-'''
-
-
-mybot = Bot()
-mybot.run()
 
 
 
