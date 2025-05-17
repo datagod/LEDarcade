@@ -16408,6 +16408,9 @@ def DisplayDigitalClock(
     global DayOfMonthV
 
 
+    print(f"[LED.DisplayDigitalClock] PID: {os.getpid()} - Hello from LED processes")
+
+
     print("ClockStyle:",ClockStyle)
     ClockSprite = CreateClockSprite(hh)
     Done        = False

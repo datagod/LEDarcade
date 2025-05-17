@@ -149,6 +149,15 @@ PATREON_WEBHOOK_URL          = ''
 PATREON_WEBHOOK_SECRET       = ''
 
 
+#MULTIPROCESSING
+MPM         = multiprocessing.Manager()
+EventQueue  = MPM.Queue() 
+SharedState = MPM.dict()
+SharedState['DigitalClockSpawned'] = False
+
+
+
+
 #User / Channel Info
 GameName        = ''
 Title           = ''
@@ -213,9 +222,48 @@ CursorRGB = (0,75,0)
 #EventQueue = asyncio.Queue()  #used to store and process chat messages
 
 
-MPM = multiprocessing.Manager()
-EventQueue = MPM.Queue() 
 
+#----------------------------------------------------------------------------
+# FUNCTIONS
+#----------------------------------------------------------------------------
+
+
+#We are now spawning a separate process to control the LED display
+def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
+    print("SpawnClock - Begin")
+
+    SharedState['DigitalClockSpawned'] = True
+    print(f"SpawnClock - DigitalClockSpawned: {SharedState['DigitalClockSpawned']}")
+
+    # Skip the buggy clockstyle 2
+    r = random.choice([1, 3])
+    print(f"SpawnClock - Random clock style: {r}")
+
+    # Set zoom level based on stream activity
+    zoom = 3 if StreamActive else 2
+
+    try:
+        print(f"[SpawnClock] PID:  - Hello from subprocess")
+     
+        SharedState['DigitalClockSpawned'] = True
+        LED.DisplayDigitalClock(
+            ClockStyle=r,
+            CenterHoriz=True,
+            v=1, 
+            hh=24,
+            RGB=LED.LowGreen,
+            ShadowRGB=LED.ShadowGreen,
+            ZoomFactor=zoom,
+            AnimationDelay=AnimationDelay,
+            RunMinutes=1,
+            EventQueue=EventQueue
+        )
+    except Exception as e:
+        print(f"SpawnClock - Error during clock display: {e}")
+    finally:
+        SharedState['DigitalClockSpawned'] = False
+        print(f"SpawnClock - DigitalClockSpawned: {SharedState['DigitalClockSpawned']}")
+        print("SpawnClock - Completed")
 
 
 
@@ -343,9 +391,6 @@ class Bot(commands.Bot ):
       GetBasicTwitchInfo()
       self.LastStreamCheckTime = time.time()
       #Show title info if Main stream is active
-      #if(StreamActive == True):
-      #  await self.DisplayConnectingToTerminalMessage()
-      #  await self.DisplayRandomConnectionMessage()
 
         
     #---------------------------------------
@@ -363,13 +408,18 @@ class Bot(commands.Bot ):
     #---------------------------------------
 
     async def PerformTimeBasedActions(self):
+
+        global DigitalClockSpawned
+        print(f"PerformTimeBasedActions - DigitalClockSpawned: {SharedState['DigitalClockSpawned']}")
+
+
         loop = asyncio.get_running_loop()
         #end_time = loop.time() + self.AnimationDelay
 
 
         if(StreamActive == True):
           #await self.DisplayConnectingToTerminalMessage()
-          await self.DisplayRandomConnectionMessage()
+          self.DisplayRandomConnectionMessage()
 
         while True:
           
@@ -378,7 +428,7 @@ class Bot(commands.Bot ):
 
           #Check the event queue for incoming data
           await self.ReadEventQueue()
-          #print("Stream Status:",StreamActive, 'TwithTimerOn:',LED.TwitchTimerOn)
+          print("Stream Status:",StreamActive, ' TwitchTimerOn:',LED.TwitchTimerOn)
 
 
           if(StreamActive == True):
@@ -417,22 +467,26 @@ class Bot(commands.Bot ):
                 #await self.close()
 
             
+    
+
+
             # we want to display a regular clock (random styles) for 1 minutes 
-            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
+            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False  and SharedState['DigitalClockSpawned'] == False):
               #await self.DisplayDigitalClock()
               #self.TwitchTimerTask = asyncio.create_task(self.DisplayDigitalClock())              
               print("Creating multiprocess DisplayDigitalClock()")
-              clock_proc.start()
-              clock_proc_stop()
+              self.DisplayDigitalClock()
+              #clock_proc.start()
+              #clock_proc_stop()
 
 
           #If the stream is not live, display a regular clock 
-          if (StreamActive == False):
+          if (StreamActive == False and SharedState['DigitalClockSpawned'] == False):
             print("StreamActive == False, displaying regular clock")
-            clock_proc.start()
+            self.DisplayDigitalClock()
             #Check Twitch advanced info 
             await self.CheckStream()
-
+            print("Waiting for the stream to go live I guess")
 
                  
 
@@ -1018,7 +1072,7 @@ class Bot(commands.Bot ):
 
         if(StreamActive == True):
 
-          await LED.DisplayTwitchTimer(
+          LED.DisplayTwitchTimer(
             CenterHoriz = True,
             CenterVert  = False,
             h   = 0,
@@ -1044,48 +1098,26 @@ class Bot(commands.Bot ):
     # Turn on RegularClock                --
     #---------------------------------------
 
-    async def DisplayDigitalClock(self):
-      print ("Starting: DisplayDigitalClock")
 
-      
-      #Skip the buggy clockstyle 2
-      r = random.randint(1,2)
-      if (r == 2):
-        r = 3
-
-
-      if(StreamActive == True):
-        await LED.DisplayDigitalClock(
-          ClockStyle = r,
-          CenterHoriz = True,
-          v   = 1, 
-          hh  = 24,
-          RGB = LED.LowGreen,
-          ShadowRGB        = LED.ShadowGreen,
-          ZoomFactor       = 3,
-          AnimationDelay   = self.AnimationDelay,
-          RunMinutes       = 1,
-          EventQueue       = EventQueue
-          )
-        print("Clock function completed")
-      else:
-
-        await LED.DisplayDigitalClock(
-          ClockStyle = r,
-          CenterHoriz = True,
-          v   = 1, 
-          hh  = 24,
-          RGB = LED.LowGreen,
-          ShadowRGB        = LED.ShadowGreen,
-          ZoomFactor       = 2,
-          AnimationDelay   = self.AnimationDelay,
-          RunMinutes       = 1,
-          EventQueue       = EventQueue
-          )
-        print("Clock function completed")
-
-
-
+    def DisplayDigitalClock(self):
+        print("Starting: DisplayDigitalClock")
+        print("DigitalClockSpawned:", SharedState['DigitalClockSpawned'])
+        print("Launching multiprocessing target")
+        
+        if SharedState['DigitalClockSpawned'] == True:
+          print("DigitalClock already spawned.  Skipping.")
+        else:
+          try:
+              print("Spawning Digital clock")
+              clock_proc = multiprocessing.Process(
+                  target=SpawnClock,
+                  args=(EventQueue, self.AnimationDelay, StreamActive, SharedState)
+              )
+              print("Starting the spawned process")
+              clock_proc.start()
+              print(f"Started clock process with PID: {clock_proc.pid}")
+          except Exception as e:
+              print(f"Failed to start clock process: {e}")
 
 
     #---------------------------------------
@@ -1095,7 +1127,7 @@ class Bot(commands.Bot ):
     async def ReadEventQueue(self):
       global EventQueue
       QueueCount = EventQueue.qsize()
-      #print("QueueCount: ",QueueCount)
+      print("Reading EventQueue: ",QueueCount)
 
       for i in range (0,QueueCount):
         try:      
@@ -3726,8 +3758,20 @@ else:
 
 
 
-
-
+'''
+LED.DisplayDigitalClock(
+    ClockStyle=3,
+    CenterHoriz=True,
+    v=1, 
+    hh=24,
+    RGB=LED.LowGreen,
+    ShadowRGB=LED.ShadowGreen,
+    ZoomFactor=2,
+    AnimationDelay=0.05,
+    RunMinutes=1,
+    EventQueue=EventQueue
+)
+'''
 
 
 mybot = Bot()
