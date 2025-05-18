@@ -1,47 +1,45 @@
-# %%
-import LEDarcade as LED
-
-# test_clock.py
-import multiprocessing
+from multiprocessing import Process
+from rgbmatrix import RGBMatrix, RGBMatrixOptions
 import time
 
-def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
-    print("SpawnClock - Running")
-    SharedState["DigitalClockSpawned"] = True
+def show_color(brightness):
+    options = RGBMatrixOptions()
+    options.rows = 32
+    options.cols = 64
+    options.chain_length = 1
+    options.parallel = 1
+    options.hardware_mapping = 'adafruit-hat'
+    options.brightness = brightness
+    options.gpio_slowdown = 3
 
-    LED.DisplayDigitalClock(
-                ClockStyle=1,  # change back to r later
-                CenterHoriz=True,
-                v=1,
-                hh=24,
-                RGB=LED.LowGreen,
-                ShadowRGB=LED.ShadowGreen,
-                ZoomFactor=2,
-                AnimationDelay=5,
-                RunMinutes=1,
-                EventQueue=EventQueue
-            )
+    print(f"[Child] Creating matrix with brightness: {brightness}")
+    matrix = RGBMatrix(options=options)
+    matrix.brightness = brightness  # enforce
 
+    canvas = matrix.CreateFrameCanvas()
+    canvas.Fill(255, 0, 0)
+    canvas = matrix.SwapOnVSync(canvas)
 
-
-    SharedState["DigitalClockSpawned"] = False
-    print("SpawnClock - Done")
-
-def main():
-    multiprocessing.set_start_method("spawn", force=True)
-    
-    manager = multiprocessing.Manager()
-    queue = manager.Queue()
-    shared = manager.dict()
-    shared["DigitalClockSpawned"] = False
-
-    proc = multiprocessing.Process(
-        target=SpawnClock,
-        args=(queue, 0.01, False, shared)
-    )
-    proc.start()
-    proc.join()
-    print("Final state:", shared["DigitalClockSpawned"])
+    print(f"[Child] Actual brightness: {matrix.brightness}")
+    time.sleep(1)
 
 if __name__ == "__main__":
-    main()
+    print("[Main] Starting child process...")
+    proc = Process(target=show_color, args=(10,))
+    proc.start()
+    proc.join()
+
+    proc = Process(target=show_color, args=(25,))
+    proc.start()
+    proc.join()
+
+    proc = Process(target=show_color, args=(50,))
+    proc.start()
+    proc.join()
+
+
+    proc = Process(target=show_color, args=(100,))
+    proc.start()
+    proc.join()
+
+    print("[Main] Done.")

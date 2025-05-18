@@ -45,6 +45,13 @@ import time
 from datetime import datetime
 import math
 import LEDarcade as LED
+LED.Initialize()
+#LED.InitializeColors()
+#LED.TheMatrix.brightness = 100  # force brightness again
+LED.ClearBigLED()
+LED.ClearBuffers()
+
+
 
 # Constants
 CENTER_X = 32

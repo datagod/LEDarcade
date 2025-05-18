@@ -222,9 +222,22 @@ CursorRGB = (0,75,0)
 #We are now spawning a separate process to control the LED display
 
 def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
+
+
     try:
             import LEDarcade as LED
             LED.Initialize()
+            #LED.ReinitializeMatrix()
+            #LED.InitializeColors()
+            #LED.TheMatrix.brightness = 100  # force brightness again
+            LED.ClearBigLED()
+            LED.ClearBuffers()
+
+            print("SpawnClock: Matrix brightness =", LED.TheMatrix.brightness)
+
+            print("Red:",LED.MedRed," ShadowRed: ",LED.ShadowRed)
+
+
             print("SpawnClock - Begin")
             SharedState['DigitalClockSpawned'] = True
             print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}")
@@ -239,8 +252,8 @@ def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
                 CenterHoriz=True,
                 v=1,
                 hh=24,
-                RGB=LED.LowGreen,
-                ShadowRGB=LED.ShadowGreen,
+                RGB=(255,0,0),
+                ShadowRGB=(255,255,255),
                 ZoomFactor=zoom,
                 AnimationDelay=AnimationDelay,
                 RunMinutes=1,
@@ -1106,7 +1119,7 @@ class Bot(commands.Bot ):
                 args=(self.EventQueue, self.AnimationDelay, StreamActive, self.SharedState)
             )
             self.clock_proc.start()
-            print(f"Spawned clock process with PID: {self.clock_proc.pid}")
+            print(f"--> Spawned clock process with PID: {self.clock_proc.pid}")
 
         except Exception as e:
             print(f"[ERROR] Failed to spawn DigitalClock: {e}")
@@ -3795,6 +3808,7 @@ if __name__ == "__main__":
 
 
     multiprocessing.set_start_method("spawn", force=True)
+
     manager = multiprocessing.Manager()
     queue = manager.Queue()
     SharedState = manager.dict()
