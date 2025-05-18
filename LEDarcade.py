@@ -60,7 +60,6 @@ import time
 import gc
 import random
 import os
-os.system('clear')
 
 from configparser import SafeConfigParser
 import sys
@@ -144,6 +143,50 @@ BrightColorCount = 27
 
 
 
+
+
+#-----------------------------
+# Timers                    --
+#-----------------------------
+StartTime = time.time()
+
+
+
+
+if(HatWidth > 64):
+  HorizAdjust = 32
+else:
+  HorizAdjust = 0
+
+#Sprite display locations
+ClockH,      ClockV,      ClockRGB      = 0  + HorizAdjust,0,  (0,150,0)
+DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB  = 10 + HorizAdjust,20, (125,20,20)
+MonthH,      MonthV,      MonthRGB      = 30 + HorizAdjust,20, (125,30,0)
+DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 49 + HorizAdjust,20, (115,40,10)
+CurrencyH,   CurrencyV,   CurrencyRGB   = 56 + HorizAdjust,20, (0,150,0)
+
+
+#Sprite filler tuple
+SpriteFillerRGB = (0,0,0)
+
+
+
+#Screen array is a copy of the matrix light layout because RGBMatrix is not queryable.  
+ScreenArray  = ([[]])
+ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+EmptyArray  = ([[]])
+EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+
+
+#The matrix object is what is used to interact with the LED display
+TheMatrix    = None
+
+#Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
+Canvas = None
+
+
+
 #-----------------------------
 # Arcade Games              --
 #-----------------------------
@@ -211,14 +254,6 @@ SuperWormLevels    = 3           #number of levels
 
 
 
-
-
-
-
-
-
-
-
 #Twitch specific
 TwitchTimerOn = False
 
@@ -255,33 +290,6 @@ OutOfBoundsObject.name = 'OutOfBounds'
 
 
 
-#-----------------------------
-# LEDarcade Starup Banner   --
-#-----------------------------
-
-
-print("\n" + "=" * 65)
-print("🚀 LEDarcade Initialized")
-print("=" * 65)
-print("A retro-inspired LED matrix graphics engine.")
-print("Created by William McEvoy (@datagod) for Raspberry Pi systems.")
-print("Features:")
-print(" - Real-time graphics and animations")
-print(" - Flight tracking, gaming, and Twitch integrations")
-print(" - Supports 32x32, 32x64, 32x128 LED panel arrays")
-print(" - Easily extensible with sprite and animation APIs")
-print("-------------------------------------------------------------")
-print("Explore the pixel universe with LEDarcade!")
-print("=" * 65 + "\n")
-print("")
-print("")
-
-
-#-----------------------------
-# Timers                    --
-#-----------------------------
-
-StartTime = time.time()
 
 
 
@@ -376,105 +384,6 @@ def LoadConfigData():
   print ("--------------------")
   print (" ")
   
-
-
-
-#--------------------------------------
-# RGB Matrix Options                 --
-#--------------------------------------
-
-#load config data to see if there is an override value for hatwidth/hatheight
-LoadConfigData()
-
-
-if(HatWidth > 64):
-  HorizAdjust = 32
-else:
-  HorizAdjust = 0
-
-#Sprite display locations
-ClockH,      ClockV,      ClockRGB      = 0  + HorizAdjust,0,  (0,150,0)
-DayOfWeekH,  DayOfWeekV,  DayOfWeekRGB  = 10 + HorizAdjust,20, (125,20,20)
-MonthH,      MonthV,      MonthRGB      = 30 + HorizAdjust,20, (125,30,0)
-DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 49 + HorizAdjust,20, (115,40,10)
-CurrencyH,   CurrencyV,   CurrencyRGB   = 56 + HorizAdjust,20, (0,150,0)
-
-
-#Sprite filler tuple
-SpriteFillerRGB = (0,0,0)
-
-
-
-
-# ------------------------------------------------------------------------------
-# RGBMatrixOptions Explanation
-# ------------------------------------------------------------------------------
-# The RGBMatrixOptions class is used to configure how the LED matrix behaves.
-# This object is passed to the RGBMatrix constructor to define display settings.
-
-# Common options include:
-#
-#   rows              - Number of rows per panel (e.g., 32, 64)
-#   cols              - Number of columns per panel (e.g., 64, 128)
-#   chain_length      - Number of daisy-chained panels horizontally
-#   parallel          - Number of parallel chains (for larger displays)
-#   brightness        - LED brightness (0–100)
-#   gpio_slowdown     - Reduces signal speed for hardware compatibility (0–4)
-#   disable_hardware_pulsing - Set to True to avoid PWM interference
-#   show_refresh_rate - Display refresh rate on console (for debugging)
-
-# Example:
-# options = RGBMatrixOptions()
-# options.rows = 32
-# options.cols = 64
-# options.chain_length = 2
-# options.parallel = 1
-# options.brightness = 75
-# matrix = RGBMatrix(options=options)
-# ------------------------------------------------------------------------------
-
-
-
-
-
-# -------------------------------
-# Matrix Options
-# -------------------------------
-options = RGBMatrixOptions()
-options.rows = 32
-options.cols = 64
-options.chain_length = 1
-options.parallel = 1
-options.hardware_mapping = 'adafruit-hat'       # Adafruit HAT specific
-options.gpio_slowdown = 3                      # Adjust if you see flicker
-options.brightness = 100                         # Keep this moderate
-options.pwm_bits = 11                           # Lower for better timing
-options.pwm_lsb_nanoseconds = 130               # Tweak this if needed
-options.scan_mode = 0                           # Progressive
-options.disable_hardware_pulsing = False
-options.drop_privileges = False                 # Avoid permission issues
-
-
-#The matrix object is what is used to interact with the LED display
-TheMatrix    = RGBMatrix(options = options)
-
-
-#Screen array is a copy of the matrix light layout because RGBMatrix is not queryable.  
-ScreenArray  = ([[]])
-ScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-
-EmptyArray  = ([[]])
-EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-
-
-#Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
-Canvas = TheMatrix.CreateFrameCanvas()
-Canvas.Fill(0,0,0)
-
-
-DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
-
-
 
 
 
@@ -19723,4 +19632,135 @@ def DisplayStockPrice(Symbol="", Price=""):
 
 
 
+
+#------------------------------------------------------------------------------
+# MAIN SECTION                                                               --
+#                                                                            --
+#                                                                            --
+#                                                                            --
+#                                                                            --
+#                                                                            --
+#------------------------------------------------------------------------------
+
+
+
+def LEDInitialize():
+
+  global TheMatrix
+  global Canvas
+  
+    
+  DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
+
+
+  # ------------------------------------------------------------------------------
+  # RGBMatrixOptions Explanation
+  # ------------------------------------------------------------------------------
+  # The RGBMatrixOptions class is used to configure how the LED matrix behaves.
+  # This object is passed to the RGBMatrix constructor to define display settings.
+
+  # Common options include:
+  #
+  #   rows              - Number of rows per panel (e.g., 32, 64)
+  #   cols              - Number of columns per panel (e.g., 64, 128)
+  #   chain_length      - Number of daisy-chained panels horizontally
+  #   parallel          - Number of parallel chains (for larger displays)
+  #   brightness        - LED brightness (0–100)
+  #   gpio_slowdown     - Reduces signal speed for hardware compatibility (0–4)
+  #   disable_hardware_pulsing - Set to True to avoid PWM interference
+  #   show_refresh_rate - Display refresh rate on console (for debugging)
+
+  # Example:
+  # options = RGBMatrixOptions()
+  # options.rows = 32
+  # options.cols = 64
+  # options.chain_length = 2
+  # options.parallel = 1
+  # options.brightness = 75
+  # matrix = RGBMatrix(options=options)
+  # ------------------------------------------------------------------------------
+
+
+  #--------------------------------------
+  # RGB Matrix Options                 --
+  #--------------------------------------
+
+  #load config data to see if there is an override value for hatwidth/hatheight
+  LoadConfigData()
+
+
+
+  # -------------------------------
+  # Matrix Options
+  # -------------------------------
+  options = RGBMatrixOptions()
+  options.rows = 32
+  options.cols = 64
+  options.chain_length = 1
+  options.parallel = 1
+  options.hardware_mapping = 'adafruit-hat'       # Adafruit HAT specific
+  options.gpio_slowdown = 3                      # Adjust if you see flicker
+  options.brightness = 100                         # Keep this moderate
+  options.pwm_bits = 11                           # Lower for better timing
+  options.pwm_lsb_nanoseconds = 130               # Tweak this if needed
+  options.scan_mode = 0                           # Progressive
+  options.disable_hardware_pulsing = False
+  options.drop_privileges = False                 # Avoid permission issues
+
+
+  #The matrix object is what is used to interact with the LED display
+  TheMatrix    = RGBMatrix(options = options)
+
+
+  #Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
+  Canvas = TheMatrix.CreateFrameCanvas()
+  Canvas.Fill(0,0,0)
+
+
+  DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
+
+
+
+
+
+
+
+def main():
+  
+  #-----------------------------
+  # LEDarcade Startup Banner   --
+  #-----------------------------
+
+  print("\n" + "=" * 65)
+  print("🚀 LEDarcade Initialized")
+  print("=" * 65)
+  print("A retro-inspired LED matrix graphics engine.")
+  print("Created by William McEvoy (@datagod) for Raspberry Pi systems.")
+  print("Features:")
+  print(" - Real-time graphics and animations")
+  print(" - Flight tracking, gaming, and Twitch integrations")
+  print(" - Supports 32x32, 32x64, 32x128 LED panel arrays")
+  print(" - Easily extensible with sprite and animation APIs")
+  print("-------------------------------------------------------------")
+  print("Explore the pixel universe with LEDarcade!")
+  print("=" * 65 + "\n")
+  print("")
+  print("")
+
+  
+
+
+
+
+
+
+LEDInitialize()
+if __name__ == "__main__":
+    print("*******************************************")
+    print("** LEDarcade                             **")
+    print("*******************************************")
+    #os.system('clear')
+    #LEDInitialize()
+    main()  
+    
 

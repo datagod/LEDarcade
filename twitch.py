@@ -33,8 +33,9 @@ import sys
 import re   # regular expression
 
 import LEDarcade as LED
-from rgbmatrix import graphics
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+
+#from rgbmatrix import graphics
+#from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 import random
 from configparser import ConfigParser
@@ -301,7 +302,6 @@ def TestDisplayDigitalClock():
 
 
 
-
 class Bot(commands.Bot ):
 #This started out as a Twitch Bot but has grown into a more complex program
 
@@ -331,12 +331,11 @@ class Bot(commands.Bot ):
     
 
   
-    
 
+  
+    def __init__(self, SharedState=None):
 
-
-    def __init__(self):
-        # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
+       # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
         # prefix can be a callable, which returns a list of strings or a string...
         # initial_channels can also be a callable which returns a list of strings...
         # Note: the bot client id is from Twitch Dev TheClockBot.
@@ -350,19 +349,15 @@ class Bot(commands.Bot ):
         print("THECLOCKBOT_ACCESS_TOKEN: ",THECLOCKBOT_ACCESS_TOKEN)
         print("THECLOCKBOT_REFRESH_TOKEN:",THECLOCKBOT_REFRESH_TOKEN)
 
-
-
-
-
-
-
         print("")
         print("")
         print("")
         print("=====================================================")
         print("Initiating client object to connect to twitch")
         print("Initial_Channels:",BROADCASTER_CHANNEL)
+
         super().__init__(token=THECLOCKBOT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
+        self.SharedState = SharedState if SharedState is not None else {}
         self.BotStartTime   = time.time()
         LastMessageReceived = time.time()
         #time.sleep(3)
@@ -2328,7 +2323,7 @@ def GetTwitchCounts():
 import requests
 import traceback
 from datetime import datetime
-import LEDarcade as LED
+
 
 # Globals assumed to be defined somewhere else
 CLOCKBOT_X_CLIENT_ID = ''
@@ -3672,7 +3667,8 @@ def main():
   print ("")
   print ("")
 
-
+  #LED.LEDInitialize()
+  #LED.main()
 
   #load keys and settings
   CheckConfigFiles()
@@ -3756,6 +3752,13 @@ def main():
   #print("----------------------------------------")
 
 
+  
+  #Fake boot sequence
+  LED.ClearBigLED()
+  LED.ClearBuffers()
+  CursorH = 0
+  CursorV = 0
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
 
 
   '''
@@ -3802,12 +3805,6 @@ def main():
   '''
    
     
-  multiprocessing.set_start_method("spawn", force=True)
-  
-  manager = multiprocessing.Manager()
-  queue = manager.Queue()
-  SharedState = manager.dict()
-  SharedState["DigitalClockSpawned"] = False
 
   proc = multiprocessing.Process(
       target=SpawnClock,
@@ -3817,12 +3814,21 @@ def main():
   proc.join()
   print("Final state:", SharedState["DigitalClockSpawned"])
 
-  mybot = Bot()
+  mybot = Bot(SharedState = SharedState)
   mybot.run()
 
 
 
+
+#If we are running this program directly, it's own name is "__main__"
+#This section is where we put things that we only want run once
 if __name__ == "__main__":
+    #LED.LEDInitialize()
+    multiprocessing.set_start_method("spawn", force=True)
+    manager = multiprocessing.Manager()
+    queue = manager.Queue()
+    SharedState = manager.dict()
+    SharedState["DigitalClockSpawned"] = False
     main()
 
 
