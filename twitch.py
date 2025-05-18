@@ -217,8 +217,8 @@ CursorRGB = (0,75,0)
 #----------------------------------------------------------------------------
 
 
-
-
+#
+ 
 #We are now spawning a separate process to control the LED display
 
 def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
