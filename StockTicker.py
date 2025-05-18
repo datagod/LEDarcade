@@ -70,6 +70,9 @@ import sys
 import re   # regular expression
 
 import LEDarcade as LED
+LED.Initialize()
+
+
 from rgbmatrix import graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 

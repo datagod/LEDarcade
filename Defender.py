@@ -54,6 +54,8 @@ from __future__ import print_function
 
 
 import LEDarcade as LED
+LED.Initialize()
+
 import copy
 import random
 import time

@@ -54,6 +54,8 @@
 # ============================================================================
 
 import LEDarcade as LED
+LED.Initialize()
+
 import math
 import time
 import random

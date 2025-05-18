@@ -55,6 +55,12 @@
 #   Reason:  Initial Creation                                                --
 #------------------------------------------------------------------------------
 
+print("==========================================")
+print("==========================================")
+print("======I JUST GOT IMPORTED=================")
+print("==========================================")
+print("==========================================")
+print("==========================================")
 
 import time
 import gc
@@ -179,11 +185,7 @@ EmptyArray  = ([[]])
 EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
 
 
-#The matrix object is what is used to interact with the LED display
-TheMatrix    = None
 
-#Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
-Canvas = None
 
 
 
@@ -292,7 +294,10 @@ OutOfBoundsObject.name = 'OutOfBounds'
 
 
 
-
+def get_process_id():
+    PID = os.getpid()
+    #print("Current PID:", PID)
+    return PID
 
 
 
@@ -309,12 +314,12 @@ def LoadConfigData():
   global HatHeight
   global HatWidth
   
-
-  print ("--Load Config Data--")
+  PID = get_process_id()
+  print (f"{PID} --Load Config Data--")
   #print ("PacDotHighScore Before Load: ",PacDotHighScore)
     
   if (os.path.exists(ConfigFileName)):
-    print ("Config file (",ConfigFileName,"): already exists")
+    print (f"{PID}Config file (",ConfigFileName,"): already exists")
     ConfigFile = SafeConfigParser()
     ConfigFile.read(ConfigFileName)
 
@@ -337,20 +342,20 @@ def LoadConfigData():
     #Get DotInvadersHighScore
     DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
     DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
-    print ("DotInvadersHighScore:   ",DotInvadersHighScore)
-    print ("DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
+    print (f"{PID} DotInvadersHighScore:   ",DotInvadersHighScore)
+    print (f"{PID} DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
     try:
       HatHeight   = int(ConfigFile.get("MATRIX","HatHeight"))
       HatWidth    = int(ConfigFile.get("MATRIX","HatWidth"))
     except:
-      print('No override for HatHeight/HatWidth.  Going with defaults.')
+      print(f"{PID} No override for HatHeight/HatWidth.  Going with defaults.")
       
     
     
-    print("HatWidth:               ",HatWidth)
-    print("HatHeight               ",HatHeight)
+    print(f"{PID} HatWidth:               ",HatWidth)
+    print(f"{PID} HatHeight               ",HatHeight)
       
 
 
@@ -359,29 +364,29 @@ def LoadConfigData():
     #Get Outbreak data
     OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
     OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
-    print ("OutbreakHighScore:      ",OutbreakHighScore)
-    print ("OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
+    print (f"{PID} OutbreakHighScore:      ",OutbreakHighScore)
+    print (f"{PID} OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
 
 
     #Get SpaceDot data
     SpaceDotHighScore   = int(ConfigFile.get("scores","SpaceDotHighScore"))
     SpaceDotGamesPlayed = int(ConfigFile.get("scores","SpaceDotGamesPlayed"))
-    print ("SpaceDotHighScore:      ",SpaceDotHighScore)
-    print ("SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
+    print (f"{PID} SpaceDotHighScore:      ",SpaceDotHighScore)
+    print (f"{PID} SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
 
 
     #Get Defender data
     DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
     DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
-    print ("DefenderHighScore:      ",DefenderHighScore)
-    print ("DefenderGamesPlayed:    ",DefenderGamesPlayed)
+    print (f"{PID} DefenderHighScore:      ",DefenderHighScore)
+    print (f"{PID} DefenderGamesPlayed:    ",DefenderGamesPlayed)
 
 
   else:
-    print ("Config file not found! Running with default values.")
+    print (f"{PID} Config file not found! Running with default values.")
 
     
-  print ("--------------------")
+  print (f"{PID} --------------------")
   print (" ")
   
 
@@ -2561,7 +2566,7 @@ class ColorAnimatedSprite(object):
    
 
 
-  def PaintAnimatedToCanvas(self,h1 = -1, v1 = -1,Canvas=Canvas):
+  def PaintAnimatedToCanvas(self,h1 = -1, v1 = -1,Canvas=None):
     #Treat black pixels in sprite as transparent
     x = 0
     y = 0
@@ -2616,7 +2621,7 @@ class ColorAnimatedSprite(object):
 
 
 
-  def PaintAnimatedExplosionToCanvas(self,h1 = -1, v1 = -1,Canvas=Canvas):
+  def PaintAnimatedExplosionToCanvas(self,h1 = -1, v1 = -1,Canvas=None):
     #Treat black pixels in sprite as transparent
     x = 0
     y = 0
@@ -14218,7 +14223,7 @@ def CopySpriteToPixelsZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,
 
 
 
-def CopySpriteToCanvasZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-1,-1),ZoomFactor = 1,Fill=True,Canvas=Canvas):
+def CopySpriteToCanvasZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,-1,-1),ZoomFactor = 1,Fill=True,Canvas=None):
   #Copy a regular sprite to the LED 
   #Apply a ZoomFactor i.e  1 = normal / 2 = double in size / 3 = 3 times the size
   #print ("Copying sprite to playfield:",TheSprite.name, ObjectType, Filler)
@@ -14282,7 +14287,7 @@ def CopySpriteToCanvasZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,
 
 
 
-#def CopyPlayfieldToCanvas(Playfield,h,v,Canvas=Canvas):
+#def CopyPlayfieldToCanvas(Playfield,h,v,Canvas=None):
 #  #Copy a section of the Playfield to the canvas
 #
 #  #Copy sprite to Canvas
@@ -19644,80 +19649,95 @@ def DisplayStockPrice(Symbol="", Price=""):
 
 
 
-def LEDInitialize():
-
-  global TheMatrix
-  global Canvas
-  
-    
-  DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
-
-
-  # ------------------------------------------------------------------------------
-  # RGBMatrixOptions Explanation
-  # ------------------------------------------------------------------------------
-  # The RGBMatrixOptions class is used to configure how the LED matrix behaves.
-  # This object is passed to the RGBMatrix constructor to define display settings.
-
-  # Common options include:
-  #
-  #   rows              - Number of rows per panel (e.g., 32, 64)
-  #   cols              - Number of columns per panel (e.g., 64, 128)
-  #   chain_length      - Number of daisy-chained panels horizontally
-  #   parallel          - Number of parallel chains (for larger displays)
-  #   brightness        - LED brightness (0–100)
-  #   gpio_slowdown     - Reduces signal speed for hardware compatibility (0–4)
-  #   disable_hardware_pulsing - Set to True to avoid PWM interference
-  #   show_refresh_rate - Display refresh rate on console (for debugging)
-
-  # Example:
-  # options = RGBMatrixOptions()
-  # options.rows = 32
-  # options.cols = 64
-  # options.chain_length = 2
-  # options.parallel = 1
-  # options.brightness = 75
-  # matrix = RGBMatrix(options=options)
-  # ------------------------------------------------------------------------------
-
-
-  #--------------------------------------
-  # RGB Matrix Options                 --
-  #--------------------------------------
-
-  #load config data to see if there is an override value for hatwidth/hatheight
-  LoadConfigData()
 
 
 
-  # -------------------------------
-  # Matrix Options
-  # -------------------------------
-  options = RGBMatrixOptions()
-  options.rows = 32
-  options.cols = 64
-  options.chain_length = 1
-  options.parallel = 1
-  options.hardware_mapping = 'adafruit-hat'       # Adafruit HAT specific
-  options.gpio_slowdown = 3                      # Adjust if you see flicker
-  options.brightness = 100                         # Keep this moderate
-  options.pwm_bits = 11                           # Lower for better timing
-  options.pwm_lsb_nanoseconds = 130               # Tweak this if needed
-  options.scan_mode = 0                           # Progressive
-  options.disable_hardware_pulsing = False
-  options.drop_privileges = False                 # Avoid permission issues
 
 
-  #The matrix object is what is used to interact with the LED display
-  TheMatrix    = RGBMatrix(options = options)
 
 
-  #Canvas is an object that we can paint to (setpixels) and then swap to the main display for a super fast update (vsync)
-  Canvas = TheMatrix.CreateFrameCanvas()
-  Canvas.Fill(0,0,0)
+# PATCH FOR LEDarcade.py
+# This adds a safe initialization routine and removes top-level side effects
 
 
-  DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
+_initialized = False
+
+def Initialize():
+    global _initialized
+    if _initialized:
+        print("LEDarcade already initialized.  Skipping")
+        return
+    _initialized = True
+
+    global TheMatrix, Canvas, ScreenArray, HatWidth, HatHeight
+
+    LoadConfigData()
+
+    # ------------------------------------------------------------------------------
+    # RGBMatrixOptions Explanation
+    # ------------------------------------------------------------------------------
+    # The RGBMatrixOptions class is used to configure how the LED matrix behaves.
+    # This object is passed to the RGBMatrix constructor to define display settings.
+
+    # Common options include:
+    #
+    #   rows              - Number of rows per panel (e.g., 32, 64)
+    #   cols              - Number of columns per panel (e.g., 64, 128)
+    #   chain_length      - Number of daisy-chained panels horizontally
+    #   parallel          - Number of parallel chains (for larger displays)
+    #   brightness        - LED brightness (0–100)
+    #   gpio_slowdown     - Reduces signal speed for hardware compatibility (0–4)
+    #   disable_hardware_pulsing - Set to True to avoid PWM interference
+    #   show_refresh_rate - Display refresh rate on console (for debugging)
+
+    # Example:
+    # options = RGBMatrixOptions()
+    # options.rows = 32
+    # options.cols = 64
+    # options.chain_length = 2
+    # options.parallel = 1
+    # options.brightness = 75
+    # matrix = RGBMatrix(options=options)
+    # ------------------------------------------------------------------------------
+
+
+    #load config data to see if there is an override value for hatwidth/hatheight
+
+    # -------------------------------
+    # RGBMatrix Options
+    # -------------------------------
+    options = RGBMatrixOptions()
+    options.rows = 32
+    options.cols = 64
+    options.chain_length = 1
+    options.parallel = 1
+    options.hardware_mapping = 'adafruit-hat'       # Adafruit HAT specific
+    options.gpio_slowdown = 3                      # Adjust if you see flicker
+    options.brightness = 100                         # Keep this moderate
+    options.pwm_bits = 11                           # Lower for better timing
+    options.pwm_lsb_nanoseconds = 130               # Tweak this if needed
+    options.scan_mode = 0                           # Progressive
+    options.disable_hardware_pulsing = False
+    options.drop_privileges = False                 # Avoid permission issues
+
+    HatWidth  = options.cols
+    HatHeight = options.rows
+
+    #The matrix object is what is used to interact with the LED display
+    TheMatrix    = RGBMatrix(options = options)
+    Canvas = TheMatrix.CreateFrameCanvas()
+    Canvas.Fill(0, 0, 0)
+    ScreenArray = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+
+    print("LEDarcade initialized.")
+    #DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
+
+
+    print(f"LED Matrix Brightness: {options.brightness}")
+
+
+  # import LEDarcade as LED
+  # LED.initialize()
 
 
 
@@ -19752,15 +19772,12 @@ def main():
 
 
 
-
-
-LEDInitialize()
 if __name__ == "__main__":
     print("*******************************************")
     print("** LEDarcade                             **")
     print("*******************************************")
     #os.system('clear')
-    #LEDInitialize()
+    Initialize()
     main()  
     
 

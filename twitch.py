@@ -32,7 +32,7 @@ os.system('cls||clear')
 import sys
 import re   # regular expression
 
-import LEDarcade as LED
+
 
 #from rgbmatrix import graphics
 #from rgbmatrix import RGBMatrix, RGBMatrixOptions
@@ -91,11 +91,11 @@ from datetime import datetime, timezone
 
 
 #games
-import DotInvaders as DI
-import Outbreak    as OB
-import Defender    as DE
-import Tron        as TR
-import SpaceDot    as SD
+#import DotInvaders as DI
+#import Outbreak    as OB
+#import Defender    as DE
+#import Tron        as TR
+#import SpaceDot    as SD
 
 
 
@@ -201,11 +201,6 @@ MyConfigFileName  = "MyConfig.ini"
 
 
 
-#Sprite display locations
-LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
-LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
-LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
-LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
 
 #Colors
 TerminalRGB = (0,200,0)
@@ -225,19 +220,19 @@ CursorRGB = (0,75,0)
 
 
 #We are now spawning a separate process to control the LED display
+
 def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
-    log_path = "/tmp/spawnclock.log"
     try:
-        with open(log_path, "a") as log:
-            print("SpawnClock - Begin", file=log)
+            import LEDarcade as LED
+            LED.Initialize()
+            print("SpawnClock - Begin")
             SharedState['DigitalClockSpawned'] = True
-            print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}", file=log)
+            print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}")
 
             r = random.choice([1, 3])
             zoom = 3 if StreamActive else 2
 
-            print(f"ClockStyle: {r}, Zoom: {zoom}", file=log)
-            log.flush()
+            print(f"ClockStyle: {r}, Zoom: {zoom}")
 
             LED.DisplayDigitalClock(
                 ClockStyle=1,  # change back to r later
@@ -253,50 +248,12 @@ def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
             )
 
     except Exception as e:
-        with open(log_path, "a") as log:
-            print(f"[ERROR] SpawnClock crashed: {e}", file=log)
-            traceback.print_exc(file=log)
-            log.flush()
+            print(f"[ERROR] SpawnClock crashed: {e}")
+            traceback.print_exc()
     finally:
         SharedState['DigitalClockSpawned'] = False
-        with open(log_path, "a") as log:
-            print("SpawnClock - Completed", file=log)
-            print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}", file=log)
-            log.flush()
-
-
-
-
-
-#---------------------------------------
-# Turn on RegularClock                --
-#---------------------------------------
-
-def TestDisplayDigitalClock():
-    
-    AnimationDelay = 0.01
-    StreamActive = False
-        
-    print("Starting: DisplayDigitalClock")
-    print("DigitalClockSpawned:", SharedState.get('DigitalClockSpawned', False))
-
-    
-    try:
-        print("Spawning new DigitalClock process...")
-        
-        clock_proc = multiprocessing.Process(
-            target=SpawnClock,
-            args=(EventQueue, AnimationDelay, StreamActive, SharedState)
-        )
-        clock_proc.start()
-        print(f"Spawned clock process with PID: {clock_proc.pid}")
-    except Exception as e:
-        print(f"[ERROR] Failed to spawn DigitalClock: {e}")
-        traceback.print_exc()
-
-
-
-
+        print("SpawnClock - Completed")
+        print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}")
 
 
 
@@ -333,7 +290,7 @@ class Bot(commands.Bot ):
   
 
   
-    def __init__(self, SharedState=None):
+    def __init__(self, SharedState=None, EventQueue=None):
 
        # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
         # prefix can be a callable, which returns a list of strings or a string...
@@ -358,6 +315,8 @@ class Bot(commands.Bot ):
 
         super().__init__(token=THECLOCKBOT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
         self.SharedState = SharedState if SharedState is not None else {}
+        self.EventQueue   = EventQueue
+        
         self.BotStartTime   = time.time()
         LastMessageReceived = time.time()
         #time.sleep(3)
@@ -1128,24 +1087,31 @@ class Bot(commands.Bot ):
 
     def DisplayDigitalClock(self):
         print("Starting: DisplayDigitalClock")
-        print("DigitalClockSpawned:", SharedState.get('DigitalClockSpawned', False))
 
-        if SharedState.get('DigitalClockSpawned', False):
-            print("Digital clock already running. Skipping spawn.")
-            return
+        # Check if already running
+        if self.SharedState.get("DigitalClockSpawned", False):
+            if hasattr(self, 'clock_proc') and self.clock_proc.is_alive():
+                print("Digital clock process already running. Skipping spawn.")
+                return
+            else:
+                print("Clock flag was True but no live process — resetting.")
+                self.SharedState["DigitalClockSpawned"] = False
+
+        # Proceed to spawn
+        self.SharedState["DigitalClockSpawned"] = True
 
         try:
-            print("Spawning new DigitalClock process...")
             self.clock_proc = multiprocessing.Process(
                 target=SpawnClock,
-                args=(EventQueue, self.AnimationDelay, StreamActive, SharedState)
+                args=(self.EventQueue, self.AnimationDelay, StreamActive, self.SharedState)
             )
             self.clock_proc.start()
             print(f"Spawned clock process with PID: {self.clock_proc.pid}")
+
         except Exception as e:
             print(f"[ERROR] Failed to spawn DigitalClock: {e}")
             traceback.print_exc()
-
+            self.SharedState["DigitalClockSpawned"] = False
 
 
 
@@ -2142,8 +2108,6 @@ class Bot(commands.Bot ):
         )
 
 
-LED.ClearBigLED()
-LED.ClearBuffers()
 
 
 
@@ -2713,7 +2677,7 @@ def ConvertDate(TheDate):
 #-- FILE ACCESS Functions              --
 #----------------------------------------
 
-def LoadConfigFiles():
+def Twitch_LoadConfigFiles():
       
   #global LEDARCADE_APP_ACCESS_TOKEN
   #global LEDARCADE_APP_CLIENT_ID
@@ -3672,7 +3636,7 @@ def main():
 
   #load keys and settings
   CheckConfigFiles()
-  LoadConfigFiles()
+  Twitch_LoadConfigFiles()
 
   #Spawn a process to run the clock
   #clock_proc = multiprocessing.Process(target=Bot.DisplayDigitalClock())
@@ -3752,16 +3716,9 @@ def main():
   #print("----------------------------------------")
 
 
+    
+
   
-  #Fake boot sequence
-  LED.ClearBigLED()
-  LED.ClearBuffers()
-  CursorH = 0
-  CursorV = 0
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Arcade Retro Clock",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
-
-
-  '''
   print ("--StartBot--")
   #skip all this if running datagod
   if (BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL != 'XtianNinja'):
@@ -3783,7 +3740,7 @@ def main():
     IPAddress = LED.ShowIPAddress(Wait=5)
   else:
     print("Skipping boot up sequence")
-  '''
+  
 
 
 
@@ -3814,7 +3771,8 @@ def main():
   proc.join()
   print("Final state:", SharedState["DigitalClockSpawned"])
 
-  mybot = Bot(SharedState = SharedState)
+  mybot = Bot(SharedState = SharedState, EventQueue = EventQueue)
+  mybot.DisplayDigitalClock()
   mybot.run()
 
 
@@ -3823,12 +3781,28 @@ def main():
 #If we are running this program directly, it's own name is "__main__"
 #This section is where we put things that we only want run once
 if __name__ == "__main__":
-    #LED.LEDInitialize()
+    import LEDarcade as LED
+    LED.Initialize()
+
+    #Sprite display locations
+    LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
+    LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
+    LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
+    LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
+
+
+    
+
+
     multiprocessing.set_start_method("spawn", force=True)
     manager = multiprocessing.Manager()
     queue = manager.Queue()
     SharedState = manager.dict()
+    EventQueue = manager.Queue()  
     SharedState["DigitalClockSpawned"] = False
+    
+    
+    #SpawnClock(EventQueue, 1, StreamActive, SharedState)
     main()
 
 
