@@ -227,9 +227,9 @@ def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
     try:
             import LEDarcade as LED
             LED.Initialize()
-            #LED.ReinitializeMatrix()
-            #LED.InitializeColors()
-            #LED.TheMatrix.brightness = 100  # force brightness again
+            LED.ReinitializeMatrix()
+            LED.InitializeColors()
+            LED.TheMatrix.brightness = 100  # force brightness again
             LED.ClearBigLED()
             LED.ClearBuffers()
 

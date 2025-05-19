@@ -55,12 +55,11 @@
 #   Reason:  Initial Creation                                                --
 #------------------------------------------------------------------------------
 
+print("")
 print("==========================================")
+print("== IMPORTING LEDarcade                  ==")
 print("==========================================")
-print("======I JUST GOT IMPORTED=================")
-print("==========================================")
-print("==========================================")
-print("==========================================")
+print("")
 
 import time
 import gc
@@ -16282,7 +16281,7 @@ def UpdateTimerWithTransition(TimerSprite,BannerSprite,h=0,v=0,RGB=HighGreen,Sha
 
 
 
-#I added the async for twitch.py.  I might need to make a different version for non twitch clocks
+
 def DisplayDigitalClock(
   ClockStyle  = 1,
   CenterHoriz = False,
@@ -16294,13 +16293,13 @@ def DisplayDigitalClock(
   ShadowRGB   = ShadowBlue,
   ZoomFactor  = 2,
   AnimationDelay = 10,
-  ScrollSleep    = 0.05,
+  ScrollSleep    = 0.01,
   RunMinutes     = 1,
   StartDateTimeUTC  = '',
   HHMMSS            = '00:00:00',
   DisplayNumber1    = 0,
   DisplayNumber2    = 0,
-  EventQueue        = ''
+  StopEvent         = None
   ):
 
 
@@ -16378,21 +16377,17 @@ def DisplayDigitalClock(
 
 
       while (Done == False):
+        print(f"StopEvent: {StopEvent}")
+        #when called from a multiprocess (LEDcommander) keep an eye on the StopEvent 
         
-        #Check the EventQueue every second, then sleep
-        #We want the clock to be ticking away, and the animation delay indicates how long to wait before
-        #showign the next animation on the screen
-        for i in range (0,AnimationDelay):
-          #print("Checking the EventQueue for any incoming requests")
-          QueueCount = EventQueue.qsize()
-          
-          print("QueueCount: ",QueueCount," i:",i)
-          time.sleep(1)
-          print("I waited...")
-
-          if (QueueCount > 0):
-            print ("Queue is not empty.  Setting Done = True")
+        if StopEvent and StopEvent.is_set():
+            print("[LED] Stop requested — exiting early.")
             Done = True
+
+            #--> Put a transition effect here
+           
+
+            break
 
 
         #If the time has changed since we started the animation delay loop, update the sprite
@@ -19632,6 +19627,8 @@ def DisplayStockPrice(Symbol="", Price=""):
 
 
 
+
+
 #------------------------------------------------------------------------------
 # MAIN SECTION                                                               --
 #                                                                            --
@@ -19872,6 +19869,9 @@ def main():
   print("")
 
   
+
+
+
 
 
 

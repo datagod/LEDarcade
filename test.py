@@ -1,45 +1,43 @@
-from multiprocessing import Process
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from multiprocessing import Process, Queue
+import LEDcommander as LED
 import time
 
-def show_color(brightness):
-    options = RGBMatrixOptions()
-    options.rows = 32
-    options.cols = 64
-    options.chain_length = 1
-    options.parallel = 1
-    options.hardware_mapping = 'adafruit-hat'
-    options.brightness = brightness
-    options.gpio_slowdown = 3
+if __name__ == "__main__":
+    CommandQueue = Queue()
+    LEDProcess = Process(target=LED.Run, args=(CommandQueue,))
+    LEDProcess.start()
+    CommandQueue.cancel_join_thread()
 
-    print(f"[Child] Creating matrix with brightness: {brightness}")
-    matrix = RGBMatrix(options=options)
-    matrix.brightness = brightness  # enforce
+    CommandQueue.put({
+        "Action": "ShowClock",
+        "Style": 1,
+        "Zoom": 2,
+        "Duration": 1,
+        "Delay": 5
+    })
 
-    canvas = matrix.CreateFrameCanvas()
-    canvas.Fill(255, 0, 0)
-    canvas = matrix.SwapOnVSync(canvas)
-
-    print(f"[Child] Actual brightness: {matrix.brightness}")
+    # Let it run for a bit
     time.sleep(1)
 
-if __name__ == "__main__":
-    print("[Main] Starting child process...")
-    proc = Process(target=show_color, args=(10,))
-    proc.start()
-    proc.join()
+    # Turn off the clock
+    CommandQueue.put({"Action": "StopClock"})
+    time.sleep(5)
+   
+    print("QUIT NOW!")
+    
+    # Ask LEDCommander to shut down fully
+    CommandQueue.put({"Action": "Quit"})
 
-    proc = Process(target=show_color, args=(25,))
-    proc.start()
-    proc.join()
+    # Give the subprocess a moment to receive the message
+    time.sleep(0.1)
 
-    proc = Process(target=show_color, args=(50,))
-    proc.start()
-    proc.join()
+    # Now join with a timeout
+    LEDProcess.join(timeout=3)
 
 
-    proc = Process(target=show_color, args=(100,))
-    proc.start()
-    proc.join()
+    if LEDProcess.is_alive():
+        print("[Main] LEDCommander still alive — terminating.")
+        LEDProcess.terminate()
+        LEDProcess.join()
 
-    print("[Main] Done.")
+    print("[Main] Shutdown complete.")
