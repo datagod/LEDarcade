@@ -24,10 +24,16 @@ KofiStreamBot
  
 '''
 
+print("")
+print("=============================================")
+print("== Twitch.py                                =")
+print("=============================================")
+print("")
+
 
 
 import os
-os.system('cls||clear')
+#os.system('cls||clear')
 
 import sys
 import re   # regular expression
@@ -48,6 +54,12 @@ import socket
 #multi processing
 import asyncio
 import multiprocessing
+from multiprocessing import Process, Queue
+import LEDcommander
+import time
+
+
+
 
 from flask import Flask, request, abort
 from multiprocessing.connection import Client
@@ -201,7 +213,6 @@ MyConfigFileName  = "MyConfig.ini"
 
 
 
-
 #Colors
 TerminalRGB = (0,200,0)
 CursorRGB = (0,75,0)
@@ -211,16 +222,27 @@ CursorRGB = (0,75,0)
 #EventQueue = asyncio.Queue()  #used to store and process chat messages
 
 
+# Global variables for LEDcommander
+CommandQueue   = None
+CommandProcess = None
+
+
 
 #----------------------------------------------------------------------------
 # FUNCTIONS
 #----------------------------------------------------------------------------
 
 
+def GetElapsedSeconds(starttime):
+  elapsed_seconds = time.time() - starttime
+  return elapsed_seconds
+
+
 #
  
 #We are now spawning a separate process to control the LED display
 
+''' 
 def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
 
 
@@ -235,7 +257,7 @@ def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
 
             print("SpawnClock: Matrix brightness =", LED.TheMatrix.brightness)
 
-            print("Red:",LED.MedRed," ShadowRed: ",LED.ShadowRed)
+            print("Red:",LED.MedRed," ShadowRed: ",LEDcolors.ShadowRed)
 
 
             print("SpawnClock - Begin")
@@ -267,7 +289,7 @@ def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
         SharedState['DigitalClockSpawned'] = False
         print("SpawnClock - Completed")
         print(f"DigitalClockSpawned set to: {SharedState['DigitalClockSpawned']}")
-
+''' 
 
 
 
@@ -303,9 +325,11 @@ class Bot(commands.Bot ):
   
 
   
-    def __init__(self, SharedState=None, EventQueue=None):
+    def __init__(self,EventQueue=None):
 
-       # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
+        self.EventQueue   = EventQueue   #old, being replaced
+
+        # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
         # prefix can be a callable, which returns a list of strings or a string...
         # initial_channels can also be a callable which returns a list of strings...
         # Note: the bot client id is from Twitch Dev TheClockBot.
@@ -327,8 +351,6 @@ class Bot(commands.Bot ):
         print("Initial_Channels:",BROADCASTER_CHANNEL)
 
         super().__init__(token=THECLOCKBOT_ACCESS_TOKEN, prefix='?', initial_channels=[BROADCASTER_CHANNEL])
-        self.SharedState = SharedState if SharedState is not None else {}
-        self.EventQueue   = EventQueue
         
         self.BotStartTime   = time.time()
         LastMessageReceived = time.time()
@@ -346,7 +368,7 @@ class Bot(commands.Bot ):
 
 
     async def my_custom_startup(self):
-
+        global CommandQueue
         
         await asyncio.sleep(1)
         self.Channel = self.get_channel(BROADCASTER_CHANNEL)
@@ -359,24 +381,25 @@ class Bot(commands.Bot ):
           self.ChatTerminalOn = True
         elif(StreamActive == False and SHOW_CHATBOT_MESSAGES == True):
           #Explain the main intro is not live
-          LED.ShowTitleScreen(
-            BigText             = "404",
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            LittleText          = "NO STREAM",
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = BROADCASTER_CHANNEL + " not active. Try again later...",
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep /2, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 1,           # time in seconds to wait before exiting 
-            ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            LittleTextZoom      = 1
-            )
-          self.ChatTerminalOn = False
-        
-        
-        
+
+          CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": "404",
+              "BigTextRGB": LEDcolors.MedPurple,
+              "BigTextShadowRGB": LEDcolors.ShadowPurple,
+              "LittleText": "NO STREAM",
+              "LittleTextRGB": LEDcolors.MedRed,
+              "LittleTextShadowRGB": LEDcolors.ShadowRed,
+              "ScrollText": BROADCASTER_CHANNEL + " not active. Try again later...",
+              "ScrollTextRGB": LEDcolors.MedYellow,
+              "ScrollSleep": ScrollSleep / 2,
+              "DisplayTime": 1,
+              "ExitEffect": 5,
+              "LittleTextZoom": 1
+          })
+
+          
+          
 
 
         
@@ -410,7 +433,6 @@ class Bot(commands.Bot ):
     async def PerformTimeBasedActions(self):
 
         global DigitalClockSpawned
-        print(f"PerformTimeBasedActions - DigitalClockSpawned: {SharedState['DigitalClockSpawned']}")
 
 
         loop = asyncio.get_running_loop()
@@ -518,6 +540,7 @@ class Bot(commands.Bot ):
     #- Event Ready                        --
     #---------------------------------------
     async def event_ready(self):
+        global CommandQueue
         # Notify us when everything is ready!
         # We are logged in and ready to chat and use commands...
         #UserList = self.fetch_users()
@@ -541,80 +564,77 @@ class Bot(commands.Bot ):
           #skip my own channel for testing purposes
           if(BROADCASTER_CHANNEL != 'datagod' and BROADCASTER_CHANNEL.upper() != 'XTIANNINJA'):
 
-            #SHOW INTRO FOR MAIN CHANNEL
-            LED.ShowTitleScreen(
-              BigText             = CHANNEL_BIG_TEXT,
-              BigTextRGB          = LED.MedPurple,
-              BigTextShadowRGB    = LED.ShadowPurple,
-              LittleText          = CHANNEL_LITTLE_TEXT,
-              LittleTextRGB       = LED.MedRed,
-              LittleTextShadowRGB = LED.ShadowRed, 
-              ScrollText          = Title,
-              ScrollTextRGB       = LED.MedYellow,
-              ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-              DisplayTime         = 1,           # time in seconds to wait before exiting 
-              ExitEffect          = 5,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-              LittleTextZoom      = 2
-              )
+              # INTRO FOR MAIN CHANNEL
+              CommandQueue.put({
+                  "Action": "ShowTitleScreen",
+                  "BigText": CHANNEL_BIG_TEXT,
+                  "BigTextRGB": LEDcolors.MedPurple,
+                  "BigTextShadowRGB": LEDcolors.ShadowPurple,
+                  "LittleText": CHANNEL_LITTLE_TEXT,
+                  "LittleTextRGB": LEDcolors.MedRed,
+                  "LittleTextShadowRGB": LEDcolors.ShadowRed,
+                  "ScrollText": Title,
+                  "ScrollTextRGB": LEDcolors.MedYellow,
+                  "ScrollSleep": ScrollSleep,
+                  "DisplayTime": 1,
+                  "ExitEffect": 5,
+                  "LittleTextZoom": 2
+              })
 
-            #SHOW FOLLOWERS
-            if (SHOW_FOLLOWERS == True):
-              if (Followers > 9999):
-                BigTextZoom = 2
-              else:
-                BigTextZoom = 3
+              # SHOW FOLLOWERS
+              if SHOW_FOLLOWERS:
+                  BigTextZoom = 2 if Followers > 9999 else 3
+                  CommandQueue.put({
+                      "Action": "ShowTitleScreen",
+                      "BigText": str(Followers),
+                      "BigTextRGB": LEDcolors.MedPurple,
+                      "BigTextShadowRGB": LEDcolors.ShadowPurple,
+                      "BigTextZoom": BigTextZoom,
+                      "LittleText": "FOLLOWS",
+                      "LittleTextRGB": LEDcolors.MedRed,
+                      "LittleTextShadowRGB": LEDcolors.ShadowRed,
+                      "ScrollText": "",
+                      "ScrollTextRGB": LEDcolors.MedYellow,
+                      "ScrollSleep": ScrollSleep,
+                      "DisplayTime": 1,
+                      "ExitEffect": 0
+                  })
 
-              LED.ShowTitleScreen(
-                BigText             = str(Followers),
-                BigTextRGB          = LED.MedPurple,
-                BigTextShadowRGB    = LED.ShadowPurple,
-                LittleText          = 'FOLLOWS',
-                LittleTextRGB       = LED.MedRed,
-                LittleTextShadowRGB = LED.ShadowRed, 
-                ScrollText          = '',
-                ScrollTextRGB       = LED.MedYellow,
-                ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-                DisplayTime         = 1,           # time in seconds to wait before exiting 
-                ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-                )
+              # SHOW VIEWERS
+              if SHOW_VIEWERS:
+                  CommandQueue.put({
+                      "Action": "ShowTitleScreen",
+                      "BigText": str(ViewerCount),
+                      "BigTextRGB": LEDcolors.MedPurple,
+                      "BigTextShadowRGB": LEDcolors.ShadowPurple,
+                      "BigTextZoom": 3,
+                      "LittleText": "Viewers",
+                      "LittleTextRGB": LED.MedRed,
+                      "LittleTextShadowRGB": LEDcolors.ShadowRed,
+                      "ScrollText": f"Now Playing: {GameName}",
+                      "ScrollTextRGB": LED.MedYellow,
+                      "ScrollSleep": ScrollSleep,
+                      "DisplayTime": 1,
+                      "ExitEffect": 1
+                  })
 
+              # CHAT TERMINAL INTRO
+              CommandQueue.put({
+                  "Action": "ShowTitleScreen",
+                  "BigText": "CHAT",
+                  "BigTextRGB": LED.MedRed,
+                  "BigTextShadowRGB": LEDcolors.ShadowRed,
+                  "LittleText": "TERMINAL",
+                  "LittleTextRGB": LED.MedBlue,
+                  "LittleTextShadowRGB": LEDcolors.ShadowBlue,
+                  "ScrollText": f"TUNING IN TO {BROADCASTER_CHANNEL}",
+                  "ScrollTextRGB": LED.MedOrange,
+                  "ScrollSleep": ScrollSleep,
+                  "DisplayTime": 1,
+                  "ExitEffect": 0,
+                  "LittleTextZoom": 1
+              })
 
-            #SHOW VIEWERS
-            if (SHOW_VIEWERS == True):
-
-              LED.ShowTitleScreen(
-                BigText             = str(ViewerCount),
-                BigTextRGB          = LED.MedPurple,
-                BigTextShadowRGB    = LED.ShadowPurple,
-                BigTextZoom         = 3,
-                LittleText          = 'Viewers',
-                LittleTextRGB       = LED.MedRed,
-                LittleTextShadowRGB = LED.ShadowRed, 
-                ScrollText          = 'Now Playing: ' + GameName,
-                ScrollTextRGB       = LED.MedYellow,
-                ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-                DisplayTime         = 1,           # time in seconds to wait before exiting 
-                ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-                )
-
-
-
-
-            #Show this one reading chats
-            LED.ShowTitleScreen(
-              BigText             = 'CHAT',
-              BigTextRGB          = LED.MedRed,
-              BigTextShadowRGB    = LED.ShadowRed,
-              LittleText          = 'TERMINAL',
-              LittleTextRGB       = LED.MedBlue,
-              LittleTextShadowRGB = LED.ShadowBlue, 
-              ScrollText          = 'TUNING IN TO ' +  BROADCASTER_CHANNEL,
-              ScrollTextRGB       = LED.MedOrange,
-              ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-              DisplayTime         = 1,           # time in seconds to wait before exiting 
-              ExitEffect          = 0,           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-              LittleTextZoom      = 1
-              )
 
           await self.SendRandomChatGreeting()
         await self.PerformTimeBasedActions()
@@ -816,11 +836,11 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "LURK",
             BigTextRGB          = LED.MedGreen,
-            BigTextShadowRGB    = LED.ShadowGreen,
+            BigTextShadowRGB    = LEDcolors.ShadowGreen,
             BigTextZoom         = 3,
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
+            LittleTextShadowRGB = LEDcolors.ShadowRed, 
             ScrollText          = author + " has gone into lurk mode",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -859,11 +879,11 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "HI",
             BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
+            BigTextShadowRGB    = LEDcolors.ShadowPurple,
             BigTextZoom         = 4,
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
+            LittleTextShadowRGB = LEDcolors.ShadowRed, 
             ScrollText          = "Hello there " + author + "! Thanks for tuning in.",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -879,11 +899,11 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "BYE",
             BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
+            BigTextShadowRGB    = LEDcolors.ShadowPurple,
             BigTextZoom         = 3,
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
+            LittleTextShadowRGB = LEDcolors.ShadowRed, 
             ScrollText          = "see you later " + author,
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -965,7 +985,7 @@ class Bot(commands.Bot ):
 
       self.ChatUsers.append(user.name)
 
-      elapsed_seconds = LED.GetElapsedSeconds(self.LastUserJoinedChat)
+      elapsed_seconds = GetElapsedSeconds(self.LastUserJoinedChat)
 
       
       '''  --> this is broken, keeps scrolling
@@ -1079,7 +1099,7 @@ class Bot(commands.Bot ):
             v   = 1, 
             hh  = 24,
             RGB              = LED.LowGreen,
-            ShadowRGB        = LED.ShadowGreen,
+            ShadowRGB        = LEDcolors.ShadowGreen,
             ZoomFactor       = 3,
             AnimationDelay   = self.AnimationDelay,
             RunMinutes       = 1,
@@ -1099,33 +1119,31 @@ class Bot(commands.Bot ):
     #---------------------------------------
 
     def DisplayDigitalClock(self):
-        print("Starting: DisplayDigitalClock")
+      global CommandQueue
+      print("Starting: DisplayDigitalClock")
 
-        # Check if already running
-        if self.SharedState.get("DigitalClockSpawned", False):
-            if hasattr(self, 'clock_proc') and self.clock_proc.is_alive():
-                print("Digital clock process already running. Skipping spawn.")
-                return
-            else:
-                print("Clock flag was True but no live process — resetting.")
-                self.SharedState["DigitalClockSpawned"] = False
+      try:
+        # Stop existing clock (if any), then start new one
+        CommandQueue.put({"Action": "StopClock"})
+        
+        #Formulate the command.      
+        CommandQueue.put({
+            "Action": "ShowClock",
+            "Style": 1,
+            "Zoom": 3 if StreamActive else 2,
+            "Duration": 1,  # minutes
+            "Delay": self.AnimationDelay
+        })
 
-        # Proceed to spawn
-        self.SharedState["DigitalClockSpawned"] = True
+      except Exception as e:
+        print(f"[ERROR] Failed to send clock command: {e}")
+        traceback.print_exc()
 
-        try:
-            self.clock_proc = multiprocessing.Process(
-                target=SpawnClock,
-                args=(self.EventQueue, self.AnimationDelay, StreamActive, self.SharedState)
-            )
-            self.clock_proc.start()
-            print(f"--> Spawned clock process with PID: {self.clock_proc.pid}")
-
-        except Exception as e:
-            print(f"[ERROR] Failed to spawn DigitalClock: {e}")
-            traceback.print_exc()
-            self.SharedState["DigitalClockSpawned"] = False
-
+    
+      
+    
+    
+    
 
 
     #---------------------------------------
@@ -1446,7 +1464,7 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "LEVEL",
             BigTextRGB          = LED.HighRed,
-            BigTextShadowRGB    = LED.ShadowRed,
+            BigTextShadowRGB    = LEDcolors.ShadowRed,
             BigTextZoom         = 3, 
             BigText2            = '',
             BigText2RGB         = HighBlue,
@@ -1586,11 +1604,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(ViewerCount),
           BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
+          BigTextShadowRGB    = LEDcolors.ShadowPurple,
           BigTextZoom         = 3,
           LittleText          = 'Viewers',
           LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
+          LittleTextShadowRGB = LEDcolors.ShadowRed, 
           ScrollText          = 'Now Playing: ' + GameName,
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1614,7 +1632,7 @@ class Bot(commands.Bot ):
         v   = 1, 
         hh  = 24,
         RGB = LED.LowGreen,
-        ShadowRGB     = LED.ShadowGreen,
+        ShadowRGB     = LEDcolors.ShadowGreen,
         ZoomFactor    = 3,
         AnimationDelay= 10,
         RunMinutes = 0.5,
@@ -1646,11 +1664,11 @@ class Bot(commands.Bot ):
       LED.ShowTitleScreen(
         BigText             = str(Followers),
         BigTextRGB          = LED.MedPurple,
-        BigTextShadowRGB    = LED.ShadowPurple,
+        BigTextShadowRGB    = LEDcolors.ShadowPurple,
         BigTextZoom         = 3,
         LittleText          = 'Follows',
         LittleTextRGB       = LED.MedRed,
-        LittleTextShadowRGB = LED.ShadowRed, 
+        LittleTextShadowRGB = LEDcolors.ShadowRed, 
         ScrollText          = '',
         ScrollTextRGB       = LED.MedYellow,
         ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1683,11 +1701,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(Followers),
           BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
+          BigTextShadowRGB    = LEDcolors.ShadowPurple,
           BigTextZoom         = 3,
           LittleText          = 'Follows',
           LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
+          LittleTextShadowRGB = LEDcolors.ShadowRed, 
           ScrollText          = '',
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1730,11 +1748,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(Subs),
           BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
+          BigTextShadowRGB    = LEDcolors.ShadowPurple,
           BigTextZoom         = 3,
           LittleText          = 'Subscribers',
           LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
+          LittleTextShadowRGB = LEDcolors.ShadowRed, 
           ScrollText          = '',
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1896,11 +1914,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(VIEW_COUNT),
           BigTextRGB          = LED.MedRed,
-          BigTextShadowRGB    = LED.ShadowRed,
+          BigTextShadowRGB    = LEDcolors.ShadowRed,
           BigTextZoom         = BigTextZoom,
           LittleText          = 'Views',
           LittleTextRGB       = LED.MedPurple,
-          LittleTextShadowRGB = LED.ShadowPurple, 
+          LittleTextShadowRGB = LEDcolors.ShadowPurple, 
           ScrollText          = '',
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -3624,6 +3642,25 @@ def run_coroutine_in_new_loop(EventQueue):
 
 
 
+def start_led_commander():
+
+    global CommandQueue, CommandProcess
+
+    from multiprocessing import Queue, Process
+    import LEDcommander
+    #import LEDcolors
+    #LEDcolors.InitializeColors()
+        
+    print("Initializing LEDcommander")
+
+    command_queue = Queue()
+    process = Process(target=LEDcommander.Run, args=(command_queue,))
+    process.start()
+    command_queue.cancel_join_thread()
+
+    print("LEDcommander launched.")
+    return command_queue, process
+
 
 
 #------------------------------------------------------------------------------
@@ -3766,25 +3803,18 @@ def main():
       v=1, 
       hh=24,
       RGB=LED.LowGreen,
-      ShadowRGB=LED.ShadowGreen,
+      ShadowRGB=LEDcolors.ShadowGreen,
       ZoomFactor=2,
       AnimationDelay=0.05,
       RunMinutes=1,
       EventQueue=EventQueue
   )
   '''
-   
-    
+  
+  
 
-  proc = multiprocessing.Process(
-      target=SpawnClock,
-      args=(queue, 5, False, SharedState)
-  )
-  proc.start()
-  proc.join()
-  print("Final state:", SharedState["DigitalClockSpawned"])
 
-  mybot = Bot(SharedState = SharedState, EventQueue = EventQueue)
+  mybot = Bot()
   mybot.DisplayDigitalClock()
   mybot.run()
 
@@ -3794,36 +3824,37 @@ def main():
 #If we are running this program directly, it's own name is "__main__"
 #This section is where we put things that we only want run once
 if __name__ == "__main__":
-    import LEDarcade as LED
-    LED.Initialize()
+    try:
+        CommandQueue, CommandProcess = start_led_commander()
 
-    #Sprite display locations
-    LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
-    LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
-    LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
-    LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
+        print("Start the clock as a test")
+        CommandQueue.put({
+            "Action": "ShowClock",
+            "Style": 1,
+            "Zoom": 2,
+            "Duration": 1,
+            "Delay": 5
+        })
 
+        time.sleep(20)
+        CommandQueue.put({"Action": "StopClock"})
+        time.sleep(0.5)
 
-    
+    finally:
+        CommandQueue.put({"Action": "Quit"})
+        time.sleep(0.1)
 
+        CommandProcess.join(timeout=3)
+        if CommandProcess.is_alive():
+            print("[Main] LEDCommander still alive — terminating.")
+            CommandProcess.terminate()
+            CommandProcess.join()
 
-    multiprocessing.set_start_method("spawn", force=True)
+        print("[Main] Shutdown complete.")
 
-    manager = multiprocessing.Manager()
-    queue = manager.Queue()
-    SharedState = manager.dict()
-    EventQueue = manager.Queue()  
-    SharedState["DigitalClockSpawned"] = False
-    
-    
-    #SpawnClock(EventQueue, 1, StreamActive, SharedState)
+      
     main()
 
-
-
-
-
-#LED.DisplayDigitalClock(ClockStyle=2,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=30, RunMinutes = 5 )
 
 
 

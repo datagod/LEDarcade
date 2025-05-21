@@ -1,23 +1,44 @@
 from multiprocessing import Process, Queue
-import LEDcommander as LED
+import LEDcommander
 import time
 
 if __name__ == "__main__":
+
+
+
+
     CommandQueue = Queue()
-    LEDProcess = Process(target=LED.Run, args=(CommandQueue,))
+    LEDProcess = Process(target=LEDcommander.Run, args=(CommandQueue,))
     LEDProcess.start()
     CommandQueue.cancel_join_thread()
 
+
+
+
+    print("Sending ShowTitleScreen command...")
     CommandQueue.put({
-        "Action": "ShowClock",
-        "Style": 1,
-        "Zoom": 2,
-        "Duration": 1,
-        "Delay": 5
+        "Action": "ShowTitleScreen",
+        "BigText": "404",
+        "BigTextRGB": (255, 0, 255),
+        "BigTextShadowRGB": (100, 0, 100),
+        "LittleText": "NO STREAM",
+        "LittleTextRGB": (255, 0, 0),
+        "LittleTextShadowRGB": (100, 0, 0),
+        "ScrollText": "Stream not active. Try again later...",
+        "ScrollTextRGB": (255, 255, 0),
+        "ScrollSleep": 0.05,
+        "DisplayTime": 15,
+        "ExitEffect": 5,
+        "LittleTextZoom": 1
     })
 
+
+
+
+
+
     # Let it run for a bit
-    time.sleep(1)
+    time.sleep(500)
 
     # Turn off the clock
     CommandQueue.put({"Action": "StopClock"})
