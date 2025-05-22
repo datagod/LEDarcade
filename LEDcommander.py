@@ -147,6 +147,25 @@ def Run(CommandQueue):
 
 
 
+
+
+            elif Action == "scrollmessage":
+                print("Scrolling generic message")
+                
+                #StopEvent.clear()
+                DisplayProcess = Process(target=ScrollConsoleMessage, args=(Command, StopEvent))
+                if DisplayProcess and DisplayProcess.is_alive():
+                    DisplayProcess.join()
+                else:
+                    DisplayProcess.start()
+
+
+
+
+
+
+
+
             elif Action == "quit":
                 print("[LEDCommander] Quit received.")
                 if DisplayProcess and DisplayProcess.is_alive():
@@ -259,6 +278,47 @@ def ShowTitleScreen(Command,StopEvent):
       )
 
 
+
+
+
+
+def ScrollConsoleMessage(Command,StopEvent):
+
+    import LEDarcade as LED
+    LED.Initialize()
+    
+    ScrollSleep         = 0.025
+    TerminalTypeSpeed   = 0.08  #pause in seconds between characters
+    TerminalScrollSpeed = 0.08  #pause in seconds between new lines
+    CursorRGB           = (0,255,0)
+    CursorDarkRGB       = (0,50,0)
+
+
+    CursorH = 0
+    CursorV = 0
+    TerminalTypeSpeed 
+    
+    Message        = Command.get("Message","?")
+    
+
+    LED.ClearBigLED()
+    LED.ClearBuffers()
+
+    LED.ScreenArray,CursorH,CursorV =   LED.TerminalScroll(LED.ScreenArray,
+        Message,
+        CursorH=CursorH,
+        CursorV=CursorV,
+        MessageRGB=(100,100,0),
+        CursorRGB=(0,255,0),
+        CursorDarkRGB=(0,50,0),
+        StartingLineFeed=1,
+        TypeSpeed=TerminalTypeSpeed,
+        ScrollSpeed=TerminalScrollSpeed
+        )
+
+
+
+    print(f"[LEDCommander] Scrolling terminal text: {Message}")
 
 
 

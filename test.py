@@ -5,8 +5,6 @@ import time
 if __name__ == "__main__":
 
 
-
-
     CommandQueue = Queue()
     LEDProcess = Process(target=LEDcommander.Run, args=(CommandQueue,))
     LEDProcess.start()
@@ -14,22 +12,19 @@ if __name__ == "__main__":
 
 
 
+    print("Sending ShowTitleScreen command...")
+    CommandQueue.put({
+        "Action": "ScrollMessage",
+        "Message": "Hey there big buddy.  You like this?"
+    })
+
+
+
 
     print("Sending ShowTitleScreen command...")
     CommandQueue.put({
-        "Action": "ShowTitleScreen",
-        "BigText": "404",
-        "BigTextRGB": (255, 0, 255),
-        "BigTextShadowRGB": (100, 0, 100),
-        "LittleText": "NO STREAM",
-        "LittleTextRGB": (255, 0, 0),
-        "LittleTextShadowRGB": (100, 0, 0),
-        "ScrollText": "Stream not active. Try again later...",
-        "ScrollTextRGB": (255, 255, 0),
-        "ScrollSleep": 0.05,
-        "DisplayTime": 15,
-        "ExitEffect": 5,
-        "LittleTextZoom": 1
+        "Action": "ScrollMessage",
+        "Message": "Here is another one.  This is a much longer text.  I wonder if it works."
     })
 
 
@@ -54,6 +49,27 @@ if __name__ == "__main__":
 
     # Now join with a timeout
     LEDProcess.join(timeout=3)
+
+
+    print("Sending ShowTitleScreen command...")
+    CommandQueue.put({
+        "Action": "ShowTitleScreen",
+        "BigText": "404",
+        "BigTextRGB": (255, 0, 255),
+        "BigTextShadowRGB": (100, 0, 100),
+        "LittleText": "NO STREAM",
+        "LittleTextRGB": (255, 0, 0),
+        "LittleTextShadowRGB": (100, 0, 0),
+        "ScrollText": "Stream not active. Try again later...",
+        "ScrollTextRGB": (255, 255, 0),
+        "ScrollSleep": 0.05,
+        "DisplayTime": 15,
+        "ExitEffect": 5,
+        "LittleTextZoom": 1
+    })
+
+
+
 
 
     if LEDProcess.is_alive():
