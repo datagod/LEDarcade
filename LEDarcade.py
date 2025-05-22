@@ -2,7 +2,6 @@
 
 
 
-
 # Notes
 # =====
 #
@@ -57,13 +56,16 @@
 #   Reason:  Initial Creation                                                --
 #------------------------------------------------------------------------------
 
+import time
+
+
 print("")
 print("==========================================")
 print("== IMPORTING LEDarcade                  ==")
 print("==========================================")
 print("")
 
-import time
+
 import gc
 import random
 import os
@@ -79,9 +81,6 @@ import inspect
 #RGB Matrix and graphics
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
-
-import LEDcolors
-
 
 
 
@@ -190,6 +189,682 @@ EmptyArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
 
 
 
+
+
+
+
+
+#------------------------------------------------------------------------------
+# COLORS                                                                     --
+#------------------------------------------------------------------------------
+
+#This section evolved and came out of several different video games (SDColor = SpaceDotColor for example) so the
+#names are not always clear.  Obvious names are useful, use any combination you like.
+
+#There are many colors defined here
+#some as three separate values representing R,G,b
+#some as tubles (R,G,B)
+# YellowR, YellowG, YellowB would be used as  color = (YellowR, YellowG, YellowB)
+
+
+def ApplyGamma(color,TheGamma):
+  #Need to round to integer
+  NewColor = int(color * TheGamma)
+  
+  if NewColor > 255: NewColor = 255
+  
+  #print ("Old:",color," New:",NewColor)
+  return NewColor
+
+
+
+
+#Yellow
+YellowR = ApplyGamma(220,Gamma)
+YellowG = ApplyGamma(220,Gamma)
+YellowB = ApplyGamma(0,Gamma)
+
+#Red
+RedR = ApplyGamma(100,Gamma)
+RedG = ApplyGamma(0,Gamma)
+RedB = ApplyGamma(0,Gamma)
+
+#HighRed
+HighRedR = ApplyGamma(225,Gamma)
+HighRedG = ApplyGamma(0,Gamma)
+HighRedB = ApplyGamma(0,Gamma)
+
+#MedRed
+MedRedR = ApplyGamma(100,Gamma)
+MedRedG = ApplyGamma(0,Gamma)
+MedRedB = ApplyGamma(0,Gamma)
+
+#Orange
+OrangeR = ApplyGamma(100,Gamma)
+OrangeG = ApplyGamma(50,Gamma)
+OrangeB = ApplyGamma(0,Gamma)
+
+
+#Purple
+PurpleR = ApplyGamma(75,Gamma)
+PurpleG = ApplyGamma(0,Gamma)
+PurpleB = ApplyGamma(75,Gamma)
+
+#Green
+GreenR = ApplyGamma(0,Gamma)
+GreenG = ApplyGamma(100,Gamma)
+GreenB = ApplyGamma(0,Gamma)
+
+#HighGreen
+HighGreenR = ApplyGamma(0,Gamma)
+HighGreenG = ApplyGamma(225,Gamma)
+HighGreenB = ApplyGamma(0,Gamma)
+
+#MedGreen
+MedGreenR = ApplyGamma(0,Gamma)
+MedGreenG = ApplyGamma(155,Gamma)
+MedGreenB = ApplyGamma(0,Gamma)
+
+#LowGreen
+LowGreenR = ApplyGamma(0,Gamma)
+LowGreenG = ApplyGamma(100,Gamma)
+LowGreenB = ApplyGamma(0,Gamma)
+
+#DarkGreen
+DarkGreenR = ApplyGamma(0,Gamma)
+DarkGreenG = ApplyGamma(45,Gamma)
+DarkGreenB = ApplyGamma(0,Gamma)
+
+
+#Blue
+BlueR = ApplyGamma(0,Gamma)
+BlueG = ApplyGamma(0,Gamma)
+BlueB = ApplyGamma(100,Gamma)
+
+#WhiteLow
+WhiteLowR = ApplyGamma(45,Gamma)
+WhiteLowG = ApplyGamma(45,Gamma)
+WhiteLowB = ApplyGamma(45,Gamma)
+
+#WhiteMed
+WhiteMedR = ApplyGamma(100,Gamma)
+WhiteMedG = ApplyGamma(100,Gamma)
+WhiteMedB = ApplyGamma(100,Gamma)
+
+#WhiteHigh
+WhiteHighR = ApplyGamma(225,Gamma)
+WhiteHighG = ApplyGamma(225,Gamma)
+WhiteHighB = ApplyGamma(225,Gamma)
+
+#Character Colors
+PacR = ApplyGamma(YellowR,Gamma)
+PacG = ApplyGamma(YellowG,Gamma)
+PacB = ApplyGamma(YellowB,Gamma)
+
+
+#Red
+Ghost1R = ApplyGamma(150,Gamma)
+Ghost1G = ApplyGamma(0,Gamma)
+Ghost1B = ApplyGamma(0,Gamma)
+
+#Orange
+Ghost2R = ApplyGamma(130,Gamma)
+Ghost2G = ApplyGamma(75,Gamma)
+Ghost2B = ApplyGamma(0,Gamma)
+
+#Purple
+Ghost3R = ApplyGamma(125,Gamma)
+Ghost3G = ApplyGamma(0,Gamma)
+Ghost3B = ApplyGamma(125,Gamma)
+
+#LightBlue
+Ghost4R = ApplyGamma(0,Gamma)
+Ghost4G = ApplyGamma(150,Gamma)
+Ghost4B = ApplyGamma(150,Gamma)
+
+
+#Dots
+DotR = ApplyGamma(95,Gamma)
+DotG = ApplyGamma(95,Gamma)
+DotB = ApplyGamma(95,Gamma)
+
+DotRGB = (DotR,DotG,DotB)
+
+#Wall
+WallR = ApplyGamma(10,Gamma)
+WallG = ApplyGamma(10,Gamma)
+WallB = ApplyGamma(100,Gamma)
+
+WallRGB = (WallR,WallG,WallB)
+
+
+#PowerPills
+PillR = ApplyGamma(0,Gamma)
+PillG = ApplyGamma(200,Gamma)
+PillB = ApplyGamma(0,Gamma)
+
+BlueGhostR = ApplyGamma(0,Gamma)
+BlueGhostG = ApplyGamma(0,Gamma)
+BlueGhostB = ApplyGamma(200,Gamma)
+
+
+
+
+
+
+#HighRed
+SDHighRedR = ApplyGamma(255,Gamma)
+SDHighRedG = ApplyGamma(0,Gamma)
+SDHighRedB = ApplyGamma(0,Gamma)
+
+
+#MedRed
+SDMedRedR = ApplyGamma(175,Gamma)
+SDMedRedG = ApplyGamma(0,Gamma)
+SDMedRedB = ApplyGamma(0,Gamma)
+
+
+#LowRed
+SDLowRedR = ApplyGamma(100,Gamma)
+SDLowRedG = ApplyGamma(0,Gamma)
+SDLowRedB = ApplyGamma(0,Gamma)
+
+#DarkRed
+SDDarkRedR = ApplyGamma(45,Gamma)
+SDDarkRedG = ApplyGamma(0,Gamma)
+SDDarkRedB = ApplyGamma(0,Gamma)
+
+# Red RGB Tuples
+HighRed = (SDHighRedR,SDHighRedG,SDHighRedB)
+MedRed  = (SDMedRedR ,SDMedRedG ,SDMedRedB)
+LowRed  = (SDLowRedR ,SDLowRedG ,SDLowRedB)
+DarkRed = (SDDarkRedR,SDDarkRedG,SDDarkRedB)
+ShadowRed = (25,0,0)
+
+
+#HighOrange
+SDHighOrangeR = ApplyGamma(255,Gamma)
+SDHighOrangeG = ApplyGamma(128,Gamma)
+SDHighOrangeB = ApplyGamma(0,Gamma)
+
+#MedOrange
+SDMedOrangeR = ApplyGamma(200,Gamma)
+SDMedOrangeG = ApplyGamma(100,Gamma)
+SDMedOrangeB = ApplyGamma(0,Gamma)
+
+#LowOrange
+SDLowOrangeR = ApplyGamma(155,Gamma)
+SDLowOrangeG = ApplyGamma(75,Gamma)
+SDLowOrangeB = ApplyGamma(0,Gamma)
+
+#DarkOrange
+SDDarkOrangeR = ApplyGamma(100,Gamma)
+SDDarkOrangeG = ApplyGamma(45,Gamma)
+SDDarkOrangeB = ApplyGamma(0,Gamma)
+
+HighOrange = (SDHighOrangeR,SDHighOrangeG,SDHighOrangeB)
+MedOrange  = (SDMedOrangeR, SDMedOrangeG, SDMedOrangeB)
+LowOrange  = (SDLowOrangeR, SDLowOrangeG, SDLowOrangeB)
+DarkOrange = (SDDarkOrangeR,SDDarkOrangeG,SDDarkOrangeB)
+ShadowOrange = (50,20,0)
+
+# High = (R,G,B)
+# Med  = (R,G,B)
+# Low  = (R,G,B)
+# Dark = (R,G,B)
+
+
+#SDHighPurple
+SDHighPurpleR = ApplyGamma(230,Gamma)
+SDHighPurpleG = ApplyGamma(0,Gamma)
+SDHighPurpleB = ApplyGamma(255,Gamma)
+
+#MedPurple
+SDMedPurpleR = ApplyGamma(105,Gamma)
+SDMedPurpleG = ApplyGamma(0,Gamma)
+SDMedPurpleB = ApplyGamma(155,Gamma)
+
+#SDLowPurple
+SDLowPurpleR = ApplyGamma(75,Gamma)
+SDLowPurpleG = ApplyGamma(0,Gamma)
+SDLowPurpleB = ApplyGamma(120,Gamma)
+
+
+#SDDarkPurple
+SDDarkPurpleR = ApplyGamma(45,Gamma)
+SDDarkPurpleG = ApplyGamma(0,Gamma)
+SDDarkPurpleB = ApplyGamma(45,Gamma)
+
+# Purple RGB Tuples
+HighPurple = (SDHighPurpleR,SDHighPurpleG,SDHighPurpleB)
+MedPurple  = (SDMedPurpleR ,SDMedPurpleG ,SDMedPurpleB)
+LowPurple  = (SDLowPurpleR ,SDLowPurpleG ,SDLowPurpleB)
+DarkPurple = (SDDarkPurpleR,SDDarkPurpleG,SDDarkPurpleB)
+ShadowPurple = (25,0,25)
+
+
+
+
+
+#HighGreen
+SDHighGreenR = ApplyGamma(0,Gamma)
+SDHighGreenG = ApplyGamma(255,Gamma)
+SDHighGreenB = ApplyGamma(0,Gamma)
+
+#MedGreen
+SDMedGreenR = ApplyGamma(0,Gamma)
+SDMedGreenG = ApplyGamma(200,Gamma)
+SDMedGreenB = ApplyGamma(0,Gamma)
+
+#LowGreen
+SDLowGreenR = ApplyGamma(0,Gamma)
+SDLowGreenG = ApplyGamma(100,Gamma)
+SDLowGreenB = ApplyGamma(0,Gamma)
+
+#DarkGreen
+SDDarkGreenR = ApplyGamma(0,Gamma)
+SDDarkGreenG = ApplyGamma(45,Gamma)
+SDDarkGreenB = ApplyGamma(0,Gamma)
+
+#Green tuples
+HighGreen = (SDHighGreenR,SDHighGreenG,SDHighGreenB)
+MedGreen  = (SDMedGreenR,SDMedGreenG,SDMedGreenB)
+LowGreen  = (SDLowGreenR,SDLowGreenG,SDLowGreenB)
+DarkGreen = (SDDarkGreenR,SDDarkGreenG,SDDarkGreenB)
+ShadowGreen = (0,35,0)
+
+
+
+
+#HighBlue
+SDHighBlueR = ApplyGamma(0,Gamma)
+SDHighBlueG = ApplyGamma(0,Gamma)
+SDHighBlueB = ApplyGamma(255,Gamma)
+
+
+#MedBlue
+SDMedBlueR = ApplyGamma(0,Gamma)
+SDMedBlueG = ApplyGamma(0,Gamma)
+SDMedBlueB = ApplyGamma(175,Gamma)
+
+#LowBlue
+SDLowBlueR = ApplyGamma(0,Gamma)
+SDLowBlueG = ApplyGamma(0,Gamma)
+SDLowBlueB = ApplyGamma(100,Gamma)
+
+#DarkBlue
+SDDarkBlueR = ApplyGamma(0,Gamma)
+SDDarkBlueG = ApplyGamma(0,Gamma)
+SDDarkBlueB = ApplyGamma(45,Gamma)
+
+
+# Blue RGB Tuples
+HighBlue = (SDHighBlueR,SDHighBlueG,SDHighBlueB)
+MedBlue  = (SDHighBlueR,SDHighBlueG,SDHighBlueB)
+LowBlue  = (SDHighBlueR,SDHighBlueG,SDHighBlueB)
+DarkBlue = (SDHighBlueR,SDHighBlueG,SDHighBlueB)
+ShadowBlue = (0,0,25)
+
+
+#WhiteMax
+SDMaxWhiteR = ApplyGamma(255,Gamma)
+SDMaxWhiteG = ApplyGamma(255,Gamma)
+SDMaxWhiteB = ApplyGamma(255,Gamma)
+
+#WhiteHigh
+SDHighWhiteR = ApplyGamma(255,Gamma)
+SDHighWhiteG = ApplyGamma(255,Gamma)
+SDHighWhiteB = ApplyGamma(255,Gamma)
+
+#WhiteMed
+SDMedWhiteR = ApplyGamma(150,Gamma)
+SDMedWhiteG = ApplyGamma(150,Gamma)
+SDMedWhiteB = ApplyGamma(150,Gamma)
+
+#WhiteLow
+SDLowWhiteR = ApplyGamma(100,Gamma)
+SDLowWhiteG = ApplyGamma(100,Gamma)
+SDLowWhiteB = ApplyGamma(100,Gamma)
+
+#WhiteDark
+SDDarkWhiteR = ApplyGamma(35,Gamma)
+SDDarkWhiteG = ApplyGamma(35,Gamma)
+SDDarkWhiteB = ApplyGamma(35,Gamma)
+
+
+# White RGB Tuples
+MaxWhite  = (SDMaxWhiteR,SDMaxWhiteG,SDMaxWhiteB)
+HighWhite = (SDHighWhiteR,SDHighWhiteG,SDHighWhiteB)
+MedWhite  = (SDHighWhiteR,SDHighWhiteG,SDHighWhiteB)
+LowWhite  = (SDHighWhiteR,SDHighWhiteG,SDHighWhiteB)
+DarkWhite = (SDHighWhiteR,SDHighWhiteG,SDHighWhiteB)
+ShadowWhite = (15,15,15)
+
+
+#YellowMax
+SDMaxYellowR = ApplyGamma(255,Gamma)
+SDMaxYellowG = ApplyGamma(255,Gamma)
+SDMaxYellowB = ApplyGamma(0,Gamma)
+
+
+#YellowHigh
+SDHighYellowR = ApplyGamma(215,Gamma)
+SDHighYellowG = ApplyGamma(215,Gamma)
+SDHighYellowB = ApplyGamma(0,Gamma)
+
+#YellowMed
+SDMedYellowR = ApplyGamma(175,Gamma)
+SDMedYellowG = ApplyGamma(175,Gamma)
+SDMedYellowB = ApplyGamma(0,Gamma)
+
+#YellowLow
+SDLowYellowR = ApplyGamma(100,Gamma)
+SDLowYellowG = ApplyGamma(100,Gamma)
+SDLowYellowB = ApplyGamma(0,Gamma)
+
+
+#YellowDark
+SDDarkYellowR = ApplyGamma(55,Gamma)
+SDDarkYellowG = ApplyGamma(55,Gamma)
+SDDarkYellowB = ApplyGamma(0,Gamma)
+
+
+# Yellow RGB Tuples
+MaxYellow  = (SDMaxYellowR,SDMaxYellowG,SDMaxYellowB)
+HighYellow = (SDHighYellowR,SDHighYellowG,SDHighYellowB)
+MedYellow  = (SDMedYellowR,SDMedYellowG,SDMedYellowB)
+LowYellow  = (SDLowYellowR,SDLowYellowG,SDLowYellowB)
+DarkYellow = (SDDarkYellowR,SDDarkYellowG,SDDarkYellowB)
+ShadowYellow = (30,30,0)
+
+
+#Pink
+SDMaxPinkR = ApplyGamma(155,Gamma)
+SDMaxPinkG = ApplyGamma(0,Gamma)
+SDMaxPinkB = ApplyGamma(130,Gamma)
+
+SDHighPinkR = ApplyGamma(130,Gamma)
+SDHighPinkG = ApplyGamma(0,Gamma)
+SDHighPinkB = ApplyGamma(105,Gamma)
+
+SDMedPinkR = ApplyGamma(100,Gamma)
+SDMedPinkG = ApplyGamma(0,Gamma)
+SDMedPinkB = ApplyGamma(75,Gamma)
+
+SDLowPinkR = ApplyGamma(75,Gamma)
+SDLowPinkG = ApplyGamma(0,Gamma)
+SDLowPinkB = ApplyGamma(50,Gamma)
+
+SDDarkPinkR = ApplyGamma(45,Gamma)
+SDDarkPinkG = ApplyGamma(0,Gamma)
+SDDarkPinkB = ApplyGamma(50,Gamma)
+
+
+# Pink RGB Tuples
+MaxPink  = (SDMaxPinkR,SDMaxPinkG,SDMaxPinkB)
+HighPink = (SDHighPinkR,SDHighPinkG,SDHighPinkB)
+MedPink  = (SDHighPinkR,SDHighPinkG,SDHighPinkB)
+LowPink  = (SDHighPinkR,SDHighPinkG,SDHighPinkB)
+DarkPink = (SDHighPinkR,SDHighPinkG,SDHighPinkB)
+ShadowPink = (22,0,25)
+
+
+#Cyan
+SDMaxCyanR = ApplyGamma(0,Gamma)
+SDMaxCyanG = ApplyGamma(255,Gamma)
+SDMaxCyanB = ApplyGamma(255,Gamma)
+
+SDHighCyanR = ApplyGamma(0,Gamma)
+SDHighCyanG = ApplyGamma(150,Gamma)
+SDHighCyanB = ApplyGamma(150,Gamma)
+
+SDMedCyanR = ApplyGamma(0,Gamma)
+SDMedCyanG = ApplyGamma(100,Gamma)
+SDMedCyanB = ApplyGamma(100,Gamma)
+
+SDLowCyanR = ApplyGamma(0,Gamma)
+SDLowCyanG = ApplyGamma(75,Gamma)
+SDLowCyanB = ApplyGamma(75,Gamma)
+
+SDDarkCyanR = ApplyGamma(0,Gamma)
+SDDarkCyanG = ApplyGamma(50,Gamma)
+SDDarkCyanB = ApplyGamma(50,Gamma)
+
+# Cyan RGB Tuples
+MaxCyan  = (SDMaxCyanR,SDMaxCyanG,SDMaxCyanB)
+HighCyan = (SDHighCyanR,SDHighCyanG,SDHighCyanB)
+MedCyan  = (SDHighCyanR,SDHighCyanG,SDHighCyanB)
+LowCyan  = (SDHighCyanR,SDHighCyanG,SDHighCyanB)
+DarkCyan = (SDHighCyanR,SDHighCyanG,SDHighCyanB)
+ShadowCyan = (0,20,20)
+
+
+
+
+ColorList = []
+ColorList.append((0,0,0))
+# 1 2 3 4
+ColorList.append((SDDarkWhiteR,SDDarkWhiteG,SDDarkWhiteB))
+ColorList.append((SDLowWhiteR,SDLowWhiteG,SDLowWhiteB))
+ColorList.append((SDMedWhiteR,SDMedWhiteG,SDMedWhiteB))
+ColorList.append((SDHighWhiteR,SDHighWhiteG,SDHighWhiteB))
+
+# 5 6 7 8
+ColorList.append((SDDarkRedR,SDDarkRedG,SDDarkRedB))
+ColorList.append((SDLowRedR,SDLowRedG,SDLowRedB))
+ColorList.append((SDMedRedR,SDMedRedG,SDMedRedB))
+ColorList.append((SDHighRedR,SDHighRedG,SDHighRedB))
+
+# 9 10 11 12
+ColorList.append((SDDarkGreenR,SDDarkGreenG,SDDarkGreenB))
+ColorList.append((SDLowGreenR,SDLowGreenG,SDLowGreenB))
+ColorList.append((SDMedGreenR,SDMedGreenG,SDMedGreenB))
+ColorList.append((SDHighGreenR,SDHighGreenG,SDHighGreenB))
+
+# 13 14 15 16
+ColorList.append((SDDarkBlueR,SDDarkBlueG,SDDarkBlueB))
+ColorList.append((SDLowBlueR,SDLowBlueG,SDLowBlueB))
+ColorList.append((SDMedBlueR,SDMedBlueG,SDMedBlueB))
+ColorList.append((SDHighBlueR,SDHighBlueG,SDHighBlueB))
+
+# 17 18 19 20
+ColorList.append((SDDarkOrangeR,SDDarkOrangeG,SDDarkOrangeB))
+ColorList.append((SDLowOrangeR,SDLowOrangeG,SDLowOrangeB))
+ColorList.append((SDMedOrangeR,SDMedOrangeG,SDMedOrangeB))
+ColorList.append((SDHighOrangeR,SDHighOrangeG,SDHighOrangeB))
+
+# 21 22 23 24
+ColorList.append((SDDarkYellowR,SDDarkYellowG,SDDarkYellowB))
+ColorList.append((SDLowYellowR,SDLowYellowG,SDLowYellowB))
+ColorList.append((SDMedYellowR,SDMedYellowG,SDMedYellowB))
+ColorList.append((SDHighYellowR,SDHighYellowG,SDHighYellowB))
+
+# 25 26 27 28
+ColorList.append((SDDarkPurpleR,SDDarkPurpleG,SDDarkPurpleB))
+ColorList.append((SDLowPurpleR,SDLowPurpleG,SDLowPurpleB))
+ColorList.append((SDMedPurpleR,SDMedPurpleG,SDMedPurpleB))
+ColorList.append((SDHighPurpleR,SDHighPurpleG,SDHighPurpleB))
+
+# 29 30 31 32 33
+ColorList.append((SDDarkPinkR,SDDarkPinkG,SDDarkPinkB))
+ColorList.append((SDLowPinkR,SDLowPinkG,SDLowPinkB))
+ColorList.append((SDMedPinkR,SDMedPinkG,SDMedPinkB))
+ColorList.append((SDHighPinkR,SDHighPinkG,SDHighPinkB))
+ColorList.append((SDMaxPinkR,SDMaxPinkG,SDMaxPinkB))
+
+
+# 34 35 36 37 38
+ColorList.append((SDDarkCyanR,SDDarkCyanG,SDDarkCyanB))
+ColorList.append((SDLowCyanR,SDLowCyanG,SDLowCyanB))
+ColorList.append((SDMedCyanR,SDMedCyanG,SDMedCyanB))
+ColorList.append((SDHighCyanR,SDHighCyanG,SDHighCyanB))
+ColorList.append((SDMaxCyanR,SDMaxCyanG,SDMaxCyanB))
+
+
+# MAX
+# 39 40 41 42 43 44 45
+ColorList.append((255,  0,  0))  #MAX-RED    39
+ColorList.append((  0,255,  0))  #MAX-GREEN  40
+ColorList.append((  0,  0,255))  #MAX-BLUE   41
+ColorList.append((255,255,0  ))  #MAX-YELLOW 42
+ColorList.append((255,  0,255))  #MAX-PURPLE 43
+ColorList.append((  0,255,255))  #MAX-CYAN   44
+ColorList.append((255,255,255))  #MAX-WHITE  45
+
+#max orange is 20
+
+ColorList.append((SDMaxCyanR,SDMaxCyanG,SDMaxCyanB))
+
+
+
+GlowingTextRGB   = []
+GlowingShadowRGB = []
+
+GlowingTextRGB.append((250,250,250)) #WHITE
+GlowingTextRGB.append((200,  0,  0)) #RED
+GlowingTextRGB.append((  0,200,  0)) #Green
+GlowingTextRGB.append((  0,  0,200)) #Blue
+GlowingTextRGB.append((200,200,  0)) #Yellow
+GlowingTextRGB.append((200,  0,200)) #Purple
+GlowingTextRGB.append((  0,200,200)) #Cyan
+GlowingTextRGB.append((200,100,200)) #Orange
+
+GlowingShadowRGB.append(( 20, 20, 20)) #WHITE
+GlowingShadowRGB.append(( 20,  0,  0)) #RED
+GlowingShadowRGB.append((  0, 20,  0)) #Green
+GlowingShadowRGB.append((  0,  0, 20)) #Blue
+GlowingShadowRGB.append(( 20, 20,  0)) #Yellow
+GlowingShadowRGB.append(( 20,  0, 20)) #Purple
+GlowingShadowRGB.append((  0, 20, 20)) #Cyan
+GlowingShadowRGB.append(( 20, 10,  0)) #Orange
+
+
+
+
+# MAX
+# 39 40 41 42 43 44 45
+ColorList.append((255,  0,  0))  #MAX-RED    39
+ColorList.append((  0,255,  0))  #MAX-GREEN  40
+ColorList.append((  0,  0,255))  #MAX-BLUE   41
+ColorList.append((255,255,0  ))  #MAX-YELLOW 42
+ColorList.append((255,  0,255))  #MAX-PURPLE 43
+ColorList.append((  0,255,255))  #MAX-CYAN   44
+ColorList.append((255,255,255))  #MAX-WHITE  45
+
+
+
+
+BrightColorList = []
+BrightColorList.append((0,0,0))
+# 1 2 3
+BrightColorList.append((SDLowWhiteR,SDLowWhiteG,SDLowWhiteB))
+BrightColorList.append((SDMedWhiteR,SDMedWhiteG,SDMedWhiteB))
+BrightColorList.append((SDHighWhiteR,SDHighWhiteG,SDHighWhiteB))
+
+# 4 5 6
+BrightColorList.append(LowRed)
+BrightColorList.append(MedRed)
+BrightColorList.append(HighRed)
+
+# 7 8 9
+BrightColorList.append((SDLowGreenR,SDLowGreenG,SDLowGreenB))
+BrightColorList.append((SDMedGreenR,SDMedGreenG,SDMedGreenB))
+BrightColorList.append((SDHighGreenR,SDHighGreenG,SDHighGreenB))
+
+# 10 11 12
+BrightColorList.append((SDLowBlueR,SDLowBlueG,SDLowBlueB))
+BrightColorList.append((SDMedBlueR,SDMedBlueG,SDMedBlueB))
+BrightColorList.append((SDHighBlueR,SDHighBlueG,SDHighBlueB))
+
+# 13 14 15
+BrightColorList.append((SDLowOrangeR,SDLowOrangeG,SDLowOrangeB))
+BrightColorList.append((SDMedOrangeR,SDMedOrangeG,SDMedOrangeB))
+BrightColorList.append((SDHighOrangeR,SDHighOrangeG,SDHighOrangeB))
+
+# 16 17 18
+BrightColorList.append((SDLowYellowR,SDLowYellowG,SDLowYellowB))
+BrightColorList.append((SDMedYellowR,SDMedYellowG,SDMedYellowB))
+BrightColorList.append((SDHighYellowR,SDHighYellowG,SDHighYellowB))
+
+# 19 20 21
+BrightColorList.append((SDLowPurpleR,SDLowPurpleG,SDLowPurpleB))
+BrightColorList.append((SDMedPurpleR,SDMedPurpleG,SDMedPurpleB))
+BrightColorList.append((SDHighPurpleR,SDHighPurpleG,SDHighPurpleB))
+
+# 22 23 24
+BrightColorList.append((SDMedPinkR,SDMedPinkG,SDMedPinkB))
+BrightColorList.append((SDHighPinkR,SDHighPinkG,SDHighPinkB))
+BrightColorList.append((SDMaxPinkR,SDMaxPinkG,SDMaxPinkB))
+
+
+# 25 26 27
+BrightColorList.append((SDMedCyanR,SDMedCyanG,SDMedCyanB))
+BrightColorList.append((SDHighCyanR,SDHighCyanG,SDHighCyanB))
+BrightColorList.append((SDMaxCyanR,SDMaxCyanG,SDMaxCyanB))
+
+
+#Define color list
+TextColorList = ((ShadowPurple,DarkPurple,LowPurple,MedPurple),
+                  #(ShadowRed,   DarkRed,   LowRed,   MedRed),
+                  (DarkRed,     LowRed,    MedRed,   HighRed),
+                  (ShadowOrange,DarkOrange,LowOrange,MedOrange),
+                  (ShadowYellow,DarkYellow,LowYellow,MedYellow),
+                  #(ShadowGreen, DarkGreen, LowGreen, MedGreen),
+                  (DarkGreen,   LowGreen,  MedGreen, HighGreen),
+                  (ShadowBlue,  DarkBlue,  LowBlue,  MedBlue),
+                  (ShadowPink,  DarkPink,  LowPink,  MedPink),
+                  (ShadowCyan,  DarkCyan,  LowCyan,  MedCyan)
+
+                  )
+
+
+
+
+
+
+
+#ColorList.append((SDDarkR,SDDarkG,SDDarkB))
+#ColorList.append((SDLowR,SDLowG,SDLowB))
+#ColorList.append((SDMedR,SDMedG,SDMedB))
+#ColorList.append((SDHighR,SDHighG,SDHighB))
+
+
+#--> need to apply gamma to SD variables directly, as they are referenced later
+
+
+
+
+# def ApplyGamma(r,g,b,Gamma):
+  # NewR = r * Gamma
+  # NewG = g * Gamma
+  # NewB = b * Gamma
+  
+  # if NewR > 255: NewR = 255
+  # if NewG > 255: NewG = 255
+  # if NewB > 255: NewB = 255
+  # print ("Old:",r,g,b," New:",NewR,NewG,NewB)
+  # return NewR,NewG,NewB
+
+# if (Gamma > 1):
+  # for index in range(1,38):
+    # r,g,b = ColorList[index]
+    # r,g,b = ApplyGamma(r,g,b,Gamma)
+    # ColorList[index] = r,g,b
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #-----------------------------
 # Arcade Games              --
 #-----------------------------
@@ -292,6 +967,10 @@ OutOfBoundsObject.name = 'OutOfBounds'
 
 
 
+
+RedR = 0
+RedG = 0
+RedB = 0
 
 
 
@@ -19097,7 +19776,13 @@ def Initialize():
         return
     _initialized = True
 
-    LEDColors.InitializeColors()
+
+    
+
+
+
+
+
     ActivateRGBMatrix()
 
 

@@ -1,12 +1,5 @@
 #LEDcommander.py
 
-print("")
-print("=============================================")
-print("== LEDcommander.py                           =")
-print("=============================================")
-print("")
-
-
 # ------------------------------------------------------------------------------
 # LEDcommander Multiprocessing Architecture and LED Display Initialization
 # ------------------------------------------------------------------------------
@@ -62,6 +55,11 @@ print("")
 #    - Always test display subprocesses with sudo.
 
 
+print("")
+print("=============================================")
+print("== LEDcommander.py                           =")
+print("=============================================")
+print("")
 
 
 
@@ -174,7 +172,8 @@ def Run(CommandQueue):
 def ShowDigitalClock(Command,StopEvent):
 
     import LEDarcade as LED
-    LED.initialize()
+    LED.Initialize()
+
     print("RedR: ",LED.RedR)
 
     #Sprite display locations ??  maybe not needed
@@ -215,7 +214,7 @@ def ShowDigitalClock(Command,StopEvent):
 def ShowTitleScreen(Command,StopEvent):
 
     import LEDarcade as LED
-    LED.main()
+    LED.Initialize()
     
 
 

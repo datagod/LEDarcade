@@ -5,13 +5,20 @@ print("==========================================")
 print("")
 
 
-
 def ApplyGamma(value, gamma):
     corrected = int(value * gamma)
     return min(corrected, 255)
 
 
 def InitializeColors():
+
+    print("")
+    print("-------------------------------")
+    print("-- LEDcolors: initialization --")
+    print("-------------------------------")
+    print("")
+    
+
     global Gamma
     global ColorList, BrightColorList, TextColorList
 
@@ -23,6 +30,7 @@ def InitializeColors():
     global PurpleR, PurpleG, PurpleB, HighPurple, MedPurple, LowPurple, DarkPurple, ShadowPurple
     global PinkR, PinkG, PinkB, MaxPink, HighPink, MedPink, LowPink, DarkPink, ShadowPink
     global CyanR, CyanG, CyanB, MaxCyan, HighCyan, MedCyan, LowCyan, DarkCyan, ShadowCyan
+
 
     global MaxWhite, MaxRed, MaxGreen, MaxBlue
 
@@ -170,6 +178,8 @@ def InitializeColors():
     SDLowBlueR = 0
     SDLowBlueG = 0
     SDLowBlueB = 100
+    
+    
 
     #DarkBlue
     SDDarkBlueR = 0
@@ -320,8 +330,8 @@ def InitializeColors():
     Gamma = Gamma if 'Gamma' in globals() else 1.0
 
 
-    RedR, RedG, RedB = rgb(255, 0, 0)
-    GreenR, GreenG, GreenB = rgb(0, 255, 0)
+
+
 
     MaxRed = rgb(255, 0, 0)
     MaxGreen = rgb(0, 255, 0)
@@ -512,6 +522,34 @@ def InitializeColors():
     # ------------------------------------------------------------------------------
     # Game-specific color constants (compatibility with old Pac-Man style games)
     # ------------------------------------------------------------------------------
+
+    global RedR, RedG, RedB
+    RedR, RedG, RedB = HighRed
+
+    global GreenR, GreenG, GreenB
+    GreenR, GreenG, GreenB = HighGreen
+    
+    global OrangeR, OrangeG, OrangeB
+    OrangeR, OrangeG, OrangeB = HighOrange
+
+    global YellowR, YellowG, YellowB
+    YellowR, YellowG, YellowB = HighYellow
+
+    global PurpleR, PurpleG, PurpleB
+    PurpleR, PurpleG, PurpleB = HighPurple
+
+    global BlueR, BlueG, BlueB
+    BlueR, BlueG, BlueB = HighBlue
+
+    global PinkR, PinkG, PinkB
+    PinkR, PinkG, PinkB = MaxPink
+
+    global CyanR, CyanG, CyanB
+    CyanR, CyanG, CyanB = MaxCyan
+
+
+
+
 
     DotRGB  = rgb(95, 95, 95)
     WallRGB = rgb(10, 10, 100)

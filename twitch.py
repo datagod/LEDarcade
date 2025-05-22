@@ -38,7 +38,7 @@ import os
 import sys
 import re   # regular expression
 
-
+import LEDarcade as LED
 
 #from rgbmatrix import graphics
 #from rgbmatrix import RGBMatrix, RGBMatrixOptions
@@ -257,7 +257,7 @@ def SpawnClock(EventQueue, AnimationDelay, StreamActive, SharedState):
 
             print("SpawnClock: Matrix brightness =", LED.TheMatrix.brightness)
 
-            print("Red:",LED.MedRed," ShadowRed: ",LEDcolors.ShadowRed)
+            print("Red:",LED.MedRed," ShadowRed: ",LED.ShadowRed)
 
 
             print("SpawnClock - Begin")
@@ -385,13 +385,13 @@ class Bot(commands.Bot ):
           CommandQueue.put({
               "Action": "ShowTitleScreen",
               "BigText": "404",
-              "BigTextRGB": LEDcolors.MedPurple,
-              "BigTextShadowRGB": LEDcolors.ShadowPurple,
+              "BigTextRGB": LED.MedPurple,
+              "BigTextShadowRGB": LED.ShadowPurple,
               "LittleText": "NO STREAM",
-              "LittleTextRGB": LEDcolors.MedRed,
-              "LittleTextShadowRGB": LEDcolors.ShadowRed,
+              "LittleTextRGB": LED.MedRed,
+              "LittleTextShadowRGB": LED.ShadowRed,
               "ScrollText": BROADCASTER_CHANNEL + " not active. Try again later...",
-              "ScrollTextRGB": LEDcolors.MedYellow,
+              "ScrollTextRGB": LED.MedYellow,
               "ScrollSleep": ScrollSleep / 2,
               "DisplayTime": 1,
               "ExitEffect": 5,
@@ -568,13 +568,13 @@ class Bot(commands.Bot ):
               CommandQueue.put({
                   "Action": "ShowTitleScreen",
                   "BigText": CHANNEL_BIG_TEXT,
-                  "BigTextRGB": LEDcolors.MedPurple,
-                  "BigTextShadowRGB": LEDcolors.ShadowPurple,
+                  "BigTextRGB": LED.MedPurple,
+                  "BigTextShadowRGB": LED.ShadowPurple,
                   "LittleText": CHANNEL_LITTLE_TEXT,
-                  "LittleTextRGB": LEDcolors.MedRed,
-                  "LittleTextShadowRGB": LEDcolors.ShadowRed,
+                  "LittleTextRGB": LED.MedRed,
+                  "LittleTextShadowRGB": LED.ShadowRed,
                   "ScrollText": Title,
-                  "ScrollTextRGB": LEDcolors.MedYellow,
+                  "ScrollTextRGB": LED.MedYellow,
                   "ScrollSleep": ScrollSleep,
                   "DisplayTime": 1,
                   "ExitEffect": 5,
@@ -587,14 +587,14 @@ class Bot(commands.Bot ):
                   CommandQueue.put({
                       "Action": "ShowTitleScreen",
                       "BigText": str(Followers),
-                      "BigTextRGB": LEDcolors.MedPurple,
-                      "BigTextShadowRGB": LEDcolors.ShadowPurple,
+                      "BigTextRGB": LED.MedPurple,
+                      "BigTextShadowRGB": LED.ShadowPurple,
                       "BigTextZoom": BigTextZoom,
                       "LittleText": "FOLLOWS",
-                      "LittleTextRGB": LEDcolors.MedRed,
-                      "LittleTextShadowRGB": LEDcolors.ShadowRed,
+                      "LittleTextRGB": LED.MedRed,
+                      "LittleTextShadowRGB": LED.ShadowRed,
                       "ScrollText": "",
-                      "ScrollTextRGB": LEDcolors.MedYellow,
+                      "ScrollTextRGB": LED.MedYellow,
                       "ScrollSleep": ScrollSleep,
                       "DisplayTime": 1,
                       "ExitEffect": 0
@@ -605,12 +605,12 @@ class Bot(commands.Bot ):
                   CommandQueue.put({
                       "Action": "ShowTitleScreen",
                       "BigText": str(ViewerCount),
-                      "BigTextRGB": LEDcolors.MedPurple,
-                      "BigTextShadowRGB": LEDcolors.ShadowPurple,
+                      "BigTextRGB": LED.MedPurple,
+                      "BigTextShadowRGB": LED.ShadowPurple,
                       "BigTextZoom": 3,
                       "LittleText": "Viewers",
                       "LittleTextRGB": LED.MedRed,
-                      "LittleTextShadowRGB": LEDcolors.ShadowRed,
+                      "LittleTextShadowRGB": LED.ShadowRed,
                       "ScrollText": f"Now Playing: {GameName}",
                       "ScrollTextRGB": LED.MedYellow,
                       "ScrollSleep": ScrollSleep,
@@ -623,10 +623,10 @@ class Bot(commands.Bot ):
                   "Action": "ShowTitleScreen",
                   "BigText": "CHAT",
                   "BigTextRGB": LED.MedRed,
-                  "BigTextShadowRGB": LEDcolors.ShadowRed,
+                  "BigTextShadowRGB": LED.ShadowRed,
                   "LittleText": "TERMINAL",
                   "LittleTextRGB": LED.MedBlue,
-                  "LittleTextShadowRGB": LEDcolors.ShadowBlue,
+                  "LittleTextShadowRGB": LED.ShadowBlue,
                   "ScrollText": f"TUNING IN TO {BROADCASTER_CHANNEL}",
                   "ScrollTextRGB": LED.MedOrange,
                   "ScrollSleep": ScrollSleep,
@@ -836,11 +836,11 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "LURK",
             BigTextRGB          = LED.MedGreen,
-            BigTextShadowRGB    = LEDcolors.ShadowGreen,
+            BigTextShadowRGB    = LED.ShadowGreen,
             BigTextZoom         = 3,
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LEDcolors.ShadowRed, 
+            LittleTextShadowRGB = LED.ShadowRed, 
             ScrollText          = author + " has gone into lurk mode",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -879,11 +879,11 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "HI",
             BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LEDcolors.ShadowPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
             BigTextZoom         = 4,
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LEDcolors.ShadowRed, 
+            LittleTextShadowRGB = LED.ShadowRed, 
             ScrollText          = "Hello there " + author + "! Thanks for tuning in.",
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -899,11 +899,11 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "BYE",
             BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LEDcolors.ShadowPurple,
+            BigTextShadowRGB    = LED.ShadowPurple,
             BigTextZoom         = 3,
             LittleText          = '',
             LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LEDcolors.ShadowRed, 
+            LittleTextShadowRGB = LED.ShadowRed, 
             ScrollText          = "see you later " + author,
             ScrollTextRGB       = LED.MedYellow,
             ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1099,7 +1099,7 @@ class Bot(commands.Bot ):
             v   = 1, 
             hh  = 24,
             RGB              = LED.LowGreen,
-            ShadowRGB        = LEDcolors.ShadowGreen,
+            ShadowRGB        = LED.ShadowGreen,
             ZoomFactor       = 3,
             AnimationDelay   = self.AnimationDelay,
             RunMinutes       = 1,
@@ -1464,7 +1464,7 @@ class Bot(commands.Bot ):
           LED.ShowTitleScreen(
             BigText             = "LEVEL",
             BigTextRGB          = LED.HighRed,
-            BigTextShadowRGB    = LEDcolors.ShadowRed,
+            BigTextShadowRGB    = LED.ShadowRed,
             BigTextZoom         = 3, 
             BigText2            = '',
             BigText2RGB         = HighBlue,
@@ -1604,11 +1604,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(ViewerCount),
           BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LEDcolors.ShadowPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
           BigTextZoom         = 3,
           LittleText          = 'Viewers',
           LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LEDcolors.ShadowRed, 
+          LittleTextShadowRGB = LED.ShadowRed, 
           ScrollText          = 'Now Playing: ' + GameName,
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1632,7 +1632,7 @@ class Bot(commands.Bot ):
         v   = 1, 
         hh  = 24,
         RGB = LED.LowGreen,
-        ShadowRGB     = LEDcolors.ShadowGreen,
+        ShadowRGB     = LED.ShadowGreen,
         ZoomFactor    = 3,
         AnimationDelay= 10,
         RunMinutes = 0.5,
@@ -1664,11 +1664,11 @@ class Bot(commands.Bot ):
       LED.ShowTitleScreen(
         BigText             = str(Followers),
         BigTextRGB          = LED.MedPurple,
-        BigTextShadowRGB    = LEDcolors.ShadowPurple,
+        BigTextShadowRGB    = LED.ShadowPurple,
         BigTextZoom         = 3,
         LittleText          = 'Follows',
         LittleTextRGB       = LED.MedRed,
-        LittleTextShadowRGB = LEDcolors.ShadowRed, 
+        LittleTextShadowRGB = LED.ShadowRed, 
         ScrollText          = '',
         ScrollTextRGB       = LED.MedYellow,
         ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1701,11 +1701,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(Followers),
           BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LEDcolors.ShadowPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
           BigTextZoom         = 3,
           LittleText          = 'Follows',
           LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LEDcolors.ShadowRed, 
+          LittleTextShadowRGB = LED.ShadowRed, 
           ScrollText          = '',
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1748,11 +1748,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(Subs),
           BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LEDcolors.ShadowPurple,
+          BigTextShadowRGB    = LED.ShadowPurple,
           BigTextZoom         = 3,
           LittleText          = 'Subscribers',
           LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LEDcolors.ShadowRed, 
+          LittleTextShadowRGB = LED.ShadowRed, 
           ScrollText          = '',
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -1914,11 +1914,11 @@ class Bot(commands.Bot ):
         LED.ShowTitleScreen(
           BigText             = str(VIEW_COUNT),
           BigTextRGB          = LED.MedRed,
-          BigTextShadowRGB    = LEDcolors.ShadowRed,
+          BigTextShadowRGB    = LED.ShadowRed,
           BigTextZoom         = BigTextZoom,
           LittleText          = 'Views',
           LittleTextRGB       = LED.MedPurple,
-          LittleTextShadowRGB = LEDcolors.ShadowPurple, 
+          LittleTextShadowRGB = LED.ShadowPurple, 
           ScrollText          = '',
           ScrollTextRGB       = LED.MedYellow,
           ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
@@ -3649,7 +3649,7 @@ def start_led_commander():
     from multiprocessing import Queue, Process
     import LEDcommander
     #import LEDcolors
-    #LEDcolors.InitializeColors()
+    #LED.InitializeColors()
         
     print("Initializing LEDcommander")
 
@@ -3803,7 +3803,7 @@ def main():
       v=1, 
       hh=24,
       RGB=LED.LowGreen,
-      ShadowRGB=LEDcolors.ShadowGreen,
+      ShadowRGB=LED.ShadowGreen,
       ZoomFactor=2,
       AnimationDelay=0.05,
       RunMinutes=1,
