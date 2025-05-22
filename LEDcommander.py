@@ -106,12 +106,10 @@ def Run(CommandQueue):
             Command = CommandQueue.get(timeout=1)
             print(f"[LEDCommander] Received command: {Command}")
 
-
             if not isinstance(Command, dict):
                 continue
 
             Action = Command.get("Action", "").casefold()
-
             print(f"-->{Action}<--")
 
 
@@ -126,6 +124,7 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+
             elif Action == "showtitlescreen":
                 print("Showing title screen")
                 if DisplayProcess and DisplayProcess.is_alive():
@@ -138,7 +137,6 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
-
             elif Action == "stopclock":
                 print("Stopping the clock")
                 StopEvent.set()
@@ -146,20 +144,37 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
 
+            #----------------------------------
+            #-- SCROLL MESSAGES
+            #----------------------------------
+
+            elif Action == "scrollmessages":
+                while DisplayProcess and DisplayProcess.is_alive():
+                    print("[LEDCommander] Display process is still running. Waiting...")
+                    time.sleep(0.5)  # Sleep to avoid CPU hogging
+                DisplayProcess = Process(target=ScrollMessages, args=(Command, StopEvent))
+                DisplayProcess.start()
 
 
 
-            elif Action == "scrollmessage":
-                print("Scrolling generic message")
-                
-                #StopEvent.clear()
-                DisplayProcess = Process(target=ScrollConsoleMessage, args=(Command, StopEvent))
+            #----------------------------------
+            #-- TERMINAL MODE
+            #----------------------------------
+            
+            elif Action == "terminalmode_on":
+                print("[LEDcommander] RUN: terminalmode_on detected")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("[LEDCommander] Display already active. Waiting...")
+                    continue
+                StopEvent.clear()
+                DisplayProcess = Process(target=RunTerminalMode, args=(Command, CommandQueue, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "terminalmode_off":
+                print("[LEDCommander] Exiting TerminalMode.")
+                StopEvent.set()
                 if DisplayProcess and DisplayProcess.is_alive():
                     DisplayProcess.join()
-                else:
-                    DisplayProcess.start()
-
-
 
 
 
@@ -188,8 +203,11 @@ def Run(CommandQueue):
         
 
 
-def ShowDigitalClock(Command,StopEvent):
+#----------------------------------------------------------
+#-- Action functions
+#----------------------------------------------------------
 
+def ShowDigitalClock(Command,StopEvent):
     import LEDarcade as LED
     LED.Initialize()
 
@@ -210,8 +228,6 @@ def ShowDigitalClock(Command,StopEvent):
 
     print(f"[LEDCommander] Showing clock: Style={ClockStyle}, Zoom={ZoomFactor}, Duration={RunMinutes}")
 
-
-
     LED.DisplayDigitalClock(
         ClockStyle=ClockStyle,
         CenterHoriz=True,
@@ -228,24 +244,12 @@ def ShowDigitalClock(Command,StopEvent):
 
 
 
-
-
 def ShowTitleScreen(Command,StopEvent):
-
     import LEDarcade as LED
     LED.Initialize()
-    
 
-
-    ClockStyle     = Command.get("Style", 1)
-    CenterHoriz    = Command.get("CenterHoriz",True) 
-    RGB            = Command.get("RGB",LED.LowGreen)
-    ShadowRGB      = Command.get("ShadowRGB",LED.ShadowGreen)
-    ZoomFactor     = Command.get("Zoom", 2)
-    AnimationDelay = Command.get("Delay", 30)
-    RunMinutes     = Command.get("Duration", 1)
-
-
+    #Extract values from the Command dictionary
+    #Populate input variables
     BigText             = Command.get("BigText","?")
     BigTextRGB          = Command.get("BigTextRGB",(255,0,0))
     BigTextShadowRGB    = Command.get("BigTextShadowRGB",(255,0,0))
@@ -282,43 +286,169 @@ def ShowTitleScreen(Command,StopEvent):
 
 
 
-def ScrollConsoleMessage(Command,StopEvent):
+def ScrollMessages(Command,StopEvent):
 
     import LEDarcade as LED
     LED.Initialize()
-    
+
+    #LED.ClearBigLED()
+    #LED.ClearBuffers()
+
     ScrollSleep         = 0.025
     TerminalTypeSpeed   = 0.08  #pause in seconds between characters
     TerminalScrollSpeed = 0.08  #pause in seconds between new lines
     CursorRGB           = (0,255,0)
     CursorDarkRGB       = (0,50,0)
 
-
     CursorH = 0
     CursorV = 0
     TerminalTypeSpeed 
     
-    Message        = Command.get("Message","?")
+
+    Messages = Command.get("Messages", [])
+    for msg in Messages:
+        text        = msg.get("Message", "")
+        color       = msg.get("RGB", (255, 255, 255))
+        TypeSpeed   = msg.get("ScrollSleep", 0.05)
+        ScrollSpeed = msg.get("ScrollSleep", 0.05)
     
+        print(f"[LEDCommander] Scrolling terminal text: {msg}")
 
-    LED.ClearBigLED()
-    LED.ClearBuffers()
-
-    LED.ScreenArray,CursorH,CursorV =   LED.TerminalScroll(LED.ScreenArray,
-        Message,
-        CursorH=CursorH,
-        CursorV=CursorV,
-        MessageRGB=(100,100,0),
-        CursorRGB=(0,255,0),
-        CursorDarkRGB=(0,50,0),
-        StartingLineFeed=1,
-        TypeSpeed=TerminalTypeSpeed,
-        ScrollSpeed=TerminalScrollSpeed
+        LED.ScreenArray,CursorH,CursorV =   LED.TerminalScroll(LED.ScreenArray,
+            text,
+            CursorH=CursorH,
+            CursorV=CursorV,
+            MessageRGB=color,
+            CursorRGB=(0,255,0),
+            CursorDarkRGB=(0,50,0),
+            StartingLineFeed=1,
+            TypeSpeed=TypeSpeed,
+            ScrollSpeed=ScrollSpeed
         )
 
+    LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=False, ZoomSleep=0.01)
 
 
-    print(f"[LEDCommander] Scrolling terminal text: {Message}")
+
+def RunTerminalMode_old(Command, CommandQueue, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    print("[LEDCommander] TerminalMode activated.")
+    CursorH = 0
+    CursorV = 0
+    CursorRGB     = (0,200,0)
+    CursorDarkRGB = (0,50,0)
+
+    TerminalTypeSpeed   = 0.08  #pause in seconds between characters
+    TerminalScrollSpeed = 0.08  #pause in seconds between new lines
+    CursorRGB           = (0,255,0)
+    CursorDarkRGB       = (0,50,0)
+
+    text = Command.get("Message", "NO MESSAGE FOUND")
+    rgb  = Command.get("RGB", (255, 255, 255))
+
+
+
+    while not StopEvent.is_set():
+        try:
+                
+                print("Message: ",text)
+
+
+                LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                    LED.ScreenArray,
+                    Message=text,
+                    CursorH=CursorH,
+                    CursorV=CursorV,
+                    MessageRGB=rgb,
+                    CursorRGB=(0, 255, 0),
+                    CursorDarkRGB=(0, 50, 0),
+                    StartingLineFeed=1,
+                    TypeSpeed=TerminalTypeSpeed,
+                    ScrollSpeed=TerminalScrollSpeed
+                )
+
+                Command = CommandQueue.get(timeout=0.5)
+                #the first command was already pulled from the queue by the calling procedure
+                if Command.get("Action", "").lower() == "terminalmessage":
+                    text = Command.get("Message", "NO MESSAGE FOUND")
+                    rgb = Command.get("RGB", (255, 255, 255))
+                    speed = Command.get("ScrollSleep", 0.05)
+
+
+        except queue.Empty:
+            print("[LEDcommander] Queue is empty")
+            LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
+            print("[LEDcommander] RunTerminaMode: getting next command")
+            continue
+\
+
+
+
+
+
+def RunTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
+    import LEDarcade as LED
+    LED.Initialize()
+    CursorH, CursorV = 0, 0
+    print("[LEDCommander] TerminalMode activated.")
+
+    CursorRGB     = (0,200,0)
+    CursorDarkRGB = (0,50,0)
+
+    TerminalTypeSpeed   = 0.08  #pause in seconds between characters
+    TerminalScrollSpeed = 0.08  #pause in seconds between new lines
+    CursorRGB           = (0,255,0)
+    CursorDarkRGB       = (0,50,0)
+
+
+    # Display first message if provided
+    if InitialCommand:
+        first_msg = InitialCommand.get("Message", None)
+        if first_msg:
+            color = InitialCommand.get("RGB", (255, 255, 255))
+            sleep = InitialCommand.get("ScrollSleep", 0.05)
+            LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                LED.ScreenArray,
+                Message=first_msg,
+                CursorH=CursorH,
+                CursorV=CursorV,
+                MessageRGB=color,
+                CursorRGB=(0, 255, 0),
+                CursorDarkRGB=(0, 50, 0),
+                StartingLineFeed=1,
+                TypeSpeed=TerminalTypeSpeed,
+                ScrollSpeed=TerminalScrollSpeed
+            )
+
+    # Start listening for future messages
+    while not StopEvent.is_set():
+        try:
+            Command = CommandQueue.get(timeout=0.5)
+            if Command.get("Action", "").lower() == "terminalmessage":
+                msg = Command.get("Message", "")
+                color = Command.get("RGB", (255, 255, 255))
+                sleep = Command.get("ScrollSleep", 0.05)
+
+                LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                    LED.ScreenArray,
+                    Message=msg,
+                    CursorH=CursorH,
+                    CursorV=CursorV,
+                    MessageRGB=color,
+                    CursorRGB=(0, 255, 0),
+                    CursorDarkRGB=(0, 50, 0),
+                    StartingLineFeed=1,
+                    TypeSpeed=TerminalTypeSpeed,
+                    ScrollSpeed=TerminalScrollSpeed
+                )
+        except queue.Empty:
+            print("[LEDcommander] Queue is empty")
+            LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=2)
+            print("[LEDcommander] RunTerminaMode: getting next command")
+            continue
+
+
 
 
 

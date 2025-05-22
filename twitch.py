@@ -473,6 +473,9 @@ class Bot(commands.Bot ):
                 print("** EXITING CHAT TERMINAL - NO ACTIVITY **")
                 print("*****************************************")       
                 print("")       
+
+
+
                 LED.ClearBigLED()
                 LED.ClearBuffers()
                 CursorH = 0

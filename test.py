@@ -12,32 +12,74 @@ if __name__ == "__main__":
 
 
 
-    print("Sending ShowTitleScreen command...")
     CommandQueue.put({
-        "Action": "ScrollMessage",
-        "Message": "Hey there big buddy.  You like this?"
+        "Action": "terminalMode_on",
+        "Message": "This is the first terminal message!",
+        "RGB": (0, 200, 0),
+        "ScrollSleep": 0.03
+    })
+
+
+    CommandQueue.put({
+        "Action": "terminalMode_on",
+        "Message": "This is the second terminal message!",
+        "RGB": (0, 100, 0),
+        "ScrollSleep": 0.03
+    })
+
+
+    CommandQueue.put({
+        "Action": "terminalMode_on",
+        "Message": "This is the third terminal message!",
+        "RGB": (0, 200, 255),
+        "ScrollSleep": 0.03
+    })
+
+
+    CommandQueue.put({
+        "Action": "terminalMode_off",
+        "Message": "No message needed",
+        "RGB": (0, 200, 0),
+        "ScrollSleep": 0.03
     })
 
 
 
 
-    print("Sending ShowTitleScreen command...")
+
     CommandQueue.put({
-        "Action": "ScrollMessage",
-        "Message": "Here is another one.  This is a much longer text.  I wonder if it works."
+        "Action": "ScrollMessages",
+        "Messages": [
+            {"Message": "First message!", "RGB": (255, 0, 0), "ScrollSleep": 0.03},
+            {"Message": "Second one here!", "RGB": (0, 255, 0), "ScrollSleep": 0.05},
+            {"Message": "Last message in batch.", "RGB": (0, 0, 255), "ScrollSleep": 0.07},
+            {"Message": "...................", "RGB": (0, 100, 255), "ScrollSleep": 0.07}]
+    })
+
+    CommandQueue.put({
+        "Action": "ScrollMessages",
+        "Messages": [
+            {"Message": "And now we are back from our commercial break.", "RGB": (255, 0, 0), "ScrollSleep": 0.03},
+            {"Message": "Did you buy the poopy poopy?", "RGB": (0, 255, 0), "ScrollSleep": 0.05},
+            {"Message": "...................", "RGB": (0, 100, 255), "ScrollSleep": 0.07}]
     })
 
 
 
+
+    CommandQueue.put({
+        "Action": "Quit",
+        "Messages": "quit"
+    })
 
 
 
     # Let it run for a bit
-    time.sleep(500)
+    #time.sleep(500)
 
     # Turn off the clock
     CommandQueue.put({"Action": "StopClock"})
-    time.sleep(5)
+    time.sleep(500)
    
     print("QUIT NOW!")
     

@@ -85,7 +85,7 @@ import geopy.distance
 
 import LEDarcade as LED
 LED.Initialize()
-LED.ReinitializeMatrix()
+
 
 from configparser import SafeConfigParser
 from urllib.parse import urlparse
