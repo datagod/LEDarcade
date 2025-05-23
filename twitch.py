@@ -443,7 +443,7 @@ class Bot(commands.Bot ):
 
         if(StreamActive == True):
           #await self.DisplayConnectingToTerminalMessage()
-          self.DisplayRandomConnectionMessage()
+          await self.DisplayRandomConnectionMessage()
 
         while True:
           
@@ -463,8 +463,19 @@ class Bot(commands.Bot ):
               #Don't blink cursor if displaying the uptime
               #maybe have a blinkcursor switch instead
               if(LED.TwitchTimerOn == False):
-                LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
-            
+                #LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
+
+                #Blink cursor
+                CommandQueue.put({
+                "Action": "scrollmessages",
+                "Messages": [
+                    {"Message": " ", "RGB": (0, 255, 0), "ScrollSleep": 0.03}
+                ]
+                })
+
+
+
+
               #Close Chat Terminal after X minutes of inactivity
               h,m,s    = LED.GetElapsedTime(self.LastMessageReceived,time.time())
                         
@@ -1053,13 +1064,24 @@ class Bot(commands.Bot ):
       i = random.randint(0,x-1)
       message = ConnectionMessages[i]         
       print("Connection message:",message)
-      CursorH = self.CursorH
-      CursorV = self.CursorV
-      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-      LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-      self.CursorH = CursorH
-      self.CursorV = CursorV
+      
+      
+      #CursorH = self.CursorH
+      #CursorV = self.CursorV
+      #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+      #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+      #LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+      #self.CursorH = CursorH
+      #self.CursorV = CursorV
+      
+      CommandQueue.put({
+        "Action": "scrollmessages",
+        "Messages": [
+        {"Message": message, "RGB": (0, 255, 0), "ScrollSleep": 0.03},
+        {"Message": " -- Clockbot -- ", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
+    ]
+    })
+
 
  
     #---------------------------------------
@@ -1670,19 +1692,23 @@ class Bot(commands.Bot ):
     #----------------------------------------
     @commands.command()
     async def time(self, ctx: commands.Context):
-      #SHOW DIGITAL CLOCK
-      
-      LED.DisplayDigitalClock(
-        ClockStyle = 1,
-        CenterHoriz = True,
-        v   = 1, 
-        hh  = 24,
-        RGB = LED.LowGreen,
-        ShadowRGB     = LED.ShadowGreen,
-        ZoomFactor    = 3,
-        AnimationDelay= 10,
-        RunMinutes = 0.5,
-        ScrollSleep = 0.05)
+
+      try:
+        # Stop existing clock (if any), then start new one
+        CommandQueue.put({"Action": "StopClock"})
+        
+        #Formulate the command.      
+        CommandQueue.put({
+            "Action": "ShowClock",
+            "Style": 1,
+            "Zoom": 3 if StreamActive else 2,
+            "Duration": 1,  # minutes
+            "Delay": 10
+        })
+
+      except Exception as e:
+        print(f"[ERROR] Failed to send clock command: {e}")
+        traceback.print_exc()
 
 
 

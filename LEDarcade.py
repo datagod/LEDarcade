@@ -83,6 +83,7 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
 
 
+TheMatrix = None
 
 
 
