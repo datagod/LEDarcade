@@ -10,63 +10,60 @@ if __name__ == "__main__":
     LEDProcess.start()
     CommandQueue.cancel_join_thread()
 
-
+    time.sleep(1)
 
     CommandQueue.put({
-        "Action": "terminalMode_on",
-        "Message": "This is the first terminal message!",
+    "Action": "scrollmessages",
+    "Messages": [
+        {"Message": "Welcome to the Matrix!", "RGB": (0, 255, 0), "ScrollSleep": 0.03},
+        {"Message": "Enjoy the pixel ride.", "RGB": (0, 200, 255), "ScrollSleep": 0.04},
+        {"Message": "Datagod says hi.", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
+    ]
+    })
+
+    time.sleep(3)
+
+    CommandQueue.put({
+        "Action": "terminalmode_on",
         "RGB": (0, 200, 0),
         "ScrollSleep": 0.03
     })
 
+    time.sleep(3)
 
     CommandQueue.put({
-        "Action": "terminalMode_on",
-        "Message": "This is the second terminal message!",
+        "Action": "terminalmessage",
+        "Message": "Welcome to the Jungle",
         "RGB": (0, 100, 0),
         "ScrollSleep": 0.03
     })
 
+    time.sleep(3)
 
     CommandQueue.put({
-        "Action": "terminalMode_on",
-        "Message": "This is the third terminal message!",
-        "RGB": (0, 200, 255),
+        "Action": "terminalmessage",
+        "Message": "We got plenty of cake",
+        "RGB": (0, 255, 0),
         "ScrollSleep": 0.03
     })
-
+    time.sleep(3)
+    CommandQueue.put({
+        "Action": "terminalmessage",
+        "Message": "What da??",
+        "RGB": (255, 0, 0),
+        "ScrollSleep": 0.03
+    })
+    time.sleep(3)
 
     CommandQueue.put({
-        "Action": "terminalMode_off",
+        "Action": "terminalmode_off",
         "Message": "No message needed",
         "RGB": (0, 200, 0),
         "ScrollSleep": 0.03
     })
 
 
-
-
-
-    CommandQueue.put({
-        "Action": "ScrollMessages",
-        "Messages": [
-            {"Message": "First message!", "RGB": (255, 0, 0), "ScrollSleep": 0.03},
-            {"Message": "Second one here!", "RGB": (0, 255, 0), "ScrollSleep": 0.05},
-            {"Message": "Last message in batch.", "RGB": (0, 0, 255), "ScrollSleep": 0.07},
-            {"Message": "...................", "RGB": (0, 100, 255), "ScrollSleep": 0.07}]
-    })
-
-    CommandQueue.put({
-        "Action": "ScrollMessages",
-        "Messages": [
-            {"Message": "And now we are back from our commercial break.", "RGB": (255, 0, 0), "ScrollSleep": 0.03},
-            {"Message": "Did you buy the poopy poopy?", "RGB": (0, 255, 0), "ScrollSleep": 0.05},
-            {"Message": "...................", "RGB": (0, 100, 255), "ScrollSleep": 0.07}]
-    })
-
-
-
-
+    time.sleep(20)
     CommandQueue.put({
         "Action": "Quit",
         "Messages": "quit"

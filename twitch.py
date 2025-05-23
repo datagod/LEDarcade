@@ -228,6 +228,8 @@ CommandProcess = None
 
 
 
+
+
 #----------------------------------------------------------------------------
 # FUNCTIONS
 #----------------------------------------------------------------------------
@@ -448,8 +450,10 @@ class Bot(commands.Bot ):
           #asyncio.sleep suspends the current task, allowing other processes to run
           await asyncio.sleep(1)
 
+          
+          #Replacing with LEDcommander
           #Check the event queue for incoming data
-          await self.ReadEventQueue()
+          #await self.ReadEventQueue()
           print("Stream Status:",StreamActive, ' TwitchTimerOn:',LED.TwitchTimerOn)
 
 
@@ -476,27 +480,56 @@ class Bot(commands.Bot ):
 
 
 
-                LED.ClearBigLED()
-                LED.ClearBuffers()
-                CursorH = 0
-                CursorV = 0
-                LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"No chat activity detected.  Did everyone fall asleep?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-                LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Closing terminal",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-                LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-                LED.ClearBigLED()
-                LED.ClearBuffers()
-                self.CursorH = CursorH
-                self.CursorV = CursorV
+                #Replaced with LED commander
+                #LED.ClearBigLED()
+                #LED.ClearBuffers()
+                #CursorH = 0
+                #CursorV = 0
+                #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"No chat activity detected.  Did everyone fall asleep?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+                #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Closing terminal",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+                #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
+                #LED.ClearBigLED()
+                #LED.ClearBuffers()
+                #self.CursorH = CursorH
+                #self.CursorV = CursorV
+
+                CommandQueue.put({
+                  "Action": "terminalmessage",
+                  "Message": "No chat activity detected.  Did everyone fall asleep?",
+                  "RGB": (100, 100, 0),
+                  "ScrollSleep": 0.03 
+                })
+                
+                CommandQueue.put({
+                  "Action": "terminalmessage",
+                  "Message": "Closing Terminal",
+                  "RGB": (100, 100, 0),
+                  "ScrollSleep": 0.03 
+                })
+
+                CommandQueue.put({
+                  "Action": "terminalmessage",
+                  "Message": "................",
+                  "RGB": (100, 100, 0),
+                  "ScrollSleep": 0.03 
+                })
+
+
+                CommandQueue.put({"Action": "terminalmode_off"})
 
                 self.ChatTerminalOn = False                        
                 #await self.close()
 
-            
+
+        
     
 
 
+
+
             # we want to display a regular clock (random styles) for 1 minutes 
-            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False  and SharedState['DigitalClockSpawned'] == False):
+            #if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False  and SharedState['DigitalClockSpawned'] == False):
+            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
               #await self.DisplayDigitalClock()
               #self.TwitchTimerTask = asyncio.create_task(self.DisplayDigitalClock())              
               print("Creating multiprocess DisplayDigitalClock()")
@@ -506,7 +539,7 @@ class Bot(commands.Bot ):
 
 
           #If the stream is not live, display a regular clock 
-          if (StreamActive == False and SharedState['DigitalClockSpawned'] == False):
+          if (StreamActive == False):
             print("StreamActive == False, displaying regular clock")
             self.DisplayDigitalClock()
             #Check Twitch advanced info 
@@ -1034,16 +1067,26 @@ class Bot(commands.Bot ):
     #---------------------------------------
     async def DisplayConnectingToTerminalMessage(self):
       #Show terminal connection message
-      LED.ClearBigLED()
-      LED.ClearBuffers()
-      CursorH = 0
-      CursorV = 0
-      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-      LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
-      self.CursorH = CursorH
-      self.CursorV = CursorV
       
-    
+      
+      #LED.ClearBigLED()
+      #LED.ClearBuffers()
+      #CursorH = 0
+      #CursorV = 0
+      #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"INITIATING CONNECTION",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+      #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,".....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.5,ScrollSpeed=ScrollSleep)
+      #self.CursorH = CursorH
+      #self.CursorV = CursorV
+      
+      CommandQueue.put({"Action": "terminalmode_on", "RGB": (0, 200, 0),"ScrollSleep": 0.03  })
+  
+      CommandQueue.put({
+        "Action": "terminalmessage",
+        "Message": "Initiating connection",
+        "RGB": (100, 100, 0),
+        "ScrollSleep": ScrollSleep   })
+
+
 
     #---------------------------------------
     # Send random chat greeting           --
