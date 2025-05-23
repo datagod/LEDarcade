@@ -322,7 +322,8 @@ class Bot(commands.Bot ):
     SpeedupMessageCount = 5
     ChatTerminalOn      = False
     Channel             = ''
-    
+    ClockRunning        = False  # <== Added flag to show if uptime clock is running
+
 
   
 
@@ -433,153 +434,49 @@ class Bot(commands.Bot ):
     #---------------------------------------
 
     async def PerformTimeBasedActions(self):
-
         global DigitalClockSpawned
-
-
         loop = asyncio.get_running_loop()
-        #end_time = loop.time() + self.AnimationDelay
-
 
         if(StreamActive == True):
-          #await self.DisplayConnectingToTerminalMessage()
-          await self.DisplayRandomConnectionMessage()
+            await self.DisplayRandomConnectionMessage()
 
         while True:
-          
-          #asyncio.sleep suspends the current task, allowing other processes to run
-          await asyncio.sleep(1)
+            await asyncio.sleep(1)
+            print("Stream Status:",StreamActive, ' TwitchTimerOn:',LED.TwitchTimerOn)
 
-          
-          #Replacing with LEDcommander
-          #Check the event queue for incoming data
-          #await self.ReadEventQueue()
-          print("Stream Status:",StreamActive, ' TwitchTimerOn:',LED.TwitchTimerOn)
-
-
-          if(StreamActive == True):
-            if (self.ChatTerminalOn == True):
-              
-              #Don't blink cursor if displaying the uptime
-              #maybe have a blinkcursor switch instead
-              if(LED.TwitchTimerOn == False):
-                #LED.BlinkCursor(CursorH= self.CursorH,CursorV=self.CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.25,BlinkCount=1)
-
-                #Blink cursor
-                CommandQueue.put({
-                "Action": "scrollmessages",
-                "Messages": [
-                    {"Message": " ", "RGB": (0, 255, 0), "ScrollSleep": 0.03}
-                ]
-                })
-
-
-
-
-              #Close Chat Terminal after X minutes of inactivity
-              h,m,s    = LED.GetElapsedTime(self.LastMessageReceived,time.time())
-                        
-              print("Seconds since last message:",s," MinutesToWaitBeforeClosing: ",self.MinutesToWaitBeforeClosing," Messages Queued:",self.MessageCount,end="\r")
-
-              if (m >= self.MinutesToWaitBeforeClosing ):
-                print("No chat activity for the past {} minutes.  Closing terminal...".format(self.MinutesToWaitBeforeClosing))
-                print("")       
-                print("*****************************************")       
-                print("** EXITING CHAT TERMINAL - NO ACTIVITY **")
-                print("*****************************************")       
-                print("")       
-
-
-
-                #Replaced with LED commander
-                #LED.ClearBigLED()
-                #LED.ClearBuffers()
-                #CursorH = 0
-                #CursorV = 0
-                #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"No chat activity detected.  Did everyone fall asleep?",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-                #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Closing terminal",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-                #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"............",CursorH=CursorH,CursorV=CursorV,MessageRGB=(200,0,0),CursorRGB=(200,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
-                #LED.ClearBigLED()
-                #LED.ClearBuffers()
-                #self.CursorH = CursorH
-                #self.CursorV = CursorV
-
-                CommandQueue.put({
-                  "Action": "terminalmessage",
-                  "Message": "No chat activity detected.  Did everyone fall asleep?",
-                  "RGB": (100, 100, 0),
-                  "ScrollSleep": 0.03 
-                })
-                
-                CommandQueue.put({
-                  "Action": "terminalmessage",
-                  "Message": "Closing Terminal",
-                  "RGB": (100, 100, 0),
-                  "ScrollSleep": 0.03 
-                })
-
-                CommandQueue.put({
-                  "Action": "terminalmessage",
-                  "Message": "................",
-                  "RGB": (100, 100, 0),
-                  "ScrollSleep": 0.03 
-                })
-
-
-                CommandQueue.put({"Action": "terminalmode_off"})
-
-                self.ChatTerminalOn = False                        
-                #await self.close()
-
-
-        
-    
-
-
-
-
-            # we want to display a regular clock (random styles) for 1 minutes 
-            #if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False  and SharedState['DigitalClockSpawned'] == False):
-            if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False):
-              #await self.DisplayDigitalClock()
-              #self.TwitchTimerTask = asyncio.create_task(self.DisplayDigitalClock())              
-              print("Creating multiprocess DisplayDigitalClock()")
-              self.DisplayDigitalClock()
-              #clock_proc.start()
-              #clock_proc_stop()
-
-
-          #If the stream is not live, display a regular clock 
-          if (StreamActive == False):
-            print("StreamActive == False, displaying regular clock")
-            self.DisplayDigitalClock()
-            #Check Twitch advanced info 
-            await self.CheckStream()
-            print("Waiting for the stream to go live I guess")
-
-                 
-
-          #Send a chat message every X minutes to inform viewers of help commands
-          h,m,s = LED.GetElapsedTime(self.LastChatInfoTime,time.time())
-          if (m >= self.MinutesToWaitBeforeChatInfo):
-            await self.SendChatMessage("Don't forget to interact with the LED display.  Type ?clock for a list of commands.") 
-            self.LastChatInfoTime = time.time()
-          
-
-          
-          
-          #Check to see if stream is live yet (only check every X minutes)
-          h,m,s = LED.GetElapsedTime(self.LastStreamCheckTime,time.time())
-          if (m >= self.MinutesToWaitBeforeCheckingStream):
-            await self.CheckStream()
             if(StreamActive == True):
-              self.LastStreamCheckTime = time.time()
+                if (self.ChatTerminalOn == True):
+                    h,m,s = LED.GetElapsedTime(self.LastMessageReceived,time.time())
+                    if (m >= self.MinutesToWaitBeforeClosing ):
+                        CommandQueue.put({"Action": "terminalmessage", "Message": "No chat activity detected.  Did everyone fall asleep?", "RGB": (100, 100, 0), "ScrollSleep": 0.03 })
+                        CommandQueue.put({"Action": "terminalmessage", "Message": "Closing Terminal", "RGB": (100, 100, 0), "ScrollSleep": 0.03 })
+                        CommandQueue.put({"Action": "terminalmessage", "Message": "................", "RGB": (100, 100, 0), "ScrollSleep": 0.03 })
+                        CommandQueue.put({"Action": "terminalmode_off"})
+                        self.ChatTerminalOn = False
+                        self.ClockRunning = False  # Reset clock flag when terminal closes
 
-            #self.__init__()
-            #super().__init__(token=THECLOCKBOT_ACCESS_TOKEN, prefix='?', initial_channels=[BOT_CHANNEL])
+                if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False and self.ClockRunning == False):
+                    print("Creating multiprocess DisplayDigitalClock()")
+                    self.DisplayDigitalClock()
+                    self.ClockRunning = True
 
-          
+            if (StreamActive == False):
+                print("StreamActive == False, displaying regular clock")
+                if self.ClockRunning == False:
+                    self.DisplayDigitalClock()
+                    self.ClockRunning = True
+                await self.CheckStream()
 
+            h,m,s = LED.GetElapsedTime(self.LastChatInfoTime,time.time())
+            if (m >= self.MinutesToWaitBeforeChatInfo):
+                await self.SendChatMessage("Don't forget to interact with the LED display.  Type ?clock for a list of commands.")
+                self.LastChatInfoTime = time.time()
+
+            h,m,s = LED.GetElapsedTime(self.LastStreamCheckTime,time.time())
+            if (m >= self.MinutesToWaitBeforeCheckingStream):
+                await self.CheckStream()
+                if(StreamActive == True):
+                    self.LastStreamCheckTime = time.time()
 
 
 
@@ -880,6 +777,24 @@ class Bot(commands.Bot ):
           #LED.ClearBigLED()
           #LED.ClearBuffers()
 
+          CommandQueue.put({
+                  "Action": "ShowTitleScreen",
+                  "BigText": "LURK",
+                  "BigTextRGB": LED.MedGreen,
+                  "BigTextShadowRGB": LED.ShadowGreen,
+                  "BigTextZoom": 3,
+                  "LittleText": "",
+                  "LittleTextRGB": LED.MedRed,
+                  "LittleTextShadowRGB": LED.ShadowRed,
+                  "LittleTextZoom": 2,
+                  "ScrollText": author + " has gone into lurk mode",
+                  "ScrollTextRGB": LED.MedYellow,
+                  "ScrollSleep": ScrollSleep,
+                  "DisplayTime": 1,
+                  "ExitEffect": 1
+              })
+
+          ''' 
           LED.ShowTitleScreen(
             BigText             = "LURK",
             BigTextRGB          = LED.MedGreen,
@@ -894,7 +809,7 @@ class Bot(commands.Bot ):
             DisplayTime         = 0,           # time in seconds to wait before exiting 
             ExitEffect          = 1            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
             )
-
+          ''' 
           print("LURK MODE DEACTIVATED")
 
 
@@ -1003,6 +918,17 @@ class Bot(commands.Bot ):
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message.author.display_name + ":",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,0,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=1,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
           LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, ScrollText,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=0,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
           LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
+          CommandQueue.put({
+          "Action": "scrollmessages",
+          "Messages": [
+              {"Message": "Welcome to the Matrix!", "RGB": (0, 255, 0), "ScrollSleep": 0.03},
+              {"Message": "Enjoy the pixel ride.", "RGB": (0, 200, 255), "ScrollSleep": 0.04},
+              {"Message": "Datagod says hi.", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
+          ]
+          })
+
+
 
 
           #Store running values in the bot object

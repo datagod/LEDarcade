@@ -2,9 +2,12 @@ from multiprocessing import Process, Queue
 import LEDcommander
 import time
 
+def wait_for_terminalmode_to_start():
+    # Simulate waiting for subprocess to initialize
+    print("[Test] Waiting for TerminalMode to start...")
+    time.sleep(2)
+
 if __name__ == "__main__":
-
-
     CommandQueue = Queue()
     LEDProcess = Process(target=LEDcommander.Run, args=(CommandQueue,))
     LEDProcess.start()
@@ -12,84 +15,52 @@ if __name__ == "__main__":
 
     time.sleep(1)
 
-    CommandQueue.put({
-    "Action": "scrollmessages",
-    "Messages": [
-        {"Message": "Welcome to the Matrix!", "RGB": (0, 255, 0), "ScrollSleep": 0.03},
-        {"Message": "Enjoy the pixel ride.", "RGB": (0, 200, 255), "ScrollSleep": 0.04},
-        {"Message": "Datagod says hi.", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
-    ]
-    })
-
-    time.sleep(3)
-
+    # Start TerminalMode
     CommandQueue.put({
         "Action": "terminalmode_on",
         "RGB": (0, 200, 0),
         "ScrollSleep": 0.03
     })
 
-    time.sleep(3)
+    wait_for_terminalmode_to_start()
+
+    # Send scrollmessages once
+    scroll_block = [
+        {"Message": "Welcome to the Matrix!", "RGB": (0, 255, 0), "ScrollSleep": 0.03},
+        {"Message": "Enjoy the pixel ride.", "RGB": (0, 200, 255), "ScrollSleep": 0.04},
+        {"Message": "Datagod says hi.", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
+    ]
 
     CommandQueue.put({
-        "Action": "terminalmessage",
-        "Message": "Welcome to the Jungle",
-        "RGB": (0, 100, 0),
-        "ScrollSleep": 0.03
+        "Action": "scrollmessages",
+        "Messages": scroll_block
     })
 
     time.sleep(3)
 
-    CommandQueue.put({
-        "Action": "terminalmessage",
-        "Message": "We got plenty of cake",
-        "RGB": (0, 255, 0),
-        "ScrollSleep": 0.03
-    })
-    time.sleep(3)
-    CommandQueue.put({
-        "Action": "terminalmessage",
-        "Message": "What da??",
-        "RGB": (255, 0, 0),
-        "ScrollSleep": 0.03
-    })
-    time.sleep(3)
+    # Send a few terminal messages
+    for msg, rgb in [
+        ("Welcome to the Jungle", (0, 100, 0)),
+        ("We got plenty of cake", (0, 255, 0)),
+        ("What da??", (255, 0, 0))
+    ]:
+        CommandQueue.put({
+            "Action": "terminalmessage",
+            "Message": msg,
+            "RGB": rgb,
+            "ScrollSleep": 0.03
+        })
+        time.sleep(3)
 
+    # Shutdown TerminalMode
     CommandQueue.put({
-        "Action": "terminalmode_off",
-        "Message": "No message needed",
-        "RGB": (0, 200, 0),
-        "ScrollSleep": 0.03
+        "Action": "terminalmode_off"
     })
 
+    # Let system idle before shutdown
+    time.sleep(10)
 
-    time.sleep(20)
-    CommandQueue.put({
-        "Action": "Quit",
-        "Messages": "quit"
-    })
-
-
-
-    # Let it run for a bit
-    #time.sleep(500)
-
-    # Turn off the clock
-    CommandQueue.put({"Action": "StopClock"})
-    time.sleep(500)
-   
-    print("QUIT NOW!")
-    
-    # Ask LEDCommander to shut down fully
-    CommandQueue.put({"Action": "Quit"})
-
-    # Give the subprocess a moment to receive the message
-    time.sleep(0.1)
-
-    # Now join with a timeout
-    LEDProcess.join(timeout=3)
-
-
+    # Send TitleScreen (post terminal)
     print("Sending ShowTitleScreen command...")
     CommandQueue.put({
         "Action": "ShowTitleScreen",
@@ -107,9 +78,11 @@ if __name__ == "__main__":
         "LittleTextZoom": 1
     })
 
+    time.sleep(5)
 
-
-
+    # Final shutdown
+    CommandQueue.put({"Action": "Quit"})
+    LEDProcess.join(timeout=3)
 
     if LEDProcess.is_alive():
         print("[Main] LEDCommander still alive — terminating.")

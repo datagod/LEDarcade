@@ -159,26 +159,25 @@ def Run(CommandQueue):
             #----------------------------------
 
             elif Action == "scrollmessages":
-                while DisplayProcess and DisplayProcess.is_alive():
-                    print("[LEDcommander] Display process is still running. Waiting...")
-                    time.sleep(0.5)  # Sleep to avoid CPU hogging
-                DisplayProcess = Process(target=ScrollMessages, args=(Command, StopEvent))
-                DisplayProcess.start()
+                if DisplayProcess and DisplayProcess.is_alive():
+                    CommandQueue.put(Command)  # Forward to TerminalMode
+                else:
+                    print("[LEDcommander] Warning: TerminalMode not active. Cannot scroll messages.")
 
 
 
             #----------------------------------
             #-- TERMINAL MODE
             #----------------------------------
-            
+
             elif Action == "terminalmode_on":
-                print("[LEDcommander] RUN: terminalmode_on detected")
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("[LEDcommander] Display already active. Waiting...")
-                    continue
-                StopEvent.clear()
-                DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
-                DisplayProcess.start()
+                    print("[LEDcommander] TerminalMode already active.")
+                else:
+                    StopEvent.clear()
+                    DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
+                    DisplayProcess.start()
+
 
 
             elif Action == "terminalmessage":  
@@ -234,12 +233,12 @@ def ShowDigitalClock(Command,StopEvent):
     print("RedR: ",LED.RedR)
 
     #Sprite display locations ??  maybe not needed
-    LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
-    LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
-    LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
-    LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
+    #LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
+    #LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
+    #LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
+    #LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
 
-    
+   
 
     ClockStyle = Command.get("Style", 1)
     ZoomFactor = Command.get("Zoom", 2)
@@ -392,7 +391,7 @@ def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
 
 
     #I put this one inside StartTerminalMode so we don't have to re-import LEDarcade
-    def _StopTerminalMode(CursorH, CursorV):
+    def _StopTerminalMode():
         
         print("=========================")
         print("== STOP TERMINAL MODE ==")
@@ -427,13 +426,14 @@ def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
             try:
                 Command = CommandQueue.get(timeout=0.1)
                 Action = Command.get("Action", "").lower()
-                if Action == "terminalmessage":
+
+                if Action in ("terminalmessage", "scrollmessages"):
                     message_queue.append(Command)
                     print(f"[TerminalMode] Queued: {Command.get('Message')[:40]}... (Total: {len(message_queue)})")
 
                 elif Action == "terminalmode_off":
                     print("[LEDcommander] RUN: terminalmode_OFF detected")
-                    StopTerminalMode(CursorH, CursorV)
+                    _StopTerminalMode()
                     StopEvent.set()
 
 
@@ -442,19 +442,29 @@ def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
 
             if message_queue:
                 Command = message_queue.pop(0)
-                msg = Command.get("Message", "")
-                rgb = Command.get("RGB", (255, 255, 255))
-                sleep = Command.get("ScrollSleep", 0.05)
-
-                LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                    LED.ScreenArray, msg,
-                    CursorH=CursorH, CursorV=CursorV,
-                    MessageRGB=rgb,
-                    CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-                    StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
-                )
-            else:
-                LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.25, BlinkCount=1)
+                if Command.get("Action") == "scrollmessages":
+                    messages = Command.get("Messages", [])
+                    for msg_entry in messages:
+                        msg = msg_entry.get("Message", "")
+                        rgb = msg_entry.get("RGB", (255, 255, 255))
+                        sleep = msg_entry.get("ScrollSleep", 0.05)
+                        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                            LED.ScreenArray, msg,
+                            CursorH=CursorH, CursorV=CursorV,
+                            MessageRGB=rgb, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                            StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
+                        )
+                else:
+                    msg = Command.get("Message", "")
+                    rgb = Command.get("RGB", (255, 255, 255))
+                    sleep = Command.get("ScrollSleep", 0.05)
+                    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                        LED.ScreenArray, msg,
+                        CursorH=CursorH, CursorV=CursorV,
+                        MessageRGB=rgb, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                        StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
+                    )
+            LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.25, BlinkCount=1)
 
         except Exception as e:
             print(f"[TerminalMode] Error: {e}")
