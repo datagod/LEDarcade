@@ -78,15 +78,16 @@ import time
 import traceback
 
 
-from multiprocessing import Event, Process
+from multiprocessing import Event, Process, Queue
 import queue
 
 
 CursorH   = 0
 CursorV   = 0
 StopEvent = Event()
-DisplayProcess = None
+DisplayProcess     = None
 CurrentDisplayMode = None
+TerminalQueue      = Queue()
 
 
 
@@ -219,10 +220,13 @@ def Run(CommandQueue):
 
 
 
+            # Final version using a dedicated TerminalQueue
+
+            # At the top-level of Run(), outside the loop (not shown here):
+
             elif Action == "terminalmessage":
                 if DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal":
-                    # Let TerminalMode consume this directly
-                    continue
+                    TerminalQueue.put(Command)
                 else:
                     print("[LEDcommander] TerminalMode not active. Auto-starting it.")
                     StopEvent.set()
@@ -230,9 +234,11 @@ def Run(CommandQueue):
                         DisplayProcess.join()
                     StopEvent.clear()
                     CurrentDisplayMode = "terminal"
-                    DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
+                    TerminalQueue = Queue()  # reset queue to avoid stale messages
+                    DisplayProcess = Process(target=StartTerminalMode, args=(TerminalQueue, StopEvent, Command))
                     DisplayProcess.start()
 
+            # In StartTerminalMode(), replace CommandQueue with TerminalQueue
 
 
 
@@ -390,13 +396,10 @@ def StopTerminalMode():
 
 
 
-def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
-    
+def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
     import LEDarcade as LED
     LED.Initialize()
-    
-    global CursorH, CursorV
-
+    CursorH, CursorV = 0, 0
     message_queue = []
     TerminalTypeSpeed = 0.08
     TerminalScrollSpeed = 0.08
@@ -430,17 +433,13 @@ def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
 
     while not StopEvent.is_set():
         try:
-
-            print(f"[TerminalMode] Queue length: {len(message_queue)}")
-
             try:
-                Command = CommandQueue.get(timeout=0.1)
+                Command = TerminalQueue.get(timeout=0.1)
                 Action = Command.get("Action", "").lower()
 
                 if Action == "terminalmessage":
                     message_queue.append(Command)
-                    print(f"[LEDcommander][TerminalMode] Queued: {Command.get('Message')[:40]}...")
-
+                    print(f"[TerminalMode] Queued: {Command.get('Message')[:40]}...")
 
                 elif Action == "terminalmode_off":
                     print("[LEDcommander] RUN: terminalmode_OFF detected")
@@ -471,7 +470,14 @@ def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
         except Exception as e:
             print(f"[TerminalMode] Error: {e}")
 
-        LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.50, BlinkCount=2)
+        LED.BlinkCursor(
+            CursorH=CursorH,
+            CursorV=CursorV,
+            CursorRGB=CursorRGB,
+            CursorDarkRGB=CursorDarkRGB,
+            BlinkSpeed=0.50,
+            BlinkCount=2
+        )
 
 #-------------------------------------------------------------------------------
 # Main Processing
