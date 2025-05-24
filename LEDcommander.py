@@ -268,6 +268,26 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+            elif Action == "showgif":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "gif"
+                DisplayProcess = Process(target=ShowGIF, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "showimagezoom":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "gif"
+                DisplayProcess = Process(target=ShowImageZoom, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
 
             elif Action == "quit":
                 print("[LEDcommander] Quit received.")
@@ -498,20 +518,69 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
 
 def ShowHeart(Command, StopEvent):
     import LEDarcade as LED
+    LED.Initialize()
+
     StreamBrightness = 80
     GifBrightness    = 80
     MaxBrightness    = 100
     print("[LEDcommander][ShowHeart] Show beating heart")
 
-    LED.Initialize()
     LED.TheMatrix.brightness = StreamBrightness
-    LED.ShowBeatingHeart(h=16, v=0, beats=15, Sleep=0.01) 
+    LED.ShowBeatingHeart(h=16, v=0, beats=10, Sleep=0.01) 
     LED.TheMatrix.brightness = MaxBrightness
     LED.SweepClean()
 
 
 
+def ShowGIF(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
 
+    StreamBrightness = 80
+    GifBrightness    = 80
+    MaxBrightness    = 100
+
+    GIF              = Command.get("GIF",'./images/redalert.gif')
+    loops            = Command.get("loops",5)
+    sleep            = Command.get("sleep",0.06)
+
+    print("[LEDcommander][ShowGIF] displaying a GIF")
+
+    LED.TheMatrix.brightness = StreamBrightness
+    LED.DisplayGIF(GIFName=GIF,width=64,height=32,Loops=loops,sleep=sleep)
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.SweepClean()
+
+
+
+def ShowImageZoom(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    StreamBrightness = 80
+    GifBrightness    = 80
+    MaxBrightness    = 100
+
+    image            = Command.get("image",'./images/UserProfile.png')
+    zoommin          = Command.get("zoommin",1)
+    zoommax          = Command.get("zoommax",256)
+    zoomfinal        = Command.get("zoomfinal",32)
+    sleep            = Command.get("sleep",0.025)
+    step             = Command.get("step",4)
+
+    print("[LEDcommander][ShowImageZoom] Zoom an image")
+
+
+    LED.TheMatrix.brightness = StreamBrightness
+    LED.ZoomImage(ImageName=image,ZoomStart=zoommin,ZoomStop=zoommax,ZoomSleep=sleep,Step=step)
+    LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=zoommax,ZoomStop=zoommin,ZoomSleep=sleep,Step=step)
+    LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=zoommin,ZoomStop=zoomfinal,ZoomSleep=sleep,Step=step)
+    time.sleep(3)
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.SweepClean()
+
+
+    
 
 #-------------------------------------------------------------------------------
 # Main Processing

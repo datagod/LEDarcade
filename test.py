@@ -13,9 +13,9 @@ if __name__ == "__main__":
     LEDProcess.start()
     CommandQueue.cancel_join_thread()
 
-    CommandQueue.put({
-        "Action": "showheart",
-    })
+    CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 2, "sleep":0.06 })
+    CommandQueue.put({"Action": "showgif", "GIF": './images/redalert.gif', "Loops" : 20, "sleep":0.06 })
+    CommandQueue.put({        "Action": "showheart",    })
 
 
 

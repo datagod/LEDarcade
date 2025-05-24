@@ -441,7 +441,7 @@ class Bot(commands.Bot ):
             await self.DisplayRandomConnectionMessage()
 
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             print("Stream Status:",StreamActive, ' TwitchTimerOn:',LED.TwitchTimerOn)
 
             if(StreamActive == True):
@@ -757,16 +757,15 @@ class Bot(commands.Bot ):
            
         
           if (UserProfileURL != ""):
-            LED.TheMatrix.brightness = StreamBrightness
             LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
-            LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-            LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
-            LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
-            time.sleep(3)
-            LED.TheMatrix.brightness = MaxBrightness
-            LED.SweepClean()
 
-
+            CommandQueue.put({"Action": "showimagezoom",
+                              "image": "UserProfile.png",
+                              "zoommin" : 1,
+                              "zoommax":256,
+                              "zoomfinal" : 32,
+                              "sleep" : 0.25,
+                              "step"  : 4})
 
 
 
@@ -815,64 +814,58 @@ class Bot(commands.Bot ):
 
         #HUGS
         if (message.content == "!hug"):
-          LED.TheMatrix.brightness = StreamBrightness
-          LED.ShowBeatingHeart(16,0,10,0)
-          LED.TheMatrix.brightness = MaxBrightness
-          LED.SweepClean()
+            CommandQueue.put({"Action": "showheart" })
+
 
         #REDALERT
         if (message.content == "!redalert"):
-          LED.TheMatrix.brightness = StreamBrightness
-          LED.DisplayGIF('./images/redalert.gif',64,32,20,0.06)
-          LED.TheMatrix.brightness = MaxBrightness
-          LED.SweepClean()
+            CommandQueue.put({"Action": "showgif", "GIF": './images/redalert.gif', "Loops" : 20, "sleep":0.06 })
 
         #POLICE
         if (message.content == "!police"):
-          LED.TheMatrix.brightness = StreamBrightness
-          LED.DisplayGIF('./images/simpsonspolice.gif',64,32,4,0.06)
-          LED.TheMatrix.brightness = MaxBrightness
-          LED.SweepClean()
+            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 2, "sleep":0.06 })
           
 
         #VIP / Hello
         if (message.content.upper() == "!VIP"):
 
-          LED.ShowTitleScreen(
-            BigText             = "HI",
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            BigTextZoom         = 4,
-            LittleText          = '',
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "Hello there " + author + "! Thanks for tuning in.",
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 0,           # time in seconds to wait before exiting 
-            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            )
-          LED.SweepClean()
+          CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": "HI",
+              "BigTextRGB": LED.MedPurple,
+              "BigTextShadowRGB": LED.ShadowPurple,
+              "BigTextZoom" : 3,
+              "LittleText": "",
+              "LittleTextRGB": LED.MedRed,
+              "LittleTextShadowRGB": LED.ShadowRed,
+              "ScrollText": "Hello there "+ author + "! Thanks for tuning in.",
+              "ScrollTextRGB": LED.MedYellow,
+              "ScrollSleep": ScrollSleep,
+              "DisplayTime": 5,
+              "ExitEffect": 0
+              
+          })
 
 
-        #Goodbye
+
+          #Goodbye
         if (message.content.upper() == "!GOODBYE"):
+          CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": "BYE",
+              "BigTextRGB": LED.MedPurple,
+              "BigTextShadowRGB": LED.ShadowPurple,
+              "BigTextZoom" : 3,
+              "LittleText": "",
+              "LittleTextRGB": LED.MedRed,
+              "LittleTextShadowRGB": LED.ShadowRed,
+              "ScrollText": "See you later" + author,
+              "ScrollTextRGB": LED.MedYellow,
+              "ScrollSleep": ScrollSleep,
+              "DisplayTime": 5,
+              "ExitEffect": 0
+          })
 
-          LED.ShowTitleScreen(
-            BigText             = "BYE",
-            BigTextRGB          = LED.MedPurple,
-            BigTextShadowRGB    = LED.ShadowPurple,
-            BigTextZoom         = 3,
-            LittleText          = '',
-            LittleTextRGB       = LED.MedRed,
-            LittleTextShadowRGB = LED.ShadowRed, 
-            ScrollText          = "see you later " + author,
-            ScrollTextRGB       = LED.MedYellow,
-            ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-            DisplayTime         = 5,           # time in seconds to wait before exiting 
-            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-            )
-          LED.SweepClean()
 
 
 
@@ -1541,19 +1534,15 @@ class Bot(commands.Bot ):
     async def hug(self, ctx: commands.Context):
       message = "Sending hugs <3 <3 <3"
       await self.Channel.send(message)
-      LED.TheMatrix.brightness = StreamBrightness
-      LED.ShowBeatingHeart(16,0,15,0)
-      LED.TheMatrix.brightness = MaxBrightness
-      LED.SweepClean()
+      CommandQueue.put({"Action": "showheart"})
+
+    
 
     @commands.command()
     async def hugs(self, ctx: commands.Context):
       message = "Sending hugs <3 <3 <3"
       await self.Channel.send(message)
-      LED.TheMatrix.brightness = StreamBrightness
-      LED.ShowBeatingHeart(16,0,15,0)
-      LED.TheMatrix.brightness = MaxBrightness
-      LED.SweepClean()
+      CommandQueue.put({"Action": "showheart"})
 
 
 
@@ -1572,23 +1561,23 @@ class Bot(commands.Bot ):
           message = "There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount)
           await self.Channel.send(message)
 
-        LED.ShowTitleScreen(
-          BigText             = str(ViewerCount),
-          BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
-          BigTextZoom         = 3,
-          LittleText          = 'Viewers',
-          LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
-          ScrollText          = 'Now Playing: ' + GameName,
-          ScrollTextRGB       = LED.MedYellow,
-          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-          DisplayTime         = 1,           # time in seconds to wait before exiting 
-          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-          )
+        CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": str(ViewerCount),
+              "BigTextRGB": LED.MedPurple,
+              "BigTextShadowRGB": LED.ShadowPurple,
+              "LittleText": "Viewers",
+              "LittleTextRGB": LED.MedRed,
+              "LittleTextShadowRGB": LED.ShadowRed,
+              "ScrollText": 'Now Playing: ' + GameName,
+              "ScrollTextRGB": LED.MedYellow,
+              "ScrollSleep": ScrollSleep,
+              "DisplayTime": 1,
+              "ExitEffect": 5,
+              "LittleTextZoom": 1
+          })
 
-        self.CursorH = 0
-      
+
 
     #----------------------------------------
     # Time                                 --
@@ -1636,22 +1625,23 @@ class Bot(commands.Bot ):
         BigTextZoom = 3
 
 
-      LED.ShowTitleScreen(
-        BigText             = str(Followers),
-        BigTextRGB          = LED.MedPurple,
-        BigTextShadowRGB    = LED.ShadowPurple,
-        BigTextZoom         = 3,
-        LittleText          = 'Follows',
-        LittleTextRGB       = LED.MedRed,
-        LittleTextShadowRGB = LED.ShadowRed, 
-        ScrollText          = '',
-        ScrollTextRGB       = LED.MedYellow,
-        ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-        DisplayTime         = 1,           # time in seconds to wait before exiting 
-        ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-        )
+      CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": str(Followers),
+              "BigTextRGB": LED.MedPurple,
+              "BigTextShadowRGB": LED.ShadowPurple,
+              "BigTextZoom" : 3,
+              "LittleText": "Follows",
+              "LittleTextRGB": LED.MedRed,
+              "LittleTextShadowRGB": LED.ShadowRed,
+              "ScrollText": '',
+              "ScrollTextRGB": LED.MedYellow,
+              "ScrollSleep": ScrollSleep,
+              "DisplayTime": 1,
+              "ExitEffect": 5,
+              "LittleTextZoom": 1
+          })
 
-      self.CursorH = 0
 
 
 
@@ -1673,23 +1663,23 @@ class Bot(commands.Bot ):
           message = "{} viewers follow this channel. Gotta get those numbers up!".format(Followers)
           await self.Channel.send(message)
 
-        LED.ShowTitleScreen(
-          BigText             = str(Followers),
-          BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
-          BigTextZoom         = 3,
-          LittleText          = 'Follows',
-          LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
-          ScrollText          = '',
-          ScrollTextRGB       = LED.MedYellow,
-          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-          DisplayTime         = 1,           # time in seconds to wait before exiting 
-          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-          )
 
-        self.CursorH = 0
-
+        CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": str(Followers),
+              "BigTextRGB": LED.MedPurple,
+              "BigTextShadowRGB": LED.ShadowPurple,
+              "BigTextZoom" : 3,
+              "LittleText": "Follows",
+              "LittleTextRGB": LED.MedRed,
+              "LittleTextShadowRGB": LED.ShadowRed,
+              "ScrollText": '',
+              "ScrollTextRGB": LED.MedYellow,
+              "ScrollSleep": ScrollSleep,
+              "DisplayTime": 5,
+              "ExitEffect": 0,
+              "LittleTextZoom": 1
+          })
 
 
       else:
@@ -1720,21 +1710,24 @@ class Bot(commands.Bot ):
           BigTextZoom = 3
 
 
-        LED.ShowTitleScreen(
-          BigText             = str(Subs),
-          BigTextRGB          = LED.MedPurple,
-          BigTextShadowRGB    = LED.ShadowPurple,
-          BigTextZoom         = 3,
-          LittleText          = 'Subscribers',
-          LittleTextRGB       = LED.MedRed,
-          LittleTextShadowRGB = LED.ShadowRed, 
-          ScrollText          = '',
-          ScrollTextRGB       = LED.MedYellow,
-          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-          DisplayTime         = 5,           # time in seconds to wait before exiting 
-          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-          )
-        self.CursorH = 0
+        CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": str(Subs),
+              "BigTextRGB": LED.MedPurple,
+              "BigTextShadowRGB": LED.ShadowPurple,
+              "BigTextZoom" : 3,
+              "LittleText": "Subscribers",
+              "LittleTextRGB": LED.MedRed,
+              "LittleTextShadowRGB": LED.ShadowRed,
+              "ScrollText": '',
+              "ScrollTextRGB": LED.MedYellow,
+              "ScrollSleep": ScrollSleep,
+              "DisplayTime": 5,
+              "ExitEffect": 0,
+              "LittleTextZoom": 1
+          })
+
+
 
       else:
         if(SHOW_CHATBOT_MESSAGES == True):
@@ -1784,24 +1777,21 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
 
 
-      LED.TheMatrix.brightness = StreamBrightness
       LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
-      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
-      time.sleep(3)
-      LED.ClearBigLED()
+      CommandQueue.put({"Action": "showimagezoom",
+                              "image": "CurrentProfile.png",
+                              "zoommin" : 1,
+                              "zoommax":256,
+                              "zoomfinal" : 32,
+                              "sleep" : 0.25,
+                              "step"  : 4})
+
 
       #SHOW PROFILE
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Now displaying the profile pic for this channel."
         await self.Channel.send(message)
 
-      LED.GetImageFromURL(PROFILE_IMAGE_URL,"CurrentProfile.png")
-      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-      LED.ZoomImage(ImageName="CurrentProfile.png",ZoomStart=256,ZoomStop=64,ZoomSleep=0.025,Step=4)
-      LED.TheMatrix.brightness = MaxBrightness
-      time.sleep(3)
-      LED.SweepClean()
 
 
 
@@ -1855,13 +1845,13 @@ class Bot(commands.Bot ):
       if (UserProfileURL != ""):
         LED.TheMatrix.brightness = StreamBrightness
         LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
-        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=256,ZoomSleep=0.025,Step=4)
-        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=256,ZoomStop=1,ZoomSleep=0.025,Step=4)
-        LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=1,ZoomStop=32,ZoomSleep=0.025,Step=4)
-        time.sleep(3)
-        LED.TheMatrix.brightness = MaxBrightness
-        LED.SweepClean()
-
+        CommandQueue.put({"Action": "showimagezoom",
+                              "image": "CurrentProfile.png",
+                              "zoommin" : 1,
+                              "zoommax":256,
+                              "zoomfinal" : 32,
+                              "sleep" : 0.25,
+                              "step"  : 4})
 
 
 
@@ -1886,21 +1876,23 @@ class Bot(commands.Bot ):
         else:
           BigTextZoom = 3
 
-        LED.ShowTitleScreen(
-          BigText             = str(VIEW_COUNT),
-          BigTextRGB          = LED.MedRed,
-          BigTextShadowRGB    = LED.ShadowRed,
-          BigTextZoom         = BigTextZoom,
-          LittleText          = 'Views',
-          LittleTextRGB       = LED.MedPurple,
-          LittleTextShadowRGB = LED.ShadowPurple, 
-          ScrollText          = '',
-          ScrollTextRGB       = LED.MedYellow,
-          ScrollSleep         = ScrollSleep, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-          DisplayTime         = 5,           # time in seconds to wait before exiting 
-          ExitEffect          = -1           # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-          )
-        self.CursorH = 0
+        CommandQueue.put({
+              "Action": "ShowTitleScreen",
+              "BigText": str(VIEW_COUNT),
+              "BigTextRGB": LED.MedRed,
+              "BigTextShadowRGB": LED.ShadowRed,
+              "BigTextZoom" : BigTextZoom,
+              "LittleText": "Views",
+              "LittleTextRGB": LED.MedPurple,
+              "LittleTextShadowRGB": LED.ShadowPurple,
+              "ScrollText": '',
+              "ScrollTextRGB": LED.MedYellow,
+              "ScrollSleep": ScrollSleep,
+              "DisplayTime": 5,
+              "ExitEffect": 0,
+              "LittleTextZoom": 1
+          })
+
 
       else:
         if(SHOW_CHATBOT_MESSAGES == True):
@@ -3790,7 +3782,7 @@ def main():
 
 
   mybot = Bot()
-  mybot.DisplayDigitalClock()
+  #mybot.DisplayDigitalClock()
   mybot.run()
 
 
@@ -3801,20 +3793,7 @@ def main():
 if __name__ == "__main__":
     try:
         CommandQueue, CommandProcess = start_led_commander()
-
-        print("Start the clock as a test")
-        CommandQueue.put({
-            "Action": "ShowClock",
-            "Style": 1,
-            "Zoom": 2,
-            "Duration": 1,
-            "Delay": 5
-        })
-
-        time.sleep(20)
-        CommandQueue.put({"Action": "StopClock"})
-        time.sleep(0.5)
-
+        main()
     finally:
         CommandQueue.put({"Action": "Quit"})
         time.sleep(0.1)
@@ -3826,9 +3805,6 @@ if __name__ == "__main__":
             CommandProcess.join()
 
         print("[Main] Shutdown complete.")
-
-      
-    main()
 
 
 

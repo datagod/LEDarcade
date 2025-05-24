@@ -19605,11 +19605,12 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
   ScreenArray = CopyAnimatedSpriteToScreenArrayZoom(HeartSprite,h,v,1,TheScreenArray=ScreenArray)
 
   ZoomScreen(ScreenArray,1,32,Sleep)
+
   
 
   for i in range(0,beats):
     time.sleep(0.25)
-    ZoomScreen(ScreenArray,32,22,Sleep)
+    ZoomScreen(ScreenArray,32,16,Sleep)
     time.sleep(0.125)
     ZoomScreen(ScreenArray,22,32,Sleep)
 
