@@ -86,6 +86,7 @@ CursorH   = 0
 CursorV   = 0
 StopEvent = Event()
 DisplayProcess = None
+CurrentDisplayMode = None
 
 
 
@@ -140,6 +141,7 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
+                CurrentDisplayMode = "clock"
                 DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -164,6 +166,7 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
+                CurrentDisplayMode = "title"
                 DisplayProcess = Process(target=ShowTitleScreen, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -181,6 +184,7 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
+                CurrentDisplayMode = "twitch"
                 DisplayProcess = Process(target=StartTwitchTimer, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -193,6 +197,7 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
+                CurrentDisplayMode = "stopped"
                 DisplayProcess = Process(target=StopTwitchTimer, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -208,24 +213,32 @@ def Run(CommandQueue):
                     print("[LEDcommander][Run] TerminalMode already active.")
                 else:
                     StopEvent.clear()
+                    CurrentDisplayMode = "terminal"
                     DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
                     DisplayProcess.start()
+
 
 
             elif Action == "terminalmessage":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    # ✅ Requeue the command for the subprocess
-                    CommandQueue.put(Command)
-                    time.sleep(0.05)  # Optional: give the subprocess a chance to process
+                if DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal":
+                    # Let TerminalMode consume this directly
+                    continue
                 else:
                     print("[LEDcommander] TerminalMode not active. Auto-starting it.")
+                    StopEvent.set()
+                    if DisplayProcess and DisplayProcess.is_alive():
+                        DisplayProcess.join()
                     StopEvent.clear()
+                    CurrentDisplayMode = "terminal"
                     DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
                     DisplayProcess.start()
+
+
 
 
             elif Action == "terminalmode_off":
                 print("[LEDcommander] terminalmode_OFF detected")
+                CurrentDisplayMode = "stopped"
                 DisplayProcess = Process(target=StopTerminalMode, args=())
                 DisplayProcess.start()
                 StopEvent.set()

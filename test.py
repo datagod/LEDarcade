@@ -13,17 +13,25 @@ if __name__ == "__main__":
     LEDProcess.start()
     CommandQueue.cancel_join_thread()
 
-    time.sleep(1)
-    # Start TerminalMode
+    #Formulate the command.      
+    CommandQueue.put({
+        "Action": "ShowClock",
+        "Style": 1,
+        "Zoom": 3 ,
+        "Duration": 1,  # minutes
+        "Delay": 10
+    })
+   
+    time.sleep(2)
+
     CommandQueue.put({
         "Action": "terminalmode_on",
-        "Message": "CHAT MODE ON",
-        "RGB": (0, 200, 0),
+        "Message": "Message 0",
+        "RGB": (0, 0, 200),
         "ScrollSleep": 0.03
     })
 
-    #wait_for_terminalmode_to_start()
-    time.sleep(5)
+    time.sleep(2)
 
 
     CommandQueue.put({
@@ -33,48 +41,18 @@ if __name__ == "__main__":
         "ScrollSleep": 0.03
     })
 
-    time.sleep(5)
 
     CommandQueue.put({
         "Action": "terminalmessage",
-        "Message": "Message 2: ",
-        "RGB": (150, 0, 150),
+        "Message": "Message 2",
+        "RGB": (0, 0, 200),
         "ScrollSleep": 0.03
     })
 
     CommandQueue.put({
         "Action": "terminalmessage",
         "Message": "Message 3",
-        "RGB": (0, 0, 180),
-        "ScrollSleep": 0.03
-    })
-
-    CommandQueue.put({
-        "Action": "terminalmessage",
-        "Message": "Message 4",
-        "RGB": (0, 50, 180),
-        "ScrollSleep": 0.03
-    })
-
-
-    CommandQueue.put({
-        "Action": "terminalmessage",
-        "Message": "AA",
-        "RGB": (0, 200, 0),
-        "ScrollSleep": 0.03
-    })
-
-    CommandQueue.put({
-        "Action": "terminalmessage",
-        "Message": "BB",
-        "RGB": (0, 200, 0),
-        "ScrollSleep": 0.03
-    })
-
-    CommandQueue.put({
-        "Action": "terminalmessage",
-        "Message": "CC",
-        "RGB": (0, 200, 0),
+        "RGB": (0, 0, 200),
         "ScrollSleep": 0.03
     })
 
