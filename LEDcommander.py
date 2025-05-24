@@ -171,14 +171,14 @@ def Run(CommandQueue):
 
             elif Action == "terminalmessage":
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("[LEDcommander][Run] DisplayProcess is alive. ")
-                    # ✅ Do nothing — let subprocess consume it
+                    # ✅ Do nothing — let subprocess consume from queue
                     continue
                 else:
-                    print("[LEDcommander][Run] TerminalMode not active. Auto-starting it.")
+                    print("[LEDcommander] TerminalMode not active. Auto-starting it.")
                     StopEvent.clear()
                     DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
                     DisplayProcess.start()
+
 
 
 
