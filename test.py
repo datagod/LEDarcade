@@ -15,20 +15,20 @@ if __name__ == "__main__":
 
     time.sleep(1)
     # Start TerminalMode
-    #CommandQueue.put({
-    #    "Action": "terminalmode_on",
-    #    "Message": "CHAT MODE ON",
-    #    "RGB": (0, 200, 0),
-    #    "ScrollSleep": 0.03
-    #})
+    CommandQueue.put({
+        "Action": "terminalmode_on",
+        "Message": "CHAT MODE ON",
+        "RGB": (0, 200, 0),
+        "ScrollSleep": 0.03
+    })
 
     #wait_for_terminalmode_to_start()
-    #time.sleep(5)
+    time.sleep(5)
 
 
     CommandQueue.put({
         "Action": "terminalmessage",
-        "Message": "Hello World!",
+        "Message": "Message 1",
         "RGB": (0, 0, 200),
         "ScrollSleep": 0.03
     })
@@ -37,16 +37,43 @@ if __name__ == "__main__":
 
     CommandQueue.put({
         "Action": "terminalmessage",
-        "Message": "Welcome to the jungle. We have plenty of cake.  Take me down to paradise city where girls are fat and the burgers are plenty.",
-        "RGB": (0, 200, 0),
+        "Message": "Message 2: ",
+        "RGB": (150, 0, 150),
+        "ScrollSleep": 0.03
+    })
+
+    CommandQueue.put({
+        "Action": "terminalmessage",
+        "Message": "Message 3",
+        "RGB": (0, 0, 180),
+        "ScrollSleep": 0.03
+    })
+
+    CommandQueue.put({
+        "Action": "terminalmessage",
+        "Message": "Message 4",
+        "RGB": (0, 50, 180),
         "ScrollSleep": 0.03
     })
 
 
+    CommandQueue.put({
+        "Action": "terminalmessage",
+        "Message": "AA",
+        "RGB": (0, 200, 0),
+        "ScrollSleep": 0.03
+    })
 
     CommandQueue.put({
         "Action": "terminalmessage",
-        "Message": "This is so strange why won't it work c'mon man this is joe biden talkin here good buddy lets go ok.",
+        "Message": "BB",
+        "RGB": (0, 200, 0),
+        "ScrollSleep": 0.03
+    })
+
+    CommandQueue.put({
+        "Action": "terminalmessage",
+        "Message": "CC",
         "RGB": (0, 200, 0),
         "ScrollSleep": 0.03
     })
@@ -55,13 +82,6 @@ if __name__ == "__main__":
 
 
     time.sleep(300)
-
-
-    CommandQueue.put({
-        "Action": "terminalmessage",
-        "RGB": (0, 200, 0),
-        "ScrollSleep": 0.03
-    })
 
 
     # Shutdown TerminalMode
@@ -77,13 +97,13 @@ if __name__ == "__main__":
     CommandQueue.put({
         "Action": "ShowTitleScreen",
         "BigText": "404",
-        "BigTextRGB": (255, 0, 255),
-        "BigTextShadowRGB": (100, 0, 100),
+        "BigTextRGB": (200, 0, 200),
+        "BigTextShadowRGB": (40, 0, 40),
         "LittleText": "NO STREAM",
-        "LittleTextRGB": (255, 0, 0),
+        "LittleTextRGB": (200, 0, 0),
         "LittleTextShadowRGB": (100, 0, 0),
         "ScrollText": "Stream not active. Try again later...",
-        "ScrollTextRGB": (255, 255, 0),
+        "ScrollTextRGB": (200, 200, 0),
         "ScrollSleep": 0.05,
         "DisplayTime": 15,
         "ExitEffect": 5,
