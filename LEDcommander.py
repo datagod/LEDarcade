@@ -81,8 +81,14 @@ import traceback
 from multiprocessing import Event, Process
 import queue
 
+
+CursorH   = 0
+CursorV   = 0
 StopEvent = Event()
 DisplayProcess = None
+
+
+
 
 
 def Run(CommandQueue):
@@ -122,11 +128,14 @@ def Run(CommandQueue):
             Action = Command.get("Action", "").lower()
             print(f"[LEDcommander][Run]-->{Action}<--")
 
+            #----------------------------------
+            #-- CLOCK MODE
+            #----------------------------------
 
             if Action == "showclock":
                 print("Starting the clock")
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("Clock is already running.  Stopping the clock first then restarting.")
+                    print("LED display already in use.  Stopping process then restarting")
                     StopEvent.set()
                     DisplayProcess.join()
 
@@ -135,10 +144,22 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+            elif Action == "stopclock":
+                print("Stopping the clock")
+                StopEvent.set()
+                if DisplayProcess and DisplayProcess.is_alive():
+                    DisplayProcess.join()
+
+
+
+            #----------------------------------
+            #-- TITLE SCREEN
+            #----------------------------------
+
             elif Action == "showtitlescreen":
                 print("Showing title screen")
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("Clock is already running.  Stopping the clock first then restarting.")
+                    print("LED display already in use.  Stopping process then restarting")
                     StopEvent.set()
                     DisplayProcess.join()
 
@@ -147,11 +168,34 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
-            elif Action == "stopclock":
-                print("Stopping the clock")
-                StopEvent.set()
+
+            #----------------------------------
+            #-- TWITCH TIMER
+            #----------------------------------
+
+            elif Action == "twitchtimer_on":
+                print("Showing title screen")
                 if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
                     DisplayProcess.join()
+
+                StopEvent.clear()
+                DisplayProcess = Process(target=StartTwitchTimer, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "twitchtimer_off":
+                print("Showing title screen")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                DisplayProcess = Process(target=StopTwitchTimer, args=(Command, StopEvent))
+                DisplayProcess.start()
+
 
 
 
@@ -178,8 +222,6 @@ def Run(CommandQueue):
                     StopEvent.clear()
                     DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
                     DisplayProcess.start()
-
-
 
 
             elif Action == "terminalmode_off":
@@ -307,7 +349,8 @@ def ShowTitleScreen(Command,StopEvent):
 def StopTerminalMode():
     import LEDarcade as LED
     LED.Initialize()
-    CursorH, CursorV = 0, 0
+    global CursorH, CursorV
+
     message_queue = []
     TerminalTypeSpeed = 0.08
     TerminalScrollSpeed = 0.08
@@ -335,9 +378,12 @@ def StopTerminalMode():
 
 
 def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
+    
     import LEDarcade as LED
     LED.Initialize()
-    CursorH, CursorV = 0, 0
+    
+    global CursorH, CursorV
+
     message_queue = []
     TerminalTypeSpeed = 0.08
     TerminalScrollSpeed = 0.08

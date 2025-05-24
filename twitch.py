@@ -915,34 +915,18 @@ class Bot(commands.Bot ):
 
 
         try:
-          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message.author.display_name + ":",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,0,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=1,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
-          LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, ScrollText,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,200,0),StartingLineFeed=0,TypeSpeed=self.BotTypeSpeed,ScrollSpeed=self.BotScrollSpeed)
-          LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=self.CursorRGB,CursorDarkRGB=self.CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+          # Start TerminalMode
+          CommandQueue.put({"Action": "terminalmode_on","Message": "CHAT MODE ON","RGB": (0, 200, 0),"ScrollSleep": 0.03 })
+          CommandQueue.put({"Action": "terminalmode_on","Message": message.author.display_name + ":","RGB": (100, 0, 200),"ScrollSleep": self.BotScrollSpeed })
+          CommandQueue.put({"Action": "terminalmode_on","Message": ScrollText,"RGB": (0, 150, 0),"ScrollSleep": self.BotScrollSpeed })
 
-          CommandQueue.put({
-          "Action": "scrollmessages",
-          "Messages": [
-              {"Message": "Welcome to the Matrix!", "RGB": (0, 255, 0), "ScrollSleep": 0.03},
-              {"Message": "Enjoy the pixel ride.", "RGB": (0, 200, 255), "ScrollSleep": 0.04},
-              {"Message": "Datagod says hi.", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
-          ]
-          })
-
-
-
-
-          #Store running values in the bot object
-          self.CursorH = CursorH
-          self.CursorV = CursorV
         except:
-          LED.ShowScrollingBanner2('ERROR! INVALID CHARACTER',(200,0,0),ScrollSleep=0.005,v=25)
+          print('ERROR - Something went wrong writing to the terminal')
 
         
         self.MesageCount = self.MessageCount -1
 
-
-          
-          #await self.close()
+      
       
 
         
@@ -1059,14 +1043,7 @@ class Bot(commands.Bot ):
     async def DisplayTerminalMessage(self,message,RGB):
       if(self.ChatTerminalOn == True):
         print("DisplayTerminalMessage:",message)
-        #Show terminal connection message
-        #LED.ClearBigLED()
-        #LED.ClearBuffers()
-        CursorH = self.CursorH
-        CursorV = self.CursorV 
-        LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=RGB,CursorRGB=CursorRGB,CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-        self.CursorH = CursorH
-        self.CursorV = CursorV
+        CommandQueue.put({"Action": "terminalmode_on","Message": message,"RGB": RGB,"ScrollSleep": ScrollSpeed })
 
 
     #---------------------------------------

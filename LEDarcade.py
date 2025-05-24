@@ -17739,6 +17739,7 @@ def DisplayTwitchTimer(
 
         TimerSprite = UpdateTimerWithTransition(TimerSprite,BannerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,StartDateTimeUTC = StartDateTimeUTC)
 
+        random.seed(time.time())
         r = random.randint(1,13)
         #print("random animation:",r)
         if (r == 1):
