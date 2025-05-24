@@ -13835,11 +13835,44 @@ def ScrollScreen(direction,ScreenCap,speed):
 
 
 
+def ZoomScreen(ScreenArray, ZoomStart, ZoomStop, ZoomSleep, Fade=False):    
+    ZoomFactor = 0
+    DimIncrement = max(round(100 / abs(ZoomStart - ZoomStop)), 1)
+    OldBrightness = TheMatrix.brightness
+    Brightness = OldBrightness
+
+    if ZoomStart <= ZoomStop:
+        for ZoomFactor in range(ZoomStart, ZoomStop):
+            if Fade:
+                Brightness -= DimIncrement
+                if Brightness >= 0:
+                    TheMatrix.brightness = Brightness
+            # TheMatrix.Clear()  ← REMOVE THIS LINE
+            DisplayScreenCap(ScreenArray, ZoomFactor)
+            if ZoomSleep > 0:
+                time.sleep(ZoomSleep)
+
+    else:
+        for ZoomFactor in reversed(range(ZoomStop, ZoomStart)):
+            if Fade:
+                Brightness -= DimIncrement
+                if Brightness >= 0:
+                    TheMatrix.brightness = Brightness
+            # TheMatrix.Clear()  ← REMOVE THIS LINE
+            DisplayScreenCap(ScreenArray, ZoomFactor)
+            if ZoomSleep > 0:
+                time.sleep(ZoomSleep)
+
+    TheMatrix.brightness = OldBrightness
+
+
+
+
 # Try looping the number of zooms, but re-capture the screen at the zoomed in level and pass that back into
 # the DisplayScreenCap function
 
 
-def ZoomScreen(ScreenArray,ZoomStart,ZoomStop,ZoomSleep,Fade=False):    
+def ZoomScreen_old(ScreenArray,ZoomStart,ZoomStop,ZoomSleep,Fade=False):    
   #Capture the screen, then pass that to this function
   #Loop through the zoom levels specified, calling the DisplayScreenCap function
 
@@ -13887,7 +13920,47 @@ def ZoomScreen(ScreenArray,ZoomStart,ZoomStop,ZoomSleep,Fade=False):
 
 
 
-def DisplayScreenCap(ScreenCap,ZoomFactor = 0):
+def DisplayScreenCap(ScreenCap, ZoomFactor=0):
+    global Canvas
+
+    r = g = b = 0
+    H_modifier = V_modifier = 0
+    HIndentFactor = VIndentFactor = 0
+
+    # Create new buffer, do not clear existing canvas until after swap
+    new_canvas = TheMatrix.CreateFrameCanvas()
+    new_canvas.Clear()
+
+    if ZoomFactor > 1:
+        H_modifier = (1 / HatWidth) * ZoomFactor * 2
+        V_modifier = (1 / HatHeight) * ZoomFactor
+
+        NewHeight = round(HatHeight * V_modifier)
+        NewWidth  = round(HatWidth * H_modifier)
+
+        HIndentFactor = (HatWidth / 2)  - (NewWidth / 2)
+        VIndentFactor = (HatHeight / 2) - (NewHeight / 2)
+
+    for V in range(0, HatHeight):
+        for H in range(0, HatWidth):
+            r, g, b = ScreenCap[V][H]
+
+            if ZoomFactor > 0:
+                draw_h = int((H * H_modifier) + HIndentFactor)
+                draw_v = int((V * V_modifier) + VIndentFactor)
+            else:
+                draw_h = H
+                draw_v = V
+
+            if 0 <= draw_h < HatWidth and 0 <= draw_v < HatHeight:
+                new_canvas.SetPixel(draw_h, draw_v, r, g, b)
+
+    # Only now swap to avoid flashing blank screen
+    Canvas = TheMatrix.SwapOnVSync(new_canvas)
+
+
+
+def DisplayScreenCap_original(ScreenCap,ZoomFactor = 0):
   #This function writes a Screen capture to the buffer using the specified zoom factor
   #ZoomFactor is based on Vertical height.  
   #  Matrix = 32, Zoom 16 = shrink screen to 1/2 size
@@ -19532,9 +19605,10 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
   ScreenArray = CopyAnimatedSpriteToScreenArrayZoom(HeartSprite,h,v,1,TheScreenArray=ScreenArray)
 
   ZoomScreen(ScreenArray,1,32,Sleep)
+  
 
   for i in range(0,beats):
-    time.sleep(0.125)
+    time.sleep(0.25)
     ZoomScreen(ScreenArray,32,22,Sleep)
     time.sleep(0.125)
     ZoomScreen(ScreenArray,22,32,Sleep)

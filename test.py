@@ -13,6 +13,12 @@ if __name__ == "__main__":
     LEDProcess.start()
     CommandQueue.cancel_join_thread()
 
+    CommandQueue.put({
+        "Action": "showheart",
+    })
+
+
+
     #Formulate the command.      
     CommandQueue.put({
         "Action": "ShowClock",

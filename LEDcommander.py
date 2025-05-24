@@ -254,6 +254,19 @@ def Run(CommandQueue):
 
 
 
+            #----------------------------------------
+            # Animations                           --
+            #----------------------------------------
+
+            elif Action == "showheart":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "heart"
+                DisplayProcess = Process(target=ShowHeart, args=(Command, StopEvent))
+                DisplayProcess.start()
+
 
 
             elif Action == "quit":
@@ -478,6 +491,27 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
             BlinkSpeed=0.50,
             BlinkCount=2
         )
+
+
+
+
+
+def ShowHeart(Command, StopEvent):
+    import LEDarcade as LED
+    StreamBrightness = 80
+    GifBrightness    = 80
+    MaxBrightness    = 100
+    print("[LEDcommander][ShowHeart] Show beating heart")
+
+    LED.Initialize()
+    LED.TheMatrix.brightness = StreamBrightness
+    LED.ShowBeatingHeart(h=16, v=0, beats=15, Sleep=0.01) 
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.SweepClean()
+
+
+
+
 
 #-------------------------------------------------------------------------------
 # Main Processing
