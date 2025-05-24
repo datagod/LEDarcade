@@ -114,13 +114,13 @@ def Run(CommandQueue):
 
         try:
             Command = CommandQueue.get(timeout=1)
-            print(f"[LEDcommander] Received command: {Command}")
+            print(f"[LEDcommander][Run] Received command: {Command}")
 
             if not isinstance(Command, dict):
                 continue
 
-            Action = Command.get("Action", "").casefold()
-            print(f"-->{Action}<--")
+            Action = Command.get("Action", "").lower()
+            print(f"[LEDcommander][Run]-->{Action}<--")
 
 
             if Action == "showclock":
@@ -154,17 +154,6 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
 
-            #----------------------------------
-            #-- SCROLL MESSAGES
-            #----------------------------------
-
-            elif Action == "scrollmessages":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    CommandQueue.put(Command)  # Forward to TerminalMode
-                else:
-                    print("[LEDcommander] Warning: TerminalMode not active. Cannot scroll messages.")
-
-
 
             #----------------------------------
             #-- TERMINAL MODE
@@ -172,7 +161,7 @@ def Run(CommandQueue):
 
             elif Action == "terminalmode_on":
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("[LEDcommander] TerminalMode already active.")
+                    print("[LEDcommander][Run] TerminalMode already active.")
                 else:
                     StopEvent.clear()
                     DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
@@ -180,12 +169,18 @@ def Run(CommandQueue):
 
 
 
-            elif Action == "terminalmessage":  
+            elif Action == "terminalmessage":
                 if DisplayProcess and DisplayProcess.is_alive():
-                    CommandQueue.put(Command)
-                    time.sleep(0.1)
+                    print("[LEDcommander][Run] DisplayProcess is alive. ")
+                    # ✅ Do nothing — let subprocess consume it
+                    continue
                 else:
-                    print("[LEDcommander] Warning: TerminalMode not active. Ignoring message.")
+                    print("[LEDcommander][Run] TerminalMode not active. Auto-starting it.")
+                    StopEvent.clear()
+                    DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
+                    DisplayProcess.start()
+
+
 
             elif Action == "terminalmode_off":
                 print("[LEDcommander] terminalmode_OFF detected")
@@ -205,18 +200,18 @@ def Run(CommandQueue):
                 if DisplayProcess and DisplayProcess.is_alive():
                     StopEvent.set()
                     DisplayProcess.join()
-                print("[LEDcommander] Shutdown complete.")
+                print("[LEDcommander][Run] Shutdown complete.")
                 break  # Exit the loop and end the process
 
 
 
         except queue.Empty:
-            print("[LEDcommander] Waiting for command...")
+            print("[LEDcommander][Run] Queue empty.  Waiting for command...")
             time.sleep(2)
             continue
 
         except Exception as Error:
-            print(f"[LEDcommander ERROR] {Error}")
+            print(f"[LEDcommander ERROR][Run] {Error}")
             traceback.print_exc()
 
         
@@ -306,46 +301,6 @@ def ShowTitleScreen(Command,StopEvent):
 
 
 
-def ScrollMessages(Command,StopEvent):
-
-    import LEDarcade as LED
-    LED.Initialize()
-
-    #LED.ClearBigLED()
-    #LED.ClearBuffers()
-
-    CursorRGB           = (0,255,0)
-    CursorDarkRGB       = (0,50,0)
-
-    CursorH = 0
-    CursorV = 0
-    
-
-    Messages = Command.get("Messages", [])
-    for msg in Messages:
-        text        = msg.get("Message", "")
-        color       = msg.get("RGB", (255, 255, 255))
-        TypeSpeed   = msg.get("ScrollSleep", 0.05)
-        ScrollSpeed = msg.get("ScrollSleep", 0.05)
-    
-        print(f"[LEDcommander] Scrolling terminal text: {msg}")
-
-        LED.ScreenArray,CursorH,CursorV =   LED.TerminalScroll(LED.ScreenArray,
-            text,
-            CursorH=CursorH,
-            CursorV=CursorV,
-            MessageRGB=color,
-            CursorRGB=CursorRGB,
-            CursorDarkRGB=CursorDarkRGB,
-            StartingLineFeed=1,
-            TypeSpeed=TypeSpeed,
-            ScrollSpeed=ScrollSpeed
-        )
-
-    LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=False, ZoomSleep=0.01)
-
-
-
 
 
 
@@ -389,10 +344,7 @@ def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
     CursorRGB = (0, 255, 0)
     CursorDarkRGB = (0, 50, 0)
 
-
-    #I put this one inside StartTerminalMode so we don't have to re-import LEDarcade
     def _StopTerminalMode():
-        
         print("=========================")
         print("== STOP TERMINAL MODE ==")
         print("=========================")
@@ -401,74 +353,66 @@ def StartTerminalMode(CommandQueue, StopEvent, InitialCommand=None):
             Message="Stopping terminal...",
             CursorH=CursorH,
             CursorV=CursorV,
-            MessageRGB=rgb,
-            CursorRGB=(0, 255, 0),
-            CursorDarkRGB=(0, 50, 0),
+            MessageRGB=(0, 0, 0),
+            CursorRGB=CursorRGB,
+            CursorDarkRGB=CursorDarkRGB,
             StartingLineFeed=1,
             TypeSpeed=TerminalTypeSpeed,
             ScrollSpeed=TerminalScrollSpeed
         )
         LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.03)
 
-
-
-
     print("=========================")
     print("== START TERMINAL MODE ==")
     print("=========================")
 
-    if InitialCommand and InitialCommand.get("Message"):
+    if InitialCommand:
         message_queue.append(InitialCommand)
 
     while not StopEvent.is_set():
         try:
-            print("[LEDcommander] checking the TerminalMode queue")
+
+            print(f"[TerminalMode] Queue length: {len(message_queue)}")
+
             try:
                 Command = CommandQueue.get(timeout=0.1)
                 Action = Command.get("Action", "").lower()
 
-                if Action in ("terminalmessage", "scrollmessages"):
+                if Action == "terminalmessage":
                     message_queue.append(Command)
-                    print(f"[TerminalMode] Queued: {Command.get('Message')[:40]}... (Total: {len(message_queue)})")
+                    print(f"[LEDcommander][TerminalMode] Queued: {Command.get('Message')[:40]}...")
+
 
                 elif Action == "terminalmode_off":
                     print("[LEDcommander] RUN: terminalmode_OFF detected")
                     _StopTerminalMode()
                     StopEvent.set()
 
-
             except queue.Empty:
                 pass
 
             if message_queue:
                 Command = message_queue.pop(0)
-                if Command.get("Action") == "scrollmessages":
-                    messages = Command.get("Messages", [])
-                    for msg_entry in messages:
-                        msg = msg_entry.get("Message", "")
-                        rgb = msg_entry.get("RGB", (255, 255, 255))
-                        sleep = msg_entry.get("ScrollSleep", 0.05)
-                        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                            LED.ScreenArray, msg,
-                            CursorH=CursorH, CursorV=CursorV,
-                            MessageRGB=rgb, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-                            StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
-                        )
-                else:
-                    msg = Command.get("Message", "")
+                msg = Command.get("Message", None)
+                if isinstance(msg, str):
                     rgb = Command.get("RGB", (255, 255, 255))
-                    sleep = Command.get("ScrollSleep", 0.05)
+                    scroll_speed = Command.get("ScrollSleep", 0.05)
                     LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
                         LED.ScreenArray, msg,
                         CursorH=CursorH, CursorV=CursorV,
-                        MessageRGB=rgb, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-                        StartingLineFeed=1, TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalScrollSpeed
+                        MessageRGB=rgb,
+                        CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                        StartingLineFeed=1,
+                        TypeSpeed=TerminalTypeSpeed,
+                        ScrollSpeed=scroll_speed
                     )
-            LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.25, BlinkCount=1)
+                else:
+                    print("[TerminalMode] Skipped invalid or missing 'Message'.")
 
         except Exception as e:
             print(f"[TerminalMode] Error: {e}")
 
+        LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.50, BlinkCount=2)
 
 #-------------------------------------------------------------------------------
 # Main Processing

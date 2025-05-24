@@ -14,43 +14,55 @@ if __name__ == "__main__":
     CommandQueue.cancel_join_thread()
 
     time.sleep(1)
-
     # Start TerminalMode
+    #CommandQueue.put({
+    #    "Action": "terminalmode_on",
+    #    "Message": "CHAT MODE ON",
+    #    "RGB": (0, 200, 0),
+    #    "ScrollSleep": 0.03
+    #})
+
+    #wait_for_terminalmode_to_start()
+    #time.sleep(5)
+
+
     CommandQueue.put({
-        "Action": "terminalmode_on",
+        "Action": "terminalmessage",
+        "Message": "Hello World!",
+        "RGB": (0, 0, 200),
+        "ScrollSleep": 0.03
+    })
+
+    time.sleep(5)
+
+    CommandQueue.put({
+        "Action": "terminalmessage",
+        "Message": "Welcome to the jungle. We have plenty of cake.  Take me down to paradise city where girls are fat and the burgers are plenty.",
         "RGB": (0, 200, 0),
         "ScrollSleep": 0.03
     })
 
-    wait_for_terminalmode_to_start()
 
-    # Send scrollmessages once
-    scroll_block = [
-        {"Message": "Welcome to the Matrix!", "RGB": (0, 255, 0), "ScrollSleep": 0.03},
-        {"Message": "Enjoy the pixel ride.", "RGB": (0, 200, 255), "ScrollSleep": 0.04},
-        {"Message": "Datagod says hi.", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
-    ]
 
     CommandQueue.put({
-        "Action": "scrollmessages",
-        "Messages": scroll_block
+        "Action": "terminalmessage",
+        "Message": "This is so strange why won't it work c'mon man this is joe biden talkin here good buddy lets go ok.",
+        "RGB": (0, 200, 0),
+        "ScrollSleep": 0.03
     })
 
-    time.sleep(3)
 
-    # Send a few terminal messages
-    for msg, rgb in [
-        ("Welcome to the Jungle", (0, 100, 0)),
-        ("We got plenty of cake", (0, 255, 0)),
-        ("What da??", (255, 0, 0))
-    ]:
-        CommandQueue.put({
-            "Action": "terminalmessage",
-            "Message": msg,
-            "RGB": rgb,
-            "ScrollSleep": 0.03
-        })
-        time.sleep(3)
+
+
+    time.sleep(300)
+
+
+    CommandQueue.put({
+        "Action": "terminalmessage",
+        "RGB": (0, 200, 0),
+        "ScrollSleep": 0.03
+    })
+
 
     # Shutdown TerminalMode
     CommandQueue.put({
