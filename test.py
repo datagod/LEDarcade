@@ -1,11 +1,31 @@
 from multiprocessing import Process, Queue
 import LEDcommander
 import time
+import os
 
 def wait_for_terminalmode_to_start():
     # Simulate waiting for subprocess to initialize
     print("[Test] Waiting for TerminalMode to start...")
     time.sleep(2)
+
+
+
+def enqueue_gif_commands(CommandQueue, folder='./images/', loops=2, sleep=0.06):
+    print("Folder: ",folder)
+    for filename in sorted(os.listdir(folder)):
+        if filename.lower().endswith('.gif'):
+            gif_path = os.path.join(folder, filename)
+            print("File: ",gif_path)
+            CommandQueue.put({
+                "Action": "showgif",
+                "GIF": gif_path,
+                "Loops": 5,
+                "sleep": sleep
+            })
+
+
+
+
 
 if __name__ == "__main__":
     CommandQueue = Queue()
@@ -13,8 +33,8 @@ if __name__ == "__main__":
     LEDProcess.start()
     CommandQueue.cancel_join_thread()
 
-    CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 2, "sleep":0.06 })
-    CommandQueue.put({"Action": "showgif", "GIF": './images/redalert.gif', "Loops" : 20, "sleep":0.06 })
+    enqueue_gif_commands(CommandQueue)
+
     CommandQueue.put({        "Action": "showheart",    })
 
 

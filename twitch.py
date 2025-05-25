@@ -235,6 +235,75 @@ CommandProcess = None
 #----------------------------------------------------------------------------
 
 
+def get_viewer_message(viewer_count):
+    templates = [
+        "There are currently {} viewers enjoying the show.",
+        "You're not alone—{} people are tuned in right now!",
+        "{} awesome folks are watching this stream.",
+        "Look at that! {} viewers are here with us.",
+        "{} viewers, one amazing broadcast.",
+        "Shoutout to all {} viewers joining us!",
+        "Currently, {} fine folks are watching.",
+        "{} legends are watching this epic moment.",
+        "{} people are vibing with us live!",
+        "Streaming live to {} amazing fans.",
+        "We've got {} watchers on deck.",
+        "Audience check: {} viewers present!",
+        "{} people can’t be wrong—this stream rocks.",
+        "{} online and counting!",
+        "Roll call: {} people are in the stream.",
+        "This just in—{} viewers locked in!",
+        "Bringing joy to {} viewers at the moment.",
+        "{} people decided to spend their time here. Excellent choice!",
+        "Thank you to our {} viewers!",
+        "{} streamers strong and going!",
+        "Currently captivating {} eyeballs.",
+        "Lighting up screens for {} people.",
+        "{} people are enjoying the pixel party.",
+        "This moment is shared with {} viewers.",
+        "Hats off to all {} watching this live.",
+        "{} tuned in for this adventure!"
+    ]
+    
+    message = random.choice(templates).format(viewer_count)
+    return message
+
+
+
+def get_personal_hello_response(user_name):
+    responses = [
+        f"Hello there, {user_name}!",
+        f"Hey hey, {user_name}!",
+        f"What's up, {user_name}?",
+        f"Howdy partner, {user_name}!",
+        f"Greetings, {user_name}.",
+        f"Yo, {user_name}!",
+        f"Hiya, {user_name}!",
+        f"Ahoy, {user_name}!",
+        f"Hey you, {user_name}!",
+        f"Well well well, look who's here: {user_name}!",
+        f"Oh no, it's you again... {user_name}.",
+        f"Welcome back, {user_name}!",
+        f"Hey, it's nice to see you, {user_name}!",
+        f"You're just in time, {user_name}!",
+        f"Brace yourself, {user_name} is here!",
+        f"Hi {user_name}. Need anything?",
+        f"Let's get this party started, {user_name}!",
+        f"Oh wow, hello {user_name}!",
+        f"What's crackin', {user_name}?",
+        f"Hola amigo, {user_name}!",
+        f"Bonjour, {user_name}!",
+        f"Ciao, {user_name}!",
+        f"Kon'nichiwa, {user_name}!",
+        f"Why hello there, {user_name}, fancy meeting you here.",
+        f"Greeeetingssss... from the void, {user_name}.",
+    ]
+    return random.choice(responses)
+
+
+
+
+
 def GetElapsedSeconds(starttime):
   elapsed_seconds = time.time() - starttime
   return elapsed_seconds
@@ -441,7 +510,7 @@ class Bot(commands.Bot ):
             await self.DisplayRandomConnectionMessage()
 
         while True:
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
             print("Stream Status:",StreamActive, ' TwitchTimerOn:',LED.TwitchTimerOn)
 
             if(StreamActive == True):
@@ -465,7 +534,7 @@ class Bot(commands.Bot ):
                 if self.ClockRunning == False:
                     self.DisplayDigitalClock()
                     self.ClockRunning = True
-                await self.CheckStream()
+                
 
             h,m,s = LED.GetElapsedTime(self.LastChatInfoTime,time.time())
             if (m >= self.MinutesToWaitBeforeChatInfo):
@@ -764,8 +833,8 @@ class Bot(commands.Bot ):
                               "zoommin" : 1,
                               "zoommax":256,
                               "zoomfinal" : 32,
-                              "sleep" : 0.25,
-                              "step"  : 4})
+                              "sleep" : 0.01,
+                              "step"  : 1})
 
 
 
@@ -968,8 +1037,7 @@ class Bot(commands.Bot ):
       message = ConnectionMessages[i]         
       print("Connection message:",message)
       
-      
-      #CursorH = self.CursorH
+       #CursorH = self.CursorH
       #CursorV = self.CursorV
       #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
       #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray," ",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalScrollSpeed)
@@ -978,12 +1046,12 @@ class Bot(commands.Bot ):
       #self.CursorV = CursorV
       
       CommandQueue.put({
-        "Action": "scrollmessages",
-        "Messages": [
-        {"Message": message, "RGB": (0, 255, 0), "ScrollSleep": 0.03},
-        {"Message": " -- Clockbot -- ", "RGB": (255, 100, 0), "ScrollSleep": 0.05}
-    ]
-    })
+          "Action": "terminalmessage",
+          "Message": message,
+          "RGB": (100, 100, 0),
+          "ScrollSleep": 0.03
+      })
+
 
 
  
@@ -1036,7 +1104,12 @@ class Bot(commands.Bot ):
     async def DisplayTerminalMessage(self,message,RGB):
       if(self.ChatTerminalOn == True):
         print("DisplayTerminalMessage:",message)
-        CommandQueue.put({"Action": "terminalmode_on","Message": message,"RGB": RGB,"ScrollSleep": ScrollSpeed })
+
+        CommandQueue.put({
+          "Action": "terminalmessage",
+          "Message": message,
+          "RGB": RGB,
+          "ScrollSleep": LED.ScrollSleep   })
 
 
     #---------------------------------------
@@ -1048,29 +1121,12 @@ class Bot(commands.Bot ):
       
       print ("Task started: DisplayTwitchTimer")
       
+      
       #Only do this if the timer function is actually finished
       if(LED.TwitchTimerOn == False):
         LED.TwitchTimerOn = True
-            
-        LED.ClearBigLED()
-
         if(StreamActive == True):
-
-          LED.DisplayTwitchTimer(
-            CenterHoriz = True,
-            CenterVert  = False,
-            h   = 0,
-            v   = 1, 
-            hh  = 24,
-            RGB              = LED.LowGreen,
-            ShadowRGB        = LED.ShadowGreen,
-            ZoomFactor       = 3,
-            AnimationDelay   = self.AnimationDelay,
-            RunMinutes       = 1,
-            StartDateTimeUTC = StreamStartedDateTime,
-            HHMMSS           = StreamDurationHHMMSS,
-            EventQueue       = EventQueue
-            )
+          CommandQueue.put({"Action": "starttwtitchtimer", "StreamStartedDateTime": StreamStartedDateTime,"StreamDurationHHMMSS": StreamDurationHHMMSS})
           print("Returned back from DisplayTwitchTimer")
         else:
           print("Timer is not yet finished")
@@ -1485,15 +1541,8 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def hello(self, ctx: commands.Context):
-        # Here we have a command hello, we can invoke our command with our prefix and command name
-        # e.g ?hello
-        # We can also give our commands aliases (different names) to invoke with.
-
-        # Send a hello back!
-        # Sending a reply back to the channel is easy... Below is an example.
-        await ctx.send(f'Greetings! {ctx.author.name}!')
-
-
+        response = get_personal_hello_response(ctx.author.name)
+        await ctx.send(response)
 
     #----------------------------------------
     # clock commands                       --
@@ -1518,12 +1567,8 @@ class Bot(commands.Bot ):
         message = "Now scrolling: Most recent viewers".format(ViewerCount)
         await self.Channel.send(message)
 
-      LED.TheMatrix.brightness = MaxBrightness
-      LED.ScrollJustJoinedUser(self.ChatUsers,'JustJoined.png',0.04)
-      LED.TheMatrix.brightness = StreamBrightness
+      CommandQueue.put({"Action": "showviewers","chatusers": self.ChatUsers})
     
-      #clean up the screen using animations
-      LED.SweepClean()
 
   
     
@@ -1558,7 +1603,7 @@ class Bot(commands.Bot ):
         GetTwitchCounts()
 
         if(SHOW_CHATBOT_MESSAGES == True):
-          message = "There are {} viewers watching this great broadcast. Thanks for asking.".format(ViewerCount)
+          message = get_viewer_message(ViewerCount)
           await self.Channel.send(message)
 
         CommandQueue.put({
@@ -1684,7 +1729,7 @@ class Bot(commands.Bot ):
 
       else:
         if(SHOW_CHATBOT_MESSAGES == True):
-          message = "{} has decided to not show followers.".format(BROADCAST_CHANNEL)
+          message = "{} has decided to not show followers.".format(BROADCASTER_CHANNEL)
           await self.Channel.send(message)
 
 
@@ -1783,7 +1828,7 @@ class Bot(commands.Bot ):
                               "zoommin" : 1,
                               "zoommax":256,
                               "zoomfinal" : 32,
-                              "sleep" : 0.25,
+                              "sleep" : 0.010,
                               "step"  : 4})
 
 
@@ -1850,7 +1895,7 @@ class Bot(commands.Bot ):
                               "zoommin" : 1,
                               "zoommax":256,
                               "zoomfinal" : 32,
-                              "sleep" : 0.25,
+                              "sleep" : 0.01,
                               "step"  : 4})
 
 

@@ -1,5 +1,13 @@
 #LEDcommander.py
 
+# To do
+# =====
+#
+# - work on transitions between displays
+#   - this is tough because each different display type is spawned as a process
+#   - perhaps the calling function can take a screen shot (deep copy ScreenArray)
+#     and put that in the CommandQueue so we can fade back to it later
+
 
 """
 ===============================================================================
@@ -138,8 +146,10 @@ def Run(CommandQueue):
                 print("Starting the clock")
                 if DisplayProcess and DisplayProcess.is_alive():
                     print("LED display already in use.  Stopping process then restarting")
+                    time.sleep(10)
                     StopEvent.set()
                     DisplayProcess.join()
+
 
                 StopEvent.clear()
                 CurrentDisplayMode = "clock"
@@ -193,14 +203,12 @@ def Run(CommandQueue):
             elif Action == "twitchtimer_off":
                 print("Showing title screen")
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
+                    print("LED display in use.  Stopping process.")
                     StopEvent.set()
                     DisplayProcess.join()
 
                 StopEvent.clear()
                 CurrentDisplayMode = "stopped"
-                DisplayProcess = Process(target=StopTwitchTimer, args=(Command, StopEvent))
-                DisplayProcess.start()
 
 
 
@@ -219,11 +227,6 @@ def Run(CommandQueue):
                     DisplayProcess.start()
 
 
-
-            # Final version using a dedicated TerminalQueue
-
-            # At the top-level of Run(), outside the loop (not shown here):
-
             elif Action == "terminalmessage":
                 if DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal":
                     TerminalQueue.put(Command)
@@ -239,7 +242,6 @@ def Run(CommandQueue):
                     DisplayProcess.start()
 
             # In StartTerminalMode(), replace CommandQueue with TerminalQueue
-
 
 
             elif Action == "terminalmode_off":
@@ -278,12 +280,22 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
-            elif Action == "showimagezoom":
+            elif Action == "showviewers":
                 if DisplayProcess and DisplayProcess.is_alive():
                     StopEvent.set()
                     DisplayProcess.join()
                 StopEvent.clear()
                 CurrentDisplayMode = "gif"
+                DisplayProcess = Process(target=ShowViewers, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "showimagezoom":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "image"
                 DisplayProcess = Process(target=ShowImageZoom, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -348,6 +360,57 @@ def ShowDigitalClock(Command,StopEvent):
         RunMinutes     = RunMinutes,
         StopEvent      = StopEvent
     )
+
+
+
+
+
+
+
+
+def StartTwitchTimer(Command,StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    
+    StreamStartedDateTime     = Command.get("StreamStartedDateTime", 1)
+    StreamDurationHHMMSS      = Command.get("StreamDurationHHMMSS", 1)
+    print(f"[LEDcommander][StartTwitchTimer] StreamDurationHHMMSS: ",StreamDurationHHMMSS)
+
+    LED.DisplayTwitchTimer(
+        CenterHoriz = True,
+        CenterVert  = False,
+        h   = 0,
+        v   = 1, 
+        hh  = 24,
+        RGB              = LED.LowGreen,
+        ShadowRGB        = LED.ShadowGreen,
+        ZoomFactor       = 3,
+        AnimationDelay   = LED.AnimationDelay,
+        RunMinutes       = 1,
+        StartDateTimeUTC = StreamStartedDateTime,
+        HHMMSS           = StreamDurationHHMMSS
+    )
+          
+
+
+
+
+    LED.DisplayDigitalClock(
+        ClockStyle=ClockStyle,
+        CenterHoriz=True,
+        v=1,
+        hh=24,
+        RGB=LED.LowGreen,
+        ShadowRGB      = LED.ShadowGreen,
+        ZoomFactor     = ZoomFactor,
+        AnimationDelay = AnimationDelay,
+        RunMinutes     = RunMinutes,
+        StopEvent      = StopEvent
+    )
+
+
+
 
 
 
@@ -544,12 +607,36 @@ def ShowGIF(Command, StopEvent):
     loops            = Command.get("loops",5)
     sleep            = Command.get("sleep",0.06)
 
-    print("[LEDcommander][ShowGIF] displaying a GIF")
+    print("[LEDcommander][ShowGIF] displaying a GIF: ",GIF)
 
     LED.TheMatrix.brightness = StreamBrightness
     LED.DisplayGIF(GIFName=GIF,width=64,height=32,Loops=loops,sleep=sleep)
     LED.TheMatrix.brightness = MaxBrightness
     LED.SweepClean()
+
+
+
+
+def ShowViewers(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    StreamBrightness = 80
+    GifBrightness    = 80
+    MaxBrightness    = 100
+
+    print("[LEDcommander][ShowViewers] Showing image" )
+
+    ChatUsers = Command.get("chatusers",["Nobody"])
+
+
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.ScrollJustJoinedUser(ChatUsers,'JustJoined.png',0.04)
+    LED.TheMatrix.brightness = StreamBrightness
+    
+    #clean up the screen using animations
+    LED.SweepClean()
+
 
 
 
@@ -565,8 +652,8 @@ def ShowImageZoom(Command, StopEvent):
     zoommin          = Command.get("zoommin",1)
     zoommax          = Command.get("zoommax",256)
     zoomfinal        = Command.get("zoomfinal",32)
-    sleep            = Command.get("sleep",0.025)
-    step             = Command.get("step",4)
+    sleep            = Command.get("sleep",0.001)
+    step             = Command.get("step",1)
 
     print("[LEDcommander][ShowImageZoom] Zoom an image")
 

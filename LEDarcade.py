@@ -16484,7 +16484,7 @@ def DisplayDigitalClock(
 
 
       while (Done == False):
-        print(f"StopEvent: {StopEvent}")
+        #print(f"StopEvent: {StopEvent}")
         #when called from a multiprocess (LEDcommander) keep an eye on the StopEvent 
         
         if StopEvent and StopEvent.is_set():
