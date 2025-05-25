@@ -103,7 +103,6 @@ ClockFallbackEnabled = True
 
 def Run(CommandQueue):
 
-
     global StopEvent
     global DisplayProcess
 
@@ -414,10 +413,11 @@ def StartTwitchTimer(Command,StopEvent):
         RGB              = LED.LowGreen,
         ShadowRGB        = LED.ShadowGreen,
         ZoomFactor       = 3,
-        AnimationDelay   = LED.AnimationDelay,
+        AnimationDelay   = 30,
         RunMinutes       = 1,
         StartDateTimeUTC = StreamStartedDateTime,
-        HHMMSS           = StreamDurationHHMMSS
+        HHMMSS           = StreamDurationHHMMSS,
+        StopEvent        = StopEvent
     )
           
 

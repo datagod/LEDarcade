@@ -202,7 +202,7 @@ MaxBrightness    = 100
 
 #Configurations
 SHOW_VIEWERS   = True
-SHOW_FOLLOWERS = True
+SHOW_FOLLOWERS = False
 SHOW_SUBS      = True
 SHOW_VIEWS     = True
 SHOW_CHATBOT_MESSAGES = False
@@ -1126,7 +1126,7 @@ class Bot(commands.Bot ):
       if(LED.TwitchTimerOn == False):
         LED.TwitchTimerOn = True
         if(StreamActive == True):
-          CommandQueue.put({"Action": "starttwtitchtimer", "StreamStartedDateTime": StreamStartedDateTime,"StreamDurationHHMMSS": StreamDurationHHMMSS})
+          CommandQueue.put({"Action": "twitchtimer_on", "StreamStartedDateTime": StreamStartedDateTime,"StreamDurationHHMMSS": StreamDurationHHMMSS})
           print("Returned back from DisplayTwitchTimer")
         else:
           print("Timer is not yet finished")
@@ -1550,7 +1550,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello  ?follows ?chat ?profile ?me ?starrynight ?views ?hug ?subs ?taco ?time ?uptime ?viewers ?who')
+        await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who')
         time.sleep(6)
         await ctx.send('Available games: ?invaders ?astrosmash ?outbreak ?defender ?tron')
 
@@ -1649,7 +1649,7 @@ class Bot(commands.Bot ):
 
 
 
-
+    '''
     #----------------------------------------
     # Follows / Followers                  --
     #----------------------------------------
@@ -1733,7 +1733,6 @@ class Bot(commands.Bot ):
           await self.Channel.send(message)
 
 
-
     #----------------------------------------
     # Subs                                 --
     #----------------------------------------
@@ -1779,6 +1778,7 @@ class Bot(commands.Bot ):
           message = "Well, you are viewing.  I am viewing.  {} is viewing.  That's at least three.  The rest is a mystery to me.".format(CHANNEL)
           await self.Channel.send(message)
 
+    '''
 
 
     #----------------------------------------
@@ -2265,6 +2265,8 @@ def GetTwitchCounts():
       StreamActive = False  
       StreamDurationHHMMSS = '000000'
 
+
+    '''
     #----------------------------------------
     # Follower Count
     #----------------------------------------
@@ -2296,6 +2298,7 @@ def GetTwitchCounts():
       AdditionalInfo = "Getting FOLLOWER info from API call." + " (BROADCASTER_USER_ID:" + BROADCASTER_USER_ID + ")"
       pprint.pprint(results)
       LED.ErrorHandler(ErrorMessage,TraceMessage,AdditionalInfo)
+    '''
 
 
     #----------------------------------------

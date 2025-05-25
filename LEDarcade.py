@@ -17876,22 +17876,24 @@ def DisplayTwitchTimer(
     
     #Show the timer, sleep for X seconds, show animations every Y seconds
     while (Done == False and TwitchTimerOn == True):
+    
+      if StopEvent and StopEvent.is_set():
+        print("[LED] Stop requested — exiting early.")
+        Done = True
+        TwitchTimerOn = False
+        #--> Put a transition effect here
+        break
+
+    
       #print("while loop")
       TimerSprite = UpdateTimerWithTransition(TimerSprite,BannerSprite,h,v,RGB,ShadowRGB,ZoomFactor,Fill=True,TransitionType=2,StartDateTimeUTC = StartDateTimeUTC)
       #ScreenArray = CopySpriteToScreenArrayZoom(BannerSprite,h1,v1,BannerRGB,(0,0,0),ZoomFactor=1,Fill=False,InputScreenArray=ScreenArray)
 
       #print("Asyncio sleep")
 
-      
-      #Check EventQueue (webhook data from twitch and patreon)
-      for i in range (0,5):
-        QueueCount = EventQueue.qsize()
-        if (QueueCount > 0):
-          Done = True
-          TwitchTimerOn = False
-          break
-        time.sleep(1)
-        
+
+
+
       #check and exit
       if(TwitchTimerOn == False or Done == True):
         return
