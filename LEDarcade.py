@@ -2089,6 +2089,54 @@ class Sprite(object):
       self.Float(h,HatWidth-1,"left",(HatWidth + self.height),ScrollSleep)
 
 
+  
+  def TrimLeftEmptyColumns(self, leave_columns=1):
+    if self.width <= leave_columns:
+        return  # Nothing to trim
+
+    def is_column_empty(col):
+        for row in range(self.height):
+            idx = row * self.width + col
+            if self.grid[idx] != (0, 0, 0):
+                return False
+        return True
+
+    # Count fully empty columns from the left
+    empty_count = 0
+    for col in range(self.width):
+        if is_column_empty(col):
+            empty_count += 1
+        else:
+            break
+
+    # Leave X empty columns
+    trim_cols = max(0, empty_count - leave_columns)
+    if trim_cols == 0:
+        return
+
+    new_grid = []
+    for row in range(self.height):
+        start = row * self.width + trim_cols
+        end = row * self.width + self.width
+        new_grid.extend(self.grid[start:end])
+
+    self.grid = new_grid
+    self.width -= trim_cols
+
+  
+  def LeftTrim(self, pixels_to_trim):
+      if pixels_to_trim >= self.width:
+          raise ValueError("Cannot trim more pixels than the sprite width.")
+
+      new_grid = []
+      for row in range(self.height):
+          start = row * self.width + pixels_to_trim
+          end = row * self.width + self.width
+          new_grid.extend(self.grid[start:end])
+
+      self.grid = new_grid
+      self.width -= pixels_to_trim
+      self.h = max(0, self.h - pixels_to_trim)
 
 
 
@@ -16426,17 +16474,15 @@ def DisplayDigitalClock(
 
     print("ClockStyle:",ClockStyle)
     ClockSprite = CreateClockSprite(hh)
+    ClockSprite.TrimLeftEmptyColumns(0)
     Done        = False
     StartTime   = time.time()
     print("RunMinutes:",RunMinutes)
 
 
-    
-    ClockSprite = LeftTrimSprite(ClockSprite,1)
-    
 
     if (CenterHoriz == True):
-      h = (HatWidth  // 2)  - ((ClockSprite.width * ZoomFactor) // 2) + 1
+      h = (HatWidth  // 2)  - ((ClockSprite.width * ZoomFactor) // 2) -1
 
     if (CenterVert  == True):
       v = (HatHeight // 2) - ((ClockSprite.height * ZoomFactor) // 2) - ZoomFactor
@@ -16464,7 +16510,7 @@ def DisplayDigitalClock(
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       ClockSprite = CreateClockSprite(hh)
-
+      ClockSprite.TrimLeftEmptyColumns(0)
 
       ScreenArray1 = CopySpriteToScreenArrayZoom(ClockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
       ScreenArray1 = CopySpriteToScreenArrayZoom(ClockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
@@ -19780,32 +19826,6 @@ def DisplayStockPrice(Symbol="", Price=""):
     CopyScreenArrayToCanvasVSync(NewArray)
     ScreenArray = copy.deepcopy(NewArray)
 
-
-
-def TrimSpriteLeftRaw(sprite_data, trim_cols, width=3, height=5):
-    """
-    Trims a number of columns from the left of a flat sprite data list.
-
-    Args:
-        sprite_data: Flattened list representing the sprite (row-major order).
-        trim_cols: Number of columns to remove from the left.
-        width: Original width of the sprite.
-        height: Original height of the sprite.
-
-    Returns:
-        New flattened sprite list with left columns trimmed.
-    """
-    new_width = width - trim_cols
-    if new_width <= 0:
-        raise ValueError("Trimming too many columns — width would be zero or negative.")
-
-    trimmed = []
-    for row in range(height):
-        start = row * width + trim_cols
-        end = row * width + width
-        trimmed.extend(sprite_data[start:end])
-
-    return trimmed
 
 
 

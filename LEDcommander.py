@@ -144,11 +144,18 @@ def Run(CommandQueue):
             #We want to restart a previous process if it was interrupted
             #OldCommand = Command
 
+
             if not isinstance(Command, dict):
                 continue
 
             Action = Command.get("Action", "").lower()
-            print(f"[LEDcommander][Run]-->{Action}<--")
+            print("")
+            print("<-------------------------------------->")
+            print(f"<-- [LEDcommander] Action: {Action}")
+            print("<-------------------------------------->")
+            print("")
+
+
 
             #----------------------------------
             #-- CLOCK MODE
@@ -277,8 +284,6 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "heart"
                 DisplayProcess = Process(target=ShowHeart, args=(Command, StopEvent))
-                #put a message back on the queue to make sure clock is running
-                CommandQueue.put(OldCommand)
                 DisplayProcess.start()
 
 
@@ -329,6 +334,13 @@ def Run(CommandQueue):
         except queue.Empty:
             print("[LEDcommander][Run] Queue empty.  Waiting for command...")
             time.sleep(5)
+
+            #If nothing is being displayed, tell it to restart the digital clock
+            if CommandQueue.empty():
+                if not (DisplayProcess and DisplayProcess.is_alive()):
+                    print("[LEDcommander] No display active and queue is empty. Restarting fallback clock.")
+                    CommandQueue.put(OldCommand)
+
             continue
 
 
