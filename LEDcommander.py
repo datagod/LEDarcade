@@ -107,6 +107,15 @@ def Run(CommandQueue):
     global StopEvent
     global DisplayProcess
 
+    OldCommand = {
+            "Action": "showclock",
+            "Style": 1,
+            "Zoom": 3 ,
+            "Duration": 10,  # minutes
+            "Delay": 30
+             }
+
+
     
     print("\n" + "=" * 65)
     print("🧠 LEDcommander Launched")
@@ -131,6 +140,9 @@ def Run(CommandQueue):
         try:
             Command = CommandQueue.get(timeout=1)
             print(f"[LEDcommander][Run] Received command: {Command}")
+            
+            #We want to restart a previous process if it was interrupted
+            #OldCommand = Command
 
             if not isinstance(Command, dict):
                 continue
@@ -145,15 +157,14 @@ def Run(CommandQueue):
             if Action == "showclock":
                 print("Starting the clock")
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Continuing")
+                    print("LED display already in use.  Restarting")
                     #time.sleep(10)
-                    #StopEvent.set()
-                    #DisplayProcess.join()
-                else:
-                    StopEvent.clear()
-                    CurrentDisplayMode = "clock"
-                    DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
-                    DisplayProcess.start()
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
+                DisplayProcess.start()
 
 
             elif Action == "stopclock":
@@ -266,6 +277,8 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "heart"
                 DisplayProcess = Process(target=ShowHeart, args=(Command, StopEvent))
+                #put a message back on the queue to make sure clock is running
+                CommandQueue.put(OldCommand)
                 DisplayProcess.start()
 
 
@@ -296,6 +309,9 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "image"
                 DisplayProcess = Process(target=ShowImageZoom, args=(Command, StopEvent))
+                
+                #After showing Image, we restart the clock
+                CommandQueue.put(OldCommand)
                 DisplayProcess.start()
 
 
@@ -313,14 +329,6 @@ def Run(CommandQueue):
         except queue.Empty:
             print("[LEDcommander][Run] Queue empty.  Waiting for command...")
             time.sleep(5)
-
-            CommandQueue.put({
-                "Action": "showclock",
-                "Style": 1,
-                "Zoom": 3 ,
-                "Duration": 1,  # minutes
-                "Delay": 10
-            })
             continue
 
 

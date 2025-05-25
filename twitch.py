@@ -1150,8 +1150,8 @@ class Bot(commands.Bot ):
         CommandQueue.put({
             "Action": "showclock",
             "Style": 1,
-            "Zoom": 3 if StreamActive else 2,
-            "Duration": 10,  # minutes
+            "Zoom": 3 ,
+            "Duration": 600,  # minutes
             "Delay": self.AnimationDelay
         })
 
@@ -1888,7 +1888,7 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
 
       if (UserProfileURL != ""):
-        LED.TheMatrix.brightness = StreamBrightness
+        
         LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
         CommandQueue.put({"Action": "showimagezoom",
                               "image": "CurrentProfile.png",
@@ -2071,9 +2071,14 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Enjoy the peaceful starry sky while staring at a clock"
         await self.Channel.send(message)
-      LED.DisplayDigitalClock(ClockStyle=3,CenterHoriz=True,v=1, hh=24, ZoomFactor = 1, AnimationDelay=10, RunMinutes = 1, EventQueue=EventQueue )
-      LED.ClearBigLED()
-      LED.ClearBuffers()
+
+        CommandQueue.put({
+            "Action": "showclock",
+            "Style": 3,
+            "Zoom": 2,
+            "Duration": 10,  # minutes
+            "Delay": 10
+        })
       CursorH = 0
       CursorV = 0
 
