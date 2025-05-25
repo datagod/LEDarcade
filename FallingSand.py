@@ -1,4 +1,6 @@
 import LEDarcade as LED
+LED.Initialize()
+
 import time
 import random
 import numpy as np

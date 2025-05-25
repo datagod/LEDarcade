@@ -93,10 +93,10 @@ import queue
 CursorH   = 0
 CursorV   = 0
 StopEvent = Event()
-DisplayProcess     = None
-CurrentDisplayMode = None
-TerminalQueue      = Queue()
-
+DisplayProcess       = None
+CurrentDisplayMode   = None
+TerminalQueue        = Queue()
+ClockFallbackEnabled = True
 
 
 
@@ -145,16 +145,15 @@ def Run(CommandQueue):
             if Action == "showclock":
                 print("Starting the clock")
                 if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    time.sleep(10)
-                    StopEvent.set()
-                    DisplayProcess.join()
-
-
-                StopEvent.clear()
-                CurrentDisplayMode = "clock"
-                DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
-                DisplayProcess.start()
+                    print("LED display already in use.  Continuing")
+                    #time.sleep(10)
+                    #StopEvent.set()
+                    #DisplayProcess.join()
+                else:
+                    StopEvent.clear()
+                    CurrentDisplayMode = "clock"
+                    DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
+                    DisplayProcess.start()
 
 
             elif Action == "stopclock":
@@ -313,8 +312,17 @@ def Run(CommandQueue):
 
         except queue.Empty:
             print("[LEDcommander][Run] Queue empty.  Waiting for command...")
-            time.sleep(2)
+            time.sleep(5)
+
+            CommandQueue.put({
+                "Action": "showclock",
+                "Style": 1,
+                "Zoom": 3 ,
+                "Duration": 1,  # minutes
+                "Delay": 10
+            })
             continue
+
 
         except Exception as Error:
             print(f"[LEDcommander ERROR][Run] {Error}")
@@ -392,25 +400,6 @@ def StartTwitchTimer(Command,StopEvent):
         HHMMSS           = StreamDurationHHMMSS
     )
           
-
-
-
-
-    LED.DisplayDigitalClock(
-        ClockStyle=ClockStyle,
-        CenterHoriz=True,
-        v=1,
-        hh=24,
-        RGB=LED.LowGreen,
-        ShadowRGB      = LED.ShadowGreen,
-        ZoomFactor     = ZoomFactor,
-        AnimationDelay = AnimationDelay,
-        RunMinutes     = RunMinutes,
-        StopEvent      = StopEvent
-    )
-
-
-
 
 
 

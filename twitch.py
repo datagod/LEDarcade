@@ -522,7 +522,7 @@ class Bot(commands.Bot ):
                         CommandQueue.put({"Action": "terminalmessage", "Message": "................", "RGB": (100, 100, 0), "ScrollSleep": 0.03 })
                         CommandQueue.put({"Action": "terminalmode_off"})
                         self.ChatTerminalOn = False
-                        self.ClockRunning = False  # Reset clock flag when terminal closes
+                        self.ClockRunning   = False  # Reset clock flag when terminal closes
 
                 if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False and self.ClockRunning == False):
                     print("Creating multiprocess DisplayDigitalClock()")
@@ -1144,14 +1144,14 @@ class Bot(commands.Bot ):
 
       try:
         # Stop existing clock (if any), then start new one
-        CommandQueue.put({"Action": "StopClock"})
+        CommandQueue.put({"Action": "stopclock"})
         
         #Formulate the command.      
         CommandQueue.put({
-            "Action": "ShowClock",
+            "Action": "showclock",
             "Style": 1,
             "Zoom": 3 if StreamActive else 2,
-            "Duration": 1,  # minutes
+            "Duration": 10,  # minutes
             "Delay": self.AnimationDelay
         })
 
@@ -1632,14 +1632,14 @@ class Bot(commands.Bot ):
 
       try:
         # Stop existing clock (if any), then start new one
-        CommandQueue.put({"Action": "StopClock"})
+        CommandQueue.put({"Action": "stopclock"})
         
         #Formulate the command.      
         CommandQueue.put({
-            "Action": "ShowClock",
+            "Action": "showclock",
             "Style": 1,
             "Zoom": 3 if StreamActive else 2,
-            "Duration": 1,  # minutes
+            "Duration": 10,  # minutes
             "Delay": 10
         })
 
