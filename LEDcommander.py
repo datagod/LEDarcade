@@ -149,9 +149,9 @@ def Run(CommandQueue):
 
             Action = Command.get("Action", "").lower()
             print("")
-            print("<-------------------------------------->")
+            print("<--------------------------------------------->")
             print(f"<-- [LEDcommander] Action: {Action}")
-            print("<-------------------------------------->")
+            print("<--------------------------------------------->")
             print("")
 
 
@@ -197,6 +197,47 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=ShowTitleScreen, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+
+            #----------------------------------
+            #-- LAUNCH PROGRAMS
+            #----------------------------------
+
+            elif Action == "launch_dotinvaders":
+                print("[LEDcommander][Run] Launching DotInvaders")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "title"
+                DisplayProcess = Process(target=LaunchDotInvaders, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "launch_defender":
+                print("[LEDcommander][Run] Launching Defender")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "title"
+                DisplayProcess = Process(target=LaunchDefender, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_gravitysim":
+                print("[LEDcommander][Run] Launching Defender")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "title"
+                DisplayProcess = Process(target=LaunchGravitySim, args=(Command, StopEvent))
+                DisplayProcess.start()
 
 
             #----------------------------------
@@ -273,13 +314,14 @@ def Run(CommandQueue):
 
 
             #----------------------------------------
-            # Animations                           --
+            # ANIMATIONS                           --
             #----------------------------------------
 
             elif Action == "showheart":
                 if DisplayProcess and DisplayProcess.is_alive():
                     StopEvent.set()
                     DisplayProcess.join()
+
                 StopEvent.clear()
                 CurrentDisplayMode = "heart"
                 DisplayProcess = Process(target=ShowHeart, args=(Command, StopEvent))
@@ -387,6 +429,7 @@ def ShowDigitalClock(Command,StopEvent):
         RunMinutes     = RunMinutes,
         StopEvent      = StopEvent
     )
+    LED.SweepClean()
 
 
 
@@ -414,11 +457,12 @@ def StartTwitchTimer(Command,StopEvent):
         ShadowRGB        = LED.ShadowGreen,
         ZoomFactor       = 3,
         AnimationDelay   = 30,
-        RunMinutes       = 1,
+        RunMinutes       = 10,
         StartDateTimeUTC = StreamStartedDateTime,
         HHMMSS           = StreamDurationHHMMSS,
         StopEvent        = StopEvent
     )
+    LED.SweepClean()
           
 
 
@@ -461,6 +505,7 @@ def ShowTitleScreen(Command,StopEvent):
       ExitEffect          = ExitEffect,
       LittleTextZoom      = LittleTextZoom
       )
+    LED.SweepClean()
 
 
 
@@ -497,6 +542,7 @@ def StopTerminalMode():
         ScrollSpeed=TerminalScrollSpeed
     )
     LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.05)
+    LED.SweepClean()
 
 
 
@@ -598,7 +644,7 @@ def ShowHeart(Command, StopEvent):
     print("[LEDcommander][ShowHeart] Show beating heart")
 
     LED.TheMatrix.brightness = StreamBrightness
-    LED.ShowBeatingHeart(h=16, v=0, beats=10, Sleep=0.01) 
+    LED.ShowBeatingHeart(h=16, v=0, beats=5, Sleep=0.01) 
     LED.TheMatrix.brightness = MaxBrightness
     LED.SweepClean()
 
@@ -676,7 +722,53 @@ def ShowImageZoom(Command, StopEvent):
     LED.SweepClean()
 
 
+def LaunchDotInvaders(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import DotInvaders as DI
+
+    StreamBrightness = 80
+    GifBrightness    = 80
+    MaxBrightness    = 100
+
+    Duration         = Command.get("duration",1)
+
+    print("[LEDcommander][LaunchDotInvaders] Launching...")
+
+    DI.LaunchDotInvaders(Duration,True)
+    LED.SweepClean()
     
+
+
+def LaunchDefender(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Defender as DE
+    Duration         = Command.get("duration",1)
+
+    print("[LEDcommander][LaunchDefender] Launching...")
+
+    DE.LaunchDefender(Duration,True)
+    LED.SweepClean()
+
+
+def LaunchGravitySim(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import gravitysim as GR
+    
+    Duration         = Command.get("duration",10)
+
+    print("[LEDcommander][LaunchGravitySim] Launching...")
+
+    GR.Launch(Duration,StopEvent)
+    buffer = LED.ScreenArray.copy()
+    LED.SpinShrinkTransition(buffer, steps=48, delay=0.02, Fade=True)
+
+    #LED.SweepClean()
+
+
+
 
 #-------------------------------------------------------------------------------
 # Main Processing

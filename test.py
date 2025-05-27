@@ -33,9 +33,24 @@ if __name__ == "__main__":
     LEDProcess.start()
     CommandQueue.cancel_join_thread()
 
-    enqueue_gif_commands(CommandQueue)
+    #enqueue_gif_commands(CommandQueue)
+    #CommandQueue.put({        "Action": "showheart",    })
 
-    CommandQueue.put({        "Action": "showheart",    })
+    CommandQueue.put({"Action": "showheart" })
+    time.sleep(25)
+
+
+
+    #Formulate the command.      
+    CommandQueue.put({        "Action": "launch_gravitysim",   "Duration": 5})
+
+
+
+
+    CommandQueue.put({        "Action": "launch_defender",     "Duration": 5})
+    CommandQueue.put({        "Action": "launch_dotinvaders",  "Duration": 5})
+   
+    time.sleep(2)
 
 
 

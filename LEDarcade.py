@@ -931,15 +931,6 @@ SuperWormLevels    = 3           #number of levels
 
 
 
-
-
-#Twitch specific
-TwitchTimerOn = False
-
-
-
-
-
 #-----------------------------
 # Used in all games         --
 #-----------------------------
@@ -17812,8 +17803,7 @@ def DisplayTwitchTimer(
     #ClearBigLED()
     #ClearBuffers()
     global ScreenArray
-    global TwitchTimerOn
-
+    
 
     
     TimerSprite = CreateTimerSprite(HHMMSS)
@@ -17872,15 +17862,13 @@ def DisplayTwitchTimer(
     
     LastAnimation = time.time()
 
-    print("Done:",Done," TwitchTimerOn:",TwitchTimerOn)
     
     #Show the timer, sleep for X seconds, show animations every Y seconds
-    while (Done == False and TwitchTimerOn == True):
+    while (Done == False):
     
       if StopEvent and StopEvent.is_set():
         print("[LED] Stop requested — exiting early.")
         Done = True
-        TwitchTimerOn = False
         #--> Put a transition effect here
         break
 
@@ -17895,7 +17883,7 @@ def DisplayTwitchTimer(
 
 
       #check and exit
-      if(TwitchTimerOn == False or Done == True):
+      if(Done == True):
         return
 
       #Check for animation time
@@ -18301,7 +18289,6 @@ def DisplayTwitchTimer(
       #print("M:",m," RunMinutes:",RunMinutes)
       if m >= RunMinutes:
         Done = True
-        TwitchTimerOn = False
         print("Exiting Twitch Timer")
 
 
@@ -19351,38 +19338,105 @@ def ScrollJustJoinedUser(Names=[],ImageName='JustJoined.png',ScrollSleep=0.05):
 
 
 
+
+
 def SweepClean():
-#clean up the screen using animations
-  MoveAnimatedSpriteAcrossScreenStepsPerFrame(
-    PacManRightSprite,
-    Position      = 'top',
-    Vadjust       = 0 ,
-    direction     = "right",
-    StepsPerFrame = 3,
-    ZoomFactor    = 3,
-    sleep         = 0.02 
-    )
+
+    def get_zoom(sprite):
+          height = sprite.height
+          if height <= 5:
+              return 3
+          elif height <= 10:
+              return 2
+          else:
+              return 1
 
 
-  MoveAnimatedSpriteAcrossScreenStepsPerFrame(
-    PacManLeftSprite,
-    Position      = 'middle',
-    Vadjust       = 0,
-    direction     = "left",
-    StepsPerFrame = 3,
-    ZoomFactor    = 3,
-    sleep         = 0.01
-    )
+    r = random.randint(1,5)
+    if r == 1:
+      SpriteChoices = [
+                      "ThreeGhostPacSprite",
+                      "ThreeGhostSprite",
+                      "ThreeBlueGhostSprite",
+                      "PacManSprite",
+                      "ElectricZap",
+                      "Rezonator",
+                      "BigRezonator",
+                      "BigRezonator2",
+                      "SpaceInvader",
+                      "TinyInvader",
+                      "SmallInvader",
+                      "LittleShipFlying",
+                      "LargeUFOSprite1",
+                      "LargeUFOSprite2",
+                      "LargeUFOSprite3",
+                      "LargeUFOSprite4",
+                      "LargeUFOSprite5",
+                      "LargeUFOSprite6"
+                      ]
 
-  MoveAnimatedSpriteAcrossScreenStepsPerFrame(
-    PacManRightSprite,
-    Position      = 'bottom',
-    Vadjust       = 0 ,
-    direction     = "right",
-    StepsPerFrame = 3,
-    ZoomFactor    = 3,
-    sleep         = 0.004 
-    )
+      SpriteName    = random.choice(SpriteChoices)
+      SpriteZoom    = get_zoom(globals()[SpriteName])
+      MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+          globals()[SpriteName],
+          Position      = 'top',
+          Vadjust       = 0,
+          direction     = "right",
+          StepsPerFrame = 3,
+          ZoomFactor    = SpriteZoom,
+          sleep         = 0.02
+      )
+
+      MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+          globals()[SpriteName],
+          Position      = 'middle',
+          Vadjust       = 0,
+          direction     = "left",
+          StepsPerFrame = 3,
+          ZoomFactor    = SpriteZoom,
+          sleep         = 0.01
+      )
+
+      MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+          globals()[SpriteName],
+          Position      = 'bottom',
+          Vadjust       = 0,
+          direction     = "right",
+          StepsPerFrame = 3,
+          ZoomFactor    = SpriteZoom,
+          sleep         = 0.004
+      )
+    else:
+      MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+        PacManRightSprite,
+        Position      = 'top',
+        Vadjust       = 0 ,
+        direction     = "right",
+        StepsPerFrame = 3,
+        ZoomFactor    = 3,
+        sleep         = 0.02 
+        )
+
+
+      MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+        PacManLeftSprite,
+        Position      = 'middle',
+        Vadjust       = 0,
+        direction     = "left",
+        StepsPerFrame = 3,
+        ZoomFactor    = 3,
+        sleep         = 0.01
+        )
+
+      MoveAnimatedSpriteAcrossScreenStepsPerFrame(
+        PacManRightSprite,
+        Position      = 'bottom',
+        Vadjust       = 0 ,
+        direction     = "right",
+        StepsPerFrame = 3,
+        ZoomFactor    = 3,
+        sleep         = 0.004 
+        )
 
 
 
@@ -19698,8 +19752,9 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
 
   ScreenArray = CopyAnimatedSpriteToScreenArrayZoom(HeartSprite,h,v,1,TheScreenArray=ScreenArray)
 
-  ZoomScreen(ScreenArray,1,32,Sleep)
-
+  #ZoomScreen(ScreenArray,1,32,Sleep)
+  SpinShrinkTransition(ScreenArray, steps=32, delay = 0.01,start_zoom=0, end_zoom=100)
+ 
   
 
   for i in range(0,beats):
@@ -19708,7 +19763,9 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
     time.sleep(0.125)
     ZoomScreen(ScreenArray,22,32,Sleep)
 
-
+  SpinShrinkTransition(ScreenArray, steps=32, delay = 0.01,start_zoom=100, end_zoom=0)
+ 
+  
 
 
 
@@ -19827,6 +19884,98 @@ def DisplayStockPrice(Symbol="", Price=""):
     # Step 7 - Finalize
     CopyScreenArrayToCanvasVSync(NewArray)
     ScreenArray = copy.deepcopy(NewArray)
+
+
+
+
+
+
+
+
+
+
+
+def SpinShrinkTransition(ScreenArray, steps=48, delay=0.03, start_zoom=100, end_zoom=100, StopEvent=None):
+    """
+    Spin and zoom transition for LED matrix screens.
+
+    Parameters:
+        ScreenArray : 2D list of RGB tuples (copied from ScreenArray)
+        steps       : Number of frames
+        delay       : Time per frame (seconds)
+        start_zoom  : Starting zoom percentage (0 = invisible, 100 = normal size, 200 = 2x size, etc.)
+        end_zoom    : Ending zoom percentage
+        StopEvent   : Optional multiprocessing event for early exit
+    """
+    import time
+    from PIL import Image
+
+    global Canvas
+
+    def render_transformed(buffer, zoom, angle):
+        h, w = len(buffer), len(buffer[0])
+        img = Image.new("RGB", (w, h))
+        for y in range(h):
+            for x in range(w):
+                img.putpixel((x, y), buffer[y][x])
+
+        scale = zoom / 100.0
+        size = max(1, int(w * scale)), max(1, int(h * scale))
+        img = img.resize(size, Image.BICUBIC).rotate(angle, expand=True)
+
+        ox = (HatWidth - img.width) // 2
+        oy = (HatHeight - img.height) // 2
+
+        for y in range(img.height):
+            for x in range(img.width):
+                px, py = ox + x, oy + y
+                if 0 <= px < HatWidth and 0 <= py < HatHeight:
+                    r, g, b = img.getpixel((x, y))
+                    setpixel(px, py, r, g, b)
+
+    def render_final(buffer, zoom):
+        if zoom <= 0:
+            Canvas.Clear()
+            return
+
+        h, w = len(buffer), len(buffer[0])
+        img = Image.new("RGB", (w, h))
+        for y in range(h):
+            for x in range(w):
+                img.putpixel((x, y), buffer[y][x])
+
+        scale = zoom / 100.0
+        size = max(1, int(w * scale)), max(1, int(h * scale))
+        img = img.resize(size, Image.BICUBIC)  # No rotation
+
+        ox = (HatWidth - img.width) // 2
+        oy = (HatHeight - img.height) // 2
+
+        for y in range(img.height):
+            for x in range(img.width):
+                px, py = ox + x, oy + y
+                if 0 <= px < HatWidth and 0 <= py < HatHeight:
+                    r, g, b = img.getpixel((x, y))
+                    setpixel(px, py, r, g, b)
+
+    total_spin_degrees = 720
+
+    for frame in range(steps):
+        if StopEvent and StopEvent.is_set():
+            break
+
+        t = frame / (steps - 1)  # Ensures last frame is 1.0
+        zoom = start_zoom + (end_zoom - start_zoom) * t
+        angle = int(round(total_spin_degrees * t))
+
+        render_transformed(ScreenArray, zoom, angle)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+        time.sleep(delay)
+
+    # Final frame correction
+    render_final(ScreenArray, end_zoom)
+    Canvas = TheMatrix.SwapOnVSync(Canvas)
+
 
 
 

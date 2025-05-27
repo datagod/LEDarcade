@@ -511,7 +511,7 @@ class Bot(commands.Bot ):
 
         while True:
             await asyncio.sleep(5)
-            print("Stream Status:",StreamActive, ' TwitchTimerOn:',LED.TwitchTimerOn)
+            print("Stream Status:",StreamActive)
 
             if(StreamActive == True):
                 if (self.ChatTerminalOn == True):
@@ -524,7 +524,7 @@ class Bot(commands.Bot ):
                         self.ChatTerminalOn = False
                         self.ClockRunning   = False  # Reset clock flag when terminal closes
 
-                if(self.ChatTerminalOn == False and LED.TwitchTimerOn == False and self.ClockRunning == False):
+                if(self.ChatTerminalOn == False and self.ClockRunning == False):
                     print("Creating multiprocess DisplayDigitalClock()")
                     self.DisplayDigitalClock()
                     self.ClockRunning = True
@@ -1123,13 +1123,11 @@ class Bot(commands.Bot ):
       
       
       #Only do this if the timer function is actually finished
-      if(LED.TwitchTimerOn == False):
-        LED.TwitchTimerOn = True
-        if(StreamActive == True):
-          CommandQueue.put({"Action": "twitchtimer_on", "StreamStartedDateTime": StreamStartedDateTime,"StreamDurationHHMMSS": StreamDurationHHMMSS})
-          print("Returned back from DisplayTwitchTimer")
-        else:
-          print("Timer is not yet finished")
+      if(StreamActive == True):
+        CommandQueue.put({"Action": "twitchtimer_on", "StreamStartedDateTime": StreamStartedDateTime,"StreamDurationHHMMSS": StreamDurationHHMMSS})
+        print("Returned back from DisplayTwitchTimer")
+      else:
+        print("Timer is not yet finished")
         
 
 
@@ -1552,7 +1550,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who')
         time.sleep(6)
-        await ctx.send('Available games: ?invaders ?astrosmash ?outbreak ?defender ?tron')
+        await ctx.send('Available games: ?astrosmash ?gravity ?invaders  ?defender ?outbreak ?tron')
 
 
 
@@ -1804,7 +1802,6 @@ class Bot(commands.Bot ):
     async def chat(self, ctx: commands.Context):
       #SHOW CHAT
       self.ChatTerminalOn = True
-      LED.TwitchTimerOn   = False
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "The chat will now be displayed on the LEDarcade clock thingy.".format(BROADCASTER_CHANNEL,StreamDurationHHMMSS)
         await self.Channel.send(message)
@@ -1977,18 +1974,26 @@ class Bot(commands.Bot ):
     # DOT INVADERS                         --
     #----------------------------------------
 
-
     @commands.command()
     async def invaders(self, ctx: commands.Context):
       #Play game DotInvaders
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
-      DI.LaunchDotInvaders(GameMaxMinutes = 2,ShowIntro=False) 
-      LED.ClearBigLED()
-      LED.ClearBuffers()
-      CursorH = 0
-      CursorV = 0
+      CommandQueue.put({"Action": "launch_dotinvaders", "Duration": 10 })
+
+    #----------------------------------------
+    # GRAVITY SIM                          --
+    #----------------------------------------
+
+    @commands.command()
+    async def gravity(self, ctx: commands.Context):
+      #Play game GravitySim
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Lets watch comets orbiting a star"
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_gravitysim", "Duration": 10 })
+
 
 
 
@@ -2035,13 +2040,10 @@ class Bot(commands.Bot ):
     async def defender(self, ctx: commands.Context):
       #Play game Defender
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Time to shoot some mutants"
+        message = "Time to go blast some mutants"
         await self.Channel.send(message)
-      DE.LaunchDefender(GameMaxMinutes = 2,ShowIntro=False)
-      LED.ClearBigLED()
-      LED.ClearBuffers()
-      CursorH = 0
-      CursorV = 0
+      CommandQueue.put({"Action": "launch_defender", "Duration": 10 })
+
 
 
     #----------------------------------------

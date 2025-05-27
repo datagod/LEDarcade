@@ -10,39 +10,42 @@
 
 
 #------------------------------------------------------------------------------
-#                                                                            --
-#      _    ____   ____    _    ____  _____    ____ _     ___   ____ _  __   --
-#     / \  |  _ \ / ___|  / \  |  _ \| ____|  / ___| |   / _ \ / ___| |/ /   --
-#    / _ \ | |_) | |     / _ \ | | | |  _|   | |   | |  | | | | |   | ' /    --
-#   / ___ \|  _ <| |___ / ___ \| |_| | |___  | |___| |__| |_| | |___| . \    --
-#  /_/   \_\_| \_\\____/_/   \_\____/|_____|  \____|_____\___/ \____|_|\_\   --
-#                                                                            --
-#                                                                            --
-#  Main Programs                                                             --
-#                                                                            --
+#  PROJECT NAME:   Dot Invaders                                              
+#  PLATFORM:       LEDarcade (https://github.com/datagod/LEDarcade)
+#  DISPLAY:        RGB LED Matrix Panel (e.g., 32x64, 32x128)
+#  HARDWARE:       Raspberry Pi (originally Pi 2, optimized for Pi 4) 
+#  AUTHOR:         William McEvoy 
+#  CONTACT:        william.mcevoy@gmail.com
+#
+#  LICENSE:        Free for personal use. For commercial licensing, 
+#                  please contact the author.
+#
+#  DESCRIPTION:
+#    A fully autonomous, AI-driven arcade shooter inspired by classic 
+#    "Space Invaders". Designed to run on a Raspberry Pi with an LED matrix
+#    display. Features dynamic enemy waves, smart player AI, UFO targets, 
+#    missile collisions, and visual score displays.
+#
+#  NOTES:
+#    - Developed and optimized using the LEDarcade engine.
+#    - Adjusts gameplay based on CPU speed using LED.CPUModifier.
+#    - Ships, missiles, and bunkers are represented by LED.Ship objects.
+#    - Advanced sprite rendering with animated explosions and banners.
+#    - LED-safe: Uses double-buffered drawing via LED.TheMatrix and Canvas.
+#
+#  VERSION:        0.2
+#  LAST UPDATED:   2025-05-26
+#  STATUS:         Actively Maintained
+#
+#  TODO:
+#    [ ] Tune game speed across Raspberry Pi hardware generations
+#    [ ] Refactor into modules (e.g., AI, Renderer, GameLoop)
+#    [ ] Add multiplayer or external control integration
+#    [ ] Optimize collision detection and rendering speed
+#
 #------------------------------------------------------------------------------
 
 
-
-#------------------------------------------------------------------------------
-#  Arcade Retro Games
-#  
-#  Copyright 2021 William McEvoy
-#  Metropolis Dreamware Inc.
-#  william.mcevoy@gmail.com
-#
-#  NOT FOR COMMERCIAL USE
-#  If you want to use my code for commercial purposes, contact William McEvoy
-#  and we can make a deal.
-#
-#
-#------------------------------------------------------------------------------
-#   Version: 0.1                                                             --
-#   Date:    December 13, 2021                                               --
-#   Reason:  Creating a library of games that can be called from other       --
-#            programs.                                                       --
-#------------------------------------------------------------------------------
-#------------------------------------------------------------------------------
 
 
 import LEDarcade as LED
@@ -61,7 +64,7 @@ import time
 #----------------------------
 
 
-
+#Higher = Slower
 #Player
 PlayerShipSpeed       = 100
 PlayerShipMaxSpeed    = 50
@@ -80,20 +83,48 @@ ShotsMissedMax             = 5
 
 #Armada
 ArmadaDirection = 2
-ArmadaSpeed     = 10
+ArmadaSpeed     = 50
 ArmadaHeight    = 0
 ArmadaWidth     = 0
 ArmadaHighestV  = 0
 ArmadaLowestV   = 0
 CondenseArmadaChance = 1000
-ArmadaSpeedOffset = 50
+ArmadaSpeedOffset = 10
 
 #UFO
 UFOMissileSpeed = 75
-UFOShipSpeed    = 100  #also known as the EnemeyShip
+UFOShipSpeed    = 75  #also known as the EnemeyShip
 UFOShipMinSpeed = 300
-UFOShipMaxSpeed = 150
+UFOShipMaxSpeed = 75
 ChanceOfUFOShip = 30000
+
+
+
+# CPU Performance Modifier
+CPUModifier = 10.0  # Adjust this based on hardware performance (e.g., 0.5 for Pi 4, 1.0 for Pi 2)
+
+# Apply CPU Modifier
+PlayerShipSpeed       *= CPUModifier
+PlayerShipMaxSpeed    *= CPUModifier
+PlayerShipMinSpeed    *= CPUModifier
+PlayerShipAbsoluteMinSpeed *= CPUModifier
+PlayerMissileSpeed    *= CPUModifier
+PlayerMissileMaxSpeed *= CPUModifier
+PlayerMissileMinSpeed *= CPUModifier
+PlayerShipJustMovingSpeed *= CPUModifier
+
+ArmadaSpeed       *= CPUModifier
+ArmadaSpeedOffset *= CPUModifier
+
+UFOMissileSpeed *= CPUModifier
+UFOShipSpeed    *= CPUModifier
+UFOShipMinSpeed *= CPUModifier
+UFOShipMaxSpeed *= CPUModifier
+
+
+
+
+
 
 #HomingMissile 
 UFOFrameRate               = 50  #random animated homing missiles
@@ -1535,7 +1566,8 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
             if (Armada[y][x].v > ArmadaLevel):
               ArmadaLevel = Armada[y][x].v
       #print ("M - Armada AliveCount ArmadaLevel: ",ArmadaCount,ArmadaLevel)
-      ArmadaSpeed = ArmadaCount * 5 + (ArmadaSpeedOffset - LevelCount)
+      ArmadaSpeed = (ArmadaCount * 5 + (ArmadaSpeedOffset - LevelCount)) * CPUModifier
+
         
 
       if (ArmadaCount == 0):
@@ -1672,7 +1704,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
   CursorV = 0
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"PLANETARY DEFENCE SYSTEMS DEACTIVATING",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FINAL SCORE:" ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+  LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FINAL SCORE:" ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,ScoreString,CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,100),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
   LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"YOU FAILED YOUR PLANET!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,200,200),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
@@ -1696,22 +1728,22 @@ def LaunchDotInvaders(GameMaxMinutes = 10000, ShowIntro = True):
   LED.LoadConfigData()
 
 
-
-  LED.ShowTitleScreen(
-      BigText             = 'ALERT!',
-      BigTextRGB          = LED.HighRed,
-      BigTextShadowRGB    = LED.ShadowRed,
-      LittleText          = 'DOT INVADERS',
-      LittleTextRGB       = LED.MedGreen,
-      LittleTextShadowRGB = (0,10,0), 
-      ScrollText          = 'DEFEND YOUR PLANET!',
-      ScrollTextRGB       = LED.MedYellow,
-      ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-      DisplayTime         = 1,           # time in seconds to wait before exiting 
-      ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-      )
-
   if(ShowIntro == True):
+
+    LED.ShowTitleScreen(
+        BigText             = 'ALERT!',
+        BigTextRGB          = LED.HighRed,
+        BigTextShadowRGB    = LED.ShadowRed,
+        LittleText          = 'DOT INVADERS',
+        LittleTextRGB       = LED.MedGreen,
+        LittleTextShadowRGB = (0,10,0), 
+        ScrollText          = 'DEFEND YOUR PLANET!',
+        ScrollTextRGB       = LED.MedYellow,
+        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+        DisplayTime         = 1,           # time in seconds to wait before exiting 
+        ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        )
+
 
     LED.ClearBigLED()
     LED.ClearBuffers()

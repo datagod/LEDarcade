@@ -1464,9 +1464,9 @@ def PlayDefender(GameMaxMinutes):
   #-- Create Layers              --
   #--------------------------------
 
-  Background   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
-  Middleground = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
-  Foreground   = LED.Layer(name="backround", width=2048, height=32,h=0,v=0)
+  Background   = LED.Layer(name="backround", width=4048, height=32,h=0,v=0)
+  Middleground = LED.Layer(name="backround", width=4048, height=32,h=0,v=0)
+  Foreground   = LED.Layer(name="backround", width=4048, height=32,h=0,v=0)
   Ground       = LED.Layer(name="ground",    width=DefenderWorldWidth, height=32,h=0,v=0)
 
   Background.CreateStars(5,0,50,50)
@@ -2496,6 +2496,9 @@ def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
   # M A I N   P R O C E S S I N G      --
   #--------------------------------------
 
+  global SlowingDown
+
+
   if(ShowIntro == True):
 
 
@@ -2519,9 +2522,9 @@ def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
     LED.ClearBuffers()
     CursorH = 0
     CursorV = 0
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO DEEP SPACE ARRAY",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO DEEP SPACE ARRAY",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"TRANSMITTING COORDINATES",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"TRANSMITTING COORDINATES",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"FIRE AT WILL!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
