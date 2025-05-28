@@ -2057,11 +2057,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time for some jetbike races"
         await self.Channel.send(message)
-      TR.LaunchTron(GameMaxMinutes = 2,ShowIntro=False)
-      LED.ClearBigLED()
-      LED.ClearBuffers()
-      CursorH = 0
-      CursorV = 0
+      CommandQueue.put({"Action": "launch_tron", "Duration": 10 })
 
 
     #----------------------------------------

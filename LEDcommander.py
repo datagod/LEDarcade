@@ -202,6 +202,9 @@ def Run(CommandQueue):
             #-- LAUNCH PROGRAMS
             #----------------------------------
 
+
+
+
             elif Action == "launch_dotinvaders":
                 print("[LEDcommander][Run] Launching DotInvaders")
                 if DisplayProcess and DisplayProcess.is_alive():
@@ -210,7 +213,7 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
-                CurrentDisplayMode = "title"
+                CurrentDisplayMode = "dotinvaders"
                 DisplayProcess = Process(target=LaunchDotInvaders, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -226,6 +229,22 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "title"
                 DisplayProcess = Process(target=LaunchDefender, args=(Command, StopEvent))
                 DisplayProcess.start()
+
+
+
+
+            elif Action == "launch_tron":
+                print("[LEDcommander][Run] Launching Tron")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "title"
+                DisplayProcess = Process(target=LaunchTron, args=(Command, StopEvent))
+                DisplayProcess.start()
+
 
             elif Action == "launch_gravitysim":
                 print("[LEDcommander][Run] Launching Defender")
@@ -762,11 +781,20 @@ def LaunchGravitySim(Command, StopEvent):
     print("[LEDcommander][LaunchGravitySim] Launching...")
 
     GR.Launch(Duration,StopEvent)
-    buffer = LED.ScreenArray.copy()
-    LED.SpinShrinkTransition(buffer, steps=48, delay=0.02, Fade=True)
+
 
     #LED.SweepClean()
 
+def LaunchTron(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Tron as TR
+    
+    Duration         = Command.get("duration",10)
+
+    print("[LEDcommander][LaunchTron] Launching...")
+
+    TR.LaunchTron(Duration,StopEvent)
 
 
 

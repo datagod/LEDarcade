@@ -997,7 +997,7 @@ def CreateSuperWormMap(MapLevel):
 
 
   
-def PlaySuperWorms():
+def PlaySuperWorms(StopEvent=None):
   
   global SpeedUpSpeed
 
@@ -1077,12 +1077,17 @@ def PlaySuperWorms():
   #contains the values last written to the screen.
 
 
-  
-  while (LevelCount < SuperWormLevels):
+  Done = False
+  while (LevelCount < SuperWormLevels and Done == False):
     print ("Drawing Snake")
     #DrawSnake(0,0,(LED.MedOrange),3,1)
     #LED.ShowLevelCount(LevelCount)
     
+    if StopEvent and StopEvent.is_set():
+      print("[Tron] Stop requested — exiting early.")
+      Done = True
+      break
+
     
     LevelCount = LevelCount + 1
     LED.ClearBigLED()
@@ -1294,7 +1299,7 @@ def PlaySuperWorms():
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
 
-def LaunchTron(GameMaxMinutes = 10000,ShowIntro=True):
+def LaunchTron(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
   
   global start_time
   start_time = time.time()

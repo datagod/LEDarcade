@@ -127,25 +127,25 @@ LaserB = 0
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
 HumanCount         = 15
-EnemyShipCount     = 25
-AddEnemyCount      = 25
+EnemyShipCount     = 50
+AddEnemyCount      = 50
 SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
 RedrawGroundWaveCount      = 5
-
+#GameSleep                  = 0.005
 
 
 
 #Movement
-DefenderSpeed              = 1
+DefenderSpeed              = 0.5
 ReversingAdjustmentSpeed   = 0.25
 ReversingSteps             = 64
 OldSpeed                   = 0
 SlowingDown                = 0
 DefenderSpeedIncrement     = 0.25
-DefenderMaxSpeed           = 7
-DefenderMinSpeed           = 1
+DefenderMaxSpeed           = 5
+DefenderMinSpeed           = 0.5
 DefenderMoveUpRate         = 10
 DefenderMoveDownRate       = 10
 ReversingChance            = 2000
@@ -153,8 +153,8 @@ DefenderSpeedChangeChance  = 100
 DefenderDirection          = 1
 DefenderReversing          = 0
 UpDownChance               = 150
-HumanMoveChance        = 3
-EnemyMoveSpeed         = 6
+HumanMoveChance        = 5
+EnemyMoveSpeed         = 8            #lower is faster
 GarbageCleanupChance   = 1000
 GroundCleanupChance    = 500
 GroundRadarChance      = 10
@@ -162,13 +162,13 @@ FrontRadarChance       = 15
 ShootGroundShipCount   = 50
 AttackDistance         = LED.HatWidth
 HumanRunDistance       = LED.HatWidth
-ShootTime              = time.time()
+
 ShootWaitTime          = 0.5
 EnemyFearFactor        = 10  #the lower the number, the more likely the enemy will run away
 #Gravity
-GroundParticleGravity  = 0.05
-HumanParticleGravity   = 0.05
-EnemyParticleGravity   = 0.0198
+GroundParticleGravity  = 0.04
+HumanParticleGravity   = 0.006
+EnemyParticleGravity   = 0.01
 BombGravity            = 0.0198
 DevenderReversing      = 0
 CurrentH               = 0
@@ -639,7 +639,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
 
 
 def ShootTarget(PlayfieldH, PlayfieldV, TargetName, TargetH,TargetV,Defender, DefenderPlayfield,Canvas):
-  global ShootTime
+  
   
   TargetHit = False
 
@@ -1377,7 +1377,7 @@ def FlattenGround(h1,h2,v,Ground):
   return Ground
 
 
-def PlayDefender(GameMaxMinutes):      
+def PlayDefender(GameMaxMinutes,StopEvent=None):      
  
   global EnemyShipCount
   global HumanCount
@@ -1592,6 +1592,15 @@ def PlayDefender(GameMaxMinutes):
   
 
   while (finished == 'N'):
+    if StopEvent and StopEvent.is_set():
+      print("*******************************")
+      print("*******************************")
+      print("[Defender] Stop requested — exiting early.")
+      print("*******************************")
+      print("*******************************")
+      finished = True
+      return
+
     
     count  = 0
     bx     = 0
@@ -2449,6 +2458,9 @@ def PlayDefender(GameMaxMinutes):
 
 
 
+      #time.sleep(GameSleep)
+
+
 
         
 
@@ -2490,7 +2502,7 @@ def PlayDefender(GameMaxMinutes):
 
 
 
-def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
+def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
   
   #--------------------------------------
   # M A I N   P R O C E S S I N G      --
@@ -2530,7 +2542,7 @@ def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-  PlayDefender(GameMaxMinutes)
+  PlayDefender(GameMaxMinutes,StopEvent)
       
 
   LED.ClearBigLED()
