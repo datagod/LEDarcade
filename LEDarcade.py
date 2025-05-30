@@ -84,7 +84,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageSequence
 
 
 TheMatrix = None
-
+Canvas    = None
 
 
 
@@ -146,7 +146,7 @@ KeyboardPoll     = 10
 BrightColorCount = 27
 
 
-
+DotMatrix = [[0 for x in range(HatHeight)] for y in range(HatWidth)] 
 
 
 
@@ -13967,7 +13967,7 @@ def DisplayScreenCap(ScreenCap, ZoomFactor=0):
     HIndentFactor = VIndentFactor = 0
 
     # Create new buffer, do not clear existing canvas until after swap
-    new_canvas = TheMatrix.CreateFrameCanvas()
+    new_canvas = Canvas
     new_canvas.Clear()
 
     if ZoomFactor > 1:
@@ -14905,7 +14905,7 @@ def TronGetRandomMessage(MessageType = 'TAUNT'):
                    'WELCOME TO THE REAL WORLD NEO',
                    'PREPARE YOURSELF FOR BATTLE!',
                    'GET ON YOUR BIKES AND RIDE!',
-                   'ANOTHER WARRIOR FOR MY ASMUSEMENT!',
+                   'ANOTHER WARRIOR FOR MY AMUSEMENT!',
                    'DO YOU DARE TO ENTER THE ARENA?',
                    'YOUR JET BIKE HAS A FLAT TIRE',
                    'DO YOU HAVE TIME FOR A GAME?',
@@ -19999,6 +19999,7 @@ def ApplyGamma(value, gamma):
 
 def ActivateRGBMatrix():
    
+   
     
     global TheMatrix, Canvas, ScreenArray, HatWidth, HatHeight
     LoadConfigData()
@@ -20093,10 +20094,6 @@ def Initialize():
         print("LEDarcade already initialized.  Skipping")
         return
     _initialized = True
-
-
-    
-
 
 
 

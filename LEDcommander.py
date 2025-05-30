@@ -226,7 +226,7 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
-                CurrentDisplayMode = "title"
+                CurrentDisplayMode = "defender"
                 DisplayProcess = Process(target=LaunchDefender, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -241,20 +241,20 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
-                CurrentDisplayMode = "title"
+                CurrentDisplayMode = "tron"
                 DisplayProcess = Process(target=LaunchTron, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
             elif Action == "launch_gravitysim":
-                print("[LEDcommander][Run] Launching Defender")
+                print("[LEDcommander][Run] Launching GravitySim")
                 if DisplayProcess and DisplayProcess.is_alive():
                     print("LED display already in use.  Stopping process then restarting")
                     StopEvent.set()
                     DisplayProcess.join()
 
                 StopEvent.clear()
-                CurrentDisplayMode = "title"
+                CurrentDisplayMode = "gravitysim"
                 DisplayProcess = Process(target=LaunchGravitySim, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -754,7 +754,7 @@ def LaunchDotInvaders(Command, StopEvent):
 
     print("[LEDcommander][LaunchDotInvaders] Launching...")
 
-    DI.LaunchDotInvaders(Duration,True)
+    DI.LaunchDotInvaders(Duration,True,StopEvent)
     LED.SweepClean()
     
 
@@ -767,7 +767,7 @@ def LaunchDefender(Command, StopEvent):
 
     print("[LEDcommander][LaunchDefender] Launching...")
 
-    DE.LaunchDefender(Duration,True)
+    DE.LaunchDefender(Duration,True,StopEvent)
     LED.SweepClean()
 
 
@@ -785,15 +785,16 @@ def LaunchGravitySim(Command, StopEvent):
 
     #LED.SweepClean()
 
+
+
+
 def LaunchTron(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import Tron as TR
-    
+   
     Duration         = Command.get("duration",10)
-
     print("[LEDcommander][LaunchTron] Launching...")
-
     TR.LaunchTron(Duration,StopEvent)
 
 

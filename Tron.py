@@ -30,6 +30,8 @@
 
 
 import LEDarcade   as LED
+LED.Initialize()
+
 import copy
 import random
 import time
@@ -1027,6 +1029,8 @@ def PlaySuperWorms(StopEvent=None):
 
   
   
+  print("[Tron] StopEvent:",StopEvent)
+  
   
   
 
@@ -1084,8 +1088,13 @@ def PlaySuperWorms(StopEvent=None):
     #LED.ShowLevelCount(LevelCount)
     
     if StopEvent and StopEvent.is_set():
-      print("[Tron] Stop requested — exiting early.")
+      print("\n" + "="*40)
+      print("[TRON] StopEvent received")
+      print("-> Shutting down gracefully...")
+      print("="*40 + "\n")
       Done = True
+      LevelCount = SuperWormLevels
+      LevelFinished = 'Y'
       break
 
     
@@ -1125,7 +1134,15 @@ def PlaySuperWorms(StopEvent=None):
 
 
     while (LevelFinished == 'N'):
-      
+      if StopEvent and StopEvent.is_set():
+        print("\n" + "="*40)
+        print("[TRON] StopEvent received")
+        print("-> Shutting down gracefully...")
+        print("="*40 + "\n")
+        Done = True
+        LevelFinished = 'Y'
+        break
+
       
       #Check for keyboard input
       m,r = divmod(moves,LED.KeyboardSpeed)
@@ -1339,7 +1356,7 @@ def LaunchTron(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
   LED.TheMatrix.Clear()
   LED.ClearBuffers()
   LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 0,   Text = 'TRON',       RGB = LED.HighBlue,   ShadowRGB = LED.ShadowBlue,   ZoomFactor = 2,GlowLevels=50, DropShadow=True)
-  LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 16,  Text = 'LIGHT CYCLE',RGB = LED.HighRed,    ShadowRGB = LED.ShadowRed,    ZoomFactor = 1,GlowLevels=200,DropShadow=True)
+  LED.ShowGlowingText(CenterHoriz = True,h = 0 ,v = 16,  Text = 'LIGHT CYCLE',RGB = LED.MedRed,    ShadowRGB = LED.ShadowRed,    ZoomFactor = 1,GlowLevels=200,DropShadow=True)
 
     
   BrightRGB, ShadowRGB = LED.GetBrightAndShadowRGB()

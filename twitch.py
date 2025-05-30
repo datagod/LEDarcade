@@ -525,12 +525,12 @@ class Bot(commands.Bot ):
                         self.ClockRunning   = False  # Reset clock flag when terminal closes
 
                 if(self.ChatTerminalOn == False and self.ClockRunning == False):
-                    print("Creating multiprocess DisplayDigitalClock()")
+                    print("[Twitch] Creating multiprocess DisplayDigitalClock()")
                     self.DisplayDigitalClock()
                     self.ClockRunning = True
 
             if (StreamActive == False):
-                print("StreamActive == False, displaying regular clock")
+                print("[Twitch] StreamActive == False")
                 if self.ClockRunning == False:
                     self.DisplayDigitalClock()
                     self.ClockRunning = True

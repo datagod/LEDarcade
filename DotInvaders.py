@@ -1211,7 +1211,7 @@ def ShowFireworks(FireworksExplosion,count,speed):
 
         
           
-def PlayDotInvaders(GameMaxMinutes = 10000):
+def PlayDotInvaders(GameMaxMinutes = 10000,StopEvent = None):
 
   global ArmadaSpeed
   
@@ -1299,7 +1299,16 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
  
 
   #Main Game Loop
-  while (Finished == 'N' and PlayerShip.lives > 0):
+  Finished = False
+  while (Finished == False and PlayerShip.lives > 0):
+    if StopEvent and StopEvent.is_set():
+      print("\n" + "="*40)
+      print("[DotInvader] StopEvent received")
+      print("-> Shutting down gracefully...")
+      print("="*40 + "\n")
+      Finished = True
+      
+      break
 
     #First time through, always show the time
     #Armada, ArmadaHeight, ArmadaWidth = CreateSpecialArmada(FirstTime)
@@ -1399,6 +1408,14 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
     
     # Main timing loop
     while (LevelFinished == 'N' and PlayerShip.alive == 1):
+      if StopEvent and StopEvent.is_set():
+        print("\n" + "="*40)
+        print("[DEFENDER] StopEvent received")
+        print("-> Shutting down gracefully...")
+        print("="*40 + "\n")
+        LevelFinished = 'Y'
+        PlayerShip.alive = 0
+        break
       moves = moves + 1
 
 
@@ -1719,7 +1736,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000):
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
 
-def LaunchDotInvaders(GameMaxMinutes = 10000, ShowIntro = True):
+def LaunchDotInvaders(GameMaxMinutes = 10000, ShowIntro = True, StopEvent = None):
   
   global start_time
 
@@ -1751,17 +1768,17 @@ def LaunchDotInvaders(GameMaxMinutes = 10000, ShowIntro = True):
     CursorV = 0
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"CONNECTING TO PLANETARY DEFENCE SYSTEMS",CursorH=CursorH,CursorV=CursorV,MessageRGB=(100,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"HIGH SCORE: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(LED.DotInvadersHighScore),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.DotInvadersGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
-    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+    #LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"HIGH SCORE: " ,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    #LED.ScreenArray, CursorH,CursorV = LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray, str(LED.DotInvadersHighScore),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    #LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
+    #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"Games Played:",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,205,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    #LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,str(LED.DotInvadersGamesPlayed),CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,150),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
+    #LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=1)
     LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"GOOD LUCK!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,0,255),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=0.005,ScrollSpeed=ScrollSleep)
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-  PlayDotInvaders(GameMaxMinutes)
+  PlayDotInvaders(GameMaxMinutes,StopEvent)
         
 
 

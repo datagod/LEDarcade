@@ -1590,17 +1590,18 @@ def PlayDefender(GameMaxMinutes,StopEvent=None):
   #Canvas2.Fill(22,0,0)
   
   
-
-  while (finished == 'N'):
+  Finished = False
+  while (Finished == False):
     if StopEvent and StopEvent.is_set():
       print("*******************************")
       print("*******************************")
       print("[Defender] Stop requested — exiting early.")
       print("*******************************")
       print("*******************************")
-      finished = True
-      return
-
+      Finished = True
+      break
+    
+      
     
     count  = 0
     bx     = 0
@@ -1626,8 +1627,18 @@ def PlayDefender(GameMaxMinutes,StopEvent=None):
     Defender.v = 25
     
     
+    Done = False
+    while(Done == False):
+      if StopEvent and StopEvent.is_set():
+        print("\n" + "="*40)
+        print("[DEFENDER] StopEvent received")
+        print("-> Shutting down gracefully...")
+        print("="*40 + "\n")
+        Finished = True
+        Done     = True
+        break
 
-    while(1==1):
+
       #main counter
       count = count + 1
 
