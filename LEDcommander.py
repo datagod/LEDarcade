@@ -246,6 +246,19 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+            elif Action == "launch_fallingsand":
+                print("[LEDcommander][Run] Launching fallingsand")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "tron"
+                DisplayProcess = Process(target=LaunchFallingSand, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
             elif Action == "launch_gravitysim":
                 print("[LEDcommander][Run] Launching GravitySim")
                 if DisplayProcess and DisplayProcess.is_alive():
@@ -754,7 +767,7 @@ def LaunchDotInvaders(Command, StopEvent):
 
     print("[LEDcommander][LaunchDotInvaders] Launching...")
 
-    DI.LaunchDotInvaders(Duration,True,StopEvent)
+    DI.LaunchDotInvaders(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     LED.SweepClean()
     
 
@@ -764,10 +777,9 @@ def LaunchDefender(Command, StopEvent):
     LED.Initialize()
     import Defender as DE
     Duration         = Command.get("duration",1)
-
     print("[LEDcommander][LaunchDefender] Launching...")
 
-    DE.LaunchDefender(Duration,True,StopEvent)
+    DE.LaunchDefender(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     LED.SweepClean()
 
 
@@ -775,27 +787,30 @@ def LaunchGravitySim(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import gravitysim as GR
-    
     Duration         = Command.get("duration",10)
-
     print("[LEDcommander][LaunchGravitySim] Launching...")
 
-    GR.Launch(Duration,StopEvent)
-
-
-    #LED.SweepClean()
-
-
+    GR.Launch(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
 def LaunchTron(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import Tron as TR
-   
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchTron] Launching...")
-    TR.LaunchTron(Duration,StopEvent)
+
+    TR.LaunchTron(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+def LaunchFallingSand(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import FallingSand as FS
+    Duration         = Command.get("duration",10)
+    print("[LEDcommander][LaunchFallingSand] Launching...")
+
+    FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
 

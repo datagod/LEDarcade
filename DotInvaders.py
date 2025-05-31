@@ -1211,7 +1211,7 @@ def ShowFireworks(FireworksExplosion,count,speed):
 
         
           
-def PlayDotInvaders(GameMaxMinutes = 10000,StopEvent = None):
+def PlayDotInvaders(Duration = 10000,StopEvent = None):
 
   global ArmadaSpeed
   
@@ -1282,7 +1282,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000,StopEvent = None):
   HighScoreSprite = LED.CreateBannerSprite('0')
   
   DisplayScoreSpeed = 500
-  SpaceInvaderDisplaySpeed = 750
+  SpaceInvaderDisplaySpeed = 5000
 
  
   #CreateExplosionSprites
@@ -1689,7 +1689,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000,StopEvent = None):
       
       #End game after X seconds
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
-      if(m > GameMaxMinutes):
+      if(m > Duration):
         print("Elapsed Time:  mm:ss",m,s)
         LED.SaveConfigData()
         print("Ending game after",m," minutes")
@@ -1736,7 +1736,7 @@ def PlayDotInvaders(GameMaxMinutes = 10000,StopEvent = None):
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
 
-def LaunchDotInvaders(GameMaxMinutes = 10000, ShowIntro = True, StopEvent = None):
+def LaunchDotInvaders(Duration = 10000, ShowIntro = True, StopEvent = None):
   
   global start_time
 
@@ -1778,7 +1778,7 @@ def LaunchDotInvaders(GameMaxMinutes = 10000, ShowIntro = True, StopEvent = None
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-  PlayDotInvaders(GameMaxMinutes,StopEvent)
+  PlayDotInvaders(Duration,StopEvent)
         
 
 

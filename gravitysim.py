@@ -131,7 +131,7 @@ InterParticleForceEnabled = True
 
 
 
-def RunSimulation(duration=5,StopEvent=None):
+def RunSimulation(Duration=5,StopEvent=None):
     global SunMass, SunX, SunY, zoom, manual_zoom_active, manual_zoom_level, InterParticleForceEnabled, particles, active_mask, burst_bias, burst_timer
 
 
@@ -605,13 +605,25 @@ def RunSimulation(duration=5,StopEvent=None):
     fps_counter = 0
 
     Done = False
+    
+    
+    start_time = time.time()
     try:
         while Done == False:
         
-            if StopEvent and StopEvent.is_set():
-                print("[GravitySim] Stop requested — exiting early.")
+            if frame % 500 == 0 and (time.time() - start_time) >= (Duration * 60):
                 Done = True
                 break
+
+
+            if StopEvent and StopEvent.is_set():
+                print("\n" + "="*40)
+                print("[GravitySim] StopEvent received")
+                print("-> Shutting down gracefully...")
+                print("="*40 + "\n")
+                Done = True
+                break
+
 
 
             key = get_keypress()
@@ -698,24 +710,25 @@ def RunSimulation(duration=5,StopEvent=None):
 
 
 
-def Launch(duration=5,StopEvent=None):
+def Launch(Duration=5,ShowIntro=True,StopEvent=None):
 
-    LED.ShowTitleScreen(
-        BigText             = 'GRAVITY',
-        BigTextRGB          = LED.HighRed,
-        BigTextShadowRGB    = LED.ShadowRed,
-        LittleText          = 'SIMULATOR',
-        LittleTextRGB       = LED.MedGreen,
-        LittleTextShadowRGB = (0,10,0), 
-        ScrollText          = 'lets watch comets orbiting a star',
-        ScrollTextRGB       = LED.MedYellow,
-        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
-        DisplayTime         = 1,           # time in seconds to wait before exiting 
-        ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
-        )
+    if ShowIntro:
+        LED.ShowTitleScreen(
+            BigText             = 'GRAVITY',
+            BigTextRGB          = LED.HighRed,
+            BigTextShadowRGB    = LED.ShadowRed,
+            LittleText          = 'SIMULATOR',
+            LittleTextRGB       = LED.MedGreen,
+            LittleTextShadowRGB = (0,10,0), 
+            ScrollText          = 'lets watch comets orbiting a star',
+            ScrollTextRGB       = LED.MedYellow,
+            ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+            DisplayTime         = 1,           # time in seconds to wait before exiting 
+            ExitEffect          = 0            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+            )
 
 
-    RunSimulation(duration,StopEvent)
+    RunSimulation(Duration,StopEvent)
 
 if __name__ == "__main__":
     Launch()    

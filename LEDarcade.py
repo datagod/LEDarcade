@@ -15114,14 +15114,15 @@ def ShowTitleScreen(
       #print('Random Bounce2')
       ZoomScreen(ScreenArray,32,42,Fade=False,ZoomSleep=0.015)
       ZoomScreen(ScreenArray,42,1,Fade=True,ZoomSleep=0.0)
+
     elif (r == 4):
-      #print('FallingSand')
+      #print('Fade')
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=1)
 
     elif (r == 5):
-      #print('Fade')
+      #print('FallingSand')
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)
@@ -15144,14 +15145,13 @@ def ShowTitleScreen(
       ZoomScreen(ScreenArray,11,128,Fade=True,ZoomSleep=0)
 
   elif(ExitEffect == 4):
-      #falling sand
-      print('FallingSand')
+      print("Fade")
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=1)
 
   elif(ExitEffect == 5):
-      print('FallingSand')
+      print("FallingSand")
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
       TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=2)

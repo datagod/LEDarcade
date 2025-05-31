@@ -1316,7 +1316,7 @@ def PlaySuperWorms(StopEvent=None):
 # M A I N   P R O C E S S I N G      --
 #--------------------------------------
 
-def LaunchTron(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
+def LaunchTron(Duration = 10000,ShowIntro=True,StopEvent=None):
   
   global start_time
   start_time = time.time()
@@ -1326,6 +1326,11 @@ def LaunchTron(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
   Message1 = LED.TronGetRandomMessage(MessageType = 'SHORTGAME')
   Message2 = LED.TronGetRandomMessage(MessageType = 'CHALLENGE')
 
+
+  print("************************************************")
+  print("[LaunchTron] StopEvent is", StopEvent)
+  print("************************************************")
+  
 
   if(ShowIntro == True):
     LED.ClearBigLED()
@@ -1373,7 +1378,7 @@ def LaunchTron(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
   LED.TheMatrix.Clear()
 
 
-  PlaySuperWorms()
+  PlaySuperWorms(StopEvent)
 
 
 

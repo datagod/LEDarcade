@@ -1550,7 +1550,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who')
         time.sleep(6)
-        await ctx.send('Available games: ?astrosmash ?gravity ?invaders  ?defender ?outbreak ?tron')
+        await ctx.send('Available games: ?astrosmash ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
 
 
 
@@ -2035,7 +2035,6 @@ class Bot(commands.Bot ):
     # DEFENDER                             --
     #----------------------------------------
 
-
     @commands.command()
     async def defender(self, ctx: commands.Context):
       #Play game Defender
@@ -2050,7 +2049,6 @@ class Bot(commands.Bot ):
     # TRON                                 --
     #----------------------------------------
 
-
     @commands.command()
     async def tron(self, ctx: commands.Context):
       #Play game Tron
@@ -2058,6 +2056,19 @@ class Bot(commands.Bot ):
         message = "Time for some jetbike races"
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_tron", "Duration": 10 })
+
+
+    #----------------------------------------
+    # FALLING SAND                         --
+    #----------------------------------------
+
+    @commands.command()
+    async def fallingsand(self, ctx: commands.Context):
+      #Play game FallingSand
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Watch the pretty sand fall...and explode!"
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_fallingsand", "Duration": 10 })
 
 
     #----------------------------------------
