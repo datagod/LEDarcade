@@ -255,7 +255,7 @@ def LaunchFallingSand(Duration=10, ShowIntro=True, StopEvent=None):
                 print("[INFO] StopEvent received, exiting simulation loop.")
                 break
 
-            if Duration and (time.time() - start_time > Duration):
+            if Duration and (time.time() - start_time > (Duration * 60)):
                 print("[INFO] Duration limit reached, exiting simulation loop.")
                 break
 
