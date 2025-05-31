@@ -1197,6 +1197,7 @@ def setpixelsLED(TheBuffer):
 
 
 def setpixelLEDOnly(x, y, r,g,b):
+  global TheMatrix
   TheMatrix.SetPixel(x,y,r,g,b)
   
 
@@ -20099,6 +20100,8 @@ def Initialize():
 
 
     ActivateRGBMatrix()
+    if TheMatrix is None:
+        raise RuntimeError("ERROR: TheMatrix failed to initialize. Check RGBMatrixOptions or matrix hardware connection.")
 
 
 

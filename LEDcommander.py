@@ -199,10 +199,27 @@ def Run(CommandQueue):
 
 
             #----------------------------------
-            #-- LAUNCH PROGRAMS
+            #-- STARRY NIGHT VARIATIONS
             #----------------------------------
 
 
+            elif Action == "starrynightdisplaytext":
+                print("[LEDcommander][Run] Starry Night Display Text")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "starrynight"
+                DisplayProcess = Process(target=StarryNightDisplayText, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+            #----------------------------------
+            #-- LAUNCH PROGRAMS
+            #----------------------------------
 
 
             elif Action == "launch_dotinvaders":
@@ -811,6 +828,24 @@ def LaunchFallingSand(Command, StopEvent):
     print("[LEDcommander][LaunchFallingSand] Launching...")
 
     FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+def StarryNightDisplayText(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    print("[LEDcommander][StarryNightDisplay] Launching...")
+    Text1  = Command.get("text1",'text1')
+    Text2  = Command.get("text2",'text2')
+    Text3  = Command.get("text3",'text3')
+
+    LED.StarryNightDisplayText(
+    Text1       = Text1,
+    Text2       = Text2,
+    Text3       = Text3, 
+    ScrollSleep = 0.015,
+    RunSeconds  = 30
+    )
+
 
 
 

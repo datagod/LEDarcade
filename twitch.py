@@ -693,13 +693,21 @@ class Bot(commands.Bot ):
         #---------------------------------------
         if (author.upper() == 'KOFISTREAMBOT'  and "VISIT" in message.content.upper()):
           print("CHAT| KofiBot detected")
-          LED.StarryNightDisplayText(
+
+          message = "Time for a Kofi"
+          await self.Channel.send(message)
+          
           Text1       = "KOFI",
           Text2       = "WE APPRECIATE YOUR SUPPORT",
           Text3       = "KOFI IS THE PREFERRED WAY TO SUPPORT THIS CHANNEL", 
-          ScrollSleep = 0,
-          RunSeconds  = 30
-          )
+
+          CommandQueue.put({"Action": "StarryNightDisplayText",
+                            "text1": Text1,
+                            "text2": Text2,
+                            "text1": Text3}
+                            )
+
+
 
 
 
@@ -711,13 +719,16 @@ class Bot(commands.Bot ):
         #if (author == 'StreamElements'  and message.content.upper() == ""):
         if (author.upper() == 'STREAMELEMENTS'  and "THE ALLIANCE" in message.content.upper()):
           print("CHAT| TACO detected")
-          LED.StarryNightDisplayText(
+
           Text1       = "TACO",
           Text2       = "The Alliance for creative outreach",
           Text3       = "visit taconetwork.org to learn all about us", 
-          ScrollSleep = 0,
-          RunSeconds  = 30
-          )
+
+          CommandQueue.put({"Action": "starrynightdisplaytext",
+                            "text1": Text1,
+                            "text2": Text2,
+                            "text1": Text3}
+                            )
 
 
   
@@ -734,13 +745,17 @@ class Bot(commands.Bot ):
           #LED.ClearBigLED()
           #LED.ClearBuffers()
 
-          LED.StarryNightDisplayText(
           Text1       = BitGiver + " just threw down " + bits + " bits",
           Text2       = "Thank you " + BitGiver,
           Text3       = "Bits are an important part of the economy.  Your contribution is appreciated!", 
-          ScrollSleep = 0.01,
-          RunSeconds  = 30
-          )
+
+          CommandQueue.put({"Action": "StarryNightDisplayText",
+                            "text1": Text1,
+                            "text2": Text2,
+                            "text1": Text3}
+                            )
+
+
 
 
 
@@ -752,13 +767,15 @@ class Bot(commands.Bot ):
           words  = message.content.split(" ")
           follower = words[4] 
           print("CHAT|",follower,"is now following")
-          LED.StarryNightDisplayText(
+
           Text1       = follower + " is now following" ,
           Text2       = "Thank you " + follower,
           Text3       = "Welcome to our community.  We appreciate you joining us!", 
-          ScrollSleep = 0.00,
-          RunSeconds  = 30
-          )
+          CommandQueue.put({"Action": "StarryNightDisplayText",
+                            "text1": Text1,
+                            "text2": Text2,
+                            "text1": Text3}
+                            )
 
 
 
@@ -771,17 +788,16 @@ class Bot(commands.Bot ):
           words  = message.content.split(" ")
           raider = words[0] 
           print("CHAT|",raider,"is raiding")
+          
+          Text1       = raider + " is raiding"
+          Text2       = "Thank you " + raider
+          Text3       = "Welcome to our community.  Stick around and have fun!"
 
-          #LED.ClearBigLED()
-          #LED.ClearBuffers()
-
-          LED.StarryNightDisplayText(
-          Text1       = raider + " is raiding" ,
-          Text2       = "Thank you " + raider,
-          Text3       = "Welcome to our community.  Stick around and have fun!", 
-          ScrollSleep = 0.00,
-          RunSeconds  = 30
-          )
+          CommandQueue.put({"Action": "StarryNightDisplayText",
+                  "text1": Text1,
+                  "text2": Text2,
+                  "text1": Text3}
+                  )
 
 
 
@@ -2099,13 +2115,19 @@ class Bot(commands.Bot ):
     @commands.command()
     async def taco(self, ctx: commands.Context):
       print("CHAT| TACO detected")
-      LED.StarryNightDisplayText(
-      Text1       = "TACO",
-      Text2       = "The Alliance for creative outreach",
-      Text3       = "visit taconetwork.org to learn all about us", 
-      ScrollSleep = 0.01,
-      RunSeconds  = 30
-      )
+
+      message = "Is it TACO Tuesday?"
+      await self.Channel.send(message)
+      
+      Text1       = "TACO"
+      Text2       = "The Alliance for creative outreach"
+      Text3       = "visit taconetwork.org to learn all about us"
+
+      CommandQueue.put({"Action": "StarryNightDisplayText",
+                         "text1": Text1,
+                         "text2": Text2,
+                         "text1": Text3}
+                         )
 
 
 
@@ -2142,27 +2164,6 @@ class Bot(commands.Bot ):
    #     ZoomFactor    = 3,
    #     sleep         = 0.02 
    #     )
-
-
-      LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
-        LED.PacManLeftSprite,
-        Position      = 'middle',
-        Vadjust       = 0,
-        direction     = "left",
-        StepsPerFrame = 3,
-        ZoomFactor    = 3,
-        sleep         = 0.01
-        )
-
-      LED.MoveAnimatedSpriteAcrossScreenStepsPerFrame(
-        LED.PacManRightSprite,
-        Position      = 'bottom',
-        Vadjust       = 0 ,
-        direction     = "right",
-        StepsPerFrame = 3,
-        ZoomFactor    = 3,
-        sleep         = 0.0 
-        )
 
 
 
