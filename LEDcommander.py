@@ -110,7 +110,7 @@ def Run(CommandQueue):
             "Action": "showclock",
             "Style": 1,
             "Zoom": 3 ,
-            "Duration": 10,  # minutes
+            "Duration": 5,  # minutes
             "Delay": 30
              }
 
