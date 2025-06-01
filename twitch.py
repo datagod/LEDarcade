@@ -122,7 +122,8 @@ TerminalTypeSpeed   = 0.02  #pause in seconds between characters
 TerminalScrollSpeed = 0.02  #pause in seconds between new lines
 CursorRGB           = (0,255,0)
 CursorDarkRGB       = (0,50,0)
-
+RotateClockDelay    = 5     #minutes between each clock rotation (launch an LEDarcade display every X minutes using LEDcommander)
+ClockDuration       = 1
 
 #TWITCH VARIABLES
 #LEDARCADE_APP_ACCESS_TOKEN  = ''
@@ -525,16 +526,31 @@ class Bot(commands.Bot ):
                         self.ClockRunning   = False  # Reset clock flag when terminal closes
 
                 if(self.ChatTerminalOn == False and self.ClockRunning == False):
-                    print("[Twitch] Creating multiprocess DisplayDigitalClock()")
-                    self.DisplayDigitalClock()
+                    #print("[Twitch] Creating multiprocess DisplayDigitalClock()")
+                    #self.DisplayDigitalClock()
                     self.ClockRunning = True
+                    await self.RotateClockDisplays(RotateClockDelay)
 
+
+
+
+            #-------------------------------------------------------------------------
+            #-- If stream is not active, run a series of displays for X minutes each
+            #-------------------------------------------------------------------------
+            
             if (StreamActive == False):
                 print("[Twitch] StreamActive == False")
-                if self.ClockRunning == False:
-                    self.DisplayDigitalClock()
-                    self.ClockRunning = True
                 
+                await self.RotateClockDisplays(RotateClockDelay)
+                
+                #if self.ClockRunning == False:
+                #    self.DisplayDigitalClock()
+                #    self.ClockRunning = True
+                
+
+                
+
+
 
             h,m,s = LED.GetElapsedTime(self.LastChatInfoTime,time.time())
             if (m >= self.MinutesToWaitBeforeChatInfo):
@@ -654,12 +670,56 @@ class Bot(commands.Bot ):
 
     
 
-    #async def event_raw_data(self, raw_message):
-    #    print(raw_message)
         
+    #---------------------------------------
+    # Rotate Clock Displays               --
+    #---------------------------------------
+    async def RotateClockDisplays(self, RotateClockDelay: int = 5):
+        
+        self.DisplayDigitalClock(ClockDuration)
+        await asyncio.sleep(RotateClockDelay * 60)
 
-    
-      
+        #StarryNight clock display (style=3)
+        CommandQueue.put({ "Action": "showclock",   "Style": 3,  "Zoom": 2,   "Duration": 10, "Delay": 10  })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+
+        CommandQueue.put({"Action": "launch_defender", "Duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+
+        CommandQueue.put({"Action": "launch_dotinvaders", "Duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+
+        CommandQueue.put({"Action": "launch_gravitysim", "Duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+
+        CommandQueue.put({"Action": "launch_tron", "Duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+        CommandQueue.put({"Action": "launch_outbreak", "Duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+        CommandQueue.put({"Action": "launch_spacedot", "Duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+        CommandQueue.put({"Action": "launch_fallingsand", "Duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
+
+
+
+
     #---------------------------------------
     # READ CHAT MESSAGES                  --
     #---------------------------------------
@@ -1152,7 +1212,7 @@ class Bot(commands.Bot ):
     # Turn on RegularClock                --
     #---------------------------------------
 
-    def DisplayDigitalClock(self):
+    def DisplayDigitalClock(self,ClockDuration):
       global CommandQueue
       print("Starting: DisplayDigitalClock")
 
@@ -1165,7 +1225,7 @@ class Bot(commands.Bot ):
             "Action": "showclock",
             "Style": 1,
             "Zoom": 3 ,
-            "Duration": 600,  # minutes
+            "Duration": ClockDuration,  # minutes
             "Delay": self.AnimationDelay
         })
 
@@ -2096,8 +2156,6 @@ class Bot(commands.Bot ):
             "Duration": 10,  # minutes
             "Delay": 10
         })
-      CursorH = 0
-      CursorV = 0
 
 
     #----------------------------------------
@@ -3682,6 +3740,9 @@ def start_led_commander():
 
     print("LEDcommander launched.")
     return command_queue, process
+
+
+
 
 
 

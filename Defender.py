@@ -1377,7 +1377,7 @@ def FlattenGround(h1,h2,v,Ground):
   return Ground
 
 
-def PlayDefender(GameMaxMinutes,StopEvent=None):      
+def PlayDefender(Duration,StopEvent=None):      
  
   global EnemyShipCount
   global HumanCount
@@ -1691,7 +1691,7 @@ def PlayDefender(GameMaxMinutes,StopEvent=None):
         h,m,s    = LED.GetElapsedTime(start_time,time.time())
         print("Elapsed Time:  mm:ss",m,s)
 
-        if(m > GameMaxMinutes):
+        if(m > Duration):
           LED.SaveConfigData()
           print("Ending game after",m," minutes")
 
@@ -2513,7 +2513,7 @@ def PlayDefender(GameMaxMinutes,StopEvent=None):
 
 
 
-def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
+def LaunchDefender(Duration = 10000,ShowIntro=True,StopEvent=None):
   
   #--------------------------------------
   # M A I N   P R O C E S S I N G      --
@@ -2553,7 +2553,7 @@ def LaunchDefender(GameMaxMinutes = 10000,ShowIntro=True,StopEvent=None):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-  PlayDefender(GameMaxMinutes,StopEvent)
+  PlayDefender(Duration,StopEvent)
       
 
   LED.ClearBigLED()
@@ -2574,7 +2574,7 @@ if __name__ == "__main__" :
     #LED.LoadConfigData()
     #LED.SaveConfigData()
     print("After SAVE DefenderGamesPlayed:",LED.DefenderGamesPlayed)
-    LaunchDefender(100000,False)        
+    LaunchDefender(100000,False,StopEvent)        
 
 
 
