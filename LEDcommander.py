@@ -262,6 +262,32 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=LaunchTron, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+            elif Action == "launch_outbreak":
+                print("[LEDcommander][Run] Launching Outbreak")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "outbreak"
+                DisplayProcess = Process(target=LaunchOutbreak, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+            elif Action == "launch_spacedot":
+                print("[LEDcommander][Run] Launching SpaceDot")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "spacedot"
+                DisplayProcess = Process(target=LaunchSpaceDot, args=(Command, StopEvent))
+                DisplayProcess.start()
+
 
             elif Action == "launch_fallingsand":
                 print("[LEDcommander][Run] Launching fallingsand")
@@ -820,6 +846,31 @@ def LaunchTron(Command, StopEvent):
     TR.LaunchTron(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
+def LaunchSpaceDot(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import SpaceDot as SD
+    Duration         = Command.get("duration",10)
+    print("[LEDcommander][LaunchSpaceDot] Launching...")
+
+    SD.LaunchSpaceDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+
+
+def LaunchOutbreak(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Outbreak as OB
+    Duration         = Command.get("duration",10)
+    print("[LEDcommander][LaunchOutbreak] Launching...")
+
+    OB.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+
+
+
 def LaunchFallingSand(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
@@ -828,6 +879,9 @@ def LaunchFallingSand(Command, StopEvent):
     print("[LEDcommander][LaunchFallingSand] Launching...")
 
     FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+
 
 
 def StarryNightDisplayText(Command, StopEvent):

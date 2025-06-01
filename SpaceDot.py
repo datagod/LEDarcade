@@ -41,6 +41,7 @@
 #------------------------------------------------------------------------------
 
 import LEDarcade as LED
+LED.Initialize()
 import copy
 import random
 import time
@@ -1696,7 +1697,7 @@ def CheckGroundDamage(TheGround):
   for i in range (SpaceDotMinH,SpaceDotMaxH):
     if (Playfield[GroundV][i].r == 255):
       DamageCount = DamageCount + 1
-  print ("Ground Damage:",DamageCount)
+      #print ("Ground Damage:",DamageCount)
 
   if(DamageCount >= GroundDamageLimit):
     print ("*** PLANET CRUST DESTROYED ***")
@@ -1718,9 +1719,8 @@ def CenterSpriteOnShip(Sprite,Ship):
 
 
   
-def PlaySpaceDot(GameMaxMinutes = 5):
-  
-  
+def PlaySpaceDot(Duration = 5,StopEvent=None):
+   
   global PlayerShip
   global EnemyShip
   global BomberShip
@@ -1968,8 +1968,17 @@ def PlaySpaceDot(GameMaxMinutes = 5):
 
     
     # Main timing loop
-    while (LevelFinished == 'N' and PlayerShip.alive == 1):
+    while (LevelFinished == 'N' and PlayerShip.alive == 1 ):
       moves = moves + 1
+
+      if StopEvent and StopEvent.is_set():
+        print("\n" + "="*40)
+        print("[SpaceDot] StopEvent received")
+        print("-> Shutting down gracefully...")
+        print("="*40 + "\n")
+        LevelFinished = 'Y'
+        PlayerShip.alive = 0
+        break
 
 
       #check the time once in a while
@@ -1986,9 +1995,9 @@ def PlaySpaceDot(GameMaxMinutes = 5):
 
         #End game after X seconds
         h,m,s    = LED.GetElapsedTime(start_time,time.time())
-        print("Elapsed Time:  mm:ss",m,s)
+        #print("Elapsed Time:  mm:ss",m,s)
 
-        if(m > GameMaxMinutes):
+        if(m > Duration):
           LED.SaveConfigData()
           print("Ending game after",m," minutes")
 
@@ -2596,12 +2605,12 @@ def PlaySpaceDot(GameMaxMinutes = 5):
           if(r == 0):
             LED.SaveConfigData()
 
-          print ("Wave:",Wave.WaveCount,"Asteroids in wave:",Wave.AsteroidCount)
-          print("----")
+          #print ("Wave:",Wave.WaveCount,"Asteroids in wave:",Wave.AsteroidCount)
+          #print("----")
           
 
         
-      #time.sleep(MainSleep / 25)
+      time.sleep(MainSleep / 50)
       
       
   LED.ClearBigLED()
@@ -2630,7 +2639,7 @@ def PlaySpaceDot(GameMaxMinutes = 5):
 
 
 
-def LaunchSpaceDot(GameMaxMinutes = 10000,ShowIntro=True):
+def LaunchSpaceDot(Duration = 10000,ShowIntro=True,StopEvent=None):
   
     
     
@@ -2679,7 +2688,7 @@ def LaunchSpaceDot(GameMaxMinutes = 10000,ShowIntro=True):
   LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-  PlaySpaceDot(GameMaxMinutes)
+  PlaySpaceDot(Duration,StopEvent)
       
 
 
@@ -2692,7 +2701,7 @@ def LaunchSpaceDot(GameMaxMinutes = 10000,ShowIntro=True):
 if __name__ == "__main__" :
   while(1==1):
     #print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
-    LaunchSpaceDot(100000)        
+    LaunchSpaceDot(Duration=100000, ShowIntro=True, StopEvent=None)        
 
 
 

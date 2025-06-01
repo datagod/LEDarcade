@@ -727,7 +727,7 @@ class Bot(commands.Bot ):
           CommandQueue.put({"Action": "starrynightdisplaytext",
                             "text1": Text1,
                             "text2": Text2,
-                            "text1": Text3}
+                            "text3": Text3}
                             )
 
 
@@ -1224,6 +1224,7 @@ class Bot(commands.Bot ):
 
       BitsThrown = 0
 
+
       #--------------------------------------
       #-- Patreon Events                   --
       #--------------------------------------
@@ -1268,7 +1269,6 @@ class Bot(commands.Bot ):
             Text3 = "You are an awesome supporter!",
             RunSeconds = 60
             )                    
-          
 
 
 
@@ -2021,13 +2021,9 @@ class Bot(commands.Bot ):
     async def outbreak(self, ctx: commands.Context):
       #Play game Outbreak
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Looks like you want to play some Outbreak..."
+        message = "An infection is spreading..."
         await self.Channel.send(message)
-      OB.LaunchOutbreak(GameMaxMinutes = 2,ShowIntro = False)
-      LED.ClearBigLED()
-      LED.ClearBuffers()
-      CursorH = 0
-      CursorV = 0
+      CommandQueue.put({"Action": "launch_outbreak", "Duration": 10 })
 
 
     #----------------------------------------
@@ -2036,15 +2032,11 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def astrosmash(self, ctx: commands.Context):
-      #Play game Outbreak
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Uh oh.  The sky is falling.  Lets watch AstroSmash..."
+        message = "The sky is falling..."
         await self.Channel.send(message)
-      SD.LaunchSpaceDot(GameMaxMinutes = 2,ShowIntro = False)
-      LED.ClearBigLED()
-      LED.ClearBuffers()
-      CursorH = 0
-      CursorV = 0
+      CommandQueue.put({"Action": "launch_spacedot", "Duration": 10 })
+
 
 
     #----------------------------------------
@@ -2109,7 +2101,7 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # STARRY NIGHT CLOCK                   --
+    # TACO                                 --
     #----------------------------------------
 
     @commands.command()

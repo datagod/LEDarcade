@@ -49,6 +49,7 @@ from __future__ import print_function
 
 
 import LEDarcade as LED
+LED.Initialize()
 import copy
 import random
 import time
@@ -3427,7 +3428,7 @@ MaxBright         = 255
     
 
 
-def PlayOutbreak(GameMaxMinutes):      
+def PlayOutbreak(Duration,StopEvent):      
  
   global mutationrate 
   global mutationdeathrate
@@ -3551,6 +3552,17 @@ def PlayOutbreak(GameMaxMinutes):
   #--------------------------------
 
   while (finished == "N" and VirusMoves < MaxVirusMoves and LevelsPlayed <= MaxLevelsPlayed and VirusCount > 0):
+    if StopEvent and StopEvent.is_set():
+      print("\n" + "="*40)
+      print("[Outbreak] StopEvent received")
+      print("-> Shutting down gracefully...")
+      print("="*40 + "\n")
+      finished = 'Y'
+      VirusMoves = MaxVirusMoves
+      VirusCount = 0    
+      break
+
+    
     VirusMoves = VirusMoves + 1
 
     if(VirusMoves > LED.OutbreakHighScore):
@@ -3880,7 +3892,7 @@ def PlayOutbreak(GameMaxMinutes):
 
       #End game after X minutes
       h,m,s    = LED.GetElapsedTime(start_time,time.time())
-      if(m > GameMaxMinutes):
+      if(m > Duration):
         print("Elapsed Time:  mm:ss",m,s)
         LED.SaveConfigData()
         print("Ending game after",m," minutes")
@@ -3974,7 +3986,7 @@ def PlayOutbreak(GameMaxMinutes):
 
 
 
-def LaunchOutbreak(GameMaxMinutes = 10000, ShowIntro = True):
+def LaunchOutbreak(Duration = 10000, ShowIntro = True, StopEvent=None):
   
   #--------------------------------------
   # M A I N   P R O C E S S I N G      --
@@ -4017,7 +4029,7 @@ def LaunchOutbreak(GameMaxMinutes = 10000, ShowIntro = True):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-  PlayOutbreak(GameMaxMinutes)
+  PlayOutbreak(Duration,StopEvent)
         
 
   LED.ClearBigLED()
@@ -4046,7 +4058,7 @@ if __name__ == "__main__" :
     LED.LoadConfigData()
     LED.SaveConfigData()
     print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
-    LaunchOutbreak(100000,ShowIntro = False)        
+    LaunchOutbreak(100000,ShowIntro = False, StopEvent=None)        
 
 
 
