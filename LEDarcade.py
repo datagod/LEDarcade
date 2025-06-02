@@ -1069,7 +1069,7 @@ def LoadConfigData():
 
 
 
-
+ 
 
 #------------------------------------------------------------------------------
 #                                                                            --
@@ -16548,7 +16548,7 @@ def DisplayDigitalClock(
 
         hh1,mmm1,ss1 = GetElapsedTime(LastAnimation,time.time())
         if(ss1 >= AnimationDelay):
-          #print("animation delay")
+          print("[LEDarcade][DisplayDigitalClock] Showing animation ")
           LastAnimation = time.time()
 
 
@@ -16939,6 +16939,8 @@ def DisplayDigitalClock(
       while (Done == False):
 
         if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
+          print("[LEDarcade][DisplayDigitalClock] Time:", datetime.now().strftime('%H:%M'))
+
           #ClearBuffers() #clean the internal graphic buffers
           ClockSprite = CreateClockSprite(hh)
           ScreenArray = CopySpriteToScreenArrayZoom(ClockSprite,45,0,(150,0,0),(0,0,0),1,Fill=True)
@@ -17690,6 +17692,7 @@ def DisplayDigitalClock(
 
 
         if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
+          print("[LEDarcade][DisplayDigitalClock] Time:", datetime.now().strftime('%H:%M'))
           ClockSprite = CreateClockSprite(hh)
           h = HatWidth - ClockSprite.width * ZoomFactor - 2
 

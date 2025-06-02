@@ -2570,6 +2570,7 @@ def LaunchDefender(Duration = 10000,ShowIntro=True,StopEvent=None):
 
 #execute if this script is called directly
 if __name__ == "__main__" :
+  StopEvent=None
   while(1==1):
     #LED.LoadConfigData()
     #LED.SaveConfigData()
