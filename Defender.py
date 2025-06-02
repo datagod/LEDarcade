@@ -607,7 +607,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   
   for human in Humans:
     if StartX <= human.h <= StopX and StartY <= human.v <= StopY:
-        print(f"Human in laser range at H={human.h}, V={human.v}")
+        #print(f"Human in laser range at H={human.h}, V={human.v}")
         RequestGroundLaser = True
         RequestBombDrop = True
         Found = True
@@ -616,7 +616,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   
   for ship in EnemyShips:
     if StartX <= ship.h <= StopX and StartY <= ship.v <= StopY:
-        print(f"Enemy in laser range at H={ship.h}, V={ship.v}")
+        #print(f"Enemy in laser range at H={ship.h}, V={ship.v}")
         RequestGroundLaser = True
         RequestBombDrop = True
         Found = True
@@ -2438,7 +2438,7 @@ def PlayDefender(Duration,StopEvent=None):
               ship for ship in EnemyShips
               if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
           ]
-          print("Garbage cleanup EnemyShips:", len(EnemyShips))
+          #print("Garbage cleanup EnemyShips:", len(EnemyShips))
 
       # -- Ground Particles Cleanup --
       if random.randint(0, GroundCleanupChance) == 1:
@@ -2446,7 +2446,7 @@ def PlayDefender(Duration,StopEvent=None):
               particle for particle in GroundParticles
               if particle.h >= (DisplayH - 1)
           ]
-          print("Ground cleanup")
+          #print("Ground cleanup")
           
       #--------------------------------
       #-- Human and Particle Cleanup --

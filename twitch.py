@@ -792,7 +792,23 @@ class Bot(commands.Bot ):
                             )
 
 
-  
+
+        # Check for S-Ranked Ninja message
+        match = re.search(r'^(?P<username>\w+).+?S-Ranked Ninja for (?P<duration>\d+ months)', message.content)
+        if match:
+            username = match.group('username')
+            duration = match.group('duration')
+            print(f"CHAT| S-Ranked Ninja detected: {username}, {duration}")
+
+            CommandQueue.put({
+                "Action": "starrynightdisplaytext",
+                "text1": f"{username}",
+                "text2": "S-Ranked Ninja!",
+                "text3": f"{duration} strong!"
+            })
+
+
+
         #BITS
         #if (author == 'StreamElements'  and message.content.upper() == ""):
         if (author.upper() == 'STREAMELEMENTS'  and "JUST THREW DOWN" in message.content.upper()):
@@ -835,7 +851,7 @@ class Bot(commands.Bot ):
           CommandQueue.put({"Action": "StarryNightDisplayText",
                             "text1": Text1,
                             "text2": Text2,
-                            "text1": Text3}
+                            "text3": Text3}
                             )
 
 
@@ -857,7 +873,7 @@ class Bot(commands.Bot ):
           CommandQueue.put({"Action": "StarryNightDisplayText",
                   "text1": Text1,
                   "text2": Text2,
-                  "text1": Text3}
+                  "text3": Text3}
                   )
 
 
@@ -958,19 +974,55 @@ class Bot(commands.Bot ):
           print("LURK MODE DEACTIVATED")
 
 
+        #----------------------------------------
+        #-- Trigger Words
+        #----------------------------------------
+
         #HUGS
-        if (message.content == "!hug"):
+        if ("HUG" in message.content.upper()):
             CommandQueue.put({"Action": "showheart" })
 
-
         #REDALERT
-        if (message.content == "!redalert"):
-            CommandQueue.put({"Action": "showgif", "GIF": './images/redalert.gif', "Loops" : 20, "sleep":0.06 })
+        if ("STORM" in message.content.upper()):
+            CommandQueue.put({"Action": "showgif", "GIF": './images/storm.gif', "Loops" : 5, "sleep":0.06 })
+
+        #Ghosts
+        if ("GHOST" in message.content.upper()):
+            CommandQueue.put({"Action": "showgif", "GIF": './images/ghosts.gif', "Loops" : 10, "sleep":0.06 })
+       
+        #minions
+        if ("MINION" in message.content.upper()):
+          r = random.randint(1,5)
+          if r == 1:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/minioncrying.gif', "Loops" : 10, "sleep":0.06 })
+          if r == 2:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/minioncrying2.gif', "Loops" : 10, "sleep":0.06 })
+
+          if r == 3:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/minioneyes.gif', "Loops" : 10, "sleep":0.06 })
+
+          if r == 4:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/miniongru.gif', "Loops" : 10, "sleep":0.06 })
+          if r == 5:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/minionredalert.gif', "Loops" : 10, "sleep":0.06 })
+          if r == 6:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/minions.gif', "Loops" : 10, "sleep":0.06 })
+
+
 
         #POLICE
-        if (message.content == "!police"):
+        if ("POLICE" in message.content.upper()):
+          if random.randint(1,2) == 1:
             CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 2, "sleep":0.06 })
+          else:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/policefist.gif', "Loops" : 2, "sleep":0.06 })
           
+
+        #WATCH
+        if ("WATCH" in message.content.upper()):
+            CommandQueue.put({"Action": "analogclock", "duration": 30 })
+
+
 
         #VIP / Hello
         if (message.content.upper() == "!VIP"):
@@ -1626,8 +1678,10 @@ class Bot(commands.Bot ):
     @commands.command()
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who')
-        time.sleep(6)
+        time.sleep(4)
         await ctx.send('Available games: ?astrosmash ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
+        #time.sleep(4)
+        #await ctx.send('Trigger words: hug ghosts minions police storm ')
 
 
 
@@ -1912,9 +1966,6 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
 
 
-
-
-
     #----------------------------------------
     # Me                                   --
     #----------------------------------------
@@ -1965,7 +2016,7 @@ class Bot(commands.Bot ):
         
         LED.GetImageFromURL(UserProfileURL,"UserProfile.png")
         CommandQueue.put({"Action": "showimagezoom",
-                              "image": "CurrentProfile.png",
+                              "image": "UserProfile.png",
                               "zoommin" : 1,
                               "zoommax":256,
                               "zoomfinal" : 32,
@@ -2088,7 +2139,7 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # ASTROSMASH                           --
+    # ASTROSMASH (spacedot)                --
     #----------------------------------------
 
     @commands.command()
@@ -2141,7 +2192,7 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # STARRY NIGHT CLOCK                   --
+    # STARRY NIGHT CLOCK (clock style 3)   --
     #----------------------------------------
 
     @commands.command()
@@ -2252,12 +2303,6 @@ class Bot(commands.Bot ):
 #------------------------------------------------------------------------------
 # File Functions                                                             --
 #------------------------------------------------------------------------------
-
-
-
-
-
-
 
 
 def GetTwitchCounts():

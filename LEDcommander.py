@@ -888,9 +888,9 @@ def StarryNightDisplayText(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     print("[LEDcommander][StarryNightDisplay] Launching...")
-    Text1  = Command.get("text1",'text1')
-    Text2  = Command.get("text2",'text2')
-    Text3  = Command.get("text3",'text3')
+    Text1  = Command.get("text1",'')
+    Text2  = Command.get("text2",'')
+    Text3  = Command.get("text3",'')
 
     LED.StarryNightDisplayText(
     Text1       = Text1,
