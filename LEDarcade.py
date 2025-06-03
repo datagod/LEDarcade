@@ -19981,6 +19981,18 @@ def SpinShrinkTransition(ScreenArray, steps=48, delay=0.03, start_zoom=100, end_
     Canvas = TheMatrix.SwapOnVSync(Canvas)
 
 
+def DisplayImage(image):
+    """
+    Display a PIL.Image using double-buffered swap on LED matrix.
+    Ensures proper timing and flicker-free updates.
+    """
+    global Canvas
+    
+    if hasattr(image, "load"):
+        Canvas.SetImage(image)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+    else:
+        raise TypeError("Input must be a PIL.Image object")
 
 
 
