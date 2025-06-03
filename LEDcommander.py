@@ -89,6 +89,8 @@ import traceback
 from multiprocessing import Event, Process, Queue
 import queue
 
+from flask import app, jsonify, request
+
 
 CursorH   = 0
 CursorV   = 0
@@ -482,6 +484,9 @@ def Run(CommandQueue):
         
 
 
+
+
+
 #----------------------------------------------------------
 #-- Action functions
 #----------------------------------------------------------
@@ -519,7 +524,7 @@ def ShowDigitalClock(Command,StopEvent):
         RunMinutes     = RunMinutes,
         StopEvent      = StopEvent
     )
-    LED.SweepClean()
+    #LED.SweepClean()
 
 
 
@@ -934,6 +939,22 @@ def StarryNightDisplayText(Command, StopEvent):
 #
 #-------------------------------------------------------------------------------
 
-
 if __name__ == "__main__":
-    print("Hi there")
+    CommandQueue = Queue()
+
+    commander_process = Process(target=Run, args=(CommandQueue,))
+    commander_process.start()
+
+    webserver_process = Process(target=launch_web_control_server, args=(CommandQueue,))
+    webserver_process.start()
+
+    print("")
+    print("[LEDcommander][main] Processes started")
+    
+    # Remove joins for now
+    # commander_process.join()
+    # webserver_process.join()
+
+    # Keep main thread alive so child processes aren’t killed
+    while True:
+        time.sleep(1)

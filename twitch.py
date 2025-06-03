@@ -3769,23 +3769,25 @@ def run_coroutine_in_new_loop(EventQueue):
 
 
 def start_led_commander():
-
-    global CommandQueue, CommandProcess
+    global CommandQueue, CommandProcess, WebProcess
 
     from multiprocessing import Queue, Process
     import LEDcommander
-    #import LEDcolors
-    #LED.InitializeColors()
-        
+    import LEDweb  # <== import here
+
     print("Initializing LEDcommander")
 
     command_queue = Queue()
-    process = Process(target=LEDcommander.Run, args=(command_queue,))
-    process.start()
+    commander = Process(target=LEDcommander.Run, args=(command_queue,))
+    webserver = Process(target=LEDweb.serve_web_control, args=(command_queue,))
+
+    commander.start()
+    webserver.start()
+
     command_queue.cancel_join_thread()
 
-    print("LEDcommander launched.")
-    return command_queue, process
+    print("LEDcommander and LEDweb launched.")
+    return command_queue, commander, webserver
 
 
 
@@ -3954,7 +3956,7 @@ def main():
 #This section is where we put things that we only want run once
 if __name__ == "__main__":
     try:
-        CommandQueue, CommandProcess = start_led_commander()
+        CommandQueue, CommandProcess, WebProcess = start_led_commander()
         main()
     finally:
         CommandQueue.put({"Action": "Quit"})
@@ -3962,14 +3964,16 @@ if __name__ == "__main__":
 
         CommandProcess.join(timeout=3)
         if CommandProcess.is_alive():
-            print("[Main] LEDCommander still alive — terminating.")
+            print("[LEDcommander][Main] LEDCommander still alive — terminating.")
             CommandProcess.terminate()
             CommandProcess.join()
 
-        print("[Main] Shutdown complete.")
+        if WebProcess.is_alive():
+            print("[LEDcommander][Main] Web server still alive — terminating.")
+            WebProcess.terminate()
+            WebProcess.join()
 
-
-
+        print("[LEDcommander][Main] Shutdown complete.")
 
 
 # %%
