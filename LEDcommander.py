@@ -107,6 +107,8 @@ def Run(CommandQueue):
 
     global StopEvent
     global DisplayProcess
+    global CurrentDisplayMode
+    global TerminalQueue
 
     OldCommand = {
             "Action": "showclock",
