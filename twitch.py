@@ -541,12 +541,10 @@ class Bot(commands.Bot ):
             
             if (StreamActive == False):
                 print("[Twitch] StreamActive == False")
-                
+                                
                 await self.RotateClockDisplays(RotateClockDelay)
                 
-                #if self.ClockRunning == False:
-                #    self.DisplayDigitalClock()
-                #    self.ClockRunning = True
+                
                 
 
                 
