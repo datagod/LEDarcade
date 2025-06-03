@@ -39,7 +39,7 @@
 # │  \"Time is an illusion — except in pixels.\"                               │
 # │                                                                            │
 # └────────────────────────────────────────────────────────────────────────────┘
-
+ 
 
 import time
 from datetime import datetime
@@ -92,11 +92,22 @@ def draw_hands(now):
     s_angle = math.radians(now.second * 6)
     draw_line(CENTER_X, CENTER_Y, CENTER_X + int(13 * math.sin(s_angle)), CENTER_Y - int(13 * math.cos(s_angle)), LED.HighBlue)
 
-def run_clock():
+def RunClock(Duration=600,StopEvent=None):
+
+
     LED.ClearBuffers()
     LED.ClearBigLED()
     draw_face()
-    while True:
+    Done = False
+    while Done == False:
+    
+        if StopEvent and StopEvent.is_set():
+            print("\n" + "="*40)
+            print("[AnalogClock] StopEvent received")
+            print("-> Shutting down gracefully...")
+            print("="*40 + "\n")
+            Done = True
+        
         LED.ClearBuffers()
         draw_face()
         draw_hands(datetime.now())
@@ -104,4 +115,4 @@ def run_clock():
         time.sleep(1)
 
 if __name__ == "__main__":
-    run_clock()
+    RunClock(Duration=600,StopEvent=None)

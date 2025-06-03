@@ -7,7 +7,7 @@
 #   - this is tough because each different display type is spawned as a process
 #   - perhaps the calling function can take a screen shot (deep copy ScreenArray)
 #     and put that in the CommandQueue so we can fade back to it later
-
+ 
  
 """
 ===============================================================================
@@ -195,6 +195,21 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "title"
                 DisplayProcess = Process(target=ShowTitleScreen, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            #----------------------------------
+            #-- ANALOG CLOCK
+            #----------------------------------
+
+            elif Action == "analogclock":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "analogclock"
+                DisplayProcess = Process(target=ShowAnalogClock, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -879,6 +894,17 @@ def LaunchFallingSand(Command, StopEvent):
     print("[LEDcommander][LaunchFallingSand] Launching...")
 
     FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+
+def ShowAnalogClock(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import AnalogClock as AC
+    Duration         = Command.get("duration",10)
+    print("[LEDcommander][ShowAnalogClock] Launching...")
+
+    AC.RunClock(Duration=Duration, StopEvent=StopEvent)
 
 
 
