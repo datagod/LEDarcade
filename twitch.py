@@ -775,7 +775,7 @@ class Bot(commands.Bot ):
         #---------------------------------------
         
         #TACO
-        if (author.upper() == 'STREAMELEMENTS'  and "TACO" in message.content.upper()):
+        if (author.upper() == 'STREAMELEMENTS'  and "GROWING" in message.content.upper()):
           print("CHAT| TACO detected")
 
           Text1       = "TACO",
