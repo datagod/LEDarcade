@@ -756,9 +756,9 @@ class Bot(commands.Bot ):
           message = "Time for a Kofi"
           await self.Channel.send(message)
           
-          Text1       = "KOFI",
-          Text2       = "WE APPRECIATE YOUR SUPPORT",
-          Text3       = "KOFI IS THE PREFERRED WAY TO SUPPORT THIS CHANNEL", 
+          Text1       = "KOFI"
+          Text2       = "WE APPRECIATE YOUR SUPPORT"
+          Text3       = "KOFI IS THE PREFERRED WAY TO SUPPORT THIS CHANNEL"
 
           CommandQueue.put({"Action": "StarryNightDisplayText",
                             "text1": Text1,
@@ -778,9 +778,9 @@ class Bot(commands.Bot ):
         if (author.upper() == 'STREAMELEMENTS'  and "GROWING" in message.content.upper()):
           print("CHAT| TACO detected")
 
-          Text1       = "TACO",
-          Text2       = "The Alliance for creative outreach",
-          Text3       = "visit taconetwork.org to learn all about us", 
+          Text1       = "TACO"
+          Text2       = "The Alliance for creative outreach"
+          Text3       = "visit taconetwork.org to learn all about us"
 
           CommandQueue.put({"Action": "starrynightdisplaytext",
                             "text1": Text1,
@@ -792,9 +792,9 @@ class Bot(commands.Bot ):
         if (author.upper() == 'STREAMELEMENTS'  and "COFFEE" in message.content.upper()):
           print("CHAT| TACO detected")
 
-          Text1       = "dragon roast coffee",
-          Text2       = "Great Nerd Coffee",
-          Text3       = "See the chat for a link to 10 percent off", 
+          Text1       = "dragon roast coffee"
+          Text2       = "Great Nerd Coffee"
+          Text3       = "See the chat for a link to 10 percent off"
 
           CommandQueue.put({"Action": "starrynightdisplaytext",
                             "text1": Text1,
@@ -834,9 +834,9 @@ class Bot(commands.Bot ):
           #LED.ClearBigLED()
           #LED.ClearBuffers()
 
-          Text1       = BitGiver + " just threw down " + bits + " bits",
-          Text2       = "Thank you " + BitGiver,
-          Text3       = "Bits are an important part of the economy.  Your contribution is appreciated!", 
+          Text1       = BitGiver + " just threw down " + bits + " bits"
+          Text2       = "Thank you " + BitGiver
+          Text3       = "Bits are an important part of the economy.  Your contribution is appreciated!"
 
           CommandQueue.put({"Action": "StarryNightDisplayText",
                             "text1": Text1,
@@ -857,9 +857,9 @@ class Bot(commands.Bot ):
           follower = words[4] 
           print("CHAT|",follower,"is now following")
 
-          Text1       = follower + " is now following" ,
-          Text2       = "Thank you " + follower,
-          Text3       = "Welcome to our community.  We appreciate you joining us!", 
+          Text1       = follower + " is now following" 
+          Text2       = "Thank you " + follower
+          Text3       = "Welcome to our community.  We appreciate you joining us!",
           CommandQueue.put({"Action": "StarryNightDisplayText",
                             "text1": Text1,
                             "text2": Text2,
