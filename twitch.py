@@ -1703,7 +1703,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who')
+        await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who ?retro')
         time.sleep(4)
         await ctx.send('Available games: ?astrosmash ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
         #time.sleep(4)
@@ -1725,7 +1725,17 @@ class Bot(commands.Bot ):
       CommandQueue.put({"Action": "showviewers","chatusers": self.ChatUsers})
     
 
-  
+    #----------------------------------------
+    # RetroClock                           --
+    #----------------------------------------
+    @commands.command()
+    async def retro(self, ctx: commands.Context):
+
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Time for an old school retro digital display"
+        await self.Channel.send(message)
+        CommandQueue.put({"Action": "retrodigital", "duration": 30 })
+
     
     #----------------------------------------
     # Hug                                  --
