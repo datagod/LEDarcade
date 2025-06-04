@@ -3641,7 +3641,32 @@ def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Gro
         Canvas.SetPixel(x,y,r,g,b)
   
   return ScreenArray
-  
+
+
+def CopyImageToScreenArray(image, h, v, InputScreenArray=None):
+  """Copy a PIL.Image onto a ScreenArray buffer without scaling."""
+  h = round(h)
+  v = round(v)
+
+  image = image.convert('RGB')
+  width, height = image.size
+
+  if InputScreenArray is None:
+    ScreenArray = [[(0,0,0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+  else:
+    ScreenArray = InputScreenArray
+
+  for y in range(height):
+    for x in range(width):
+      H = x + h
+      V = y + v
+      if CheckBoundary(H, V) == 0:
+        r, g, b = image.getpixel((x, y))
+        ScreenArray[V][H] = (r, g, b)
+
+  return ScreenArray
+
+
 
 
 
