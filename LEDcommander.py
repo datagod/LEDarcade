@@ -212,8 +212,19 @@ def Run(CommandQueue):
                     DisplayProcess.join()
 
                 StopEvent.clear()
-                CurrentDisplayMode = "analogclock"
+                CurrentDisplayMode = "clock"
                 DisplayProcess = Process(target=ShowAnalogClock, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "retrodigital":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(target=ShowRetroDigital, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -527,6 +538,39 @@ def ShowDigitalClock(Command,StopEvent):
         StopEvent      = StopEvent
     )
     #LED.SweepClean()
+
+
+
+def ShowRetroDigital(Command,StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+   
+
+    ClockStyle = Command.get("Style", 4)
+    ZoomFactor = Command.get("Zoom", 1)
+    RunMinutes = Command.get("Duration", 5)
+    AnimationDelay = Command.get("Delay", 30)
+
+    print(f"[LEDcommander] Showing clock: Style={ClockStyle}, Zoom={ZoomFactor}, Duration={RunMinutes}")
+
+    LED.DisplayDigitalClock(
+        ClockStyle=ClockStyle,
+        CenterHoriz=True,
+        v=1,
+        hh=24,
+        RGB=LED.LowGreen,
+        ShadowRGB      = LED.ShadowGreen,
+        ZoomFactor     = ZoomFactor,
+        AnimationDelay = AnimationDelay,
+        RunMinutes     = RunMinutes,
+        StopEvent      = StopEvent
+    )
+    #LED.SweepClean()
+
+
+
+
+
 
 
 

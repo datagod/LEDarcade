@@ -929,6 +929,77 @@ SuperWormLevels    = 3           #number of levels
 
 
 
+#----------------------------
+#-- Custom Clock Functions --
+#----------------------------
+
+def DisplayCustomFontClock(StopEvent=None):
+    width  = HatWidth
+    height = HatHeight
+
+    def MakeTimeImage():
+        now = datetime.now()
+        current_minute = now.strftime("%H:%M")
+
+        # Create blank image and drawing context
+        image = Image.new("RGB", (width, height))
+        draw = ImageDraw.Draw(image)
+
+        # Measure text size and center it using textbbox
+        bbox = draw.textbbox((0, 0), current_minute, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (width - text_width) // 2
+        y = (height - text_height) // 4
+        draw.text((x, y), current_minute, font=font, fill=(0, 200, 0))  # Red
+        return image
+        
+    font = ImageFont.truetype("/home/pi/LEDarcade/fonts/CHECKBK0.TTF", 22)
+
+    # Display image using LEDarcade canvas
+    image = MakeTimeImage()
+    ScreenArray  = CopyImageToScreenArray(image, 0, 0)
+    ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
+
+
+
+    SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+
+    # Clock loop
+    last_minute = None
+    try:
+        Done = False
+        while Done == False:
+            if StopEvent and StopEvent.is_set():
+                Done = True
+                SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
+
+                break
+
+
+            now = datetime.now()
+            current_minute = now.strftime("%H:%M")
+            print("Time: ",now)
+
+            if current_minute != last_minute:
+                image = MakeTimeImage()
+                ScreenArray  = CopyImageToScreenArray(image, 0, 0)
+                TransitionBetweenScreenArrays(ScreenArray2,ScreenArray,TransitionType=2,FadeSleep=0.02)
+
+            time.sleep(1)
+            last_minute = current_minute
+            ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
+
+
+
+    except KeyboardInterrupt:
+        TheMatrix.Clear()
+
+
+
+
+
+
 
 
 #-----------------------------
@@ -15935,7 +16006,7 @@ def ChangeRGBBrightness(r,g,b,increment):
 
 
 
-def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0.05):
+def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0.01):
 
   #NewArray NEW pixels need to glow into existence
   #OldArray pixels not in new need to fade
@@ -16143,7 +16214,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0
 
       
       CopyScreenArrayToCanvasVSync(Buffer)
-      #time.sleep(0.1)
+      time.sleep(FadeSleep)
       #time.sleep(0.01)
     CopyScreenArrayToCanvasVSync(NewArray)
     #time.sleep(1)
@@ -17636,6 +17707,7 @@ def DisplayDigitalClock(
 
 
 
+
     #Starry Night Clock
     elif (ClockStyle == 3):
 
@@ -17788,6 +17860,10 @@ def DisplayDigitalClock(
 
         #time.sleep(ScrollSleep)
         time.sleep(ScrollSleep)
+
+    elif (ClockStyle == 4):
+      DisplayCustomFontClock(StopEvent)
+      Done = True
 
 
 

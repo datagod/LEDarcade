@@ -1020,6 +1020,9 @@ class Bot(commands.Bot ):
         if ("WATCH" in message.content.upper()):
             CommandQueue.put({"Action": "analogclock", "duration": 30 })
 
+        #RETRO
+        if ("RETRO" in message.content.upper()):
+            CommandQueue.put({"Action": "retrodigital", "duration": 30 })
 
 
         #VIP / Hello
