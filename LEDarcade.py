@@ -19026,7 +19026,38 @@ def CalculateElapsedTime(StartDateTimeUTC):
 
 
 
-def ZoomImage(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
+def ZoomImage(ImageName, ZoomStart, ZoomStop, ZoomSleep, Step):
+    global Canvas
+
+    image = Image.open(ImageName).convert('RGB')
+    orig_width, orig_height = image.size
+
+    zoom_range = range(ZoomStart, ZoomStop, Step) if ZoomStart <= ZoomStop else range(ZoomStart, ZoomStop, -Step)
+
+    for ZoomFactor in zoom_range:
+        new_width = int(orig_width * ZoomFactor / 100)
+        new_height = int(orig_height * ZoomFactor / 100)
+
+        ResizedImage = image.resize((new_width, new_height), resample=Image.LANCZOS)
+
+        x = int(HatWidth // 2 - new_width // 2)
+        y = int(HatHeight // 2 - new_height // 2)
+
+        if new_width < HatWidth or new_height < HatHeight:
+            Canvas.Fill(0, 0, 0)
+
+        Canvas.SetImage(ResizedImage, x, y)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+
+        if ZoomSleep > 0:
+            time.sleep(ZoomSleep)
+
+
+
+
+
+
+def ZoomImage_old(ImageName,ZoomStart, ZoomStop, ZoomSleep,Step):
 
   global Canvas
 
