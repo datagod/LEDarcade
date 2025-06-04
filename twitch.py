@@ -541,12 +541,10 @@ class Bot(commands.Bot ):
             
             if (StreamActive == False):
                 print("[Twitch] StreamActive == False")
-                
+                                
                 await self.RotateClockDisplays(RotateClockDelay)
                 
-                #if self.ClockRunning == False:
-                #    self.DisplayDigitalClock()
-                #    self.ClockRunning = True
+                
                 
 
                 
@@ -1022,6 +1020,9 @@ class Bot(commands.Bot ):
         if ("WATCH" in message.content.upper()):
             CommandQueue.put({"Action": "analogclock", "duration": 30 })
 
+        #RETRO
+        if ("RETRO" in message.content.upper()):
+            CommandQueue.put({"Action": "retrodigital", "duration": 30 })
 
 
         #VIP / Hello

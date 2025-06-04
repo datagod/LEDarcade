@@ -929,6 +929,76 @@ SuperWormLevels    = 3           #number of levels
 
 
 
+#----------------------------
+#-- Custom Clock Functions --
+#----------------------------
+
+def DisplayCustomFontClock(StopEvent=None):
+    width  = HatWidth
+    height = HatHeight
+
+    def MakeTimeImage():
+        now = datetime.now()
+        current_minute = now.strftime("%H:%M")
+
+        # Create blank image and drawing context
+        image = Image.new("RGB", (width, height))
+        draw = ImageDraw.Draw(image)
+
+        # Measure text size and center it using textbbox
+        bbox = draw.textbbox((0, 0), current_minute, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (width - text_width) // 2
+        y = (height - text_height) // 4
+        draw.text((x, y), current_minute, font=font, fill=(0, 200, 0))  # Red
+        return image
+        
+    font = ImageFont.truetype("/home/pi/LEDarcade/fonts/CHECKBK0.TTF", 22)
+
+    # Display image using LEDarcade canvas
+    image = MakeTimeImage()
+    ScreenArray  = CopyImageToScreenArray(image, 0, 0)
+    ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
+
+
+
+    SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+
+    # Clock loop
+    last_minute = None
+    try:
+        Done = False
+        while Done == False:
+            if StopEvent and StopEvent.is_set():
+                Done = True
+                SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
+
+                break
+
+
+            now = datetime.now()
+            current_minute = now.strftime("%H:%M")
+
+            if current_minute != last_minute:
+                image = MakeTimeImage()
+                ScreenArray  = CopyImageToScreenArray(image, 0, 0)
+                TransitionBetweenScreenArrays(ScreenArray2,ScreenArray,TransitionType=2,FadeSleep=0.02)
+
+            time.sleep(1)
+            last_minute = current_minute
+            ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
+
+
+
+    except KeyboardInterrupt:
+        TheMatrix.Clear()
+
+
+
+
+
+
 
 
 #-----------------------------
@@ -3641,7 +3711,32 @@ def PaintFourLayerScreenArray(bh,mh,fh,gh,Background,Middleground,Foreground,Gro
         Canvas.SetPixel(x,y,r,g,b)
   
   return ScreenArray
-  
+
+
+def CopyImageToScreenArray(image, h, v, InputScreenArray=None):
+  """Copy a PIL.Image onto a ScreenArray buffer without scaling."""
+  h = round(h)
+  v = round(v)
+
+  image = image.convert('RGB')
+  width, height = image.size
+
+  if InputScreenArray is None:
+    ScreenArray = [[(0,0,0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+  else:
+    ScreenArray = InputScreenArray
+
+  for y in range(height):
+    for x in range(width):
+      H = x + h
+      V = y + v
+      if CheckBoundary(H, V) == 0:
+        r, g, b = image.getpixel((x, y))
+        ScreenArray[V][H] = (r, g, b)
+
+  return ScreenArray
+
+
 
 
 
@@ -15910,7 +16005,7 @@ def ChangeRGBBrightness(r,g,b,increment):
 
 
 
-def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0.05):
+def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0.01):
 
   #NewArray NEW pixels need to glow into existence
   #OldArray pixels not in new need to fade
@@ -16118,7 +16213,7 @@ def TransitionBetweenScreenArrays(OldArray,NewArray,TransitionType=1,FadeSleep=0
 
       
       CopyScreenArrayToCanvasVSync(Buffer)
-      #time.sleep(0.1)
+      time.sleep(FadeSleep)
       #time.sleep(0.01)
     CopyScreenArrayToCanvasVSync(NewArray)
     #time.sleep(1)
@@ -17611,6 +17706,7 @@ def DisplayDigitalClock(
 
 
 
+
     #Starry Night Clock
     elif (ClockStyle == 3):
 
@@ -17763,6 +17859,10 @@ def DisplayDigitalClock(
 
         #time.sleep(ScrollSleep)
         time.sleep(ScrollSleep)
+
+    elif (ClockStyle == 4):
+      DisplayCustomFontClock(StopEvent)
+      Done = True
 
 
 
@@ -19033,7 +19133,9 @@ def ShowImage(ImageLocation,Fade=False,MaxBright = 100, Duration = 1):
   print("-- Show Image --")
   print("ImageLocation:",ImageLocation)
   image = Image.open(ImageLocation)
-  image.thumbnail((HatWidth, HatHeight), Image.ANTIALIAS)
+
+  image.thumbnail((HatWidth, HatHeight), Image.LANCZOS)
+
   image = image.convert('RGB')
 
   if(Fade == True):
@@ -19768,6 +19870,77 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
     ZoomScreen(ScreenArray,22,32,Sleep)
 
   SpinShrinkTransition(ScreenArray, steps=32, delay = 0.01,start_zoom=100, end_zoom=0)
+
+
+def ShowBeatingImage(ImageLocation, h=0, v=0, beats=10, Sleep=0):
+  """Display an image with a beating (zoom) effect."""
+  image = Image.open(ImageLocation)
+  image = image.convert('RGB')
+  
+  image.thumbnail((HatWidth, HatHeight), Image.LANCZOS)
+
+
+  width, height = image.size
+
+  # Center the image if h and v are both 0
+  if h == 0 and v == 0:
+    h = int((HatWidth  - width)  / 2)
+    v = int((HatHeight - height) / 2)
+
+  ScreenArray = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+
+  for y in range(height):
+    for x in range(width):
+      r, g, b = image.getpixel((x, y))
+      H = x + h
+      V = y + v
+      if CheckBoundary(H, V) == 0:
+        ScreenArray[V][H] = (r, g, b)
+
+  SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+
+  for i in range(0, beats):
+    time.sleep(0.25)
+    ZoomScreen(ScreenArray, 32, 16, Sleep)
+    time.sleep(0.125)
+    ZoomScreen(ScreenArray, 22, 32, Sleep)
+
+  SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
+
+
+
+
+def ShowBeatingImageObject(image, h=0, v=0, beats=10, Sleep=0):
+  """Display a beating effect for a preloaded PIL.Image object."""
+  image = image.convert('RGB')
+  image.thumbnail((HatWidth, HatHeight), Image.LANCZOS)
+
+  width, height = image.size
+
+  # Center the image if h and v are both 0
+  if h == 0 and v == 0:
+    h = int((HatWidth  - width)  / 2)
+    v = int((HatHeight - height) / 2)
+
+  ScreenArray = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+
+  for y in range(height):
+    for x in range(width):
+      r, g, b = image.getpixel((x, y))
+      H = x + h
+      V = y + v
+      if CheckBoundary(H, V) == 0:
+        ScreenArray[V][H] = (r, g, b)
+
+  SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+
+  for i in range(0, beats):
+    time.sleep(0.25)
+    ZoomScreen(ScreenArray, 32, 16, Sleep)
+    time.sleep(0.125)
+    ZoomScreen(ScreenArray, 22, 32, Sleep)
+
+  SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
  
   
 
@@ -19800,39 +19973,6 @@ def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
 
 
 
-
-def DisplayStockPrice_veryold(StockPrice=""):
-   
-    RGB = (0,150,0)
-    ShadowRGB  = ShadowGreen
-    ZoomFactor = 2
-    h = 10
-    v = 10
-
-    #ClearBigLED()
-    #ClearBuffers()
-    global ScreenArray
-
-    StockSprite = CreateBannerSprite(StockPrice)
-    
-    #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
-    
-    # Initialize blank screen arrays
-    ScreenArray1 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
-    ScreenArray2 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
-    #ScreenArray2 = copy.deepcopy(ScreenArray) 
-
-    #Copy shadow sprite, then text sprite over top of it
-    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
-    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
-    
-    #Transitions then copies the results to ScreenArray
-    TransitionBetweenScreenArrays(ScreenArray,ScreenArray,TransitionType=2)
-
-    TransitionBetweenScreenArrays(ScreenArray1,ScreenArray2,TransitionType=2)
-       
-    
-    ScreenArray = copy.deepcopy(ScreenArray2)
 
 
   
@@ -19981,6 +20121,17 @@ def SpinShrinkTransition(ScreenArray, steps=48, delay=0.03, start_zoom=100, end_
     Canvas = TheMatrix.SwapOnVSync(Canvas)
 
 
+def DisplayImage(image):
+    """
+    Display a PIL.Image using double-buffered swap on LED matrix.
+    Ensures proper timing and flicker-free updates.
+    """
+    global Canvas
+    if hasattr(image, "load"):
+        Canvas.SetImage(image)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+    else:
+        raise TypeError("Input must be a PIL.Image object")
 
 
 
