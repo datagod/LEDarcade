@@ -776,7 +776,7 @@ class Bot(commands.Bot ):
         
         #TACO
         #if (author == 'StreamElements'  and message.content.upper() == ""):
-        if (author.upper() == 'STREAMELEMENTS'  and "THE ALLIANCE" in message.content.upper()):
+        if (author.upper() == 'STREAMELEMENTS'  and "TACO" in message.content.upper()):
           print("CHAT| TACO detected")
 
           Text1       = "TACO",

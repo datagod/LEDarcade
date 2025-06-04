@@ -841,7 +841,7 @@ def ShowImageZoom(Command, StopEvent):
     LED.Initialize()
 
     StreamBrightness = 80
-    GifBrightness    = 80
+    GifBrightness    = 50
     MaxBrightness    = 100
 
     image            = Command.get("image",'./images/UserProfile.png')
