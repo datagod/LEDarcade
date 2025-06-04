@@ -794,7 +794,7 @@ class Bot(commands.Bot ):
 
           Text1       = "dragon roast coffee"
           Text2       = "Great Nerd Coffee"
-          Text3       = "See the chat for a link to 10 percent off"
+          Text3       = "the thing that makes everything better"
 
           CommandQueue.put({"Action": "starrynightdisplaytext",
                             "text1": Text1,
