@@ -31,7 +31,7 @@ try:
         # Display image using LEDarcade canvas
         # Force image directly to matrix
         
-        LED.ShowBeatingImageObject(image, h=0, v=0, beats=10, Sleep=0)
+        LED.ShowBeatingImageObject(image, h=0, v=0, beats=1, Sleep=0)
         
         LED.DisplayImage(image)
         time.sleep(1)

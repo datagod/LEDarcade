@@ -19033,7 +19033,9 @@ def ShowImage(ImageLocation,Fade=False,MaxBright = 100, Duration = 1):
   print("-- Show Image --")
   print("ImageLocation:",ImageLocation)
   image = Image.open(ImageLocation)
-  image.thumbnail((HatWidth, HatHeight), Image.ANTIALIAS)
+
+  image.thumbnail((HatWidth, HatHeight), Image.LANCZOS)
+
   image = image.convert('RGB')
 
   if(Fade == True):
@@ -19774,7 +19776,9 @@ def ShowBeatingImage(ImageLocation, h=0, v=0, beats=10, Sleep=0):
   """Display an image with a beating (zoom) effect."""
   image = Image.open(ImageLocation)
   image = image.convert('RGB')
-  image.thumbnail((HatWidth, HatHeight), Image.ANTIALIAS)
+  
+  image.thumbnail((HatWidth, HatHeight), Image.LANCZOS)
+
 
   width, height = image.size
 
@@ -19809,7 +19813,7 @@ def ShowBeatingImage(ImageLocation, h=0, v=0, beats=10, Sleep=0):
 def ShowBeatingImageObject(image, h=0, v=0, beats=10, Sleep=0):
   """Display a beating effect for a preloaded PIL.Image object."""
   image = image.convert('RGB')
-  image.thumbnail((HatWidth, HatHeight), Image.ANTIALIAS)
+  image.thumbnail((HatWidth, HatHeight), Image.LANCZOS)
 
   width, height = image.size
 
@@ -19869,39 +19873,6 @@ def DisplayGIF(GIFName,width,height,Loops=5,sleep=0.03):
 
 
 
-
-def DisplayStockPrice_veryold(StockPrice=""):
-   
-    RGB = (0,150,0)
-    ShadowRGB  = ShadowGreen
-    ZoomFactor = 2
-    h = 10
-    v = 10
-
-    #ClearBigLED()
-    #ClearBuffers()
-    global ScreenArray
-
-    StockSprite = CreateBannerSprite(StockPrice)
-    
-    #MakeAndShowClock(hh,h,v,RGB,ShadowGreen,ZoomFactor,Fill=False)
-    
-    # Initialize blank screen arrays
-    ScreenArray1 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
-    ScreenArray2 = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
-    #ScreenArray2 = copy.deepcopy(ScreenArray) 
-
-    #Copy shadow sprite, then text sprite over top of it
-    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h-1,v+1,ShadowRGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray)
-    ScreenArray1 = CopySpriteToScreenArrayZoom(StockSprite,h,v,RGB,(0,0,0),ZoomFactor=ZoomFactor,Fill=False,InputScreenArray=ScreenArray1)
-    
-    #Transitions then copies the results to ScreenArray
-    TransitionBetweenScreenArrays(ScreenArray,ScreenArray,TransitionType=2)
-
-    TransitionBetweenScreenArrays(ScreenArray1,ScreenArray2,TransitionType=2)
-       
-    
-    ScreenArray = copy.deepcopy(ScreenArray2)
 
 
   
