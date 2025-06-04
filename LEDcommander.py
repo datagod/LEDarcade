@@ -780,11 +780,11 @@ def ShowHeart(Command, StopEvent):
     LED.Initialize()
 
     StreamBrightness = 80
-    GifBrightness    = 80
+    GifBrightness    = 50
     MaxBrightness    = 100
     print("[LEDcommander][ShowHeart] Show beating heart")
 
-    LED.TheMatrix.brightness = StreamBrightness
+    LED.TheMatrix.brightness = GifBrightness
     LED.ShowBeatingHeart(h=16, v=0, beats=5, Sleep=0.01) 
     LED.TheMatrix.brightness = MaxBrightness
     LED.SweepClean()
@@ -796,7 +796,7 @@ def ShowGIF(Command, StopEvent):
     LED.Initialize()
 
     StreamBrightness = 80
-    GifBrightness    = 80
+    GifBrightness    = 50
     MaxBrightness    = 100
 
     GIF              = Command.get("GIF",'./images/redalert.gif')
@@ -805,7 +805,7 @@ def ShowGIF(Command, StopEvent):
 
     print("[LEDcommander][ShowGIF] displaying a GIF: ",GIF)
 
-    LED.TheMatrix.brightness = StreamBrightness
+    LED.TheMatrix.brightness = GifBrightness
     LED.DisplayGIF(GIFName=GIF,width=64,height=32,Loops=loops,sleep=sleep)
     LED.TheMatrix.brightness = MaxBrightness
     LED.SweepClean()
@@ -818,7 +818,7 @@ def ShowViewers(Command, StopEvent):
     LED.Initialize()
 
     StreamBrightness = 80
-    GifBrightness    = 80
+    GifBrightness    = 50
     MaxBrightness    = 100
 
     print("[LEDcommander][ShowViewers] Showing image" )
@@ -826,9 +826,9 @@ def ShowViewers(Command, StopEvent):
     ChatUsers = Command.get("chatusers",["Nobody"])
 
 
-    LED.TheMatrix.brightness = MaxBrightness
+    LED.TheMatrix.brightness = GifBrightness
     LED.ScrollJustJoinedUser(ChatUsers,'JustJoined.png',0.04)
-    LED.TheMatrix.brightness = StreamBrightness
+    LED.TheMatrix.brightness = MaxBrightness
     
     #clean up the screen using animations
     LED.SweepClean()
