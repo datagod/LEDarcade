@@ -980,6 +980,17 @@ class Bot(commands.Bot ):
         if ("HUG" in message.content.upper()):
             CommandQueue.put({"Action": "showheart" })
 
+        #Jesus
+        if ("JESUS" in message.content.upper() or "CHRISTIAN" in message.content.upper()):
+          CommandQueue.put({"Action": "showimagezoom",
+                    "image": "./images/Jesus1.png",
+                    "zoommin" : 1,
+                    "zoommax":128,
+                    "zoomfinal" : 32,
+                    "sleep" : 0.01,
+                    "step"  : 1})
+
+
         #REDALERT
         if ("STORM" in message.content.upper()):
             CommandQueue.put({"Action": "showgif", "GIF": './images/storm.gif', "Loops" : 5, "sleep":0.06 })

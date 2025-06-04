@@ -856,8 +856,8 @@ def ShowImageZoom(Command, StopEvent):
 
     LED.TheMatrix.brightness = StreamBrightness
     LED.ZoomImage(ImageName=image,ZoomStart=zoommin,ZoomStop=zoommax,ZoomSleep=sleep,Step=step)
-    LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=zoommax,ZoomStop=zoommin,ZoomSleep=sleep,Step=step)
-    LED.ZoomImage(ImageName="UserProfile.png",ZoomStart=zoommin,ZoomStop=zoomfinal,ZoomSleep=sleep,Step=step)
+    LED.ZoomImage(ImageName=image,ZoomStart=zoommax,ZoomStop=zoommin,ZoomSleep=sleep,Step=step)
+    LED.ZoomImage(ImageName=image,ZoomStart=zoommin,ZoomStop=zoomfinal,ZoomSleep=sleep,Step=step)
     time.sleep(3)
     LED.TheMatrix.brightness = MaxBrightness
     LED.SweepClean()
