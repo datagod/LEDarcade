@@ -979,7 +979,6 @@ def DisplayCustomFontClock(StopEvent=None):
 
             now = datetime.now()
             current_minute = now.strftime("%H:%M")
-            print("Time: ",now)
 
             if current_minute != last_minute:
                 image = MakeTimeImage()

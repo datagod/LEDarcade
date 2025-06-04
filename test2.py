@@ -15,7 +15,7 @@ height = LED.HatHeight
 
 
 
-def DisplayCustomFontClock()
+def DisplayCustomFontClock():
 
     def MakeTimeImage():
         now = datetime.now()
@@ -68,4 +68,10 @@ def DisplayCustomFontClock()
 
     except KeyboardInterrupt:
         LED.TheMatrix.Clear()
+
+
+
+
+DisplayCustomFontClock()
+
 
