@@ -31,7 +31,8 @@ try:
         # Display image using LEDarcade canvas
         # Force image directly to matrix
         
-        LED.ShowBeatingImageObject(image, h=0, v=0, beats=1, Sleep=0)
+        ScreenArray = LED.CopyImageToScreenArray(image,0,0)
+        LED.SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
         
         LED.DisplayImage(image)
         time.sleep(1)
