@@ -775,7 +775,6 @@ class Bot(commands.Bot ):
         #---------------------------------------
         
         #TACO
-        #if (author == 'StreamElements'  and message.content.upper() == ""):
         if (author.upper() == 'STREAMELEMENTS'  and "TACO" in message.content.upper()):
           print("CHAT| TACO detected")
 
@@ -788,6 +787,21 @@ class Bot(commands.Bot ):
                             "text2": Text2,
                             "text3": Text3}
                             )
+
+        #Dragon Coffee
+        if (author.upper() == 'STREAMELEMENTS'  and "COFFEE" in message.content.upper()):
+          print("CHAT| TACO detected")
+
+          Text1       = "dragon roast coffee",
+          Text2       = "Great Nerd Coffee",
+          Text3       = "See the chat for a link to 10 percent off", 
+
+          CommandQueue.put({"Action": "starrynightdisplaytext",
+                            "text1": Text1,
+                            "text2": Text2,
+                            "text3": Text3}
+                            )
+
 
 
 

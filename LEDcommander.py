@@ -841,7 +841,7 @@ def ShowImageZoom(Command, StopEvent):
     LED.Initialize()
 
     StreamBrightness = 80
-    GifBrightness    = 50
+    GifBrightness    = 25
     MaxBrightness    = 100
 
     image            = Command.get("image",'./images/UserProfile.png')
@@ -854,7 +854,7 @@ def ShowImageZoom(Command, StopEvent):
     print("[LEDcommander][ShowImageZoom] Zoom an image")
 
 
-    LED.TheMatrix.brightness = StreamBrightness
+    LED.TheMatrix.brightness = GifBrightness
     LED.ZoomImage(ImageName=image,ZoomStart=zoommin,ZoomStop=zoommax,ZoomSleep=sleep,Step=step)
     LED.ZoomImage(ImageName=image,ZoomStart=zoommax,ZoomStop=zoomfinal,ZoomSleep=sleep,Step=step)
     time.sleep(3)
