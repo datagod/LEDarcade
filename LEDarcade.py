@@ -19804,6 +19804,8 @@ def ShowBeatingImage(ImageLocation, h=0, v=0, beats=10, Sleep=0):
   SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
 
 
+
+
 def ShowBeatingImageObject(image, h=0, v=0, beats=10, Sleep=0):
   """Display a beating effect for a preloaded PIL.Image object."""
   image = image.convert('RGB')

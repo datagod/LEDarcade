@@ -25,11 +25,14 @@ try:
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
         x = (width - text_width) // 2
-        y = (height - text_height) // 2
+        y = (height - text_height) // 4
         draw.text((x, y), now, font=font, fill=(255, 0, 0))  # Red
 
         # Display image using LEDarcade canvas
         # Force image directly to matrix
+        
+        LED.ShowBeatingImageObject(image, h=0, v=0, beats=10, Sleep=0)
+        
         LED.DisplayImage(image)
         time.sleep(1)
 
