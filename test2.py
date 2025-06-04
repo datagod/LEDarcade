@@ -28,7 +28,7 @@ def MakeTimeImage():
     text_height = bbox[3] - bbox[1]
     x = (width - text_width) // 2
     y = (height - text_height) // 4
-    draw.text((x, y), current_minute, font=font, fill=(255, 0, 0))  # Red
+    draw.text((x, y), current_minute, font=font, fill=(0, 200, 0))  # Red
     return image
     
 
@@ -42,10 +42,16 @@ LED.SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zo
 last_minute = None
 try:
     while True:
-      image = MakeTimeImage()
-      LED.DisplayImage(image)
+        now = datetime.now()
+        current_minute = now.strftime("%H:%M")
 
-      time.sleep(1)
+        if current_minute != last_minute:
+            image = MakeTimeImage()
+            LED.DisplayImage(image)
+            last_minute = current_minute
+
+        time.sleep(1)
 
 except KeyboardInterrupt:
     LED.TheMatrix.Clear()
+
