@@ -19759,8 +19759,6 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
   #ZoomScreen(ScreenArray,1,32,Sleep)
   SpinShrinkTransition(ScreenArray, steps=32, delay = 0.01,start_zoom=0, end_zoom=100)
  
-  
-
   for i in range(0,beats):
     time.sleep(0.25)
     ZoomScreen(ScreenArray,32,16,Sleep)
@@ -19770,6 +19768,40 @@ def ShowBeatingHeart(h=0,v=0,beats=10,Sleep=0):
   SpinShrinkTransition(ScreenArray, steps=32, delay = 0.01,start_zoom=100, end_zoom=0)
  
   
+
+
+def ShowBeatingImage(ImageLocation, h=0, v=0, beats=10, Sleep=0):
+  """Display an image with a beating (zoom) effect."""
+  image = Image.open(ImageLocation)
+  image = image.convert('RGB')
+  image.thumbnail((HatWidth, HatHeight), Image.ANTIALIAS)
+
+  width, height = image.size
+
+  # Center the image if h and v are both 0
+  if h == 0 and v == 0:
+    h = int((HatWidth  - width)  / 2)
+    v = int((HatHeight - height) / 2)
+
+  ScreenArray = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+
+  for y in range(height):
+    for x in range(width):
+      r, g, b = image.getpixel((x, y))
+      H = x + h
+      V = y + v
+      if CheckBoundary(H, V) == 0:
+        ScreenArray[V][H] = (r, g, b)
+
+  SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+
+  for i in range(0, beats):
+    time.sleep(0.25)
+    ZoomScreen(ScreenArray, 32, 16, Sleep)
+    time.sleep(0.125)
+    ZoomScreen(ScreenArray, 22, 32, Sleep)
+
+  SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
 
 
 
@@ -19987,7 +20019,7 @@ def DisplayImage(image):
     Ensures proper timing and flicker-free updates.
     """
     global Canvas
-    
+
     if hasattr(image, "load"):
         Canvas.SetImage(image)
         Canvas = TheMatrix.SwapOnVSync(Canvas)
