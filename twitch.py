@@ -675,8 +675,9 @@ class Bot(commands.Bot ):
     #---------------------------------------
     async def RotateClockDisplays(self, RotateClockDelay: int = 5):
         
-        self.DisplayDigitalClock(ClockDuration)
-        await asyncio.sleep(RotateClockDelay * 60)
+        await self.Channel.send(message)
+        CommandQueue.put({"Action": "retrodigital", "duration": 10 })
+
 
         #StarryNight clock display (style=3)
         CommandQueue.put({ "Action": "showclock",   "Style": 3,  "Zoom": 2,   "Duration": 10, "Delay": 10  })
@@ -995,7 +996,8 @@ class Bot(commands.Bot ):
             CommandQueue.put({"Action": "showheart" })
 
         #Jesus
-        if ("JESUS" in message.content.upper() or "CHRISTIAN" in message.content.upper()):
+        if any(word in message.content.upper() for word in ("JESUS","CHRIST","CHRISTIAN","CHURCH")):
+        
           CommandQueue.put({"Action": "showimagezoom",
                     "image": "./images/Jesus1.png",
                     "zoommin" : 1,
@@ -1040,6 +1042,14 @@ class Bot(commands.Bot ):
           else:
             CommandQueue.put({"Action": "showgif", "GIF": './images/policefist.gif', "Loops" : 2, "sleep":0.06 })
           
+        #FOOD
+        if any(word in message.content.upper() for word in ("FOOD", "EAT", "CHICKEN","CAKE")):
+          if random.randint(1,2) == 1:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/food1.gif', "Loops" : 1, "sleep":0.06 })
+          else:
+            CommandQueue.put({"Action": "showgif", "GIF": './images/food2.gif', "Loops" : 1, "sleep":0.06 })
+
+
 
         #WATCH
         if ("WATCH" in message.content.upper()):
@@ -1048,6 +1058,12 @@ class Bot(commands.Bot ):
         #RETRO
         if ("RETRO" in message.content.upper()):
             CommandQueue.put({"Action": "retrodigital", "duration": 30 })
+
+
+        #SLAP
+        if ("SLAP" in message.content.upper()):
+            CommandQueue.put({"Action": "showgif", "GIF": './images/slap.gif', "Loops" : 4, "sleep":0.06 })
+
 
 
         #VIP / Hello
