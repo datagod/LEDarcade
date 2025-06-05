@@ -1020,15 +1020,15 @@ class Bot(commands.Bot ):
         if ("SIMPSONS" in message.content.upper()):
           r = random.randint(1,5)
           if r == 1:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/homer_marge2.gif', "Loops" : 10, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/homer_marge2.gif', "Loops" : 4, "sleep":0.06 })
           if r == 2:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/policefist.gif', "Loops" : 10, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/policefist.gif', "Loops" : 4, "sleep":0.06 })
           if r == 3:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 10, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 4, "sleep":0.06 })
           if r == 4:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 10, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsons1.gif', "Loops" : 4, "sleep":0.06 })
           if r == 5:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 10, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsons2.gif', "Loops" : 4, "sleep":0.06 })
 
 
         #minions
