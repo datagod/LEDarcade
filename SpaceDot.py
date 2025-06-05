@@ -2037,29 +2037,29 @@ def PlaySpaceDot(Duration = 5,StopEvent=None):
      
 
       #Check for keyboard input
-      m,r = divmod(moves,LED.KeyboardSpeed)
-      if (r == 0):
-        Key = LED.PollKeyboard()
-        LED.ProcessKeypress(Key)
-        if (Key == 'Q' or Key == 'q'):
-          LevelCount = 0
-          return
-        elif (Key == 'd'):
-          LED.DebugPlayfield(Playfield,LED.HatWidth,LED.HatHeight)
-          for i in range (0,PlayerMissileCount):
-            print("Name HV Alive Exploding Speed:",PlayerMissiles[i].name,PlayerMissiles[i].h,PlayerMissiles[i].v,PlayerMissiles[i].alive,PlayerMissiles[i].exploding,PlayerMissiles[i].speed)
-          time.sleep(2)
-
-        elif (Key == 'n'):
-          Playfield               = HomingMissileSprite.EraseSpriteFromPlayfield(Playfield)
-          HomingMissileSprite     = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
-          HomingMissileShip.h     = 32
-          HomingMissileShip.v     = 0
-          HomingMissileShip.lives = HomingMissileLives
-          HomingMissileShip.alive = 1
-          HomingMissileSprite.v   = 0
-          HomingMissileSprite.framerate = HomingMissileFrameRate
-          HomingMissileShip.speed = HomingMissileInitialSpeed
+      #m,r = divmod(moves,LED.KeyboardSpeed)
+      #if (r == 0):
+      #  Key = LED.PollKeyboard()
+      #  LED.ProcessKeypress(Key)
+      #  if (Key == 'Q' or Key == 'q'):
+      #    LevelCount = 0
+      #    return
+      #  elif (Key == 'd'):
+      #    LED.DebugPlayfield(Playfield,LED.HatWidth,LED.HatHeight)
+      #    for i in range (0,PlayerMissileCount):
+      #      print("Name HV Alive Exploding Speed:",PlayerMissiles[i].name,PlayerMissiles[i].h,PlayerMissiles[i].v,PlayerMissiles[i].alive,PlayerMissiles[i].exploding,PlayerMissiles[i].speed)
+      #    time.sleep(2)
+      #
+      #  elif (Key == 'n'):
+      #    Playfield               = HomingMissileSprite.EraseSpriteFromPlayfield(Playfield)
+      #    HomingMissileSprite     = HomingMissileSpriteList[random.randint(0,HomingMissileSprites -1 )]
+      #    HomingMissileShip.h     = 32
+      #    HomingMissileShip.v     = 0
+      #    HomingMissileShip.lives = HomingMissileLives
+      #    HomingMissileShip.alive = 1
+      #    HomingMissileSprite.v   = 0
+      #    HomingMissileSprite.framerate = HomingMissileFrameRate
+      #    HomingMissileShip.speed = HomingMissileInitialSpeed
                          
 
       

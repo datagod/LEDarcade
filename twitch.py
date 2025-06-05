@@ -1032,7 +1032,7 @@ class Bot(commands.Bot ):
 
         #minions
         if ("MINION" in message.content.upper()):
-          r = random.randint(1,5)
+          r = random.randint(1,6)
           if r == 1:
             CommandQueue.put({"Action": "showgif", "GIF": './images/minioncrying.gif', "Loops" : 10, "sleep":0.06 })
           if r == 2:

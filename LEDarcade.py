@@ -128,7 +128,7 @@ import asyncio
 # Global Variables                   --
 #--------------------------------------
 
-KeyboardSpeed  = 50
+KeyboardSpeed  = 2000
 ConfigFileName = "ClockConfig.ini"
 
 MainSleep        = 0
