@@ -1062,7 +1062,7 @@ class Bot(commands.Bot ):
 
         #SLAP
         if ("SLAP" in message.content.upper()):
-            CommandQueue.put({"Action": "showgif", "GIF": './images/slap.gif', "Loops" : 4, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/slap.gif', "Loops" : 1, "sleep":0.06 })
 
 
 
