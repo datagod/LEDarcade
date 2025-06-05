@@ -676,7 +676,7 @@ class Bot(commands.Bot ):
     async def RotateClockDisplays(self, RotateClockDelay: int = 5):
         
         CommandQueue.put({"Action": "retrodigital", "duration": 10 })
-
+        await asyncio.sleep(RotateClockDelay * 60)
 
         #StarryNight clock display (style=3)
         CommandQueue.put({ "Action": "showclock",   "Style": 3,  "Zoom": 2,   "Duration": 10, "Delay": 10  })
@@ -1023,11 +1023,11 @@ class Bot(commands.Bot ):
           if r == 2:
             CommandQueue.put({"Action": "showgif", "GIF": './images/policefist.gif', "Loops" : 4, "sleep":0.06 })
           if r == 3:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 4, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 1, "sleep":0.06 })
           if r == 4:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsons1.gif', "Loops" : 4, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsons1.gif', "Loops" : 10, "sleep":0.2 })
           if r == 5:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsons2.gif', "Loops" : 4, "sleep":0.06 })
+            CommandQueue.put({"Action": "showgif", "GIF": './images/simpsons2.gif', "Loops" : 2, "sleep":0.06 })
 
 
         #minions
