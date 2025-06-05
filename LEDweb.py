@@ -22,7 +22,7 @@ def serve_web_control(queue, port=5055):
         "stopclock": [],
         "showtitlescreen": ["Text", "RGB", "Duration"],
         "analogclock": [],
-        "starrynightdisplaytext": ["Text"],
+        "starrynightdisplaytext": ["text1","text2","text3"],
         "launch_dotinvaders": [],
         "launch_defender": [],
         "launch_tron": [],

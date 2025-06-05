@@ -2434,7 +2434,7 @@ def PlaySpaceDot(Duration = 5,StopEvent=None):
         PlayerShip.Explosion.h = PlayerShip.h
         PlayerShip.Explosion.v = PlayerShip.v
         PlayerShip.Explosion.DisplayAnimated()
-        LED.SaveConfigData()
+        #LED.SaveConfigData()
 
         #Kill PlayerShip after explosion animation is complete
         if (PlayerShip.Explosion.currentframe >= LED.PlayerShipExplosion.frames):
