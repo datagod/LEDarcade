@@ -1051,7 +1051,7 @@ class Bot(commands.Bot ):
 
 
         #POLICE
-        if ("POLICE" in message.content.upper()):
+        if any(word in message.content.upper() for word in ("POLICE","COPS","FBI","CIA")):
           if random.randint(1,2) == 1:
             CommandQueue.put({"Action": "showgif", "GIF": './images/simpsonspolice.gif', "Loops" : 2, "sleep":0.06 })
           else:
@@ -1071,12 +1071,12 @@ class Bot(commands.Bot ):
             CommandQueue.put({"Action": "analogclock", "duration": 30 })
 
         #RETRO
-        if ("RETRO" in message.content.upper()):
+        if any(word in message.content.upper() for word in ("RETRO","BUBBLE","TIME")):
             CommandQueue.put({"Action": "retrodigital", "duration": 30 })
 
 
         #SLAP
-        if ("SLAP" in message.content.upper()):
+        if any(word in message.content.upper() for word in ("SLAP","PUNCH","HIT")):
             CommandQueue.put({"Action": "showgif", "GIF": './images/slap.gif', "Loops" : 1, "sleep":0.06 })
 
 
