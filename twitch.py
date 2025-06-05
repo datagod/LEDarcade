@@ -675,7 +675,6 @@ class Bot(commands.Bot ):
     #---------------------------------------
     async def RotateClockDisplays(self, RotateClockDelay: int = 5):
         
-        await self.Channel.send(message)
         CommandQueue.put({"Action": "retrodigital", "duration": 10 })
 
 
