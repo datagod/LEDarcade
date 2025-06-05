@@ -972,7 +972,7 @@ def StarryNightDisplayText(Command, StopEvent):
     Text1       = Text1,
     Text2       = Text2,
     Text3       = Text3, 
-    ScrollSleep = 0.015,
+    ScrollSleep = 0.01,
     RunSeconds  = 30
     )
 
