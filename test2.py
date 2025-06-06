@@ -8,12 +8,20 @@ LED.Initialize()
 
 
 # --- Black Hole Parameters ---
-BLACKHOLE_GRAVITY = 0.05
-BLACKHOLE_MIN_SIZE = 2
-BLACKHOLE_MAX_SIZE = 5
+BLACKHOLE_GRAVITY = 1
+BLACKHOLE_MIN_SIZE = 1
+BLACKHOLE_MAX_SIZE = 2
 BLACKHOLE_APPEAR_INTERVAL = 15
 BLACKHOLE_LIFESPAN = 10
 
+
+
+
+
+
+# --- Virtual Playfield Size ---
+PLAYFIELD_WIDTH = 128
+PLAYFIELD_HEIGHT = 64
 
 
 # --- Ship Parameters ---
@@ -64,10 +72,6 @@ SPARK_TRAIL_LENGTH = 8
 SPARK_COLOR = (255, 200, 100)
 
 
-# --- Black Hole Parameters ---
-BLACK_HOLE_MASS = 500
-BLACK_HOLE_PULL_STRENGTH = 0.02
-BLACK_HOLE_RADIUS = 3
 
 # --- Display Settings ---
 WIDTH = LED.HatWidth
@@ -77,15 +81,71 @@ from numba import njit
 import numpy as np
 
 
-class BlackHole:
+
+
+
+
+# Boundary Bounce Logic for Virtual Playfield
+@njit
+def enforce_bounds_and_bounce(x, y, dx, dy, width, height):
+    if x < 0:
+        x = 0
+        dx = -dx
+    elif x > width:
+        x = width
+        dx = -dx
+    if y < 0:
+        y = 0
+        dy = -dy
+    elif y > height:
+        y = height
+        dy = -dy
+    return x, y, dx, dy
+
+
+
+class GameObject:
+    def __init__(self, x, y, dx, dy):
+        self.x = x
+        self.y = y
+        self.dx = dx
+        self.dy = dy
+
+    def update_position(self):
+        self.x += self.dx
+        self.y += self.dy
+        self.x, self.y, self.dx, self.dy = enforce_bounds_and_bounce(
+            self.x, self.y, self.dx, self.dy, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
+        )
+
+
+
+
+
+
+class BlackHole(GameObject):
     def __init__(self, x, y, radius):
         self.x = x
         self.y = y
         self.radius = radius
         self.spawn_time = time.time()
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(0.05, 0.2)
+        dx = math.cos(angle) * speed
+        dy = math.sin(angle) * speed
+        super().__init__(x, y, dx, dy)
+
+    def move(self):
+        self.update_position()  # from GameObject
+
+
 
     def expired(self):
-        return time.time() - self.spawn_time > BLACKHOLE_LIFESPAN
+        out_of_bounds = (
+            self.x < -self.radius or self.x > PLAYFIELD_WIDTH + self.radius or
+            self.y < -self.radius or self.y > PLAYFIELD_HEIGHT + self.radius
+        )
+        return out_of_bounds or (time.time() - self.spawn_time > BLACKHOLE_LIFESPAN)
 
     def draw(self):
         for dy in range(-self.radius, self.radius + 1):
@@ -172,14 +232,16 @@ def handle_collisions(asteroids):
         a.x, a.y = positions[i]
         a.dx, a.dy = velocities[i]
 
-class Asteroid:
-    def __init__(self, x=None, y=None, size=None, color=None):
-        self.x = x if x is not None else random.uniform(0, WIDTH)
-        self.y = y if y is not None else random.uniform(0, HEIGHT)
+
+class Asteroid(GameObject):
+    def __init__(self, x=None, y=None, size=None, color=None):  # patched for GameObject
+        x = x if x is not None else random.uniform(0, WIDTH)
+        y = y if y is not None else random.uniform(0, HEIGHT)
         angle = random.uniform(0, 2 * math.pi)
         speed = random.uniform(ASTEROID_MIN_SPEED, ASTEROID_MAX_SPEED)
-        self.dx = math.cos(angle) * speed
-        self.dy = math.sin(angle) * speed
+        dx = math.cos(angle) * speed
+        dy = math.sin(angle) * speed
+        super().__init__(x, y, dx, dy)
         self.size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
         self.health = self.size * 2
         self.last_hit_time = 0
@@ -195,8 +257,11 @@ class Asteroid:
                 self.color = ASTEROID_COLOR_OPTIONS[2]  # 5% purple
 
     def move(self):
-        self.x = (self.x + self.dx) % WIDTH
-        self.y = (self.y + self.dy) % HEIGHT
+        self.x += self.dx
+        self.y += self.dy
+        self.x, self.y, self.dx, self.dy = enforce_bounds_and_bounce(
+            self.x, self.y, self.dx, self.dy, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
+        )
 
     def draw(self):
         r, g, b = self.color
@@ -213,17 +278,22 @@ class Asteroid:
                         b_out = min(255, int(b * brightness_factor))
                         LED.setpixel(px, py, r_out, g_out, b_out)
 
-class Missile:
+
+class Missile(GameObject):
     def __init__(self, x, y, angle):
         self.birth_time = time.time()
-        self.x = x
-        self.y = y
+        dx = math.cos(angle) * MISSILE_SPEED
+        dy = math.sin(angle) * MISSILE_SPEED
+        super().__init__(x, y, dx, dy)
         self.angle = angle
         self.speed = MISSILE_SPEED
 
     def move(self):
-        self.x = (self.x + math.cos(self.angle) * self.speed) % WIDTH
-        self.y = (self.y + math.sin(self.angle) * self.speed) % HEIGHT
+        self.x += self.dx
+        self.y += self.dy
+        self.x, self.y, self.dx, self.dy = enforce_bounds_and_bounce(
+            self.x, self.y, self.dx, self.dy, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
+        )
 
     def draw(self):
         for i in range(MISSILE_TRAIL_LENGTH):
@@ -234,11 +304,9 @@ class Missile:
 
 
 
-
-class Ship:
+class Ship(GameObject):
     def __init__(self):
-        self.x = WIDTH // 2
-        self.y = HEIGHT // 2
+        super().__init__(WIDTH // 2, HEIGHT // 2, 0.0, 0.0)
         self.angle = 0
         self.frame = 0
         self.color = SHIP_COLOR
@@ -285,16 +353,17 @@ class Ship:
                 ay = math.sin(self.angle) * thrust
                 self.speed_x += ax
                 self.speed_y += ay
-            
 
-        
         speed = math.hypot(self.speed_x, self.speed_y)
         if speed > MAX_SPEED:
             scale = MAX_SPEED / speed
             self.speed_x *= scale
             self.speed_y *= scale
-        self.x = (self.x + self.speed_x) % WIDTH
-        self.y = (self.y + self.speed_y) % HEIGHT
+        self.x += self.speed_x
+        self.y += self.speed_y
+        self.x, self.y, self.speed_x, self.speed_y = enforce_bounds_and_bounce(
+            self.x, self.y, self.speed_x, self.speed_y, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
+        )
         self.frame += 1
 
     def draw(self):
@@ -312,8 +381,8 @@ class Ship:
         LED.setpixel(cx, cy, r, g, b)
         dx = int(round(math.cos(self.angle)))
         dy = int(round(math.sin(self.angle)))
-        #LED.setpixel((cx + dx) % WIDTH, (cy + dy) % HEIGHT, r, g, b)
         LED.setpixel((cx - dx) % WIDTH, (cy - dy) % HEIGHT, r, g, b)
+
 
 
 
@@ -335,13 +404,6 @@ class Spark:
             ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
             fade = max(0, SPARK_COLOR[0] - i * (SPARK_COLOR[0] // SPARK_TRAIL_LENGTH))
             LED.setpixel(tx, ty, fade, fade * 3 // 4, fade // 2)
-
-
-
-ship = Ship()
-
-
-
 
 
 
@@ -372,13 +434,24 @@ blackhole = None
 
 try:
     while True:
+        now = time.time()
 
-        # In your game loop, update this block:
-        now = time.time()
-        now = time.time()
+
         if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
-            bx = random.randint(BLACKHOLE_MAX_SIZE, WIDTH - BLACKHOLE_MAX_SIZE)
-            by = random.randint(BLACKHOLE_MAX_SIZE, HEIGHT - BLACKHOLE_MAX_SIZE)
+            # Spawn just outside one of the four edges
+            side = random.choice(['top', 'bottom', 'left', 'right'])
+            if side == 'top':
+                bx = random.randint(0, PLAYFIELD_WIDTH)
+                by = -BLACKHOLE_MAX_SIZE
+            elif side == 'bottom':
+                bx = random.randint(0, PLAYFIELD_WIDTH)
+                by = PLAYFIELD_HEIGHT + BLACKHOLE_MAX_SIZE
+            elif side == 'left':
+                bx = -BLACKHOLE_MAX_SIZE
+                by = random.randint(0, PLAYFIELD_HEIGHT)
+            else:
+                bx = PLAYFIELD_WIDTH + BLACKHOLE_MAX_SIZE
+                by = random.randint(0, PLAYFIELD_HEIGHT)
             bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
             blackhole = BlackHole(bx, by, bradius)
             last_blackhole_time = now
@@ -391,7 +464,11 @@ try:
             asteroids.append(Asteroid(size=MAX_ASTEROID_SIZE))
         LED.ClearBuffers()
         handle_collisions(asteroids)
-        black_hole.draw()
+
+        if blackhole:
+            blackhole.move()
+            blackhole.draw()
+
 
         new_asteroids = []
         for asteroid in asteroids:
@@ -477,7 +554,6 @@ try:
             print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f}")
             fps_counter = 0
             fps_timer = time.time()
-        import pygame
 
 except KeyboardInterrupt:
     LED.ClearBuffers()
