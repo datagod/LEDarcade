@@ -2,29 +2,59 @@ import LEDarcade as LED
 import random
 import time
 import math
+import pygame
 
 LED.Initialize()
 
-MAX_SPEED = 0.15
-SHIP_THRUST = 0.001
-MISSILE_SPEED = 0.4
-MISSILE_LIFESPAN = 0.30
-FIRE_CHANCE = 0.01
-ASTEROID_SPLIT_THRESHOLD = 2
-MAX_ASTEROID_SIZE = 4
-MISSILE_TRAIL_LENGTH = 4
-MAX_MISSILES = 2
-FRAME_DELAY = 0.03
-THRUST_TRAIL_LENGTH = 8
-ASTEROIDS = 2
-ASTEROID_MIN_SPEED = 0.01
-ASTEROID_MAX_SPEED = 0.10
+# --- Ship Parameters ---
+MAX_SPEED = 0.5
+SHIP_THRUST = 0.01
 SHIP_COLOR = (0, 255, 0)
+SHIP_THRUST_DURATION = 3.0
+SHIP_THRUST_COOLDOWN = 1.0
+THRUST_TRAIL_LENGTH = 8
+
+
+# --- Missile Parameters ---
+MISSILE_SPEED = 1
+MISSILE_LIFESPAN = 0.50
+FIRE_CHANCE = 0.01
 MISSILE_COLOR = (255, 255, 255)
 MISSILE_TRAIL_MIN = 50
+MISSILE_TRAIL_LENGTH = 8
+
+
+
+# --- Asteroid Parameters ---
+ASTEROID_SPLIT_THRESHOLD = 2
+MAX_ASTEROID_SIZE = 4
+MAX_MISSILES = 4
+FRAME_DELAY = 0.03
+ASTEROIDS = 2
+ASTEROID_MIN_SPEED = 0.05
+ASTEROID_MAX_SPEED = 0.5
 THRUST_TRAIL_COLOR = (255, 0, 0)
 ASTEROID_TARGET_COLOR = (255, 255, 0)
 ASTEROID_CROSSHAIR_COLOR = (255, 0, 255)
+ASTEROID_LIGHTING_CONTRAST = 1
+ASTEROID_COLOR_MIN_BRIGHTNESS = 100
+ASTEROID_COLOR_MAX_BRIGHTNESS = 255
+ASTEROID_COLOR_OPTIONS = [
+    (ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS),  # dark grey
+    (ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MAX_BRIGHTNESS),  # deep blue
+    (ASTEROID_COLOR_MAX_BRIGHTNESS, 0, ASTEROID_COLOR_MAX_BRIGHTNESS)  # deep purple
+]
+
+
+# --- Spark Effects ---
+SPARK_COUNT = 10
+SPARK_SPEED_MIN = 0.001
+SPARK_SPEED_MAX = 0.2
+SPARK_TRAIL_LENGTH = 8
+SPARK_COLOR = (255, 200, 100)
+
+
+# --- Display Settings ---
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
 
@@ -80,7 +110,7 @@ def handle_collisions(asteroids):
         a.dx, a.dy = velocities[i]
 
 class Asteroid:
-    def __init__(self, x=None, y=None, size=None):
+    def __init__(self, x=None, y=None, size=None, color=None):
         self.x = x if x is not None else random.uniform(0, WIDTH)
         self.y = y if y is not None else random.uniform(0, HEIGHT)
         angle = random.uniform(0, 2 * math.pi)
@@ -90,14 +120,16 @@ class Asteroid:
         self.size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
         self.health = self.size * 2
         self.last_hit_time = 0
-        gray = random.randint(30, 120)
-        blue = random.randint(30, 100)
-        purple = random.randint(30, 100)
-        self.color = random.choice([
-            (gray, gray, gray),
-            (blue // 2, blue // 2, blue),
-            (purple, 0, purple)
-        ])
+        if color:
+            self.color = color
+        else:
+            roll = random.random()
+            if roll < 0.9:
+                self.color = ASTEROID_COLOR_OPTIONS[0]  # 90% grey
+            elif roll < 0.95:
+                self.color = ASTEROID_COLOR_OPTIONS[1]  # 5% blue
+            else:
+                self.color = ASTEROID_COLOR_OPTIONS[2]  # 5% purple
 
     def move(self):
         self.x = (self.x + self.dx) % WIDTH
@@ -111,7 +143,12 @@ class Asteroid:
                     px = int(self.x) + i
                     py = int(self.y) + j
                     if 0 <= px < WIDTH and 0 <= py < HEIGHT:
-                        LED.setpixel(px, py, r, g, b)
+                        brightness_factor = 1.0 - ASTEROID_LIGHTING_CONTRAST * (i + j) / (2 * self.size)
+                        brightness_factor = max(0.5, min(1.5, brightness_factor))
+                        r_out = min(255, int(r * brightness_factor))
+                        g_out = min(255, int(g * brightness_factor))
+                        b_out = min(255, int(b * brightness_factor))
+                        LED.setpixel(px, py, r_out, g_out, b_out)
 
 class Missile:
     def __init__(self, x, y, angle):
@@ -129,11 +166,12 @@ class Missile:
         for i in range(MISSILE_TRAIL_LENGTH):
             tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
             ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
-            brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * 40)
-            LED.setpixel(tx, ty, MISSILE_COLOR[0], MISSILE_COLOR[1], MISSILE_COLOR[2])
+            brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
+            LED.setpixel(tx, ty, brightness, brightness, brightness)
 
 missiles = []
 asteroids = [Asteroid() for _ in range(ASTEROIDS)]
+sparks = []
 class Ship:
     def __init__(self):
         self.x = WIDTH // 2
@@ -144,6 +182,8 @@ class Ship:
         self.speed_x = 0
         self.speed_y = 0
         self.target = None
+        self.last_thrust_time = 0
+        self.thrusting = False
 
     def move(self):
         if not self.target or self.target not in asteroids:
@@ -151,22 +191,40 @@ class Ship:
                 self.target = random.choice(asteroids)
 
         if self.target:
+            current_time = time.time()
+            if self.thrusting and current_time - self.last_thrust_time > SHIP_THRUST_DURATION:
+                self.thrusting = False
+                self.last_thrust_time = current_time
+            elif not self.thrusting and current_time - self.last_thrust_time > SHIP_THRUST_COOLDOWN:
+                self.thrusting = True
+                self.last_thrust_time = current_time
+
             dx = self.target.x - self.x
             dy = self.target.y - self.y
             desired_angle = math.atan2(dy, dx)
             angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
             self.angle += max(-0.5, min(0.5, angle_diff))
-            if abs(angle_diff) > math.pi / 2:
-                thrust = SHIP_THRUST * 4.0  # hard reverse thrust for braking
-            elif abs(angle_diff) > math.pi / 4:
-                thrust = SHIP_THRUST * 2.0  # sharp turn boost
-            else:
-                thrust = SHIP_THRUST
 
-        ax = math.cos(self.angle) * thrust
-        ay = math.sin(self.angle) * thrust
-        self.speed_x += ax
-        self.speed_y += ay
+            if self.thrusting:
+                dx = self.target.x - self.x
+                dy = self.target.y - self.y
+                desired_angle = math.atan2(dy, dx)
+                angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
+                self.angle += max(-0.5, min(0.5, angle_diff))
+                if abs(angle_diff) > math.pi / 2:
+                    thrust = SHIP_THRUST * 4.0
+                elif abs(angle_diff) > math.pi / 4:
+                    thrust = SHIP_THRUST * 2.0
+                else:
+                    thrust = SHIP_THRUST
+
+                ax = math.cos(self.angle) * thrust
+                ay = math.sin(self.angle) * thrust
+                self.speed_x += ax
+                self.speed_y += ay
+            
+
+        
         speed = math.hypot(self.speed_x, self.speed_y)
         if speed > MAX_SPEED:
             scale = MAX_SPEED / speed
@@ -180,14 +238,14 @@ class Ship:
         cx = int(self.x)
         cy = int(self.y)
         r, g, b = self.color
-        # Draw red fading thrust trail based on thrust
-        current_thrust = math.hypot(self.speed_x, self.speed_y)
-        trail_strength = int(min(current_thrust / MAX_SPEED, 1.0) * THRUST_TRAIL_LENGTH)
-        for i in range(1, trail_strength + 1):
-            tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
-            ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
-            red_intensity = max(0, THRUST_TRAIL_COLOR[0] - i * (THRUST_TRAIL_COLOR[0] // THRUST_TRAIL_LENGTH))
-            LED.setpixel(tx, ty, red_intensity, 0, 0)
+        if self.thrusting:
+            current_thrust = math.hypot(self.speed_x, self.speed_y)
+            trail_strength = int(min(current_thrust / MAX_SPEED, 1.0) * THRUST_TRAIL_LENGTH)
+            for i in range(1, trail_strength + 1):
+                tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
+                ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
+                red_intensity = max(0, THRUST_TRAIL_COLOR[0] - i * (THRUST_TRAIL_COLOR[0] // THRUST_TRAIL_LENGTH))
+                LED.setpixel(tx, ty, red_intensity, 0, 0)
         LED.setpixel(cx, cy, r, g, b)
         dx = int(round(math.cos(self.angle)))
         dy = int(round(math.sin(self.angle)))
@@ -195,6 +253,29 @@ class Ship:
         LED.setpixel((cx - dx) % WIDTH, (cy - dy) % HEIGHT, r, g, b)
 
 ship = Ship()
+
+class Spark:
+    def __init__(self, x, y, angle, speed):
+        self.x = x
+        self.y = y
+        self.angle = angle
+        self.speed = speed
+        self.lifespan = SPARK_TRAIL_LENGTH
+
+    def move(self):
+        self.x = (self.x + math.cos(self.angle) * self.speed) % WIDTH
+        self.y = (self.y + math.sin(self.angle) * self.speed) % HEIGHT
+
+    def draw(self):
+        for i in range(SPARK_TRAIL_LENGTH):
+            tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
+            ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
+            fade = max(0, SPARK_COLOR[0] - i * (SPARK_COLOR[0] // SPARK_TRAIL_LENGTH))
+            LED.setpixel(tx, ty, fade, fade * 3 // 4, fade // 2)
+
+clock = pygame.time.Clock()
+fps_counter = 0
+fps_timer = time.time()
 
 try:
     while True:
@@ -217,9 +298,14 @@ try:
                 if time.time() - asteroid.last_hit_time > 1.0:
                     asteroid.health -= 1
                     asteroid.last_hit_time = time.time()
-                if asteroid.health <= 0 and asteroid.size > 1:
-                    new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
-                    new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
+                if asteroid.health <= 0:
+                    if asteroid.size > 1:
+                        new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1, color=asteroid.color))
+                        new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
+                    for _ in range(SPARK_COUNT):
+                        angle = random.uniform(0, 2 * math.pi)
+                        speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
+                        sparks.append(Spark(asteroid.x, asteroid.y, angle, speed))
                     continue
                 angle = math.atan2(dy, dx)
                 thrust = MAX_SPEED
@@ -247,17 +333,37 @@ try:
                     break
             if hit_index is not None:
                 hit = asteroids.pop(hit_index)
+                spark_origin_x = hit.x
+                spark_origin_y = hit.y
                 if hit.size > 1:
-                    new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
+                    new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1, color=hit.color))
                     new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
                 missiles.remove(missile)
+                for _ in range(SPARK_COUNT):
+                    angle = random.uniform(0, 2 * math.pi)
+                    speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
+                    sparks.append(Spark(spark_origin_x, spark_origin_y, angle, speed))
             elif not (0 <= missile.x < WIDTH and 0 <= missile.y < HEIGHT):
                 missiles.remove(missile)
 
         asteroids.extend(new_asteroids)
 
+        for spark in sparks[:]:
+            spark.move()
+            spark.draw()
+            spark.lifespan -= 1
+            if spark.lifespan <= 0:
+                sparks.remove(spark)
+
         LED.TheMatrix.SwapOnVSync(LED.Canvas)
-        #time.sleep(FRAME_DELAY)
+        clock.tick(60)  # Cap the frame rate to 60 FPS
+        fps_counter += 1
+        if time.time() - fps_timer >= 2.0:
+            print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f}")
+            fps_counter = 0
+            fps_timer = time.time()
+        import pygame
+
 except KeyboardInterrupt:
     LED.ClearBuffers()
     LED.TheMatrix.SwapOnVSync(LED.Canvas)
