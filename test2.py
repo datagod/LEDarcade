@@ -8,18 +8,16 @@ LED.Initialize()
 
 
 # --- Black Hole Parameters ---
-BLACKHOLE_GRAVITY = 5
+BLACKHOLE_GRAVITY = 3
 BLACKHOLE_MIN_SIZE = 1
-BLACKHOLE_MAX_SIZE = 1
-BLACKHOLE_APPEAR_INTERVAL = 15
+BLACKHOLE_MAX_SIZE = 5
+BLACKHOLE_MAX_SPEED = 2
+BLACKHOLE_APPEAR_INTERVAL = 60
 BLACKHOLE_LIFESPAN = 25
 
 
 
 
-# --- Virtual Playfield Size ---
-PLAYFIELD_WIDTH = 128
-PLAYFIELD_HEIGHT = 64
 
 
 # --- Ship Parameters ---
@@ -29,12 +27,13 @@ SHIP_COLOR = (0, 255, 0)
 SHIP_THRUST_DURATION = 3.0
 SHIP_THRUST_COOLDOWN = 1.0
 THRUST_TRAIL_LENGTH = 8
+SHIP_VISION_RADIUS = 20
 
 
 # --- Missile Parameters ---
 MISSILE_SPEED = 1
 MISSILE_LIFESPAN = 0.50
-FIRE_CHANCE = 0.01
+FIRE_CHANCE = 0.1
 MISSILE_COLOR = (255, 255, 255)
 MISSILE_TRAIL_MIN = 50
 MISSILE_TRAIL_LENGTH = 8
@@ -46,9 +45,9 @@ MAX_MISSILES = 4
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 4
 FRAME_DELAY = 0.03
-ASTEROIDS = 2
+ASTEROIDS = 3
 ASTEROID_MIN_SPEED = 0.05
-ASTEROID_MAX_SPEED = 0.5
+ASTEROID_MAX_SPEED = 0.4
 THRUST_TRAIL_COLOR = (255, 0, 0)
 ASTEROID_TARGET_COLOR = (255, 255, 0)
 ASTEROID_CROSSHAIR_COLOR = (255, 0, 255)
@@ -74,6 +73,11 @@ SPARK_COLOR = (255, 200, 100)
 # --- Display Settings ---
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
+
+# --- Virtual Playfield Size ---
+PLAYFIELD_WIDTH = 68
+PLAYFIELD_HEIGHT = 40
+
 
 # Center the visible matrix in the virtual playfield
 VIEWPORT_X_OFFSET = (PLAYFIELD_WIDTH - WIDTH) // 2
@@ -147,9 +151,8 @@ class BlackHole(GameObject):
         speed = random.uniform(0.05, 0.2)
         dx = math.cos(angle) * speed
         dy = math.sin(angle) * speed
-        self.max_speed = ASTEROID_MAX_SPEED
         super().__init__(x, y, dx, dy)
-        self.max_speed = ASTEROID_MAX_SPEED
+        self.max_speed = BLACKHOLE_MAX_SPEED
 
     def move(self):
         self.update_position()  # from GameObject
@@ -263,8 +266,10 @@ class Asteroid(GameObject):
         dy = math.sin(angle) * speed
         super().__init__(x, y, dx, dy)
         self.max_speed = ASTEROID_MAX_SPEED
-        self.size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
-        self.health = self.size * 2
+        self.target_size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
+        self.size = 1
+        self.grow_start_time = time.time()
+        self.health = self.target_size * 2
         self.last_hit_time = 0
         if color:
             self.color = color
@@ -281,6 +286,13 @@ class Asteroid(GameObject):
         self.update_position()
 
     def draw(self):
+        # Grow animation logic
+        grow_duration = 0.5
+        elapsed = time.time() - self.grow_start_time
+        grow_factor = min(1.0, elapsed / grow_duration)
+        current_size = max(1, int(self.target_size * grow_factor))
+        self.size = current_size
+
         r, g, b = self.color
         for i in range(-self.size, self.size + 1):
             for j in range(-self.size, self.size + 1):
@@ -294,7 +306,6 @@ class Asteroid(GameObject):
                         r_out = min(255, int(r * brightness_factor))
                         g_out = min(255, int(g * brightness_factor))
                         b_out = min(255, int(b * brightness_factor))
-                        #LED.setpixel(px, py, r_out, g_out, b_out)
                         LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r_out, g_out, b_out)
 
 
@@ -310,9 +321,7 @@ class Missile(GameObject):
     def move(self):
         self.x += self.dx
         self.y += self.dy
-        self.x, self.y, self.dx, self.dy = enforce_bounds_and_bounce(
-            self.x, self.y, self.dx, self.dy, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
-        )
+        
 
     def draw(self):
         for i in range(MISSILE_TRAIL_LENGTH):
@@ -325,7 +334,7 @@ class Missile(GameObject):
 
 class Ship(GameObject):
     def __init__(self):
-        super().__init__(WIDTH // 2, HEIGHT // 2, 0.0, 0.0)
+        super().__init__(PLAYFIELD_WIDTH // 2, PLAYFIELD_HEIGHT // 2, 0.0, 0.0)
         self.angle = 0
         self.frame = 0
         self.color = SHIP_COLOR
@@ -339,8 +348,22 @@ class Ship(GameObject):
 
     def move(self):
         if not self.target or self.target not in asteroids:
-            if asteroids:
-                self.target = random.choice(asteroids)
+            cx, cy = PLAYFIELD_WIDTH / 2, PLAYFIELD_HEIGHT / 2
+            visible_targets = [a for a in asteroids if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2]
+            if visible_targets:
+                self.target = random.choice(visible_targets)
+            else:
+                self.target = None
+                dx = cx - self.x
+                dy = cy - self.y
+                angle_to_center = math.atan2(dy, dx)
+                self.angle = angle_to_center
+                ax = math.cos(self.angle) * SHIP_THRUST
+                ay = math.sin(self.angle) * SHIP_THRUST
+                self.speed_x += ax
+                self.speed_y += ay
+
+
 
         if self.target:
             current_time = time.time()
@@ -374,6 +397,13 @@ class Ship(GameObject):
                 ay = math.sin(self.angle) * thrust
                 self.speed_x += ax
                 self.speed_y += ay
+
+
+                # Clamp ship within visible area, leaving 1 pixel margin inside the visible playfield
+                self.x = max(VIEWPORT_X_OFFSET + 2, min(self.x, VIEWPORT_X_OFFSET + WIDTH - 2))
+                self.y = max(VIEWPORT_Y_OFFSET + 2, min(self.y, VIEWPORT_Y_OFFSET + HEIGHT - 2))
+
+
 
         speed = math.hypot(self.speed_x, self.speed_y)
         if speed > MAX_SPEED:
@@ -453,7 +483,6 @@ class Spark:
 
 
 missiles = []
-black_hole = BlackHole(31,15,4)
 ship = Ship()
 asteroids = [Asteroid() for _ in range(ASTEROIDS)]
 sparks = []
@@ -590,6 +619,17 @@ try:
             if spark.lifespan <= 0:
                 sparks.remove(spark)
 
+        
+        
+        # Draw visible boundary for the virtual playfield
+        #for x in range(WIDTH):
+        #    LED.setpixel(x, 0, 0, 0, 255)  # Top edge
+        #    LED.setpixel(x, HEIGHT - 1, 0, 0, 255)  # Bottom edge
+        #for y in range(HEIGHT):
+        #    LED.setpixel(0, y, 0, 0, 255)  # Left edge
+        #    LED.setpixel(WIDTH - 1, y, 0, 0, 255)  # Right edge
+
+        
         LED.TheMatrix.SwapOnVSync(LED.Canvas)
         clock.tick(60)  # Cap the frame rate to 60 FPS
         fps_counter += 1
