@@ -1,77 +1,167 @@
-import time
-from datetime import datetime
-from PIL import Image, ImageDraw, ImageFont
 import LEDarcade as LED
+import random
+import time
+import math
 
-# Initialize matrix and LEDarcade
 LED.Initialize()
-width = LED.HatWidth
-height = LED.HatHeight
 
-# Load a system TrueType font
-#font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
-#font = ImageFont.truetype("/home/pi/LEDarcade/fonts/3270-Regular.ttf", 24)
+WIDTH = LED.HatWidth
+HEIGHT = LED.HatHeight
 
+def handle_collisions(asteroids):
+    for i in range(len(asteroids)):
+        for j in range(i + 1, len(asteroids)):
+            a1, a2 = asteroids[i], asteroids[j]
+            dx = a2.x - a1.x
+            dy = a2.y - a1.y
+            dist_sq = dx * dx + dy * dy
+            min_dist = a1.size + a2.size
+            if dist_sq < min_dist * min_dist:
+                dist = math.sqrt(dist_sq)
+                if dist == 0:
+                    continue
+                nx, ny = dx / dist, dy / dist
+                tx, ty = -ny, nx
 
+                dpTan1 = a1.dx * tx + a1.dy * ty
+                dpTan2 = a2.dx * tx + a2.dy * ty
+                dpNorm1 = a1.dx * nx + a1.dy * ny
+                dpNorm2 = a2.dx * nx + a2.dy * ny
 
+                a1.dx = tx * dpTan1 + nx * dpNorm2
+                a1.dy = ty * dpTan1 + ny * dpNorm2
+                a2.dx = tx * dpTan2 + nx * dpNorm1
+                a2.dy = ty * dpTan2 + ny * dpNorm1
 
-def DisplayCustomFontClock():
+                overlap = 0.5 * (min_dist - dist + 0.01)
+                a1.x -= nx * overlap
+                a1.y -= ny * overlap
+                a2.x += nx * overlap
+                a2.y += ny * overlap
 
-    def MakeTimeImage():
-        now = datetime.now()
-        current_minute = now.strftime("%M:%S")
+class Asteroid:
+    def __init__(self, x=None, y=None, size=None):
+        self.x = x if x is not None else random.uniform(0, WIDTH)
+        self.y = y if y is not None else random.uniform(0, HEIGHT)
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(0.2, 1.0)
+        self.dx = math.cos(angle) * speed
+        self.dy = math.sin(angle) * speed
+        self.size = size if size is not None else random.choice([2, 3])
+        self.color = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
 
-        # Create blank image and drawing context
-        image = Image.new("RGB", (width, height))
-        draw = ImageDraw.Draw(image)
+    def move(self):
+        self.x = (self.x + self.dx) % WIDTH
+        self.y = (self.y + self.dy) % HEIGHT
 
-        # Measure text size and center it using textbbox
-        bbox = draw.textbbox((0, 0), current_minute, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        x = (width - text_width) // 2
-        y = (height - text_height) // 4
-        draw.text((x, y), current_minute, font=font, fill=(0, 200, 0))  # Red
-        return image
-        
-    font = ImageFont.truetype("/home/pi/LEDarcade/fonts/CHECKBK0.TTF", 22)
+    def draw(self):
+        r, g, b = self.color
+        for i in range(-self.size, self.size + 1):
+            for j in range(-self.size, self.size + 1):
+                if i**2 + j**2 <= self.size**2:
+                    px = int(self.x) + i
+                    py = int(self.y) + j
+                    if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                        LED.setpixel(px, py, r, g, b)
 
-    # Display image using LEDarcade canvas
-    image = MakeTimeImage()
-    ScreenArray  = LED.CopyImageToScreenArray(image, 0, 0)
-    ScreenArray2 = LED.CopyImageToScreenArray(image, 0, 0)
+class Missile:
+    def __init__(self, x, y, angle):
+        self.birth_time = time.time()
+        self.x = x
+        self.y = y
+        self.angle = angle
+        self.speed = 0.5
 
+    def move(self):
+        self.x = (self.x + math.cos(self.angle) * self.speed) % WIDTH
+        self.y = (self.y + math.sin(self.angle) * self.speed) % HEIGHT
 
+    def draw(self):
+        LED.setpixel(int(self.x), int(self.y), 255, 255, 255)
 
-    LED.SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+missile = None
+asteroids = [Asteroid() for _ in range(3)]
+class Ship:
+    def __init__(self):
+        self.x = WIDTH // 2
+        self.y = HEIGHT // 2
+        self.angle = 0
+        self.frame = 0
+        self.color = (0, 255, 0)
+        self.speed_x = 0
+        self.speed_y = 0
 
-    # Clock loop
-    last_minute = None
-    try:
-        while True:
+    def move(self):
+        if self.frame % 5 == 0:
+            self.angle += random.uniform(-0.3, 0.3)
+        thrust = 0.1
+        ax = math.cos(self.angle) * thrust
+        ay = math.sin(self.angle) * thrust
+        self.speed_x += ax
+        self.speed_y += ay
+        self.x = (self.x + self.speed_x) % WIDTH
+        self.y = (self.y + self.speed_y) % HEIGHT
+        self.frame += 1
 
-            now = datetime.now()
-            current_minute = now.strftime("%M:%S")
-            print("Time: ",now)
+    def draw(self):
+        cx = int(self.x)
+        cy = int(self.y)
+        r, g, b = self.color
+        LED.setpixel(cx, cy, r, g, b)
+        LED.setpixel((cx + 1) % WIDTH, cy, r, g, b)
+        LED.setpixel(cx, (cy + 1) % HEIGHT, r, g, b)
 
+ship = Ship()
 
-            if current_minute != last_minute:
-                image = MakeTimeImage()
-                ScreenArray  = LED.CopyImageToScreenArray(image, 0, 0)
-                LED.TransitionBetweenScreenArrays(ScreenArray2,ScreenArray,TransitionType=2,FadeSleep=0.02)
+try:
+    while True:
+        LED.ClearBuffers()
+        handle_collisions(asteroids)
 
-            time.sleep(1)
-            last_minute = current_minute
-            ScreenArray2 = LED.CopyImageToScreenArray(image, 0, 0)
+        new_asteroids = []
+        for asteroid in asteroids:
+            asteroid.move()
+            asteroid.draw()
+            dx = ship.x - asteroid.x
+            dy = ship.y - asteroid.y
+            if dx * dx + dy * dy < asteroid.size * asteroid.size:
+                angle = math.atan2(dy, dx)
+                thrust = 1.5
+                ship.speed_x = math.cos(angle + math.pi) * thrust
+                ship.speed_y = math.sin(angle + math.pi) * thrust
 
+        ship.move()
+        ship.draw()
 
+        if missile is None and random.random() < 0.1:
+            missile = Missile(ship.x, ship.y, ship.angle)
 
-    except KeyboardInterrupt:
-        LED.TheMatrix.Clear()
+        if missile:
+            missile.move()
+            missile.draw()
+            if time.time() - missile.birth_time > 3.0:
+                missile = None
+            else:
+                hit_index = None
+                for idx, asteroid in enumerate(asteroids):
+                    dx = missile.x - asteroid.x
+                    dy = missile.y - asteroid.y
+                    if dx * dx + dy * dy < asteroid.size * asteroid.size:
+                        hit_index = idx
+                        break
+                if hit_index is not None:
+                    hit = asteroids.pop(hit_index)
+                    if hit.size > 1:
+                        new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
+                        new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
+                    missile = None
+                elif not (0 <= missile.x < WIDTH and 0 <= missile.y < HEIGHT):
+                    missile = None
 
+        asteroids.extend(new_asteroids)
 
-
-
-DisplayCustomFontClock()
-
-
+        LED.TheMatrix.SwapOnVSync(LED.Canvas)
+        time.sleep(0.03)
+except KeyboardInterrupt:
+    LED.ClearBuffers()
+    LED.TheMatrix.SwapOnVSync(LED.Canvas)
