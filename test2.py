@@ -1,3 +1,50 @@
+# =====================================================================================
+# LED ASTEROID FIELD SIMULATION — With Ship AI, Missiles, Sparks, and Black Hole Logic
+#
+# Author       : William McEvoy 
+# Framework    : LEDarcade (custom game and display framework for LED matrices)
+# Hardware     : Raspberry Pi w/ Adafruit or compatible RGB LED Matrix (e.g. 64x32)
+# Dependencies : pygame, numpy, numba, LEDarcade (custom), Pillow (for fonts/images)
+#
+# Description  :
+# This is a real-time arcade-style simulation rendered on an LED matrix display. The
+# game features autonomous AI ship navigation, dynamic asteroid fields, projectile
+# tracking (missiles), particle effects (sparks), and gravitational anomalies (black
+# holes). Entities interact with physics-inspired behaviors including momentum, elastic
+# collisions, gravity fields, and boundary reflection.
+#
+# The engine runs on a virtual playfield larger than the visible LED matrix, allowing
+# for a scrolling effect and spatial simulation beyond the constrained screen size.
+#
+# Core Features:
+#  - Autonomous AI-controlled ship with vision-based targeting and thrust behavior
+#  - Asteroid spawning, health, splitting, and collision physics (elastic, resolved)
+#  - Black holes that attract nearby objects and destroy on proximity/contact
+#  - Missile launching with limited lifespan and projectile targeting
+#  - Real-time particle system for visual effects (sparks on impact/destruction)
+#  - LED-safe rendering pipeline using off-screen buffers and VSync frame swapping
+#  - Numba-accelerated collision physics for performance on embedded hardware
+#  - FPS tracking and average asteroid speed diagnostics
+#
+# Architectural Notes:
+#  - GameObject is the parent class for all moving entities (Ship, Asteroids, Missiles)
+#  - All rendering is done via LED.setpixel() into the back buffer, followed by
+#    SwapOnVSync() to commit the frame
+#  - A viewport window into the larger virtual space is centered around the display
+#  - Ship behavior uses angular targeting and thrust arcs to avoid jittery movement
+#  - `@njit` is used where high-frequency numeric operations are required (Numba)
+#
+# Known Limitations / To-Do:
+#  - No player input; all gameplay is autonomous (demo-style)
+#  - Ship has no health system (can’t be destroyed)
+#  - No high score tracking or persistent state
+#
+# Version      : 1.0.0
+# License      : Non-commercial use only. Contact william.mcevoy@gmail.com for licensing.
+#
+# =====================================================================================
+
+
 import LEDarcade as LED
 import random
 import time
