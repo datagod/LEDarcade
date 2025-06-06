@@ -6,6 +6,16 @@ import pygame
 
 LED.Initialize()
 
+
+# --- Black Hole Parameters ---
+BLACKHOLE_GRAVITY = 0.05
+BLACKHOLE_MIN_SIZE = 2
+BLACKHOLE_MAX_SIZE = 5
+BLACKHOLE_APPEAR_INTERVAL = 15
+BLACKHOLE_LIFESPAN = 10
+
+
+
 # --- Ship Parameters ---
 MAX_SPEED = 0.5
 SHIP_THRUST = 0.01
@@ -37,8 +47,8 @@ THRUST_TRAIL_COLOR = (255, 0, 0)
 ASTEROID_TARGET_COLOR = (255, 255, 0)
 ASTEROID_CROSSHAIR_COLOR = (255, 0, 255)
 ASTEROID_LIGHTING_CONTRAST = 1
-ASTEROID_COLOR_MIN_BRIGHTNESS = 100
-ASTEROID_COLOR_MAX_BRIGHTNESS = 255
+ASTEROID_COLOR_MIN_BRIGHTNESS = 30
+ASTEROID_COLOR_MAX_BRIGHTNESS = 120
 ASTEROID_COLOR_OPTIONS = [
     (ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS),  # dark grey
     (ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MAX_BRIGHTNESS),  # deep blue
@@ -54,12 +64,65 @@ SPARK_TRAIL_LENGTH = 8
 SPARK_COLOR = (255, 200, 100)
 
 
+# --- Black Hole Parameters ---
+BLACK_HOLE_MASS = 500
+BLACK_HOLE_PULL_STRENGTH = 0.02
+BLACK_HOLE_RADIUS = 3
+
 # --- Display Settings ---
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
 
 from numba import njit
 import numpy as np
+
+
+class BlackHole:
+    def __init__(self, x, y, radius):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.spawn_time = time.time()
+
+    def expired(self):
+        return time.time() - self.spawn_time > BLACKHOLE_LIFESPAN
+
+    def draw(self):
+        for dy in range(-self.radius, self.radius + 1):
+            for dx in range(-self.radius, self.radius + 1):
+                dist = math.sqrt(dx * dx + dy * dy)
+                px = int(self.x + dx)
+                py = int(self.y + dy)
+                if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                    if dist <= self.radius:
+                        if dist >= self.radius - 1:
+                            LED.setpixel(px, py, 255, 255, 255)
+                        else:
+                            LED.setpixel(px, py, 0, 0, 0)
+
+# Attraction & Collision (apply per object)
+def apply_blackhole_gravity(obj):
+    if not blackhole:
+        return
+    dx = blackhole.x - obj.x
+    dy = blackhole.y - obj.y
+    dist_sq = dx * dx + dy * dy
+    if dist_sq == 0:
+        return
+    dist = math.sqrt(dist_sq)
+    force = BLACKHOLE_GRAVITY * blackhole.radius / dist_sq
+    if hasattr(obj, 'dx') and hasattr(obj, 'dy'):
+        obj.dx += force * dx / dist
+        obj.dy += force * dy / dist
+    elif hasattr(obj, 'speed_x') and hasattr(obj, 'speed_y'):
+        obj.speed_x += force * dx / dist
+        obj.speed_y += force * dy / dist
+    if dist < blackhole.radius:
+        if hasattr(obj, 'health'):
+            obj.health = 0
+        elif hasattr(obj, 'birth_time'):
+            obj.birth_time = 0
+
 
 @njit
 def compute_collisions(positions, velocities, sizes):
@@ -169,9 +232,9 @@ class Missile:
             brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
             LED.setpixel(tx, ty, brightness, brightness, brightness)
 
-missiles = []
-asteroids = [Asteroid() for _ in range(ASTEROIDS)]
-sparks = []
+
+
+
 class Ship:
     def __init__(self):
         self.x = WIDTH // 2
@@ -252,7 +315,7 @@ class Ship:
         #LED.setpixel((cx + dx) % WIDTH, (cy + dy) % HEIGHT, r, g, b)
         LED.setpixel((cx - dx) % WIDTH, (cy - dy) % HEIGHT, r, g, b)
 
-ship = Ship()
+
 
 class Spark:
     def __init__(self, x, y, angle, speed):
@@ -273,19 +336,66 @@ class Spark:
             fade = max(0, SPARK_COLOR[0] - i * (SPARK_COLOR[0] // SPARK_TRAIL_LENGTH))
             LED.setpixel(tx, ty, fade, fade * 3 // 4, fade // 2)
 
+
+
+ship = Ship()
+
+
+
+
+
+
+
+
+
+
+
+missiles = []
+black_hole = BlackHole(31,15,4)
+ship = Ship()
+asteroids = [Asteroid() for _ in range(ASTEROIDS)]
+sparks = []
+
+
+
 clock = pygame.time.Clock()
 fps_counter = 0
 fps_timer = time.time()
 
+# Insert into test2.py: Initialization Section
+last_blackhole_time = time.time() - BLACKHOLE_APPEAR_INTERVAL
+blackhole = None
+
+
+
+
+
 try:
     while True:
+
+        # In your game loop, update this block:
+        now = time.time()
+        now = time.time()
+        if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
+            bx = random.randint(BLACKHOLE_MAX_SIZE, WIDTH - BLACKHOLE_MAX_SIZE)
+            by = random.randint(BLACKHOLE_MAX_SIZE, HEIGHT - BLACKHOLE_MAX_SIZE)
+            bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
+            blackhole = BlackHole(bx, by, bradius)
+            last_blackhole_time = now
+
+        if blackhole and blackhole.expired():
+            blackhole = None
+
+
         if not asteroids:
             asteroids.append(Asteroid(size=MAX_ASTEROID_SIZE))
         LED.ClearBuffers()
         handle_collisions(asteroids)
+        black_hole.draw()
 
         new_asteroids = []
         for asteroid in asteroids:
+            apply_blackhole_gravity(asteroid)
             asteroid.move()
             asteroid.draw()
             if asteroid == ship.target:
@@ -312,6 +422,7 @@ try:
                 ship.speed_x = math.cos(angle + math.pi) * thrust
                 ship.speed_y = math.sin(angle + math.pi) * thrust
 
+        apply_blackhole_gravity(ship)
         ship.move()
         ship.draw()
 
@@ -319,6 +430,8 @@ try:
             missiles.append(Missile(ship.x, ship.y, ship.angle))
 
         for missile in missiles[:]:
+            apply_blackhole_gravity(missile)
+
             missile.move()
             missile.draw()
             if time.time() - missile.birth_time > MISSILE_LIFESPAN:
@@ -348,6 +461,8 @@ try:
 
         asteroids.extend(new_asteroids)
 
+
+
         for spark in sparks[:]:
             spark.move()
             spark.draw()
@@ -367,3 +482,23 @@ try:
 except KeyboardInterrupt:
     LED.ClearBuffers()
     LED.TheMatrix.SwapOnVSync(LED.Canvas)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
