@@ -5,6 +5,14 @@ import math
 
 LED.Initialize()
 
+MAX_SPEED = 2.0
+SHIP_THRUST = 0.1
+MISSILE_SPEED = 1.0
+MISSILE_LIFESPAN = 3.0
+FIRE_CHANCE = 0.1
+ASTEROID_SPLIT_THRESHOLD = 1
+FRAME_DELAY = 0.03
+ASTEROIDS = 3
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
 
@@ -44,11 +52,18 @@ class Asteroid:
         self.x = x if x is not None else random.uniform(0, WIDTH)
         self.y = y if y is not None else random.uniform(0, HEIGHT)
         angle = random.uniform(0, 2 * math.pi)
-        speed = random.uniform(0.2, 1.0)
+        speed = random.uniform(0.1, 0.4)
         self.dx = math.cos(angle) * speed
         self.dy = math.sin(angle) * speed
         self.size = size if size is not None else random.choice([2, 3])
-        self.color = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
+        gray = random.randint(30, 120)
+        blue = random.randint(30, 100)
+        purple = random.randint(30, 100)
+        self.color = random.choice([
+            (gray, gray, gray),
+            (blue // 2, blue // 2, blue),
+            (purple, 0, purple)
+        ])
 
     def move(self):
         self.x = (self.x + self.dx) % WIDTH
@@ -70,7 +85,7 @@ class Missile:
         self.x = x
         self.y = y
         self.angle = angle
-        self.speed = 0.5
+        self.speed = MISSILE_SPEED
 
     def move(self):
         self.x = (self.x + math.cos(self.angle) * self.speed) % WIDTH
@@ -80,7 +95,7 @@ class Missile:
         LED.setpixel(int(self.x), int(self.y), 255, 255, 255)
 
 missile = None
-asteroids = [Asteroid() for _ in range(3)]
+asteroids = [Asteroid() for _ in range(ASTEROIDS)]
 class Ship:
     def __init__(self):
         self.x = WIDTH // 2
@@ -90,15 +105,44 @@ class Ship:
         self.color = (0, 255, 0)
         self.speed_x = 0
         self.speed_y = 0
+        self.target = None
 
     def move(self):
+        if not self.target or self.target not in asteroids:
+            if asteroids:
+                self.target = random.choice(asteroids)
+
+        if self.target:
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            desired_angle = math.atan2(dy, dx) + math.pi / 2  # orbiting angle
+            angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
+            self.angle += max(-0.3, min(0.3, angle_diff))
+
+        ax = math.cos(self.angle) * SHIP_THRUST
+        ay = math.sin(self.angle) * SHIP_THRUST
+        self.speed_x += ax
+        self.speed_y += ay
+        speed = math.hypot(self.speed_x, self.speed_y)
+        if speed > MAX_SPEED:
+            scale = MAX_SPEED / speed
+            self.speed_x *= scale
+            self.speed_y *= scale
+        self.x = (self.x + self.speed_x) % WIDTH
+        self.y = (self.y + self.speed_y) % HEIGHT
+        self.frame += 1
         if self.frame % 5 == 0:
             self.angle += random.uniform(-0.3, 0.3)
-        thrust = 0.1
+        thrust = SHIP_THRUST
         ax = math.cos(self.angle) * thrust
         ay = math.sin(self.angle) * thrust
         self.speed_x += ax
         self.speed_y += ay
+        speed = math.hypot(self.speed_x, self.speed_y)
+        if speed > MAX_SPEED:
+            scale = MAX_SPEED / speed
+            self.speed_x *= scale
+            self.speed_y *= scale
         self.x = (self.x + self.speed_x) % WIDTH
         self.y = (self.y + self.speed_y) % HEIGHT
         self.frame += 1
@@ -126,20 +170,20 @@ try:
             dy = ship.y - asteroid.y
             if dx * dx + dy * dy < asteroid.size * asteroid.size:
                 angle = math.atan2(dy, dx)
-                thrust = 1.5
+                thrust = MAX_SPEED
                 ship.speed_x = math.cos(angle + math.pi) * thrust
                 ship.speed_y = math.sin(angle + math.pi) * thrust
 
         ship.move()
         ship.draw()
 
-        if missile is None and random.random() < 0.1:
+        if missile is None and random.random() < FIRE_CHANCE:
             missile = Missile(ship.x, ship.y, ship.angle)
 
         if missile:
             missile.move()
             missile.draw()
-            if time.time() - missile.birth_time > 3.0:
+            if time.time() - missile.birth_time > MISSILE_LIFESPAN:
                 missile = None
             else:
                 hit_index = None
@@ -161,7 +205,7 @@ try:
         asteroids.extend(new_asteroids)
 
         LED.TheMatrix.SwapOnVSync(LED.Canvas)
-        time.sleep(0.03)
+        time.sleep(FRAME_DELAY)
 except KeyboardInterrupt:
     LED.ClearBuffers()
     LED.TheMatrix.SwapOnVSync(LED.Canvas)
