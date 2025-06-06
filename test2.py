@@ -11,41 +11,64 @@ MISSILE_SPEED = 1.0
 MISSILE_LIFESPAN = 3.0
 FIRE_CHANCE = 0.1
 ASTEROID_SPLIT_THRESHOLD = 1
+MAX_ASTEROID_SIZE = 3
+MISSILE_TRAIL_LENGTH = 5
+MAX_MISSILES = 5
 FRAME_DELAY = 0.03
 ASTEROIDS = 3
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
 
-def handle_collisions(asteroids):
-    for i in range(len(asteroids)):
-        for j in range(i + 1, len(asteroids)):
-            a1, a2 = asteroids[i], asteroids[j]
-            dx = a2.x - a1.x
-            dy = a2.y - a1.y
+from numba import njit
+import numpy as np
+
+@njit
+def compute_collisions(positions, velocities, sizes):
+    n = len(sizes)
+    for i in range(n):
+        for j in range(i + 1, n):
+            dx = positions[j, 0] - positions[i, 0]
+            dy = positions[j, 1] - positions[i, 1]
             dist_sq = dx * dx + dy * dy
-            min_dist = a1.size + a2.size
+            min_dist = sizes[i] + sizes[j]
             if dist_sq < min_dist * min_dist:
                 dist = math.sqrt(dist_sq)
                 if dist == 0:
                     continue
                 nx, ny = dx / dist, dy / dist
                 tx, ty = -ny, nx
+                dpTan1 = velocities[i, 0] * tx + velocities[i, 1] * ty
+                dpTan2 = velocities[j, 0] * tx + velocities[j, 1] * ty
+                dpNorm1 = velocities[i, 0] * nx + velocities[i, 1] * ny
+                dpNorm2 = velocities[j, 0] * nx + velocities[j, 1] * ny
 
-                dpTan1 = a1.dx * tx + a1.dy * ty
-                dpTan2 = a2.dx * tx + a2.dy * ty
-                dpNorm1 = a1.dx * nx + a1.dy * ny
-                dpNorm2 = a2.dx * nx + a2.dy * ny
-
-                a1.dx = tx * dpTan1 + nx * dpNorm2
-                a1.dy = ty * dpTan1 + ny * dpNorm2
-                a2.dx = tx * dpTan2 + nx * dpNorm1
-                a2.dy = ty * dpTan2 + ny * dpNorm1
+                velocities[i, 0] = tx * dpTan1 + nx * dpNorm2
+                velocities[i, 1] = ty * dpTan1 + ny * dpNorm2
+                velocities[j, 0] = tx * dpTan2 + nx * dpNorm1
+                velocities[j, 1] = ty * dpTan2 + ny * dpNorm1
 
                 overlap = 0.5 * (min_dist - dist + 0.01)
-                a1.x -= nx * overlap
-                a1.y -= ny * overlap
-                a2.x += nx * overlap
-                a2.y += ny * overlap
+                positions[i, 0] -= nx * overlap
+                positions[i, 1] -= ny * overlap
+                positions[j, 0] += nx * overlap
+                positions[j, 1] += ny * overlap
+
+def handle_collisions(asteroids):
+    n = len(asteroids)
+    positions = np.zeros((n, 2), dtype=np.float32)
+    velocities = np.zeros((n, 2), dtype=np.float32)
+    sizes = np.zeros(n, dtype=np.float32)
+
+    for i, a in enumerate(asteroids):
+        positions[i] = [a.x, a.y]
+        velocities[i] = [a.dx, a.dy]
+        sizes[i] = a.size
+
+    compute_collisions(positions, velocities, sizes)
+
+    for i, a in enumerate(asteroids):
+        a.x, a.y = positions[i]
+        a.dx, a.dy = velocities[i]
 
 class Asteroid:
     def __init__(self, x=None, y=None, size=None):
@@ -55,7 +78,8 @@ class Asteroid:
         speed = random.uniform(0.1, 0.4)
         self.dx = math.cos(angle) * speed
         self.dy = math.sin(angle) * speed
-        self.size = size if size is not None else random.choice([2, 3])
+        self.size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
+        self.health = self.size * 2
         gray = random.randint(30, 120)
         blue = random.randint(30, 100)
         purple = random.randint(30, 100)
@@ -92,9 +116,13 @@ class Missile:
         self.y = (self.y + math.sin(self.angle) * self.speed) % HEIGHT
 
     def draw(self):
-        LED.setpixel(int(self.x), int(self.y), 255, 255, 255)
+        for i in range(MISSILE_TRAIL_LENGTH):
+            tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
+            ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
+            brightness = max(50, 255 - i * 40)
+            LED.setpixel(tx, ty, brightness, brightness, brightness)
 
-missile = None
+missiles = []
 asteroids = [Asteroid() for _ in range(ASTEROIDS)]
 class Ship:
     def __init__(self):
@@ -115,25 +143,16 @@ class Ship:
         if self.target:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
-            desired_angle = math.atan2(dy, dx) + math.pi / 2  # orbiting angle
+            desired_angle = math.atan2(dy, dx)
             angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
-            self.angle += max(-0.3, min(0.3, angle_diff))
+            self.angle += max(-0.5, min(0.5, angle_diff))
+            if abs(angle_diff) > math.pi / 2:
+                thrust = SHIP_THRUST * 4.0  # hard reverse thrust for braking
+            elif abs(angle_diff) > math.pi / 4:
+                thrust = SHIP_THRUST * 2.0  # sharp turn boost
+            else:
+                thrust = SHIP_THRUST
 
-        ax = math.cos(self.angle) * SHIP_THRUST
-        ay = math.sin(self.angle) * SHIP_THRUST
-        self.speed_x += ax
-        self.speed_y += ay
-        speed = math.hypot(self.speed_x, self.speed_y)
-        if speed > MAX_SPEED:
-            scale = MAX_SPEED / speed
-            self.speed_x *= scale
-            self.speed_y *= scale
-        self.x = (self.x + self.speed_x) % WIDTH
-        self.y = (self.y + self.speed_y) % HEIGHT
-        self.frame += 1
-        if self.frame % 5 == 0:
-            self.angle += random.uniform(-0.3, 0.3)
-        thrust = SHIP_THRUST
         ax = math.cos(self.angle) * thrust
         ay = math.sin(self.angle) * thrust
         self.speed_x += ax
@@ -165,10 +184,17 @@ try:
         new_asteroids = []
         for asteroid in asteroids:
             asteroid.move()
+            if asteroid == ship.target:
+                asteroid.color = (255, 255, 0)
             asteroid.draw()
             dx = ship.x - asteroid.x
             dy = ship.y - asteroid.y
             if dx * dx + dy * dy < asteroid.size * asteroid.size:
+                asteroid.health -= 1
+                if asteroid.health <= 0 and asteroid.size > 1:
+                    new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
+                    new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
+                    continue
                 angle = math.atan2(dy, dx)
                 thrust = MAX_SPEED
                 ship.speed_x = math.cos(angle + math.pi) * thrust
@@ -177,30 +203,30 @@ try:
         ship.move()
         ship.draw()
 
-        if missile is None and random.random() < FIRE_CHANCE:
-            missile = Missile(ship.x, ship.y, ship.angle)
+        if len(missiles) < MAX_MISSILES and random.random() < FIRE_CHANCE:
+            missiles.append(Missile(ship.x, ship.y, ship.angle))
 
-        if missile:
+        for missile in missiles[:]:
             missile.move()
             missile.draw()
             if time.time() - missile.birth_time > MISSILE_LIFESPAN:
-                missile = None
-            else:
-                hit_index = None
-                for idx, asteroid in enumerate(asteroids):
-                    dx = missile.x - asteroid.x
-                    dy = missile.y - asteroid.y
-                    if dx * dx + dy * dy < asteroid.size * asteroid.size:
-                        hit_index = idx
-                        break
-                if hit_index is not None:
-                    hit = asteroids.pop(hit_index)
-                    if hit.size > 1:
-                        new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
-                        new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
-                    missile = None
-                elif not (0 <= missile.x < WIDTH and 0 <= missile.y < HEIGHT):
-                    missile = None
+                missiles.remove(missile)
+                continue
+            hit_index = None
+            for idx, asteroid in enumerate(asteroids):
+                dx = missile.x - asteroid.x
+                dy = missile.y - asteroid.y
+                if dx * dx + dy * dy < asteroid.size * asteroid.size:
+                    hit_index = idx
+                    break
+            if hit_index is not None:
+                hit = asteroids.pop(hit_index)
+                if hit.size > 1:
+                    new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
+                    new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
+                missiles.remove(missile)
+            elif not (0 <= missile.x < WIDTH and 0 <= missile.y < HEIGHT):
+                missiles.remove(missile)
 
         asteroids.extend(new_asteroids)
 
