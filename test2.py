@@ -8,13 +8,11 @@ LED.Initialize()
 
 
 # --- Black Hole Parameters ---
-BLACKHOLE_GRAVITY = 1
+BLACKHOLE_GRAVITY = 5
 BLACKHOLE_MIN_SIZE = 1
-BLACKHOLE_MAX_SIZE = 2
+BLACKHOLE_MAX_SIZE = 1
 BLACKHOLE_APPEAR_INTERVAL = 15
-BLACKHOLE_LIFESPAN = 10
-
-
+BLACKHOLE_LIFESPAN = 25
 
 
 
@@ -40,13 +38,13 @@ FIRE_CHANCE = 0.01
 MISSILE_COLOR = (255, 255, 255)
 MISSILE_TRAIL_MIN = 50
 MISSILE_TRAIL_LENGTH = 8
+MAX_MISSILES = 4
 
 
 
 # --- Asteroid Parameters ---
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 4
-MAX_MISSILES = 4
 FRAME_DELAY = 0.03
 ASTEROIDS = 2
 ASTEROID_MIN_SPEED = 0.05
@@ -55,8 +53,8 @@ THRUST_TRAIL_COLOR = (255, 0, 0)
 ASTEROID_TARGET_COLOR = (255, 255, 0)
 ASTEROID_CROSSHAIR_COLOR = (255, 0, 255)
 ASTEROID_LIGHTING_CONTRAST = 1
-ASTEROID_COLOR_MIN_BRIGHTNESS = 30
-ASTEROID_COLOR_MAX_BRIGHTNESS = 120
+ASTEROID_COLOR_MIN_BRIGHTNESS = 150
+ASTEROID_COLOR_MAX_BRIGHTNESS = 250
 ASTEROID_COLOR_OPTIONS = [
     (ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS),  # dark grey
     (ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MAX_BRIGHTNESS),  # deep blue
@@ -76,6 +74,14 @@ SPARK_COLOR = (255, 200, 100)
 # --- Display Settings ---
 WIDTH = LED.HatWidth
 HEIGHT = LED.HatHeight
+
+# Center the visible matrix in the virtual playfield
+VIEWPORT_X_OFFSET = (PLAYFIELD_WIDTH - WIDTH) // 2
+VIEWPORT_Y_OFFSET = (PLAYFIELD_HEIGHT - HEIGHT) // 2
+
+
+
+
 
 from numba import njit
 import numpy as np
@@ -112,6 +118,14 @@ class GameObject:
         self.dy = dy
 
     def update_position(self):
+        # Let subclasses define max speed if needed
+        max_speed = getattr(self, 'max_speed', None)
+        if max_speed is not None:
+            speed = math.hypot(self.dx, self.dy)
+            if speed > max_speed:
+                scale = max_speed / speed
+                self.dx *= scale
+                self.dy *= scale
         self.x += self.dx
         self.y += self.dy
         self.x, self.y, self.dx, self.dy = enforce_bounds_and_bounce(
@@ -133,7 +147,9 @@ class BlackHole(GameObject):
         speed = random.uniform(0.05, 0.2)
         dx = math.cos(angle) * speed
         dy = math.sin(angle) * speed
+        self.max_speed = ASTEROID_MAX_SPEED
         super().__init__(x, y, dx, dy)
+        self.max_speed = ASTEROID_MAX_SPEED
 
     def move(self):
         self.update_position()  # from GameObject
@@ -153,12 +169,16 @@ class BlackHole(GameObject):
                 dist = math.sqrt(dx * dx + dy * dy)
                 px = int(self.x + dx)
                 py = int(self.y + dy)
-                if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                if (VIEWPORT_X_OFFSET <= px < VIEWPORT_X_OFFSET + WIDTH and
+                    VIEWPORT_Y_OFFSET <= py < VIEWPORT_Y_OFFSET + HEIGHT):
                     if dist <= self.radius:
                         if dist >= self.radius - 1:
-                            LED.setpixel(px, py, 255, 255, 255)
+                            #LED.setpixel(px, py, 255, 255, 255)
+                            LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 255, 255, 255)
                         else:
-                            LED.setpixel(px, py, 0, 0, 0)
+                            #LED.setpixel(px, py, 0, 0, 0)
+                            LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 0, 0, 0)
+
 
 # Attraction & Collision (apply per object)
 def apply_blackhole_gravity(obj):
@@ -242,6 +262,7 @@ class Asteroid(GameObject):
         dx = math.cos(angle) * speed
         dy = math.sin(angle) * speed
         super().__init__(x, y, dx, dy)
+        self.max_speed = ASTEROID_MAX_SPEED
         self.size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
         self.health = self.size * 2
         self.last_hit_time = 0
@@ -257,11 +278,7 @@ class Asteroid(GameObject):
                 self.color = ASTEROID_COLOR_OPTIONS[2]  # 5% purple
 
     def move(self):
-        self.x += self.dx
-        self.y += self.dy
-        self.x, self.y, self.dx, self.dy = enforce_bounds_and_bounce(
-            self.x, self.y, self.dx, self.dy, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
-        )
+        self.update_position()
 
     def draw(self):
         r, g, b = self.color
@@ -270,13 +287,15 @@ class Asteroid(GameObject):
                 if i**2 + j**2 <= self.size**2:
                     px = int(self.x) + i
                     py = int(self.y) + j
-                    if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                    if (VIEWPORT_X_OFFSET <= px < VIEWPORT_X_OFFSET + WIDTH and
+                        VIEWPORT_Y_OFFSET <= py < VIEWPORT_Y_OFFSET + HEIGHT):
                         brightness_factor = 1.0 - ASTEROID_LIGHTING_CONTRAST * (i + j) / (2 * self.size)
                         brightness_factor = max(0.5, min(1.5, brightness_factor))
                         r_out = min(255, int(r * brightness_factor))
                         g_out = min(255, int(g * brightness_factor))
                         b_out = min(255, int(b * brightness_factor))
-                        LED.setpixel(px, py, r_out, g_out, b_out)
+                        #LED.setpixel(px, py, r_out, g_out, b_out)
+                        LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r_out, g_out, b_out)
 
 
 class Missile(GameObject):
@@ -297,11 +316,11 @@ class Missile(GameObject):
 
     def draw(self):
         for i in range(MISSILE_TRAIL_LENGTH):
-            tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
-            ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
+            tx = int(self.x - math.cos(self.angle) * i)
+            ty = int(self.y - math.sin(self.angle) * i)
             brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
-            LED.setpixel(tx, ty, brightness, brightness, brightness)
-
+            #LED.setpixel(tx, ty, brightness, brightness, brightness)
+            LED.setpixel(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
 
 
 class Ship(GameObject):
@@ -315,6 +334,8 @@ class Ship(GameObject):
         self.target = None
         self.last_thrust_time = 0
         self.thrusting = False
+
+
 
     def move(self):
         if not self.target or self.target not in asteroids:
@@ -361,9 +382,19 @@ class Ship(GameObject):
             self.speed_y *= scale
         self.x += self.speed_x
         self.y += self.speed_y
-        self.x, self.y, self.speed_x, self.speed_y = enforce_bounds_and_bounce(
-            self.x, self.y, self.speed_x, self.speed_y, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
-        )
+        if self.x < 0:
+            self.x = 0
+            self.speed_x *= -0.5
+        elif self.x > PLAYFIELD_WIDTH:
+            self.x = PLAYFIELD_WIDTH
+            self.speed_x *= -0.5
+
+        if self.y < 0:
+            self.y = 0
+            self.speed_y *= -0.5
+        elif self.y > PLAYFIELD_HEIGHT:
+            self.y = PLAYFIELD_HEIGHT
+            self.speed_y *= -0.5
         self.frame += 1
 
     def draw(self):
@@ -374,14 +405,20 @@ class Ship(GameObject):
             current_thrust = math.hypot(self.speed_x, self.speed_y)
             trail_strength = int(min(current_thrust / MAX_SPEED, 1.0) * THRUST_TRAIL_LENGTH)
             for i in range(1, trail_strength + 1):
-                tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
-                ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
+                tx = int(self.x - math.cos(self.angle) * i)
+                ty = int(self.y - math.sin(self.angle) * i)
                 red_intensity = max(0, THRUST_TRAIL_COLOR[0] - i * (THRUST_TRAIL_COLOR[0] // THRUST_TRAIL_LENGTH))
-                LED.setpixel(tx, ty, red_intensity, 0, 0)
-        LED.setpixel(cx, cy, r, g, b)
+                #LED.setpixel(tx, ty, red_intensity, 0, 0)
+                LED.setpixel(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, red_intensity, 0, 0)
+        #LED.setpixel(cx, cy, r, g, b)
+        LED.setpixel(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, r,g,b)
+        
         dx = int(round(math.cos(self.angle)))
         dy = int(round(math.sin(self.angle)))
-        LED.setpixel((cx - dx) % WIDTH, (cy - dy) % HEIGHT, r, g, b)
+        #LED.setpixel((cx - dx) % WIDTH, (cy - dy) % HEIGHT, r, g, b)
+        LED.setpixel(int(cx - dx - VIEWPORT_X_OFFSET), int(cy - dy - VIEWPORT_Y_OFFSET), r, g, b)
+
+
 
 
 
@@ -395,15 +432,18 @@ class Spark:
         self.lifespan = SPARK_TRAIL_LENGTH
 
     def move(self):
-        self.x = (self.x + math.cos(self.angle) * self.speed) % WIDTH
-        self.y = (self.y + math.sin(self.angle) * self.speed) % HEIGHT
+        self.x += math.cos(self.angle) * self.speed
+        self.y += math.sin(self.angle) * self.speed
 
     def draw(self):
         for i in range(SPARK_TRAIL_LENGTH):
-            tx = int((self.x - math.cos(self.angle) * i) % WIDTH)
-            ty = int((self.y - math.sin(self.angle) * i) % HEIGHT)
+            tx = int(self.x - math.cos(self.angle) * i)
+            ty = int(self.y - math.sin(self.angle) * i)
+
             fade = max(0, SPARK_COLOR[0] - i * (SPARK_COLOR[0] // SPARK_TRAIL_LENGTH))
-            LED.setpixel(tx, ty, fade, fade * 3 // 4, fade // 2)
+            #LED.setpixel(tx, ty, fade, fade * 3 // 4, fade // 2)
+            LED.setpixel(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, fade, fade * 3 // 4, fade // 2)
+            
 
 
 
@@ -478,7 +518,9 @@ try:
             if asteroid == ship.target:
                 cx = int(asteroid.x)
                 cy = int(asteroid.y)
-                LED.setpixel(cx, cy, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
+                #LED.setpixel(cx, cy, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
+                LED.setpixel(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
+                
             dx = ship.x - asteroid.x
             dy = ship.y - asteroid.y
             if dx * dx + dy * dy < asteroid.size * asteroid.size:
@@ -507,7 +549,7 @@ try:
             missiles.append(Missile(ship.x, ship.y, ship.angle))
 
         for missile in missiles[:]:
-            apply_blackhole_gravity(missile)
+            #apply_blackhole_gravity(missile)
 
             missile.move()
             missile.draw()
@@ -533,7 +575,8 @@ try:
                     angle = random.uniform(0, 2 * math.pi)
                     speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
                     sparks.append(Spark(spark_origin_x, spark_origin_y, angle, speed))
-            elif not (0 <= missile.x < WIDTH and 0 <= missile.y < HEIGHT):
+            elif not (0 <= missile.x < PLAYFIELD_WIDTH and 0 <= missile.y < PLAYFIELD_HEIGHT):
+
                 missiles.remove(missile)
 
         asteroids.extend(new_asteroids)
@@ -551,7 +594,9 @@ try:
         clock.tick(60)  # Cap the frame rate to 60 FPS
         fps_counter += 1
         if time.time() - fps_timer >= 2.0:
-            print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f}")
+            asteroid_speeds = [math.hypot(a.dx, a.dy) for a in asteroids]
+            avg_speed = sum(asteroid_speeds) / len(asteroid_speeds) if asteroid_speeds else 0
+            print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f} | Asteroids: {len(asteroids)} | Avg Asteroid Speed: {avg_speed:.3f}")
             fps_counter = 0
             fps_timer = time.time()
 
