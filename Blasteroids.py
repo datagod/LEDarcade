@@ -28,7 +28,7 @@
 #
 # Architectural Notes:
 #  - GameObject is the parent class for all moving entities (Ship, Asteroids, Missiles)
-#  - All rendering is done via LED.setpixel() into the back buffer, followed by
+#  - All rendering is done via LED.setpixelCanvas() into the back buffer, followed by
 #    SwapOnVSync() to commit the frame
 #  - A viewport window into the larger virtual space is centered around the display
 #  - Ship behavior uses angular targeting and thrust arcs to avoid jittery movement
@@ -133,10 +133,9 @@ VIEWPORT_Y_OFFSET = (PLAYFIELD_HEIGHT - HEIGHT) // 2
 #Time date
 last_time_str = ""
 ClockFontSize = 12
-TileWidth  = 6
-TileHeight = 8
+ClockRGB = (0,200,0)
 
-clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0), TileSize=(TileWidth,TileHeight))
+clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
 
 
 
@@ -146,18 +145,37 @@ import numpy as np
 
 
 
-def draw_clock_overlay(clock_image):
-    start_x = VIEWPORT_X_OFFSET + WIDTH - clock_image.width
-    start_y = VIEWPORT_Y_OFFSET  # top right corner
 
+def draw_clock_overlay(clock_image):
+    """
+    Draws the clock image centered on the LED display.
+
+    Parameters:
+        clock_image (PIL.Image): The clock image to draw.
+    """
     pixels = clock_image.load()
-    for y in range(clock_image.height):
-        for x in range(clock_image.width):
+    img_w, img_h = clock_image.size
+
+    # Compute top-left offset to center the image
+    H = (WIDTH  - img_w) // 2
+    V = (HEIGHT - img_h) // 2
+
+    for y in range(img_h):
+        for x in range(img_w):
             r, g, b = pixels[x, y]
-            px = start_x + x
-            py = start_y + y
-            if 0 <= px - VIEWPORT_X_OFFSET < WIDTH and 0 <= py - VIEWPORT_Y_OFFSET < HEIGHT:
-                LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r, g, b)
+            px = H + x
+            py = V + y
+            if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                if (r, g, b) != (0, 0, 0):
+                    LED.setpixelCanvas(px, py +1, r, g, b)
+                    
+
+
+
+
+
+
+
 
 
 # Boundary Bounce Logic for Virtual Playfield
@@ -241,11 +259,11 @@ class BlackHole(GameObject):
                     VIEWPORT_Y_OFFSET <= py < VIEWPORT_Y_OFFSET + HEIGHT):
                     if dist <= self.radius:
                         if dist >= self.radius - 1:
-                            #LED.setpixel(px, py, 255, 255, 255)
-                            LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 255, 255, 255)
+                            #LED.setpixelCanvas(px, py, 255, 255, 255)
+                            LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 255, 255, 255)
                         else:
-                            #LED.setpixel(px, py, 0, 0, 0)
-                            LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 0, 0, 0)
+                            #LED.setpixelCanvas(px, py, 0, 0, 0)
+                            LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 0, 0, 0)
 
 
 # Attraction & Collision (apply per object)
@@ -371,7 +389,7 @@ class Asteroid(GameObject):
                         r_out = min(255, int(r * brightness_factor))
                         g_out = min(255, int(g * brightness_factor))
                         b_out = min(255, int(b * brightness_factor))
-                        LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r_out, g_out, b_out)
+                        LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r_out, g_out, b_out)
 
 
 class Missile(GameObject):
@@ -393,8 +411,8 @@ class Missile(GameObject):
             tx = int(self.x - math.cos(self.angle) * i)
             ty = int(self.y - math.sin(self.angle) * i)
             brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
-            #LED.setpixel(tx, ty, brightness, brightness, brightness)
-            LED.setpixel(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
+            #LED.setpixelCanvas(tx, ty, brightness, brightness, brightness)
+            LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
 
 
 class Ship(GameObject):
@@ -480,12 +498,12 @@ class Ship(GameObject):
                 tx = int(self.x - math.cos(self.angle) * i)
                 ty = int(self.y - math.sin(self.angle) * i)
                 red_intensity = max(0, THRUST_TRAIL_COLOR[0] - i * (THRUST_TRAIL_COLOR[0] // THRUST_TRAIL_LENGTH))
-                LED.setpixel(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, red_intensity, 0, 0)
+                LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, red_intensity, 0, 0)
 
-        LED.setpixel(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, r, g, b)
+        LED.setpixelCanvas(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, r, g, b)
         dx = int(round(math.cos(self.angle)))
         dy = int(round(math.sin(self.angle)))
-        LED.setpixel(int(cx - dx - VIEWPORT_X_OFFSET), int(cy - dy - VIEWPORT_Y_OFFSET), r, g, b)
+        LED.setpixelCanvas(int(cx - dx - VIEWPORT_X_OFFSET), int(cy - dy - VIEWPORT_Y_OFFSET), r, g, b)
 
 
 
@@ -508,8 +526,8 @@ class Spark:
             ty = int(self.y - math.sin(self.angle) * i)
 
             fade = max(0, SPARK_COLOR[0] - i * (SPARK_COLOR[0] // SPARK_TRAIL_LENGTH))
-            #LED.setpixel(tx, ty, fade, fade * 3 // 4, fade // 2)
-            LED.setpixel(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, fade, fade * 3 // 4, fade // 2)
+            #LED.setpixelCanvas(tx, ty, fade, fade * 3 // 4, fade // 2)
+            LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, fade, fade * 3 // 4, fade // 2)
             
 
 
@@ -539,9 +557,25 @@ blackhole = None
 
 
 try:
+
+
+    #zoom clock into screen
+    clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
+    
+    LED.ZoomImageObject(clock_img, 0, 110, 0.05, 20)
+    
+    
+
     while True:
         now = time.time()
 
+        # Paint the time as the background
+        current_time_str = datetime.now().strftime('%H:%M')
+        if current_time_str != last_time_str:
+            clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
+            last_time_str = current_time_str
+            print("Time: ",current_time_str)
+        draw_clock_overlay(clock_img)
 
         if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
             # Spawn just outside one of the four edges
@@ -568,7 +602,7 @@ try:
 
         if not asteroids:
             asteroids.append(Asteroid(size=MAX_ASTEROID_SIZE))
-        LED.ClearBuffers()
+        
         handle_collisions(asteroids)
 
         if blackhole:
@@ -584,8 +618,8 @@ try:
             if asteroid == ship.target:
                 cx = int(asteroid.x)
                 cy = int(asteroid.y)
-                #LED.setpixel(cx, cy, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
-                LED.setpixel(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
+                #LED.setpixelCanvas(cx, cy, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
+                LED.setpixelCanvas(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
                 
             dx = ship.x - asteroid.x
             dy = ship.y - asteroid.y
@@ -660,25 +694,17 @@ try:
         
         # Draw visible boundary for the virtual playfield
         #for x in range(WIDTH):
-        #    LED.setpixel(x, 0, 0, 0, 255)  # Top edge
-        #    LED.setpixel(x, HEIGHT - 1, 0, 0, 255)  # Bottom edge
+        #    LED.setpixelCanvas(x, 0, 0, 0, 255)  # Top edge
+        #    LED.setpixelCanvas(x, HEIGHT - 1, 0, 0, 255)  # Bottom edge
         #for y in range(HEIGHT):
-        #    LED.setpixel(0, y, 0, 0, 255)  # Left edge
-        #    LED.setpixel(WIDTH - 1, y, 0, 0, 255)  # Right edge
+        #    LED.setpixelCanvas(0, y, 0, 0, 255)  # Left edge
+        #    LED.setpixelCanvas(WIDTH - 1, y, 0, 0, 255)  # Right edge
 
 
-        # Paint the time
-        current_time_str = datetime.now().strftime('%H:%M')
-        if current_time_str != last_time_str:
-            clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=10, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0),  TileSize=(TileWidth,TileHeight))
-            last_time_str = current_time_str
-            print("Time: ",current_time_str)
 
-        draw_clock_overlay(clock_img)
 
-        
-        LED.TheMatrix.SwapOnVSync(LED.Canvas)
         clock.tick(60)  # Cap the frame rate to 60 FPS
+
         fps_counter += 1
         if time.time() - fps_timer >= 2.0:
             asteroid_speeds = [math.hypot(a.dx, a.dy) for a in asteroids]
@@ -686,6 +712,11 @@ try:
             print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f} | Asteroids: {len(asteroids)} | Avg Asteroid Speed: {avg_speed:.3f}")
             fps_counter = 0
             fps_timer = time.time()
+
+
+        #only called once per frame
+        LED.TheMatrix.SwapOnVSync(LED.Canvas)
+        LED.ClearBuffers()
 
 except KeyboardInterrupt:
     LED.ClearBuffers()

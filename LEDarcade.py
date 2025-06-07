@@ -1104,63 +1104,102 @@ def GenerateClockImage(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF", FontSiz
 
 
 
+
+from PIL import Image, ImageDraw, ImageFont
+from datetime import datetime
+
 def GenerateClockImageWithFixedTiles(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF",
                                      FontSize=12,
                                      TextColor=(0, 200, 0),
                                      BackgroundColor=(0, 0, 0),
-                                     TileSize=(16, 24)):
+                                     TileSize=None,
+                                     Text=None):
     """
     Generates a clock image (HH:MM) using variable-width font rendered per character,
-    then padded into fixed-size tiles and stitched horizontally.
+    padded into fixed-size tiles. The colon ':' uses a half-width tile.
 
     Parameters:
         FontPath (str): Path to .ttf font file.
         FontSize (int): Font size.
         TextColor (tuple): RGB color for the text.
         BackgroundColor (tuple): RGB color for padding.
-        TileSize (tuple): (width, height) of each fixed tile.
+        TileSize (tuple or None): Optional (tile_width, tile_height). If None, auto-calculated.
+        Text (str): Optional override for testing (e.g., "12:45")
 
     Returns:
-        Image: PIL Image containing the complete time string.
+        PIL.Image: Final composed clock image
     """
-    now = datetime.now()
-    time_str = now.strftime("%H:%M")
 
-    font = ImageFont.truetype(FontPath, FontSize)
-    tile_width, tile_height = TileSize
+    # Step 1: Determine time string
+    time_str = Text if Text else datetime.now().strftime("%H:%M")
+
+    # Step 2: Load font
+    font_key = (FontPath, FontSize)
+    if not hasattr(GenerateClockImageWithFixedTiles, "_font_cache"):
+        GenerateClockImageWithFixedTiles._font_cache = {}
+
+    if font_key not in GenerateClockImageWithFixedTiles._font_cache:
+        GenerateClockImageWithFixedTiles._font_cache[font_key] = ImageFont.truetype(FontPath, FontSize)
+
+    font = GenerateClockImageWithFixedTiles._font_cache[font_key]
+
+    # Step 3: Measure max width/height if TileSize not provided
+    if TileSize is None:
+        max_width = 0
+        max_height = 0
+        for char in "0123456789:":
+            img = Image.new("RGB", (1, 1))
+            draw = ImageDraw.Draw(img)
+            bbox = draw.textbbox((0, 0), char, font=font)
+            char_w = bbox[2] - bbox[0]
+            char_h = bbox[3] - bbox[1]
+            max_width = max(max_width, char_w)
+            max_height = max(max_height, char_h)
+        tile_width = max_width
+        tile_height = max_height
+    else:
+        tile_width, tile_height = TileSize
+
+    colon_tile_width = tile_width // 2
+
+    # Step 4: Build tiles
     char_tiles = []
+    char_widths = []
 
     for char in time_str:
-        # Render character to minimal image
+        this_tile_width = colon_tile_width if char == ":" else tile_width
+
+        # Measure character bounds
         temp_img = Image.new("RGB", (1, 1))
         draw = ImageDraw.Draw(temp_img)
         bbox = draw.textbbox((0, 0), char, font=font)
         char_w = bbox[2] - bbox[0]
         char_h = bbox[3] - bbox[1]
 
-        # Draw character to exact-size image
+        # Create minimal character image
         char_img = Image.new("RGB", (char_w, char_h), BackgroundColor)
         draw = ImageDraw.Draw(char_img)
         draw.text((-bbox[0], -bbox[1]), char, font=font, fill=TextColor)
 
-        # Create tile and paste centered character
-        tile_img = Image.new("RGB", (tile_width, tile_height), BackgroundColor)
-        x_offset = (tile_width - char_w) // 2
+        # Paste into tile
+        tile_img = Image.new("RGB", (this_tile_width, tile_height), BackgroundColor)
+        x_offset = (this_tile_width - char_w) // 2
         y_offset = (tile_height - char_h) // 2
         tile_img.paste(char_img, (x_offset, y_offset))
-        char_tiles.append(tile_img)
 
-    # Assemble final clock image
-    total_width = tile_width * len(char_tiles)
+        char_tiles.append(tile_img)
+        char_widths.append(this_tile_width)
+
+    # Step 5: Assemble clock image
+    total_width = sum(char_widths)
     clock_img = Image.new("RGB", (total_width, tile_height), BackgroundColor)
 
-    for i, tile in enumerate(char_tiles):
-        clock_img.paste(tile, (i * tile_width, 0))
+    x_cursor = 0
+    for tile, width in zip(char_tiles, char_widths):
+        clock_img.paste(tile, (x_cursor, 0))
+        x_cursor += width
 
     return clock_img
-
-
-
 
 #-----------------------------
 # Used in all games         --
@@ -1387,6 +1426,8 @@ def setpixelsWithClock(TheBuffer,ClockSprite,h,v):
       
 
 def setpixel(x, y, r, g, b):
+  #This writes to the LED physical screen directly, and to the in-memory copy called ScreenArray (which can be qeuried unlike the physical screen)
+  #This does NOT make use of buffer swaps (canvas) and should be used with cuation
   global ScreenArray
 
   if (CheckBoundary(x,y) == 0):
@@ -19214,6 +19255,44 @@ def ZoomImage(ImageName, ZoomStart, ZoomStop, ZoomSleep, Step):
             time.sleep(ZoomSleep)
 
 
+def ZoomImageObject(image, ZoomStart, ZoomStop, ZoomSleep, Step):
+    """
+    Zooms in or out on an existing PIL Image object and renders it to the canvas.
+
+    Parameters:
+        image (PIL.Image): The image to zoom.
+        ZoomStart (int): Initial zoom percentage (e.g. 0 for 0%).
+        ZoomStop (int): Final zoom percentage (e.g. 100 for 100%).
+        ZoomSleep (float): Time to sleep (in seconds) between frames.
+        Step (int): Step increment for zooming.
+    """
+    global Canvas
+
+    image = image.convert('RGB')
+    orig_width, orig_height = image.size
+
+    zoom_range = range(ZoomStart, ZoomStop, Step) if ZoomStart <= ZoomStop else range(ZoomStart, ZoomStop, -Step)
+
+    for ZoomFactor in zoom_range:
+        new_width = int(orig_width * ZoomFactor / 100)
+        new_height = int(orig_height * ZoomFactor / 100)
+
+        if new_width <= 0 or new_height <= 0:
+            continue  # Skip invalid sizes
+
+        ResizedImage = image.resize((new_width, new_height), resample=Image.LANCZOS)
+
+        x = int(HatWidth // 2 - new_width // 2)
+        y = int(HatHeight // 2 - new_height // 2)
+
+        if new_width < HatWidth or new_height < HatHeight:
+            Canvas.Fill(0, 0, 0)
+
+        Canvas.SetImage(ResizedImage, x, y)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+
+        if ZoomSleep > 0:
+            time.sleep(ZoomSleep)
 
 
 
