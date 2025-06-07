@@ -995,8 +995,169 @@ def DisplayCustomFontClock(StopEvent=None):
         TheMatrix.Clear()
 
 
+#----------------------------
+#-- Custom Clock Functions --
+#----------------------------
+
+def DisplayCustomFontClock(StopEvent=None):
+    width  = HatWidth
+    height = HatHeight
+
+    def MakeTimeImage():
+        now = datetime.now()
+        current_minute = now.strftime("%H:%M")
+
+        # Create blank image and drawing context
+        image = Image.new("RGB", (width, height))
+        draw = ImageDraw.Draw(image)
+
+        # Measure text size and center it using textbbox
+        bbox = draw.textbbox((0, 0), current_minute, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (width - text_width) // 2
+        y = (height - text_height) // 4
+        draw.text((x, y), current_minute, font=font, fill=(0, 200, 0))  # Red
+        return image
+        
+    font = ImageFont.truetype("/home/pi/LEDarcade/fonts/CHECKBK0.TTF", 22)
+
+    # Display image using LEDarcade canvas
+    image = MakeTimeImage()
+    ScreenArray  = CopyImageToScreenArray(image, 0, 0)
+    ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
 
 
+
+    SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+
+    # Clock loop
+    last_minute = None
+    try:
+        Done = False
+        while Done == False:
+            if StopEvent and StopEvent.is_set():
+                Done = True
+                SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
+
+                break
+
+
+            now = datetime.now()
+            current_minute = now.strftime("%H:%M")
+
+            if current_minute != last_minute:
+                image = MakeTimeImage()
+                ScreenArray  = CopyImageToScreenArray(image, 0, 0)
+                TransitionBetweenScreenArrays(ScreenArray2,ScreenArray,TransitionType=2,FadeSleep=0.02)
+
+            time.sleep(1)
+            last_minute = current_minute
+            ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
+
+
+
+    except KeyboardInterrupt:
+        TheMatrix.Clear()
+
+
+
+
+
+
+
+
+def GenerateClockImage(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF", FontSize=12, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0)):
+    """
+    Generates a PIL image of the current time in HH:MM format using the given font and size.
+
+    Parameters:
+        FontPath (str): Path to the .ttf font file.
+        FontSize (int): Desired font size.
+        TextColor (tuple): RGB tuple for the text color.
+        BackgroundColor (tuple): RGB tuple for the background color.
+
+    Returns:
+        Image: PIL Image object with the rendered clock.
+    """
+    now = datetime.now()
+    time_str = now.strftime("%H:%M")
+
+    # Load font
+    font = ImageFont.truetype(FontPath, FontSize)
+
+    # Create temporary image to calculate text size
+    temp_img = Image.new("RGB", (1, 1))
+    draw = ImageDraw.Draw(temp_img)
+    bbox = draw.textbbox((0, 0), time_str, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+
+    # Create actual image with just enough size to fit text
+    image = Image.new("RGB", (text_width, text_height), BackgroundColor)
+    draw = ImageDraw.Draw(image)
+    draw.text((0, 0), time_str, font=font, fill=TextColor)
+
+    return image
+
+
+
+
+
+def GenerateClockImageWithFixedTiles(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF",
+                                     FontSize=12,
+                                     TextColor=(0, 200, 0),
+                                     BackgroundColor=(0, 0, 0),
+                                     TileSize=(16, 24)):
+    """
+    Generates a clock image (HH:MM) using variable-width font rendered per character,
+    then padded into fixed-size tiles and stitched horizontally.
+
+    Parameters:
+        FontPath (str): Path to .ttf font file.
+        FontSize (int): Font size.
+        TextColor (tuple): RGB color for the text.
+        BackgroundColor (tuple): RGB color for padding.
+        TileSize (tuple): (width, height) of each fixed tile.
+
+    Returns:
+        Image: PIL Image containing the complete time string.
+    """
+    now = datetime.now()
+    time_str = now.strftime("%H:%M")
+
+    font = ImageFont.truetype(FontPath, FontSize)
+    tile_width, tile_height = TileSize
+    char_tiles = []
+
+    for char in time_str:
+        # Render character to minimal image
+        temp_img = Image.new("RGB", (1, 1))
+        draw = ImageDraw.Draw(temp_img)
+        bbox = draw.textbbox((0, 0), char, font=font)
+        char_w = bbox[2] - bbox[0]
+        char_h = bbox[3] - bbox[1]
+
+        # Draw character to exact-size image
+        char_img = Image.new("RGB", (char_w, char_h), BackgroundColor)
+        draw = ImageDraw.Draw(char_img)
+        draw.text((-bbox[0], -bbox[1]), char, font=font, fill=TextColor)
+
+        # Create tile and paste centered character
+        tile_img = Image.new("RGB", (tile_width, tile_height), BackgroundColor)
+        x_offset = (tile_width - char_w) // 2
+        y_offset = (tile_height - char_h) // 2
+        tile_img.paste(char_img, (x_offset, y_offset))
+        char_tiles.append(tile_img)
+
+    # Assemble final clock image
+    total_width = tile_width * len(char_tiles)
+    clock_img = Image.new("RGB", (total_width, tile_height), BackgroundColor)
+
+    for i, tile in enumerate(char_tiles):
+        clock_img.paste(tile, (i * tile_width, 0))
+
+    return clock_img
 
 
 

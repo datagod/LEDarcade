@@ -50,20 +50,19 @@ import random
 import time
 import math
 import pygame
+from datetime import datetime
+
 
 LED.Initialize()
 
 
 # --- Black Hole Parameters ---
-BLACKHOLE_GRAVITY = 3
+BLACKHOLE_GRAVITY = 4
 BLACKHOLE_MIN_SIZE = 1
 BLACKHOLE_MAX_SIZE = 5
 BLACKHOLE_MAX_SPEED = 2
 BLACKHOLE_APPEAR_INTERVAL = 60
 BLACKHOLE_LIFESPAN = 25
-
-
-
 
 
 
@@ -74,7 +73,7 @@ SHIP_COLOR = (0, 255, 0)
 SHIP_THRUST_DURATION = 3.0
 SHIP_THRUST_COOLDOWN = 1.0
 THRUST_TRAIL_LENGTH = 8
-SHIP_VISION_RADIUS = 20
+SHIP_VISION_RADIUS = 40
 
 
 # --- Missile Parameters ---
@@ -89,10 +88,10 @@ MAX_MISSILES = 4
 
 
 # --- Asteroid Parameters ---
+ASTEROIDS = 4
 ASTEROID_SPLIT_THRESHOLD = 2
-MAX_ASTEROID_SIZE = 4
+MAX_ASTEROID_SIZE = 5
 FRAME_DELAY = 0.03
-ASTEROIDS = 3
 ASTEROID_MIN_SPEED = 0.05
 ASTEROID_MAX_SPEED = 0.4
 THRUST_TRAIL_COLOR = (255, 0, 0)
@@ -118,8 +117,8 @@ SPARK_COLOR = (255, 200, 100)
 
 
 # --- Display Settings ---
-WIDTH = LED.HatWidth
-HEIGHT = LED.HatHeight
+WIDTH         = LED.HatWidth
+HEIGHT        = LED.HatHeight
 
 # --- Virtual Playfield Size ---
 PLAYFIELD_WIDTH = 68
@@ -131,6 +130,14 @@ VIEWPORT_X_OFFSET = (PLAYFIELD_WIDTH - WIDTH) // 2
 VIEWPORT_Y_OFFSET = (PLAYFIELD_HEIGHT - HEIGHT) // 2
 
 
+#Time date
+last_time_str = ""
+ClockFontSize = 12
+TileWidth  = 6
+TileHeight = 8
+
+clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0), TileSize=(TileWidth,TileHeight))
+
 
 
 
@@ -139,7 +146,18 @@ import numpy as np
 
 
 
+def draw_clock_overlay(clock_image):
+    start_x = VIEWPORT_X_OFFSET + WIDTH - clock_image.width
+    start_y = VIEWPORT_Y_OFFSET  # top right corner
 
+    pixels = clock_image.load()
+    for y in range(clock_image.height):
+        for x in range(clock_image.width):
+            r, g, b = pixels[x, y]
+            px = start_x + x
+            py = start_y + y
+            if 0 <= px - VIEWPORT_X_OFFSET < WIDTH and 0 <= py - VIEWPORT_Y_OFFSET < HEIGHT:
+                LED.setpixel(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r, g, b)
 
 
 # Boundary Bounce Logic for Virtual Playfield
@@ -391,8 +409,6 @@ class Ship(GameObject):
         self.last_thrust_time = 0
         self.thrusting = False
 
-
-
     def move(self):
         if not self.target or self.target not in asteroids:
             cx, cy = PLAYFIELD_WIDTH / 2, PLAYFIELD_HEIGHT / 2
@@ -410,8 +426,6 @@ class Ship(GameObject):
                 self.speed_x += ax
                 self.speed_y += ay
 
-
-
         if self.target:
             current_time = time.time()
             if self.thrusting and current_time - self.last_thrust_time > SHIP_THRUST_DURATION:
@@ -428,11 +442,6 @@ class Ship(GameObject):
             self.angle += max(-0.5, min(0.5, angle_diff))
 
             if self.thrusting:
-                dx = self.target.x - self.x
-                dy = self.target.y - self.y
-                desired_angle = math.atan2(dy, dx)
-                angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
-                self.angle += max(-0.5, min(0.5, angle_diff))
                 if abs(angle_diff) > math.pi / 2:
                     thrust = SHIP_THRUST * 4.0
                 elif abs(angle_diff) > math.pi / 4:
@@ -445,33 +454,19 @@ class Ship(GameObject):
                 self.speed_x += ax
                 self.speed_y += ay
 
-
-                # Clamp ship within visible area, leaving 1 pixel margin inside the visible playfield
-                self.x = max(VIEWPORT_X_OFFSET + 2, min(self.x, VIEWPORT_X_OFFSET + WIDTH - 2))
-                self.y = max(VIEWPORT_Y_OFFSET + 2, min(self.y, VIEWPORT_Y_OFFSET + HEIGHT - 2))
-
-
-
         speed = math.hypot(self.speed_x, self.speed_y)
         if speed > MAX_SPEED:
             scale = MAX_SPEED / speed
             self.speed_x *= scale
             self.speed_y *= scale
+
         self.x += self.speed_x
         self.y += self.speed_y
-        if self.x < 0:
-            self.x = 0
-            self.speed_x *= -0.5
-        elif self.x > PLAYFIELD_WIDTH:
-            self.x = PLAYFIELD_WIDTH
-            self.speed_x *= -0.5
 
-        if self.y < 0:
-            self.y = 0
-            self.speed_y *= -0.5
-        elif self.y > PLAYFIELD_HEIGHT:
-            self.y = PLAYFIELD_HEIGHT
-            self.speed_y *= -0.5
+        # Clamp to visible area with 1 pixel margin
+        self.x = max(VIEWPORT_X_OFFSET + 1, min(self.x, VIEWPORT_X_OFFSET + WIDTH - 2))
+        self.y = max(VIEWPORT_Y_OFFSET + 1, min(self.y, VIEWPORT_Y_OFFSET + HEIGHT - 2))
+
         self.frame += 1
 
     def draw(self):
@@ -485,17 +480,12 @@ class Ship(GameObject):
                 tx = int(self.x - math.cos(self.angle) * i)
                 ty = int(self.y - math.sin(self.angle) * i)
                 red_intensity = max(0, THRUST_TRAIL_COLOR[0] - i * (THRUST_TRAIL_COLOR[0] // THRUST_TRAIL_LENGTH))
-                #LED.setpixel(tx, ty, red_intensity, 0, 0)
                 LED.setpixel(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, red_intensity, 0, 0)
-        #LED.setpixel(cx, cy, r, g, b)
-        LED.setpixel(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, r,g,b)
-        
+
+        LED.setpixel(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, r, g, b)
         dx = int(round(math.cos(self.angle)))
         dy = int(round(math.sin(self.angle)))
-        #LED.setpixel((cx - dx) % WIDTH, (cy - dy) % HEIGHT, r, g, b)
         LED.setpixel(int(cx - dx - VIEWPORT_X_OFFSET), int(cy - dy - VIEWPORT_Y_OFFSET), r, g, b)
-
-
 
 
 
@@ -675,6 +665,16 @@ try:
         #for y in range(HEIGHT):
         #    LED.setpixel(0, y, 0, 0, 255)  # Left edge
         #    LED.setpixel(WIDTH - 1, y, 0, 0, 255)  # Right edge
+
+
+        # Paint the time
+        current_time_str = datetime.now().strftime('%H:%M')
+        if current_time_str != last_time_str:
+            clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=10, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0),  TileSize=(TileWidth,TileHeight))
+
+            last_time_str = current_time_str
+
+        draw_clock_overlay(clock_img)
 
         
         LED.TheMatrix.SwapOnVSync(LED.Canvas)
