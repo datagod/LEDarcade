@@ -57,7 +57,7 @@ LED.Initialize()
 
 
 # --- Black Hole Parameters ---
-BLACKHOLE_GRAVITY = 4
+BLACKHOLE_GRAVITY = 10
 BLACKHOLE_MIN_SIZE = 1
 BLACKHOLE_MAX_SIZE = 5
 BLACKHOLE_MAX_SPEED = 2
@@ -85,6 +85,13 @@ MISSILE_TRAIL_MIN = 50
 MISSILE_TRAIL_LENGTH = 8
 MAX_MISSILES = 4
 
+# --- Terminal Parameters ---
+ScrollSleep         = 0.025
+MainSleep           = 0.05
+TerminalTypeSpeed   = 0.02  #pause in seconds between characters
+TerminalScrollSpeed = 0.02  #pause in seconds between new lines
+CursorRGB           = (0,255,0)
+CursorDarkRGB       = (0,50,0)
 
 
 # --- Asteroid Parameters ---
@@ -555,172 +562,250 @@ blackhole = None
 
 
 
+def PlayBlasteroids(Duration = 10000, StopEvent = None):
+    
+    global last_blackhole_time, fps_timer, fps_counter
+    
+    #Time date
+    last_time_str = ""
+    ClockFontSize = 12
+    ClockRGB = (0,200,0)
 
-try:
-
-
-    #zoom clock into screen
     clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
-    
-    LED.ZoomImageObject(clock_img, 0, 110, 0.05, 20)
-    
-    
-
-    while True:
-        now = time.time()
-
-        # Paint the time as the background
-        current_time_str = datetime.now().strftime('%H:%M')
-        if current_time_str != last_time_str:
-            clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
-            last_time_str = current_time_str
-            print("Time: ",current_time_str)
-        draw_clock_overlay(clock_img)
-
-        if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
-            # Spawn just outside one of the four edges
-            side = random.choice(['top', 'bottom', 'left', 'right'])
-            if side == 'top':
-                bx = random.randint(0, PLAYFIELD_WIDTH)
-                by = -BLACKHOLE_MAX_SIZE
-            elif side == 'bottom':
-                bx = random.randint(0, PLAYFIELD_WIDTH)
-                by = PLAYFIELD_HEIGHT + BLACKHOLE_MAX_SIZE
-            elif side == 'left':
-                bx = -BLACKHOLE_MAX_SIZE
-                by = random.randint(0, PLAYFIELD_HEIGHT)
-            else:
-                bx = PLAYFIELD_WIDTH + BLACKHOLE_MAX_SIZE
-                by = random.randint(0, PLAYFIELD_HEIGHT)
-            bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
-            blackhole = BlackHole(bx, by, bradius)
-            last_blackhole_time = now
-
-        if blackhole and blackhole.expired():
-            blackhole = None
 
 
-        if not asteroids:
-            asteroids.append(Asteroid(size=MAX_ASTEROID_SIZE))
+    try:
+
+        #zoom clock into screen
+        clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
+        LED.ZoomImageObject(clock_img, 0, 110, 0.05, 20)
         
-        handle_collisions(asteroids)
+        Done = False
+        while (Done == False):
+            if StopEvent and StopEvent.is_set():
+                print("\n" + "="*40)
+                print("[Blasteroids] StopEvent received")
+                print("-> Shutting down gracefully...")
+                print("="*40 + "\n")
+                Done = True
+                break
 
-        if blackhole:
-            blackhole.move()
-            blackhole.draw()
+
+            now = time.time()
+
+            # Paint the time as the background
+            current_time_str = datetime.now().strftime('%H:%M')
+            if current_time_str != last_time_str:
+                clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
+                last_time_str = current_time_str
+                print("Time: ",current_time_str)
+            draw_clock_overlay(clock_img)
+
+            if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
+                # Spawn just outside one of the four edges
+                side = random.choice(['top', 'bottom', 'left', 'right'])
+                if side == 'top':
+                    bx = random.randint(0, PLAYFIELD_WIDTH)
+                    by = -BLACKHOLE_MAX_SIZE
+                elif side == 'bottom':
+                    bx = random.randint(0, PLAYFIELD_WIDTH)
+                    by = PLAYFIELD_HEIGHT + BLACKHOLE_MAX_SIZE
+                elif side == 'left':
+                    bx = -BLACKHOLE_MAX_SIZE
+                    by = random.randint(0, PLAYFIELD_HEIGHT)
+                else:
+                    bx = PLAYFIELD_WIDTH + BLACKHOLE_MAX_SIZE
+                    by = random.randint(0, PLAYFIELD_HEIGHT)
+                bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
+                blackhole = BlackHole(bx, by, bradius)
+                last_blackhole_time = now
+
+            if blackhole and blackhole.expired():
+                blackhole = None
 
 
-        new_asteroids = []
-        for asteroid in asteroids:
-            apply_blackhole_gravity(asteroid)
-            asteroid.move()
-            asteroid.draw()
-            if asteroid == ship.target:
-                cx = int(asteroid.x)
-                cy = int(asteroid.y)
-                #LED.setpixelCanvas(cx, cy, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
-                LED.setpixelCanvas(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
-                
-            dx = ship.x - asteroid.x
-            dy = ship.y - asteroid.y
-            if dx * dx + dy * dy < asteroid.size * asteroid.size:
-                if time.time() - asteroid.last_hit_time > 1.0:
-                    asteroid.health -= 1
-                    asteroid.last_hit_time = time.time()
-                if asteroid.health <= 0:
-                    if asteroid.size > 1:
-                        new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1, color=asteroid.color))
-                        new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
+            if not asteroids:
+                asteroids.append(Asteroid(size=MAX_ASTEROID_SIZE))
+            
+            handle_collisions(asteroids)
+
+            if blackhole:
+                blackhole.move()
+                blackhole.draw()
+
+
+            new_asteroids = []
+            for asteroid in asteroids:
+                apply_blackhole_gravity(asteroid)
+                asteroid.move()
+                asteroid.draw()
+                if asteroid == ship.target:
+                    cx = int(asteroid.x)
+                    cy = int(asteroid.y)
+                    #LED.setpixelCanvas(cx, cy, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
+                    LED.setpixelCanvas(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, ASTEROID_TARGET_COLOR[0], ASTEROID_TARGET_COLOR[1], ASTEROID_TARGET_COLOR[2])
+                    
+                dx = ship.x - asteroid.x
+                dy = ship.y - asteroid.y
+                if dx * dx + dy * dy < asteroid.size * asteroid.size:
+                    if time.time() - asteroid.last_hit_time > 1.0:
+                        asteroid.health -= 1
+                        asteroid.last_hit_time = time.time()
+                    if asteroid.health <= 0:
+                        if asteroid.size > 1:
+                            new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1, color=asteroid.color))
+                            new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
+                        for _ in range(SPARK_COUNT):
+                            angle = random.uniform(0, 2 * math.pi)
+                            speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
+                            sparks.append(Spark(asteroid.x, asteroid.y, angle, speed))
+                        continue
+                    angle = math.atan2(dy, dx)
+                    thrust = MAX_SPEED
+                    ship.speed_x = math.cos(angle + math.pi) * thrust
+                    ship.speed_y = math.sin(angle + math.pi) * thrust
+
+            apply_blackhole_gravity(ship)
+            ship.move()
+            ship.draw()
+
+            if len(missiles) < MAX_MISSILES and random.random() < FIRE_CHANCE and ship.target:
+                missiles.append(Missile(ship.x, ship.y, ship.angle))
+
+            for missile in missiles[:]:
+                #apply_blackhole_gravity(missile)
+
+                missile.move()
+                missile.draw()
+                if time.time() - missile.birth_time > MISSILE_LIFESPAN:
+                    missiles.remove(missile)
+                    continue
+                hit_index = None
+                for idx, asteroid in enumerate(asteroids):
+                    dx = missile.x - asteroid.x
+                    dy = missile.y - asteroid.y
+                    if dx * dx + dy * dy < asteroid.size * asteroid.size:
+                        hit_index = idx
+                        break
+                if hit_index is not None:
+                    hit = asteroids.pop(hit_index)
+                    spark_origin_x = hit.x
+                    spark_origin_y = hit.y
+                    if hit.size > 1:
+                        new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1, color=hit.color))
+                        new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
+                    missiles.remove(missile)
                     for _ in range(SPARK_COUNT):
                         angle = random.uniform(0, 2 * math.pi)
                         speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
-                        sparks.append(Spark(asteroid.x, asteroid.y, angle, speed))
-                    continue
-                angle = math.atan2(dy, dx)
-                thrust = MAX_SPEED
-                ship.speed_x = math.cos(angle + math.pi) * thrust
-                ship.speed_y = math.sin(angle + math.pi) * thrust
+                        sparks.append(Spark(spark_origin_x, spark_origin_y, angle, speed))
+                elif not (0 <= missile.x < PLAYFIELD_WIDTH and 0 <= missile.y < PLAYFIELD_HEIGHT):
 
-        apply_blackhole_gravity(ship)
-        ship.move()
-        ship.draw()
+                    missiles.remove(missile)
 
-        if len(missiles) < MAX_MISSILES and random.random() < FIRE_CHANCE and ship.target:
-            missiles.append(Missile(ship.x, ship.y, ship.angle))
-
-        for missile in missiles[:]:
-            #apply_blackhole_gravity(missile)
-
-            missile.move()
-            missile.draw()
-            if time.time() - missile.birth_time > MISSILE_LIFESPAN:
-                missiles.remove(missile)
-                continue
-            hit_index = None
-            for idx, asteroid in enumerate(asteroids):
-                dx = missile.x - asteroid.x
-                dy = missile.y - asteroid.y
-                if dx * dx + dy * dy < asteroid.size * asteroid.size:
-                    hit_index = idx
-                    break
-            if hit_index is not None:
-                hit = asteroids.pop(hit_index)
-                spark_origin_x = hit.x
-                spark_origin_y = hit.y
-                if hit.size > 1:
-                    new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1, color=hit.color))
-                    new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
-                missiles.remove(missile)
-                for _ in range(SPARK_COUNT):
-                    angle = random.uniform(0, 2 * math.pi)
-                    speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
-                    sparks.append(Spark(spark_origin_x, spark_origin_y, angle, speed))
-            elif not (0 <= missile.x < PLAYFIELD_WIDTH and 0 <= missile.y < PLAYFIELD_HEIGHT):
-
-                missiles.remove(missile)
-
-        asteroids.extend(new_asteroids)
+            asteroids.extend(new_asteroids)
 
 
 
-        for spark in sparks[:]:
-            spark.move()
-            spark.draw()
-            spark.lifespan -= 1
-            if spark.lifespan <= 0:
-                sparks.remove(spark)
+            for spark in sparks[:]:
+                spark.move()
+                spark.draw()
+                spark.lifespan -= 1
+                if spark.lifespan <= 0:
+                    sparks.remove(spark)
 
-        
-        
-        # Draw visible boundary for the virtual playfield
-        #for x in range(WIDTH):
-        #    LED.setpixelCanvas(x, 0, 0, 0, 255)  # Top edge
-        #    LED.setpixelCanvas(x, HEIGHT - 1, 0, 0, 255)  # Bottom edge
-        #for y in range(HEIGHT):
-        #    LED.setpixelCanvas(0, y, 0, 0, 255)  # Left edge
-        #    LED.setpixelCanvas(WIDTH - 1, y, 0, 0, 255)  # Right edge
+            
+            
+            # Draw visible boundary for the virtual playfield
+            #for x in range(WIDTH):
+            #    LED.setpixelCanvas(x, 0, 0, 0, 255)  # Top edge
+            #    LED.setpixelCanvas(x, HEIGHT - 1, 0, 0, 255)  # Bottom edge
+            #for y in range(HEIGHT):
+            #    LED.setpixelCanvas(0, y, 0, 0, 255)  # Left edge
+            #    LED.setpixelCanvas(WIDTH - 1, y, 0, 0, 255)  # Right edge
 
 
 
 
-        clock.tick(60)  # Cap the frame rate to 60 FPS
+            clock.tick(60)  # Cap the frame rate to 60 FPS
 
-        fps_counter += 1
-        if time.time() - fps_timer >= 2.0:
-            asteroid_speeds = [math.hypot(a.dx, a.dy) for a in asteroids]
-            avg_speed = sum(asteroid_speeds) / len(asteroid_speeds) if asteroid_speeds else 0
-            print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f} | Asteroids: {len(asteroids)} | Avg Asteroid Speed: {avg_speed:.3f}")
-            fps_counter = 0
-            fps_timer = time.time()
+            fps_counter += 1
+            if time.time() - fps_timer >= 2.0:
+                asteroid_speeds = [math.hypot(a.dx, a.dy) for a in asteroids]
+                avg_speed = sum(asteroid_speeds) / len(asteroid_speeds) if asteroid_speeds else 0
+                print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f} | Asteroids: {len(asteroids)} | Avg Asteroid Speed: {avg_speed:.3f}")
+                fps_counter = 0
+                fps_timer = time.time()
 
 
-        #only called once per frame
-        LED.TheMatrix.SwapOnVSync(LED.Canvas)
+            #only called once per frame
+            LED.TheMatrix.SwapOnVSync(LED.Canvas)
+            LED.ClearBuffers()
+
+    except KeyboardInterrupt:
         LED.ClearBuffers()
+        LED.TheMatrix.SwapOnVSync(LED.Canvas)
 
-except KeyboardInterrupt:
+
+
+
+def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
+
+  print("ShowIntro:",ShowIntro)
+       
+  if(ShowIntro == True):
+    #--------------------------------------
+    # M A I N   P R O C E S S I N G      --
+    #--------------------------------------
+    LED.LoadConfigData()
+
+    LED.ShowTitleScreen(
+        BigText             = 'BLAST!',
+        BigTextRGB          = LED.HighOrange,
+        BigTextShadowRGB    = LED.ShadowOrange,
+        LittleText          = '',
+        LittleTextZoom      = 1,
+        LittleTextRGB       = LED.MedGreen,
+        LittleTextShadowRGB = (0,10,0), 
+        ScrollText          = 'Get those space rocks before they get you...',
+        ScrollTextRGB       = LED.MedYellow,
+        ScrollSleep         = 0.03, # time in seconds to control the scrolling (0.005 is fast, 0.1 is kinda slow)
+        DisplayTime         = 1,           # time in seconds to wait before exiting 
+        ExitEffect          = 0,            # 0=Random / 1=shrink / 2=zoom out / 3=bounce / 4=fade /5=fallingsand
+        BigText2RGB         = LED.HighBlue,
+        BigText2ShadowRGB   = LED.ShadowRed,
+
+        )
+
+
+    LED.ClearBigLED()
     LED.ClearBuffers()
-    LED.TheMatrix.SwapOnVSync(LED.Canvas)
+    CursorH = 0
+    CursorV = 0
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"somebody is chucking space rocks at your home planet....",CursorH=CursorH,CursorV=CursorV,MessageRGB=(225,0,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+    LED.ScreenArray,CursorH,CursorV = LED.TerminalScroll(LED.ScreenArray,"go blast them, young pilot!",CursorH=CursorH,CursorV=CursorV,MessageRGB=(150,150,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed)
+    LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
+
+
+  PlayBlasteroids(Duration,StopEvent)
+      
+
+
+
+
+
+
+
+
+
+#execute if this script is called direction
+if __name__ == "__main__" :
+  while(1==1):
+    #print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
+    LaunchBlasteroids(Duration=100000, ShowIntro=True, StopEvent=None)        
+
+
 
 
 

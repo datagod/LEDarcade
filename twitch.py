@@ -674,7 +674,13 @@ class Bot(commands.Bot ):
     # Rotate Clock Displays               --
     #---------------------------------------
     async def RotateClockDisplays(self, RotateClockDelay: int = 5):
-        
+
+
+        #Blasteroids clock (style=5)
+        CommandQueue.put({ "Action": "showclock",   "Style": 5,  "Zoom": 1,   "Duration": 10, "Delay": 10  })
+        await asyncio.sleep(RotateClockDelay * 60)
+
+
         CommandQueue.put({"Action": "retrodigital", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
 

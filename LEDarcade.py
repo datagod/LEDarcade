@@ -18066,6 +18066,10 @@ def DisplayDigitalClock(
       DisplayCustomFontClock(StopEvent)
       Done = True
 
+    elif (ClockStyle == 5):
+      import Blasteroids as BL
+      BL.LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)        
+      Done = True
 
 
 

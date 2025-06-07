@@ -319,6 +319,20 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+            elif Action == "launch_blasteroids":
+                print("[LEDcommander][Run] Launching Blasteroids")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "blasteroids"
+                DisplayProcess = Process(target=LaunchBlasteroids, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
             elif Action == "launch_fallingsand":
                 print("[LEDcommander][Run] Launching fallingsand")
                 if DisplayProcess and DisplayProcess.is_alive():
@@ -929,9 +943,16 @@ def LaunchOutbreak(Command, StopEvent):
     import Outbreak as OB
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchOutbreak] Launching...")
-
     OB.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
+
+def LaunchBlasteroids(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Blasteroids as BL
+    Duration         = Command.get("duration",10)
+    print("[LEDcommander][LaunchBlasteroids] Launching...")
+    BL.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
 
@@ -942,7 +963,6 @@ def LaunchFallingSand(Command, StopEvent):
     import FallingSand as FS
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchFallingSand] Launching...")
-
     FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
