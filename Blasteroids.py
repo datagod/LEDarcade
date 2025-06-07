@@ -671,8 +671,8 @@ try:
         current_time_str = datetime.now().strftime('%H:%M')
         if current_time_str != last_time_str:
             clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=10, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0),  TileSize=(TileWidth,TileHeight))
-
             last_time_str = current_time_str
+            print("Time: ",current_time_str)
 
         draw_clock_overlay(clock_img)
 
