@@ -1742,7 +1742,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who ?retro')
         time.sleep(4)
-        await ctx.send('Available games: ?astrosmash ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
+        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
 

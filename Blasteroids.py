@@ -57,12 +57,12 @@ LED.Initialize()
 
 
 # --- Black Hole Parameters ---
-BLACKHOLE_GRAVITY = 10
+BLACKHOLE_GRAVITY  = 20
 BLACKHOLE_MIN_SIZE = 1
 BLACKHOLE_MAX_SIZE = 5
 BLACKHOLE_MAX_SPEED = 2
-BLACKHOLE_APPEAR_INTERVAL = 60
-BLACKHOLE_LIFESPAN = 25
+BLACKHOLE_APPEAR_INTERVAL = 1
+BLACKHOLE_LIFESPAN = 10
 
 
 
@@ -77,13 +77,13 @@ SHIP_VISION_RADIUS = 40
 
 
 # --- Missile Parameters ---
-MISSILE_SPEED = 1
-MISSILE_LIFESPAN = 0.50
+MISSILE_SPEED = 1.25
+MISSILE_LIFESPAN = 0.75
 FIRE_CHANCE = 0.1
 MISSILE_COLOR = (255, 255, 255)
 MISSILE_TRAIL_MIN = 50
 MISSILE_TRAIL_LENGTH = 8
-MAX_MISSILES = 4
+MAX_MISSILES = 2
 
 # --- Terminal Parameters ---
 ScrollSleep         = 0.025
@@ -137,6 +137,16 @@ VIEWPORT_X_OFFSET = (PLAYFIELD_WIDTH - WIDTH) // 2
 VIEWPORT_Y_OFFSET = (PLAYFIELD_HEIGHT - HEIGHT) // 2
 
 
+
+
+
+
+
+# At the top of PlayBlasteroids, ensure b
+global blackhole
+blackhole = None  # Initialize explicitly
+
+
 #Time date
 last_time_str = ""
 ClockFontSize = 12
@@ -174,6 +184,7 @@ def draw_clock_overlay(clock_image):
             py = V + y
             if 0 <= px < WIDTH and 0 <= py < HEIGHT:
                 if (r, g, b) != (0, 0, 0):
+                    # Offset by 1 to nudge the clock down slightly for visual centering
                     LED.setpixelCanvas(px, py +1, r, g, b)
                     
 
@@ -216,6 +227,27 @@ class GameObject:
         max_speed = getattr(self, 'max_speed', None)
         if max_speed is not None:
             speed = math.hypot(self.dx, self.dy)
+            # Allow higher speed if near a black hole
+            if blackhole and isinstance(self, Asteroid):
+                dist_sq = (self.x - blackhole.x)**2 + (self.y - blackhole.y)**2
+                if dist_sq < 100:  # Within 10 units of black hole
+                    max_speed *= 2  # Double max speed to allow gravity to have more impact
+            if speed > max_speed:
+                scale = max_speed / speed
+                self.dx *= scale
+                self.dy *= scale
+        self.x += self.dx
+        self.y += self.dy
+        self.x, self.y, self.dx, self.dy = enforce_bounds_and_bounce(
+            self.x, self.y, self.dx, self.dy, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT
+        )
+
+
+    def update_position_old(self):
+        # Let subclasses define max speed if needed
+        max_speed = getattr(self, 'max_speed', None)
+        if max_speed is not None:
+            speed = math.hypot(self.dx, self.dy)
             if speed > max_speed:
                 scale = max_speed / speed
                 self.dx *= scale
@@ -230,9 +262,8 @@ class GameObject:
 
 
 
-
 class BlackHole(GameObject):
-    def __init__(self, x, y, radius):
+    def __init__(self, x, y, radius,size=1):
         self.x = x
         self.y = y
         self.radius = radius
@@ -242,7 +273,11 @@ class BlackHole(GameObject):
         dx = math.cos(angle) * speed
         dy = math.sin(angle) * speed
         super().__init__(x, y, dx, dy)
+        self.size = 1
         self.max_speed = BLACKHOLE_MAX_SPEED
+        self.grow_start_time = time.time()
+        self.target_size = size if size is not None else random.randint(2, BLACKHOLE_MAX_SIZE)
+
 
     def move(self):
         self.update_position()  # from GameObject
@@ -257,6 +292,14 @@ class BlackHole(GameObject):
         return out_of_bounds or (time.time() - self.spawn_time > BLACKHOLE_LIFESPAN)
 
     def draw(self):
+        # Grow animation logic
+        grow_duration = 0.5
+        elapsed = time.time() - self.grow_start_time
+        grow_factor = min(1.0, elapsed / grow_duration)
+        current_size = max(1, int(self.target_size * grow_factor))
+        self.size = current_size
+
+
         for dy in range(-self.radius, self.radius + 1):
             for dx in range(-self.radius, self.radius + 1):
                 dist = math.sqrt(dx * dx + dy * dy)
@@ -295,6 +338,10 @@ def apply_blackhole_gravity(obj):
             obj.health = 0
         elif hasattr(obj, 'birth_time'):
             obj.birth_time = 0
+
+    #if force > 0.01:
+    #  print(f"Force applied to object at ({obj.x:.2f}, {obj.y:.2f}) = {force:.4f}")
+
 
 
 @njit
@@ -544,9 +591,19 @@ class Spark:
 
 
 
+
+
+
+
+
+
 missiles = []
 ship = Ship()
 asteroids = [Asteroid() for _ in range(ASTEROIDS)]
+
+for asteroid in asteroids:
+    asteroid.grow_start_time = time.time()
+
 sparks = []
 
 
@@ -558,6 +615,7 @@ fps_timer = time.time()
 # Insert into test2.py: Initialization Section
 last_blackhole_time = time.time() - BLACKHOLE_APPEAR_INTERVAL
 blackhole = None
+    
 
 
 
@@ -565,6 +623,7 @@ blackhole = None
 def PlayBlasteroids(Duration = 10000, StopEvent = None):
     
     global last_blackhole_time, fps_timer, fps_counter
+    global blackhole
     
     #Time date
     last_time_str = ""
@@ -572,6 +631,10 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
     ClockRGB = (0,200,0)
 
     clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
+
+    for asteroid in asteroids:
+        asteroid.grow_start_time = time.time()
+        asteroid.draw()
 
 
     try:
@@ -618,7 +681,10 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                     by = random.randint(0, PLAYFIELD_HEIGHT)
                 bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
                 blackhole = BlackHole(bx, by, bradius)
-                last_blackhole_time = now
+                blackhole.grow_start_time = time.time()
+                last_blackhole_time       = time.time()
+                
+
 
             if blackhole and blackhole.expired():
                 blackhole = None
@@ -654,7 +720,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                     if asteroid.health <= 0:
                         if asteroid.size > 1:
                             new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1, color=asteroid.color))
-                            new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
+                            #new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1))
                         for _ in range(SPARK_COUNT):
                             angle = random.uniform(0, 2 * math.pi)
                             speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
@@ -673,7 +739,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 missiles.append(Missile(ship.x, ship.y, ship.angle))
 
             for missile in missiles[:]:
-                #apply_blackhole_gravity(missile)
+                apply_blackhole_gravity(missile)
 
                 missile.move()
                 missile.draw()
@@ -745,7 +811,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
     except KeyboardInterrupt:
         LED.ClearBuffers()
         LED.TheMatrix.SwapOnVSync(LED.Canvas)
-
+        raise
 
 
 
@@ -800,14 +866,12 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 
 
 #execute if this script is called direction
-if __name__ == "__main__" :
-  while(1==1):
-    #print("After SAVE OutbreakGamesPlayed:",LED.OutbreakGamesPlayed)
-    LaunchBlasteroids(Duration=100000, ShowIntro=True, StopEvent=None)        
-
-
-
-
+if __name__ == "__main__":
+    try:
+        while True:
+            LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)
+    except KeyboardInterrupt:
+        print("Exiting game due to Ctrl-C.")
 
 
 
