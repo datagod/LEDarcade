@@ -57,13 +57,13 @@ LED.Initialize()
 
 
 # --- Black Hole Parameters ---
-BLACKHOLE_GRAVITY  = 20
+BLACKHOLE_GRAVITY  = 5
 BLACKHOLE_MIN_SIZE = 1
 BLACKHOLE_MAX_SIZE = 5
 BLACKHOLE_MAX_SPEED = 2
-BLACKHOLE_APPEAR_INTERVAL = 1
-BLACKHOLE_LIFESPAN = 10
-
+BLACKHOLE_APPEAR_INTERVAL = 60
+BLACKHOLE_LIFESPAN = 25
+BLACKHOLE_GROW_DURATION = 2
 
 
 # --- Ship Parameters ---
@@ -95,9 +95,9 @@ CursorDarkRGB       = (0,50,0)
 
 
 # --- Asteroid Parameters ---
-ASTEROIDS = 4
+ASTEROIDS = 3
 ASTEROID_SPLIT_THRESHOLD = 2
-MAX_ASTEROID_SIZE = 5
+MAX_ASTEROID_SIZE = 4
 FRAME_DELAY = 0.03
 ASTEROID_MIN_SPEED = 0.05
 ASTEROID_MAX_SPEED = 0.4
@@ -124,8 +124,9 @@ SPARK_COLOR = (255, 200, 100)
 
 
 # --- Display Settings ---
-WIDTH         = LED.HatWidth
-HEIGHT        = LED.HatHeight
+WIDTH            = LED.HatWidth
+HEIGHT           = LED.HatHeight
+SCROLL_FONT_SIZE = 12
 
 # --- Virtual Playfield Size ---
 PLAYFIELD_WIDTH = 68
@@ -266,7 +267,6 @@ class BlackHole(GameObject):
     def __init__(self, x, y, radius,size=1):
         self.x = x
         self.y = y
-        self.radius = radius
         self.spawn_time = time.time()
         angle = random.uniform(0, 2 * math.pi)
         speed = random.uniform(0.05, 0.2)
@@ -275,8 +275,12 @@ class BlackHole(GameObject):
         super().__init__(x, y, dx, dy)
         self.size = 1
         self.max_speed = BLACKHOLE_MAX_SPEED
+        self.growing = True
         self.grow_start_time = time.time()
-        self.target_size = size if size is not None else random.randint(2, BLACKHOLE_MAX_SIZE)
+
+        self.target_size = radius  # unify
+        self.radius = 1  # will grow from 1 to target
+
 
 
     def move(self):
@@ -291,30 +295,37 @@ class BlackHole(GameObject):
         )
         return out_of_bounds or (time.time() - self.spawn_time > BLACKHOLE_LIFESPAN)
 
-    def draw(self):
-        # Grow animation logic
-        grow_duration = 0.5
-        elapsed = time.time() - self.grow_start_time
-        grow_factor = min(1.0, elapsed / grow_duration)
-        current_size = max(1, int(self.target_size * grow_factor))
-        self.size = current_size
 
+    def draw(self):
+        grow_duration = BLACKHOLE_GROW_DURATION
+        elapsed = time.time() - self.grow_start_time
+
+        if self.growing:
+            grow_factor = elapsed / grow_duration
+            if elapsed >= grow_duration:
+                self.size = self.target_size
+                self.growing = False
+            else:
+                self.size = max(1, int(round(self.target_size * grow_factor)))
+        else:
+            self.size = self.target_size
+
+        self.radius = self.size  # Update radius used for interaction
 
         for dy in range(-self.radius, self.radius + 1):
             for dx in range(-self.radius, self.radius + 1):
-                dist = math.sqrt(dx * dx + dy * dy)
                 px = int(self.x + dx)
                 py = int(self.y + dy)
                 if (VIEWPORT_X_OFFSET <= px < VIEWPORT_X_OFFSET + WIDTH and
                     VIEWPORT_Y_OFFSET <= py < VIEWPORT_Y_OFFSET + HEIGHT):
+
+                    dist = math.hypot(dx, dy)
+                    # Fill everything within the radius — outer ring white, inner black
                     if dist <= self.radius:
                         if dist >= self.radius - 1:
-                            #LED.setpixelCanvas(px, py, 255, 255, 255)
                             LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 255, 255, 255)
                         else:
-                            #LED.setpixelCanvas(px, py, 0, 0, 0)
-                            LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 0, 0, 0)
-
+                            LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 1, 1, 1)
 
 # Attraction & Collision (apply per object)
 def apply_blackhole_gravity(obj):
@@ -394,7 +405,7 @@ def handle_collisions(asteroids):
 
 
 class Asteroid(GameObject):
-    def __init__(self, x=None, y=None, size=None, color=None):  # patched for GameObject
+    def __init__(self, x=None, y=None, size=None, color=None):
         x = x if x is not None else random.uniform(0, WIDTH)
         y = y if y is not None else random.uniform(0, HEIGHT)
         angle = random.uniform(0, 2 * math.pi)
@@ -404,7 +415,8 @@ class Asteroid(GameObject):
         super().__init__(x, y, dx, dy)
         self.max_speed = ASTEROID_MAX_SPEED
         self.target_size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
-        self.size = 1
+        self.size = 1  # Start small
+        self.growing = True
         self.grow_start_time = time.time()
         self.health = self.target_size * 2
         self.last_hit_time = 0
@@ -413,37 +425,74 @@ class Asteroid(GameObject):
         else:
             roll = random.random()
             if roll < 0.9:
-                self.color = ASTEROID_COLOR_OPTIONS[0]  # 90% grey
+                self.color = ASTEROID_COLOR_OPTIONS[0]
             elif roll < 0.95:
-                self.color = ASTEROID_COLOR_OPTIONS[1]  # 5% blue
+                self.color = ASTEROID_COLOR_OPTIONS[1]
             else:
-                self.color = ASTEROID_COLOR_OPTIONS[2]  # 5% purple
+                self.color = ASTEROID_COLOR_OPTIONS[2]
+
+    @classmethod
+    def create(cls, **kwargs):
+        asteroid = cls(**kwargs)
+        asteroid.growing = True
+        asteroid.grow_start_time = time.time()
+        asteroid.size = 1
+        return asteroid
+
 
     def move(self):
         self.update_position()
 
+    
+    
+    
     def draw(self):
-        # Grow animation logic
+      if not hasattr(self, "_debug_draw_count"):
+          self._debug_draw_count = 0
+      self._debug_draw_count += 1
+      if self.growing:
+
+
         grow_duration = 0.5
         elapsed = time.time() - self.grow_start_time
-        grow_factor = min(1.0, elapsed / grow_duration)
-        current_size = max(1, int(self.target_size * grow_factor))
-        self.size = current_size
 
-        r, g, b = self.color
-        for i in range(-self.size, self.size + 1):
-            for j in range(-self.size, self.size + 1):
-                if i**2 + j**2 <= self.size**2:
-                    px = int(self.x) + i
-                    py = int(self.y) + j
-                    if (VIEWPORT_X_OFFSET <= px < VIEWPORT_X_OFFSET + WIDTH and
-                        VIEWPORT_Y_OFFSET <= py < VIEWPORT_Y_OFFSET + HEIGHT):
-                        brightness_factor = 1.0 - ASTEROID_LIGHTING_CONTRAST * (i + j) / (2 * self.size)
-                        brightness_factor = max(0.5, min(1.5, brightness_factor))
-                        r_out = min(255, int(r * brightness_factor))
-                        g_out = min(255, int(g * brightness_factor))
-                        b_out = min(255, int(b * brightness_factor))
-                        LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r_out, g_out, b_out)
+        if elapsed >= grow_duration:
+            self.size = self.target_size
+            self.growing = False
+
+        else:
+            grow_factor = elapsed / grow_duration
+            self.size = max(1, int(self.target_size * grow_factor))
+
+
+        grow_factor = elapsed / grow_duration
+        if elapsed >= grow_duration:
+
+            self.size = self.target_size
+            self.growing = False
+        else:
+            self.size = max(1, int(self.target_size * grow_factor))
+
+
+        if grow_factor >= 1.0:
+            self.growing = False
+      else:
+        self.size = self.target_size
+
+      r, g, b = self.color
+      for i in range(-self.size, self.size + 1):
+        for j in range(-self.size, self.size + 1):
+            if i**2 + j**2 <= self.size**2:
+                px = int(self.x) + i
+                py = int(self.y) + j
+                if (VIEWPORT_X_OFFSET <= px < VIEWPORT_X_OFFSET + WIDTH and
+                    VIEWPORT_Y_OFFSET <= py < VIEWPORT_Y_OFFSET + HEIGHT):
+                    brightness_factor = 1.0 - ASTEROID_LIGHTING_CONTRAST * (i + j) / (2 * self.size)
+                    brightness_factor = max(0.5, min(1.5, brightness_factor))
+                    r_out = min(255, int(r * brightness_factor))
+                    g_out = min(255, int(g * brightness_factor))
+                    b_out = min(255, int(b * brightness_factor))
+                    LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r_out, g_out, b_out)
 
 
 class Missile(GameObject):
@@ -599,10 +648,11 @@ class Spark:
 
 missiles = []
 ship = Ship()
-asteroids = [Asteroid() for _ in range(ASTEROIDS)]
+#asteroids = [Asteroid() for _ in range(ASTEROIDS)]
+asteroids = [Asteroid.create() for _ in range(ASTEROIDS)]
 
-for asteroid in asteroids:
-    asteroid.grow_start_time = time.time()
+
+
 
 sparks = []
 
@@ -617,6 +667,12 @@ last_blackhole_time = time.time() - BLACKHOLE_APPEAR_INTERVAL
 blackhole = None
     
 
+
+
+def hard_clear_canvas():
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            LED.Canvas.SetPixel(x,y,0,0,0)
 
 
 
@@ -638,13 +694,15 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
 
     try:
-
+        
         #zoom clock into screen
         clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
         LED.ZoomImageObject(clock_img, 0, 110, 0.05, 20)
         
         Done = False
         while (Done == False):
+            
+            hard_clear_canvas()
             if StopEvent and StopEvent.is_set():
                 print("\n" + "="*40)
                 print("[Blasteroids] StopEvent received")
@@ -663,7 +721,19 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 last_time_str = current_time_str
                 print("Time: ",current_time_str)
             draw_clock_overlay(clock_img)
+            
 
+            if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
+                bx = PLAYFIELD_WIDTH // 2
+                by = PLAYFIELD_HEIGHT // 2
+                bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
+                blackhole = BlackHole(bx, by, bradius)
+                blackhole.growing = True
+                blackhole.grow_start_time = time.time()
+                last_blackhole_time = time.time()
+
+
+            '''
             if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
                 # Spawn just outside one of the four edges
                 side = random.choice(['top', 'bottom', 'left', 'right'])
@@ -683,7 +753,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 blackhole = BlackHole(bx, by, bradius)
                 blackhole.grow_start_time = time.time()
                 last_blackhole_time       = time.time()
-                
+            '''                
 
 
             if blackhole and blackhole.expired():
@@ -692,13 +762,10 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
             if not asteroids:
                 asteroids.append(Asteroid(size=MAX_ASTEROID_SIZE))
+                asteroids.append(Asteroid.create(size=MAX_ASTEROID_SIZE))
+
             
             handle_collisions(asteroids)
-
-            if blackhole:
-                blackhole.move()
-                blackhole.draw()
-
 
             new_asteroids = []
             for asteroid in asteroids:
@@ -732,8 +799,6 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                     ship.speed_y = math.sin(angle + math.pi) * thrust
 
             apply_blackhole_gravity(ship)
-            ship.move()
-            ship.draw()
 
             if len(missiles) < MAX_MISSILES and random.random() < FIRE_CHANCE and ship.target:
                 missiles.append(Missile(ship.x, ship.y, ship.angle))
@@ -792,6 +857,15 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
 
 
+            ship.move()
+            ship.draw()
+
+            if blackhole:
+                blackhole.move()
+                blackhole.draw()
+
+
+            LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
 
             clock.tick(60)  # Cap the frame rate to 60 FPS
 
@@ -804,14 +878,17 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 fps_timer = time.time()
 
 
-            #only called once per frame
-            LED.TheMatrix.SwapOnVSync(LED.Canvas)
-            LED.ClearBuffers()
+            
+            
+
 
     except KeyboardInterrupt:
         LED.ClearBuffers()
         LED.TheMatrix.SwapOnVSync(LED.Canvas)
         raise
+
+
+
 
 
 
@@ -854,7 +931,7 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
     LED.BlinkCursor(CursorH= CursorH,CursorV=CursorV,CursorRGB=CursorRGB,CursorDarkRGB=CursorDarkRGB,BlinkSpeed=0.5,BlinkCount=2)
 
 
-  PlayBlasteroids(Duration,StopEvent)
+  PlayBlasteroids(Duration=Duration,StopEvent=StopEvent)
       
 
 
@@ -868,8 +945,10 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 #execute if this script is called direction
 if __name__ == "__main__":
     try:
-        while True:
-            LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)
+        #LED.scroll_sentence_star_wars("A long time ago in a clock far far away...", tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf")
+        LED.scroll_random_movie_intro()
+        LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)
+
     except KeyboardInterrupt:
         print("Exiting game due to Ctrl-C.")
 

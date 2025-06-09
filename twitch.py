@@ -1740,7 +1740,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello  ?chat ?profile ?me ?starrynight ?views ?hug ?taco ?time ?uptime ?viewers ?who ?retro')
+        await ctx.send('Available commands: ?hello ?hug ?intro ?profile ?me ?retro ?starrynight ?views ?taco ?time ?uptime ?viewers ?who')
         time.sleep(4)
         await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
         #time.sleep(4)
@@ -1783,14 +1783,26 @@ class Bot(commands.Bot ):
       await self.Channel.send(message)
       CommandQueue.put({"Action": "showheart"})
 
-    
-
     @commands.command()
     async def hugs(self, ctx: commands.Context):
       message = "Sending hugs <3 <3 <3"
       await self.Channel.send(message)
       CommandQueue.put({"Action": "showheart"})
 
+
+
+    #----------------------------------------
+    # Intro                                  --
+    #----------------------------------------
+    @commands.command()
+    async def intro(self, ctx: commands.Context):
+      message = "Take a look at the clock for an interesting movie quote...sorta"
+      await self.Channel.send(message)
+      CommandQueue.put({"Action": "showintro"})
+
+
+
+    
 
 
 

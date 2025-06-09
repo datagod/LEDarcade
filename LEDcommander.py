@@ -447,6 +447,21 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+
+            elif Action == "showintro":
+                print("[LEDcommander][Run] Launching Intro")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "showintro"
+                DisplayProcess = Process(target=ShowIntro, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
             elif Action == "showgif":
                 if DisplayProcess and DisplayProcess.is_alive():
                     StopEvent.set()
@@ -805,6 +820,23 @@ def ShowHeart(Command, StopEvent):
 
 
 
+
+def ShowIntro(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    StreamBrightness = 80
+    GifBrightness    = 50
+    MaxBrightness    = 100
+    print("[LEDcommander][ShowIntro] Now scrolling text, star wars style")
+
+
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.scroll_random_movie_intro(StopEvent=StopEvent)
+    LED.SweepClean()
+
+
+
 def ShowGIF(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
@@ -952,7 +984,7 @@ def LaunchBlasteroids(Command, StopEvent):
     import Blasteroids as BL
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchBlasteroids] Launching...")
-    BL.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    BL.Blasteroids(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
 

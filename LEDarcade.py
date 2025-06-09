@@ -5,7 +5,6 @@
 # Notes
 # =====
 #
-# - create a function that can display items twice as big as normal (i.e. zoom a sprite by pixel doubling)
 # - make a function to copy a sprite to a virus playfield
 # - use the new pacmaze drawing technique to create sprites
 #
@@ -13,6 +12,86 @@
 
 # The buffer is a 2D array.  32 lines of 64 pixels
 # BUFFER[V][H]  
+
+
+
+"""
+================================================================================
+LEDarcade - Modular Display Framework for Raspberry Pi LED Panels
+================================================================================
+
+Author: William McEvoy (@datagod)
+License: Non-commercial use only. Contact for commercial licensing.
+
+DESCRIPTION:
+------------
+LEDarcade is a Python framework that enables high-performance rendering of
+sprites, animations, clocks, and interactive graphics on RGB LED matrices
+attached to a Raspberry Pi. It serves as the core display engine for a suite
+of retro-inspired games and visualizers such as DotInvaders, Outbreak,
+Defender, and custom Twitch integrations.
+
+ARCHITECTURE OVERVIEW:
+----------------------
+- Framebuffer Architecture:
+    ▸ Screen drawing is abstracted via a `ScreenArray` 2D RGB buffer.
+    ▸ Rendering occurs off-screen and is then pushed to the LED display for flicker-free visuals.
+- RGBMatrix Integration:
+    ▸ Uses the `rpi-rgb-led-matrix` C++ library bindings for low-level control.
+    ▸ All pixel updates are batched for performance.
+- Game Coordination:
+    ▸ Centralized color schemes, game configurations, and runtime globals.
+    ▸ Enables simultaneous support for multiple games via `LEDcommander`.
+
+KEY FEATURES:
+-------------
+- Multi-game support (DotInvaders, Defender, Outbreak, etc.)
+- Gamma correction for color tuning
+- Dynamic sprite rendering and layering
+- Twitch and Patreon listener integration (via async Flask and TwitchIO)
+- CLI and terminal emulation modes
+- Numba and NumPy support for optimized math-heavy visualizations
+
+DISPLAY LAYOUT:
+---------------
+- 2D array: ScreenArray[V][H] representing vertical/horizontal pixels
+- Configurable sizes (32x32, 64x32, 128x32)
+- Location constants for clock/date/ticker overlays
+- Sprites drawn using pixel buffers and copied with color masking
+
+RECOMMENDED USAGE:
+------------------
+This module should be imported only from child processes that interact
+with the display hardware. The GPIO matrix setup must *never* be done in
+the parent process to prevent hardware lockup.
+
+===============================================================================
+CLASS REFERENCE
+===============================================================================
+
+class EmptyObject:
+    - A generic object blueprint used for game entities like ships, missiles,
+      particles, etc.
+    - Attributes: position (h, v), direction, color (rgb), lives, speed, score
+    - Typically used as a placeholder or default object
+
+FUNCTIONS AND GLOBALS:
+----------------------
+- LoadConfigData():
+    ▸ Reads scores, display settings, and dimensions from `ClockConfig.ini`.
+- Global configuration values:
+    ▸ HatWidth / HatHeight: Display dimensions
+    ▸ Gamma: Controls color brightness correction
+    ▸ DotMatrix / ScreenArray: Core pixel state buffers
+    ▸ Clock and overlay constants for positioning
+
+NOTES:
+------
+- All pixel rendering should use `setpixel()` to ensure buffer updates.
+- Sprites should be drawn centered (not from corners).
+- Avoid `.SetPixel()` direct calls; rely on `ScreenArray` for tracking state.
+
+"""
 
 
 
@@ -1761,7 +1840,75 @@ class Dot(object):
 
  
 
-      
+
+
+
+
+
+    """
+    Represents a dynamic visual entity on the LED matrix, such as a player ship, enemy,
+    missile, or interactive sprite. This class encapsulates both display-related attributes
+    and game logic metadata for rendering, movement, collisions, and lifecycle tracking.
+
+    Attributes:
+    -----------
+    H : int
+        Current horizontal coordinate on the LED matrix.
+    V : int
+        Current vertical coordinate on the LED matrix.
+    OldH : int
+        Previous horizontal position (used for erase/redraw logic).
+    OldV : int
+        Previous vertical position.
+    Dir : int
+        Direction of movement (implementation-specific encoding).
+    Speed : int
+        How frequently the ship moves (e.g., ticks between updates).
+    Score : int
+        Points awarded when this ship is destroyed.
+    Name : str
+        Unique or descriptive label for debugging and game logic.
+    Type : str
+        Category or classification (e.g., "Missile", "Enemy", "Player").
+    Group : str
+        Used for collision filtering (e.g., avoid self-hit on missiles).
+    FiredBy : str
+        ID or name of the object that created this ship (for attribution).
+    exploding : bool
+        Indicates if this ship is currently in its explosion animation state.
+    exploded : bool
+        Flag marking the ship as destroyed and ready for cleanup.
+    alive : bool
+        Whether the ship is currently active and should be rendered/processed.
+    lives : int
+        Health or durability; reaching 0 sets `exploded = True`.
+    missiles : int
+        Number of missiles fired or attached to this ship.
+    sprite : List[List[Tuple[int, int, int]]]
+        2D RGB sprite array representing the ship's appearance.
+    SpriteHeight : int
+        Height in pixels of the current sprite.
+    SpriteWidth : int
+        Width in pixels of the current sprite.
+
+    Notes:
+    ------
+    - Ships are rendered via the `setpixel()` function using the internal sprite array.
+    - Lifecycle is managed by `alive`, `exploding`, and `exploded` flags.
+    - Ships can be cloned and reused for object pooling, especially for missiles/enemies.
+    - Sprite data must match SpriteHeight and SpriteWidth dimensions for correct display.
+
+    Example Usage:
+    --------------
+    >>> ship = Ship()
+    >>> ship.H, ship.V = 10, 5
+    >>> ship.sprite = CreateSimpleSprite((255, 0, 0))
+    >>> DrawShip(ship)
+
+    Designed for compatibility with LEDarcade's buffered rendering system and
+    multiprocessing architecture.
+    """
+
 class Ship(object):
   def __init__(self,h,v,r,g,b,direction,scandirection,speed,alive,lives,name,score,exploding):
     self.h          = h 
@@ -18068,7 +18215,7 @@ def DisplayDigitalClock(
 
     elif (ClockStyle == 5):
       import Blasteroids as BL
-      BL.LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)        
+      BL.LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=StopEvent)        
       Done = True
 
 
@@ -20407,6 +20554,155 @@ def DisplayImage(image):
         Canvas = TheMatrix.SwapOnVSync(Canvas)
     else:
         raise TypeError("Input must be a PIL.Image object")
+
+
+
+
+from PIL import Image, ImageDraw, ImageFont
+import time
+import textwrap
+
+def scroll_sentence_star_wars(sentence, TextRGB=(200,200,0), base_font_size=12, tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf"):
+
+    global Canvas
+    image_width = HatWidth
+    base_spacing =12
+    background_color = (0, 0, 0)
+
+    # Word wrap
+    font = ImageFont.truetype(font_path, base_font_size)
+    max_chars_per_line = max(1, int(image_width / font.getlength("M")))
+    lines = textwrap.wrap(sentence, width=max_chars_per_line)
+
+    # Estimate image height
+    est_height = len(lines) * base_spacing + 10
+    img = Image.new("RGB", (image_width, est_height), color=background_color)
+    draw = ImageDraw.Draw(img)
+
+    # Draw each line
+    y_cursor = 0
+    for line in lines:
+        draw.text((0, y_cursor), line, font=font, fill=TextRGB)
+        y_cursor += base_spacing
+
+    img_w, img_h = img.size
+
+    # Scroll upwards from below screen
+    for scroll_y in range(-HatHeight, img_h):
+        Canvas.Clear()
+        for screen_y in range(HatHeight):
+            source_y = scroll_y + screen_y
+            if source_y < 0 or source_y >= img_h:
+                continue
+
+            # Correct perspective scale: narrower at top
+            scale = (screen_y / HatHeight) * tilt_factor + (1 - tilt_factor)
+            scale = max(0.2, scale)
+
+            #relative_pos = screen_y / HatHeight
+            #scale = (relative_pos ** 2) * tilt_factor + (1 - tilt_factor)
+
+
+
+            src_line = img.crop((0, source_y, image_width, source_y + 1)).resize(
+                (int(image_width * scale), 1), resample=Image.BILINEAR
+            )
+
+            x_offset = (image_width - src_line.width) // 2
+            for x in range(src_line.width):
+                r, g, b = src_line.getpixel((x, 0))
+                if 0 <= x + x_offset < HatWidth:
+                    setpixelCanvas(x + x_offset, screen_y, r, g, b)
+
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+        time.sleep(scroll_delay)
+
+def scroll_sentence_star_wars_old(sentence, tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf"):
+    global Canvas  # Ensure Canvas is accessible and modifiable
+    image_width = HatWidth
+    base_font_size = 12
+    base_spacing = 16
+    TextRGB = (235, 235, 235)
+    background_color = (0, 0, 0)
+
+    # Word wrap
+    font = ImageFont.truetype(font_path, base_font_size)
+    max_chars_per_line = max(1, int(image_width / font.getlength("M")))
+    lines = textwrap.wrap(sentence, width=max_chars_per_line)
+
+    # Estimate image height
+    est_height = len(lines) * base_spacing + 100
+    img = Image.new("RGB", (image_width, est_height), color=background_color)
+    draw = ImageDraw.Draw(img)
+
+    # Draw each line with spacing
+    y_cursor = 0
+    for line in lines:
+        draw.text((0, y_cursor), line, font=font, fill=TextRGB)
+        y_cursor += base_spacing
+
+    # Scroll with perspective compression
+    for scroll_y in range(0, y_cursor - HatHeight):
+        Canvas.Clear()
+        for screen_y in range(HatHeight):
+            source_y = scroll_y + screen_y
+
+            # Perspective scale factor: smaller at top
+            scale = (screen_y / HatHeight) * tilt_factor + (1 - tilt_factor)
+            scale = max(0.2, scale)
+
+            src_line = img.crop((0, source_y, image_width, source_y + 1)).resize(
+                (int(image_width * scale), 1), resample=Image.BILINEAR
+            )
+
+            # Center scaled line
+            x_offset = (image_width - src_line.width) // 2
+            for x in range(src_line.width):
+                r, g, b = src_line.getpixel((x, 0))
+                if 0 <= x + x_offset < HatWidth:
+                    setpixelCanvas(x + x_offset, screen_y, r, g, b)
+
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+        time.sleep(scroll_delay)
+
+
+
+def scroll_random_movie_intro(StopEvent):
+    intros = [
+        # Sci-Fi
+        "Space... the final snooze button. This clock's mission: to seek out new alarms... - Clock Trek the Motion Clock",
+        "I've seen things you people wouldn't believe... a talking clock with several impressive colors... - Blade Runner Director's Clock edition",
+        "What if I told you... this clock controls more than just time? - Morpheus",
+        "I'm sorry, Dave. I can't let you sleep in. Time to get up!  - HAL, worlds first talking clock",
+        "In space, no one can hear you hit snooze. But this clock sure tries. - Alien 5 ",
+        "The clock is out there. It can’t be bargained with. It will wake you. - The Clockinator",
+        "88 miles per hour? This clock barely does 60 seconds a minute. - Clock to the Future",
+        "The spice must flow... but not before this clock says it’s time. - Dune 7",
+        "Time is the fifth element. This clock is the worst one.",
+        "They came for conquest. They found a digital clock and got bored. - Some SciFi movie",
+        
+        # Other Genres
+        "One clock to rule them all... and in the darkness wake them. - Lord of the Clocks",
+        "You're a wizard, Harry... now set your alarm. - Harry Clocker",
+        "Fortune and glory, kid... right after this clock strikes seven.",
+        "Life finds a way. But this clock finds Monday first.",
+        "Is this a dream? No... it’s just your 6AM alarm again.",
+        "In the wasteland, fuel is scarce... but this clock runs forever. - Clock Warrior",
+        "Who you gonna call? Hopefully someone to reset this infernal clock. - Clock Busters",
+        "Good morning! And in case I don’t see ya, it’s time to get up!",
+        "I'm gonna make you an offer you can't understand... - The ClockFather"
+    ]
+
+    sentence = random.choice(intros)
+    scroll_sentence_star_wars(
+        sentence,
+        base_font_size = 12,
+        TextRGB=(255,255,0),
+        tilt_factor=0.4,
+        scroll_delay=0.06,
+        font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf"
+    )
+
 
 
 
