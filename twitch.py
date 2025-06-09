@@ -1796,8 +1796,6 @@ class Bot(commands.Bot ):
     #----------------------------------------
     @commands.command()
     async def intro(self, ctx: commands.Context):
-      message = "Take a look at the clock for an interesting movie quote...sorta"
-      await self.Channel.send(message)
       CommandQueue.put({"Action": "showintro"})
 
 

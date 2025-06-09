@@ -20680,7 +20680,10 @@ def scroll_random_movie_intro(StopEvent):
         "The spice must flow... but not before this clock says it’s time. - Dune 7",
         "Time is the fifth element. This clock is the worst one.",
         "They came for conquest. They found a digital clock and got bored. - Some SciFi movie",
+        "This clock is armed and fully operational - Emperor Whatshisface",
+        "Your inability to tell time is your weakness - Luke SkyClocker - Your faith in your watch is yours! - Emperor Whatshisfce"
         
+
         # Other Genres
         "One clock to rule them all... and in the darkness wake them. - Lord of the Clocks",
         "You're a wizard, Harry... now set your alarm. - Harry Clocker",
@@ -20690,7 +20693,28 @@ def scroll_random_movie_intro(StopEvent):
         "In the wasteland, fuel is scarce... but this clock runs forever. - Clock Warrior",
         "Who you gonna call? Hopefully someone to reset this infernal clock. - Clock Busters",
         "Good morning! And in case I don’t see ya, it’s time to get up!",
-        "I'm gonna make you an offer you can't understand... - The ClockFather"
+        "I'm gonna make you an offer you can't understand... - The ClockFather",
+
+        "Why so snoozy? - The Clock Knight",
+        "This is the way... to set your alarm. - The MandTIMElorian",
+        "You either wake up a hero or snooze long enough to become the villain. - The Dark Clock",
+        "Say hello to my little snooze button! - ScarClock",
+        "Keep your friends close, and your alarms closer. - The ClockFather Part II",
+        "Houston, we have overslept. - Apollo 13 O'Clock",
+        "You can't handle the time! - A Few Good Clocks",
+        "That’ll do, clock. That’ll do. - Babe: Pig in the Clock Store",
+        "I'm the king of the alarm world! - Titanic Time Edition",
+        "Frankly, my dear, I don’t give a tick. - Gone With the Wind-up Clock",
+        "May the snooze be with you. - Star Wars: Episode Nap",
+        "Why do we fall? So we can learn to reset our clocks. - Batman Begins Again",
+        "I'm not bad, I'm just wound that way. - Who Framed Roger's Clock",
+        "To infinity... and five more minutes! - Toy Clock",
+        "Here's ticking at you, kid. - Clockablanca",
+        "Time will get you every ... uh ... time. - No Clock for Old Men",
+        "It's not a man, it's a ticking machine! - The Clockinator 2: Judgement Time",
+        "With great clocks comes great punctuality. - Spiderman: Home Alarm"
+
+        
     ]
 
     sentence = random.choice(intros)
