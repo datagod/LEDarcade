@@ -2249,6 +2249,19 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
+    # BLASTEROIDS                          --
+    #----------------------------------------
+
+    @commands.command()
+    async def defender(self, ctx: commands.Context):
+      #Play game Blasteroids
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Time to earn your wings, kid.  Blow up them space rocks!"
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_blasteroids", "Duration": 10 })
+
+
+    #----------------------------------------
     # TRON                                 --
     #----------------------------------------
 

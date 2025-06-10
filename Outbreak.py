@@ -47,7 +47,7 @@
 #------------------------------------------------------------------------------
 from __future__ import print_function
 
-
+import os
 import LEDarcade as LED
 LED.Initialize()
 import copy
@@ -57,10 +57,6 @@ import numpy
 import math
 from numba import njit
 
-
-#For displaying crypto currency
-#from pycoingecko import CoinGeckoAPI
-#price = CoinGeckoAPI().get_price(ids='bitcoin', vs_currencies='usd')
 
 
 
@@ -75,7 +71,7 @@ start_time = time.time()
 #-----------------------------
 # Outbreak Global Variables --
 #-----------------------------
-VirusTopSpeed     = 1
+VirusTopSpeed     = 5
 VirusBottomSpeed  = 15
 VirusStartSpeed   = 15  #starting speed of the viruses
 MinBright         = 50
@@ -91,26 +87,26 @@ FreakoutReplicationRate   = 10     #new replication rate when a virus freaksout
 MaxVirusMoves             = 1000000 #after this many moves the level is over
 FreakoutMoves             = 10000  #after this many moves, the viruses will replicate and mutate at a much greater rate
 VirusMoves                = 0      #used to count how many times the viruses have moved
-ClumpingSpeed             = 25     #This modifies the speed of viruses that contact each other
+ClumpingSpeed             = 5      #This modifies the speed of viruses that contact each other
 ReplicationSpeed          = 5      #When a virus replicates, it will be a bit slower.  This number is added to current speed.
-ChanceOfSpeedup           = 50     #determines how often a lone virus will spontaneously speed up
+ChanceOfSpeedup           = 100     #determines how often a lone virus will spontaneously speed up
 SlowTurnMinMoves          = 1      #number of moves a mutated virus moves before turning
 SlowTurnMaxMoves          = 40     #number of moves a mutated virus moves before turning
 MaxReplications           = 5      #Maximum number of replications, if surpassed the virus dies
 InfectionChance           = 5     #Chance of one virus infecting another, lower the number greater the chance
-DominanceMaxCount         = 250000   #how many ticks with there being only one virus, when reached level over
-VirusNameSpeedupCount     = 1000    #when this many virus strains are on the board, speed them up
+DominanceMaxCount         = 550000   #how many ticks with there being only one virus, when reached level over
+VirusNameSpeedupCount     = 15000    #when this many virus strains are on the board, speed them up
 ChanceOfDying             = 5000   #random chance of a virus dying
 GreatChanceOfDying        = 5000    #random chance of a virus dying when too many straings are alive
-ChanceOfHeadingToHV       = 250000  #random chance of all viruses being interested in the same location
-ChanceOfHeadingToFood     = 100     #random chance of a virus heading towards the nearest food
+ChanceOfHeadingToHV       = 550000  #random chance of all viruses being interested in the same location
+ChanceOfHeadingToFood     = 500     #random chance of a virus heading towards the nearest food
 FoodCheckRadius           = 15      #radius around the virus when looking for food
 ChanceOfTurningIntoFood   = 5      #Random chance of a dying mutating virus to turn into food
 ChanceOfTurningIntoWall   = 5      #Random chance of a dying mutating virus to turn into food
 VirusFoodWallLives        = 5      #Lives of food before it gets eaten and disappears
-AuditSpeed                = 2000   #Every X tick, an audit text window is displayed for debugging purposes
-EatingSpeedAdjustment     = 0     #When a virus eats, it gets full and slows down             
-SpeedIncrements           = 20     #how many chunks the speed range is cut up into, for increasing gradually
+AuditSpeed                = 15000   #Every X tick, an audit text window is displayed for debugging purposes
+EatingSpeedAdjustment     = 1     #When a virus eats, it gets full and slows down             
+SpeedIncrements           = 100     #how many chunks the speed range is cut up into, for increasing gradually
 FoodBrightnessSteps       = 25     #each time a food loses life, it gets brighter by this many units
 ChanceToStopEating        = 100    #chance that a virus decides to stop eating and carry on with life
 ChanceOfRandomFood        = 250000  #chance that random food will show up, which will draw the viruses to it
@@ -118,7 +114,7 @@ MapOffset                 = 20     #how many pixels from the left screen does th
 BigFoodLives              = 500    #lives for the big food particle
 BigFoodRGB                = (255,0,0)
 MaxRandomViruses          = 50     #maximum number of random viruses to place on big food maps
-VirusMaxCount             = 500      #maximum number of unique virus strains allowed
+VirusMaxCount             = 2500      #maximum number of unique virus strains allowed
 MaxLevelsPlayed           = 25      #quit after 5 maps are played
 
 #Sprite display locations
@@ -188,7 +184,9 @@ start_time = time.time()
 
 class FastRandom:
     def __init__(self, seed=1):
-        self.state = seed
+      seed = int.from_bytes(os.urandom(4), 'little') ^ int(time.time() * 1000)
+      self.state = seed
+
 
     def randint(self, low, high):
         self.state = (1103515245 * self.state + 12345) & 0x7FFFFFFF
@@ -234,12 +232,12 @@ class VirusWorld(object):
 #Started out as an attempt to make cars follow shapes.  I was not happy with the results so I converted into a petri dish of viruses
   DefaultColorList = {
         ' ' : (  0,  0,  0),
-        '-' : ( 10, 10, 10),
-        '.' : ( 20, 20, 20),
-        'o' : ( 30, 30, 30),
-        'O' : ( 40, 40, 40),
-        '@' : ( 50, 60, 60),
-        '$' : ( 60, 60, 60),
+        '-' : ( 20, 20, 20),
+        '.' : ( 50, 50, 50),
+        'o' : ( 80, 80, 80),
+        'O' : (110,110,110),
+        '@' : (140,140,140),
+        '$' : (170,170,170),
         'A' : (  0,  0, 40),
         'B' : ( 10, 10, 50),
         'C' : ( 20, 20, 60),
@@ -253,8 +251,8 @@ class VirusWorld(object):
         'K' : (100,100,140),
         'L' : (110,110,150),
         '|' : (150,150,175),
-        '*' : (175,175,175),
-        '=' : (200,200,200),
+        '*' : (200,200,200),
+        '=' : (220,220,220),
         '#' : (150,150,150),
         '1' : (  0,200,  0),
         '2' : (150,  0,  0),
@@ -1171,8 +1169,9 @@ def CreateSimpleObstacleMap(width, height, block_count=8, min_size=4, max_size=8
     global fast_rng
 
     #shading_gradient = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
-    shading_gradient = ['L', 'K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A']
+    shading_gradient = ['-', '.', '.', '.', 'o', 'O', '@', '#', '$', '*']
 
+    
     hall = ' '
     border = '='
 
@@ -2007,12 +2006,12 @@ def MoveVirus(Virus,Playfield):
 
 
 
-    else:
+    #else:
       #print ("spot moving to is not empty: ",Playfield[ScanV][ScanH].name, ScanV,ScanH)
       #Introduce some instability into the virus
-      if (fast_rng.randint(0,InstabilityFactor) == 1):
-        Virus.direction = LED.TurnLeftOrRight8Way(Virus.direction)
-        Virus.AdjustSpeed(fast_rng.randint(-1,1))
+      #if (fast_rng.randint(0,InstabilityFactor) == 1):
+      #  Virus.direction = LED.TurnLeftOrRight8Way(Virus.direction)
+      #  Virus.AdjustSpeed(fast_rng.randint(-1,1))
 
 
 
@@ -3381,7 +3380,7 @@ def CreateDinnerPlate(width=66, height=34, virus_count=8):
     TheMap.TypeList = DinnerPlate.DefaultTypeList.copy()
 
     
-    TheMap.map = CreateSimpleObstacleMap(width=width, height=height, block_count=(fast_rng.randint(4,10)), virus_count=virus_count )
+    TheMap.map = CreateSimpleObstacleMap(width=width, height=height, block_count=(fast_rng.randint(4,20)), min_size=2,max_size= 10, virus_count=virus_count )
 
 
 
@@ -3510,7 +3509,7 @@ def PlayOutbreak(Duration,StopEvent):
   print("*****************************************************")
 
   LevelCount = fast_rng.randint(1,MaxLevel)
-  LevelCount = 14    
+  
 
 #  DinnerPlate = CreateDinnerPlate(LevelCount)
   DinnerPlate = CreateDinnerPlate(width=80, height=45, virus_count=200)

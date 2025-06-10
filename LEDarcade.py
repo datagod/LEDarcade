@@ -20620,8 +20620,8 @@ def scroll_sentence_star_wars(sentence, TextRGB=(200,200,0), base_font_size=12, 
 def scroll_sentence_star_wars_old(sentence, tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf"):
     global Canvas  # Ensure Canvas is accessible and modifiable
     image_width = HatWidth
-    base_font_size = 12
-    base_spacing = 16
+    base_font_size = 11
+    base_spacing = 14
     TextRGB = (235, 235, 235)
     background_color = (0, 0, 0)
 
@@ -20667,7 +20667,7 @@ def scroll_sentence_star_wars_old(sentence, tilt_factor=0.6, scroll_delay=0.06, 
 
 
 
-def scroll_random_movie_intro(StopEvent):
+def scroll_random_movie_intro():
     intros = [
         # Sci-Fi
         "Space... the final snooze button. This clock's mission: to seek out new alarms... - Clock Trek the Motion Clock",
