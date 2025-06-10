@@ -95,7 +95,8 @@ CursorDarkRGB       = (0,50,0)
 
 
 # --- Asteroid Parameters ---
-ASTEROIDS = 3
+ASTEROIDS = 3            #starging number
+MAX_ASTEROID_COUNT = 20  #maximum allowed
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 4
 FRAME_DELAY = 0.03
@@ -546,7 +547,16 @@ class Ship(GameObject):
     def move(self):
         if not self.target or self.target not in asteroids:
             cx, cy = PLAYFIELD_WIDTH / 2, PLAYFIELD_HEIGHT / 2
-            visible_targets = [a for a in asteroids if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2]
+            #visible_targets = [a for a in asteroids if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2]
+
+            visible_targets = [
+                a for a in asteroids
+                if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2
+                and not (blackhole and math.hypot(a.x - blackhole.x, a.y - blackhole.y) < blackhole.radius)
+]
+
+
+
             if visible_targets:
                 self.target = random.choice(visible_targets)
             else:
@@ -574,7 +584,7 @@ class Ship(GameObject):
                     self.last_thrust_time = current_time
 
 
-
+        angle_diff = 0
         if self.target:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
@@ -707,8 +717,7 @@ class Spark:
 missiles = []
 ship = Ship()
 #asteroids = [Asteroid() for _ in range(ASTEROIDS)]
-asteroids = [Asteroid.create() for _ in range(ASTEROIDS)]
-
+asteroids = []
 
 
 
@@ -737,13 +746,16 @@ def hard_clear_canvas():
 def PlayBlasteroids(Duration = 10000, StopEvent = None):
     
     global last_blackhole_time, fps_timer, fps_counter
-    global blackhole
+    global blackhole, asteroids, sparks
     
     #Time date
     last_time_str = ""
     ClockFontSize = 12
     ClockRGB = (0,200,0)
-
+    
+    new_asteroids = []
+    asteroids = [Asteroid.create() for _ in range(ASTEROIDS)]
+   
     clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
 
     for asteroid in asteroids:
@@ -825,11 +837,36 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
             
             handle_collisions(asteroids)
 
-            new_asteroids = []
+            
             for asteroid in asteroids:
                 apply_blackhole_gravity(asteroid)
                 asteroid.move()
                 asteroid.draw()
+
+            if blackhole:
+                asteroids = [
+                    a for a in asteroids
+                    if math.hypot(a.x - blackhole.x, a.y - blackhole.y) > (blackhole.radius + a.radius)
+                ]
+
+
+
+            for asteroid in asteroids:
+
+                #blackholes eat the asteroid
+                if blackhole and math.hypot(asteroid.x - blackhole.x, asteroid.y - blackhole.y) < blackhole.radius:
+                    for _ in range(6):  # Spawn 6 sparks at the asteroid location
+                            angle = random.uniform(0, 2 * math.pi)
+                            speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
+                            sparks.append(Spark(asteroid.x, asteroid.y,angle,speed))
+                    asteroids.remove(asteroid)
+                    continue  # Absorbed — no split!
+                apply_blackhole_gravity(asteroid)
+                asteroid.move()
+                asteroid.draw()
+
+
+
                 if asteroid == ship.target:
                     cx = int(asteroid.x)
                     cy = int(asteroid.y)
@@ -892,7 +929,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
                     missiles.remove(missile)
 
-            asteroids.extend(new_asteroids)
+            #asteroids.extend(new_asteroids)
 
 
 
