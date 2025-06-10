@@ -59,9 +59,9 @@ LED.Initialize()
 # --- Black Hole Parameters ---
 BLACKHOLE_GRAVITY  = 6
 BLACKHOLE_MIN_SIZE = 1
-BLACKHOLE_MAX_SIZE = 3
+BLACKHOLE_MAX_SIZE = 4
 BLACKHOLE_MAX_SPEED = 2
-BLACKHOLE_APPEAR_INTERVAL = 5
+BLACKHOLE_APPEAR_INTERVAL = 60
 BLACKHOLE_LIFESPAN = 25
 BLACKHOLE_GROW_DURATION = 2
 
@@ -73,15 +73,15 @@ SHIP_COLOR = (0, 255, 0)
 SHIP_THRUST_DURATION = 3.0
 SHIP_THRUST_COOLDOWN = 1.0
 THRUST_TRAIL_LENGTH = 8
-SHIP_VISION_RADIUS = 30
+SHIP_VISION_RADIUS = 40
 
 
 # --- Missile Parameters ---
-MISSILE_SPEED = 1
+MISSILE_SPEED = 1.25
 MISSILE_LIFESPAN = 0.75
 FIRE_CHANCE = 0.1
 MISSILE_COLOR = (255, 255, 255)
-MISSILE_TRAIL_MIN = 10    # 0..255 brightness
+MISSILE_TRAIL_MIN = 50
 MISSILE_TRAIL_LENGTH = 8
 MAX_MISSILES = 2
 
@@ -95,8 +95,7 @@ CursorDarkRGB       = (0,50,0)
 
 
 # --- Asteroid Parameters ---
-ASTEROIDS = 3            #starging number
-MAX_ASTEROID_COUNT = 20  #maximum allowed
+ASTEROIDS = 3
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 4
 FRAME_DELAY = 0.03
@@ -421,8 +420,6 @@ class Asteroid(GameObject):
         self.grow_start_time = time.time()
         self.health = self.target_size * 2
         self.last_hit_time = 0
-        self.radius = self.size * 2  
-
         if color:
             self.color = color
         else:
@@ -506,30 +503,19 @@ class Missile(GameObject):
         super().__init__(x, y, dx, dy)
         self.angle = angle
         self.speed = MISSILE_SPEED
-        self.trail = [(x, y)]  # store the trail as list of positions
 
     def move(self):
         self.x += self.dx
         self.y += self.dy
-        self.trail.append((self.x, self.y))
-
-        # Cap trail length
-        if len(self.trail) > MISSILE_TRAIL_LENGTH:
-            self.trail.pop(0)
+        
 
     def draw(self):
-        trail_length = len(self.trail)
-        for i, (tx, ty) in enumerate(self.trail):
-            # Reverse the fade: oldest is darkest, newest is brightest
-            fade = max(
-                MISSILE_TRAIL_MIN,
-                MISSILE_COLOR[0] - (trail_length - i - 1) * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH)
-            )
-            LED.setpixelCanvas(
-                int(tx - VIEWPORT_X_OFFSET),
-                int(ty - VIEWPORT_Y_OFFSET),
-                fade, fade, fade
-            )
+        for i in range(MISSILE_TRAIL_LENGTH):
+            tx = int(self.x - math.cos(self.angle) * i)
+            ty = int(self.y - math.sin(self.angle) * i)
+            brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
+            #LED.setpixelCanvas(tx, ty, brightness, brightness, brightness)
+            LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
 
 
 class Ship(GameObject):
@@ -547,16 +533,7 @@ class Ship(GameObject):
     def move(self):
         if not self.target or self.target not in asteroids:
             cx, cy = PLAYFIELD_WIDTH / 2, PLAYFIELD_HEIGHT / 2
-            #visible_targets = [a for a in asteroids if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2]
-
-            visible_targets = [
-                a for a in asteroids
-                if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2
-                and not (blackhole and math.hypot(a.x - blackhole.x, a.y - blackhole.y) < blackhole.radius)
-]
-
-
-
+            visible_targets = [a for a in asteroids if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2]
             if visible_targets:
                 self.target = random.choice(visible_targets)
             else:
@@ -570,22 +547,15 @@ class Ship(GameObject):
                 self.speed_x += ax
                 self.speed_y += ay
 
-        if self.target and self.target in asteroids:
-            current_time = time.time()
-
-            if blackhole:  # Black hole present, override cooldown
-                self.thrusting = True
-            else:
-                if self.thrusting and current_time - self.last_thrust_time > SHIP_THRUST_DURATION:
-                    self.thrusting = False
-                    self.last_thrust_time = current_time
-                elif not self.thrusting and current_time - self.last_thrust_time > SHIP_THRUST_COOLDOWN:
-                    self.thrusting = True
-                    self.last_thrust_time = current_time
-
-
-        angle_diff = 0
         if self.target:
+            current_time = time.time()
+            if self.thrusting and current_time - self.last_thrust_time > SHIP_THRUST_DURATION:
+                self.thrusting = False
+                self.last_thrust_time = current_time
+            elif not self.thrusting and current_time - self.last_thrust_time > SHIP_THRUST_COOLDOWN:
+                self.thrusting = True
+                self.last_thrust_time = current_time
+
             dx = self.target.x - self.x
             dy = self.target.y - self.y
             desired_angle = math.atan2(dy, dx)
@@ -600,48 +570,10 @@ class Ship(GameObject):
                 else:
                     thrust = SHIP_THRUST
 
-                if blackhole:
-                    thrust *= 2.0
-
                 ax = math.cos(self.angle) * thrust
                 ay = math.sin(self.angle) * thrust
                 self.speed_x += ax
                 self.speed_y += ay
-
-        else:
-            # fallback logic if no target
-            cx, cy = PLAYFIELD_WIDTH / 2, PLAYFIELD_HEIGHT / 2
-            dx = cx - self.x
-            dy = cy - self.y
-            angle_to_center = math.atan2(dy, dx)
-            self.angle = angle_to_center
-            ax = math.cos(self.angle) * SHIP_THRUST
-            ay = math.sin(self.angle) * SHIP_THRUST
-            self.speed_x += ax
-            self.speed_y += ay
-
-
-
-
-
-
-        if self.thrusting:
-            # Base thrust multiplier depending on steering angle
-            if abs(angle_diff) > math.pi / 2:
-                thrust = SHIP_THRUST * 4.0
-            elif abs(angle_diff) > math.pi / 4:
-                thrust = SHIP_THRUST * 2.0
-            else:
-                thrust = SHIP_THRUST
-
-            # Double thrust if black hole is active
-            if blackhole:
-                thrust *= 2.0
-        
-            ax = math.cos(self.angle) * thrust
-            ay = math.sin(self.angle) * thrust
-            self.speed_x += ax
-            self.speed_y += ay
 
         speed = math.hypot(self.speed_x, self.speed_y)
         if speed > MAX_SPEED:
@@ -717,7 +649,8 @@ class Spark:
 missiles = []
 ship = Ship()
 #asteroids = [Asteroid() for _ in range(ASTEROIDS)]
-asteroids = []
+asteroids = [Asteroid.create() for _ in range(ASTEROIDS)]
+
 
 
 
@@ -730,7 +663,7 @@ fps_counter = 0
 fps_timer = time.time()
 
 # Insert into test2.py: Initialization Section
-last_blackhole_time = time.time()
+last_blackhole_time = time.time() - BLACKHOLE_APPEAR_INTERVAL
 blackhole = None
     
 
@@ -746,16 +679,13 @@ def hard_clear_canvas():
 def PlayBlasteroids(Duration = 10000, StopEvent = None):
     
     global last_blackhole_time, fps_timer, fps_counter
-    global blackhole, asteroids, sparks
+    global blackhole
     
     #Time date
     last_time_str = ""
     ClockFontSize = 12
     ClockRGB = (0,200,0)
-    
-    new_asteroids = []
-    asteroids = [Asteroid.create() for _ in range(ASTEROIDS)]
-   
+
     clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
 
     for asteroid in asteroids:
@@ -793,7 +723,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
             draw_clock_overlay(clock_img)
             
 
-            if not blackhole and (now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL):
+            if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
                 bx = PLAYFIELD_WIDTH // 2
                 by = PLAYFIELD_HEIGHT // 2
                 bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
@@ -837,36 +767,11 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
             
             handle_collisions(asteroids)
 
-            
+            new_asteroids = []
             for asteroid in asteroids:
                 apply_blackhole_gravity(asteroid)
                 asteroid.move()
                 asteroid.draw()
-
-            if blackhole:
-                asteroids = [
-                    a for a in asteroids
-                    if math.hypot(a.x - blackhole.x, a.y - blackhole.y) > (blackhole.radius + a.radius)
-                ]
-
-
-
-            for asteroid in asteroids:
-
-                #blackholes eat the asteroid
-                if blackhole and math.hypot(asteroid.x - blackhole.x, asteroid.y - blackhole.y) < blackhole.radius:
-                    for _ in range(6):  # Spawn 6 sparks at the asteroid location
-                            angle = random.uniform(0, 2 * math.pi)
-                            speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
-                            sparks.append(Spark(asteroid.x, asteroid.y,angle,speed))
-                    asteroids.remove(asteroid)
-                    continue  # Absorbed — no split!
-                apply_blackhole_gravity(asteroid)
-                asteroid.move()
-                asteroid.draw()
-
-
-
                 if asteroid == ship.target:
                     cx = int(asteroid.x)
                     cy = int(asteroid.y)
@@ -929,7 +834,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
                     missiles.remove(missile)
 
-            #asteroids.extend(new_asteroids)
+            asteroids.extend(new_asteroids)
 
 
 
