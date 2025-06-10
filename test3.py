@@ -13,9 +13,6 @@
 # holes). Entities interact with physics-inspired behaviors including momentum, elastic
 # collisions, gravity fields, and boundary reflection.
 #
-# The engine runs on a virtual playfield larger than the visible LED matrix, allowing
-# for a scrolling effect and spatial simulation beyond the constrained screen size.
-#
 # Core Features:
 #  - Autonomous AI-controlled ship with vision-based targeting and thrust behavior
 #  - Asteroid spawning, health, splitting, and collision physics (elastic, resolved)
@@ -59,7 +56,7 @@ LED.Initialize()
 # --- Black Hole Parameters ---
 BLACKHOLE_GRAVITY  = 6
 BLACKHOLE_MIN_SIZE = 1
-BLACKHOLE_MAX_SIZE = 9
+BLACKHOLE_MAX_SIZE = 4
 BLACKHOLE_MAX_SPEED = 2
 BLACKHOLE_APPEAR_INTERVAL = 60
 BLACKHOLE_LIFESPAN = 25
@@ -188,8 +185,6 @@ def draw_clock_overlay(clock_image):
                     # Offset by 1 to nudge the clock down slightly for visual centering
                     LED.setpixelCanvas(px, py +1, r, g, b)
                     
-
-
 
 
 
@@ -327,10 +322,8 @@ class BlackHole(GameObject):
                         else:
                             LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, 1, 1, 1)
 
-
 # Attraction & Collision (apply per object)
 def apply_blackhole_gravity(obj, asteroids_list=None):
-    global sparks
     if not blackhole:
         return
     dx = blackhole.x - obj.x
@@ -342,20 +335,10 @@ def apply_blackhole_gravity(obj, asteroids_list=None):
     # Calculate effective radii (radius = 2 * size)
     obj_radius = obj.size * 2 if hasattr(obj, 'size') else 0
     blackhole_radius = blackhole.radius * 2
-
-    
-    # If asteroid collides with Blackhole, it is destroyed
-    if dist <= obj_radius + (blackhole_radius * 0.5) and isinstance(obj, Asteroid) and asteroids_list is not None:
-        for _ in range(1,20):
-          angle = random.uniform(0, 2 * math.pi)
-          speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX * 2)
-          sparks.append(Spark(obj.x, obj.y, angle, speed))
-
+    # Check for collision: distance <= sum of effective radii
+    if dist <= obj_radius + blackhole_radius and isinstance(obj, Asteroid) and asteroids_list is not None:
         asteroids_list.remove(obj)  # Remove asteroid on collision
         return
-
-
-
     # Apply gravity if no collision
     force = BLACKHOLE_GRAVITY * blackhole.radius / dist_sq
     if hasattr(obj, 'dx') and hasattr(obj, 'dy'):
@@ -432,7 +415,6 @@ class Asteroid(GameObject):
         self.grow_start_time = time.time()
         self.health = self.target_size * 2
         self.last_hit_time = 0
-        self.alive = True
         if color:
             self.color = color
         else:
@@ -456,7 +438,6 @@ class Asteroid(GameObject):
     def move(self):
         self.update_position()
 
-    
     
     
     def draw(self):
@@ -516,7 +497,6 @@ class Missile(GameObject):
         super().__init__(x, y, dx, dy)
         self.angle = angle
         self.speed = MISSILE_SPEED
-        self.alive = True
 
     def move(self):
         self.x += self.dx
@@ -528,7 +508,6 @@ class Missile(GameObject):
             tx = int(self.x - math.cos(self.angle) * i)
             ty = int(self.y - math.sin(self.angle) * i)
             brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
-            #LED.setpixelCanvas(tx, ty, brightness, brightness, brightness)
             LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
 
 
@@ -641,9 +620,7 @@ class Spark:
         for i in range(SPARK_TRAIL_LENGTH):
             tx = int(self.x - math.cos(self.angle) * i)
             ty = int(self.y - math.sin(self.angle) * i)
-
             fade = max(0, SPARK_COLOR[0] - i * (SPARK_COLOR[0] // SPARK_TRAIL_LENGTH))
-            #LED.setpixelCanvas(tx, ty, fade, fade * 3 // 4, fade // 2)
             LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, fade, fade * 3 // 4, fade // 2)
             
 
@@ -653,16 +630,8 @@ class Spark:
 
 
 
-
-
-
-
-
-
-
 missiles = []
 ship = Ship()
-#asteroids = [Asteroid() for _ in range(ASTEROIDS)]
 asteroids = [Asteroid.create() for _ in range(ASTEROIDS)]
 
 
@@ -747,29 +716,6 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 last_blackhole_time = time.time()
 
 
-            '''
-            if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
-                # Spawn just outside one of the four edges
-                side = random.choice(['top', 'bottom', 'left', 'right'])
-                if side == 'top':
-                    bx = random.randint(0, PLAYFIELD_WIDTH)
-                    by = -BLACKHOLE_MAX_SIZE
-                elif side == 'bottom':
-                    bx = random.randint(0, PLAYFIELD_WIDTH)
-                    by = PLAYFIELD_HEIGHT + BLACKHOLE_MAX_SIZE
-                elif side == 'left':
-                    bx = -BLACKHOLE_MAX_SIZE
-                    by = random.randint(0, PLAYFIELD_HEIGHT)
-                else:
-                    bx = PLAYFIELD_WIDTH + BLACKHOLE_MAX_SIZE
-                    by = random.randint(0, PLAYFIELD_HEIGHT)
-                bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
-                blackhole = BlackHole(bx, by, bradius)
-                blackhole.grow_start_time = time.time()
-                last_blackhole_time       = time.time()
-            '''                
-
-
             if blackhole and blackhole.expired():
                 blackhole = None
 
@@ -780,9 +726,6 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
             
             handle_collisions(asteroids)
-
-
-
 
             new_asteroids = []
             for asteroid in asteroids[:]:  # Iterate over a copy to allow removal
@@ -809,13 +752,10 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                             sparks.append(Spark(asteroid.x, asteroid.y, angle, speed))
                         asteroids.remove(asteroid)
                         continue
-                angle = math.atan2(dy, dx)
-                thrust = MAX_SPEED
-                ship.speed_x = math.cos(angle + math.pi) * thrust
-                ship.speed_y = math.sin(angle + math.pi) * thrust
-
-
-
+                    angle = math.atan2(dy, dx)
+                    thrust = MAX_SPEED
+                    ship.speed_x = math.cos(angle + math.pi) * thrust
+                    ship.speed_y = math.sin(angle + math.pi) * thrust
 
             apply_blackhole_gravity(ship)
 
@@ -850,7 +790,6 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                         speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
                         sparks.append(Spark(spark_origin_x, spark_origin_y, angle, speed))
                 elif not (0 <= missile.x < PLAYFIELD_WIDTH and 0 <= missile.y < PLAYFIELD_HEIGHT):
-
                     missiles.remove(missile)
 
             asteroids.extend(new_asteroids)
@@ -863,18 +802,6 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 spark.lifespan -= 1
                 if spark.lifespan <= 0:
                     sparks.remove(spark)
-
-            
-            
-            # Draw visible boundary for the virtual playfield
-            #for x in range(WIDTH):
-            #    LED.setpixelCanvas(x, 0, 0, 0, 255)  # Top edge
-            #    LED.setpixelCanvas(x, HEIGHT - 1, 0, 0, 255)  # Bottom edge
-            #for y in range(HEIGHT):
-            #    LED.setpixelCanvas(0, y, 0, 0, 255)  # Left edge
-            #    LED.setpixelCanvas(WIDTH - 1, y, 0, 0, 255)  # Right edge
-
-
 
             ship.move()
             ship.draw()
@@ -896,18 +823,10 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 fps_counter = 0
                 fps_timer = time.time()
 
-
-            
-            
-
-
     except KeyboardInterrupt:
         LED.ClearBuffers()
         LED.TheMatrix.SwapOnVSync(LED.Canvas)
         raise
-
-
-
 
 
 
@@ -959,32 +878,11 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 
 
 
-
-
 #execute if this script is called direction
 if __name__ == "__main__":
     try:
-        #LED.scroll_sentence_star_wars("A long time ago in a clock far far away...", tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf")
-        #LED.scroll_random_movie_intro()
+        LED.scroll_random_movie_intro()
         LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)
 
     except KeyboardInterrupt:
         print("Exiting game due to Ctrl-C.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
