@@ -82,7 +82,7 @@ MISSILE_LIFESPAN = 0.75
 FIRE_CHANCE = 0.1
 MISSILE_COLOR = (255, 255, 255)
 MISSILE_TRAIL_MIN = 50
-MISSILE_TRAIL_LENGTH = 8
+MISSILE_TRAIL_LENGTH = 20
 MAX_MISSILES = 2
 
 # --- Terminal Parameters ---
@@ -516,20 +516,32 @@ class Missile(GameObject):
         super().__init__(x, y, dx, dy)
         self.angle = angle
         self.speed = MISSILE_SPEED
-        self.alive = True
+        self.trail = [(x, y)]  # Initialize trail with current position
 
     def move(self):
         self.x += self.dx
         self.y += self.dy
-        
+        # Append current position to trail
+        self.trail.append((self.x, self.y))
+        # Keep trail length within MISSILE_TRAIL_LENGTH
+        if len(self.trail) > MISSILE_TRAIL_LENGTH:
+            self.trail.pop(0)
 
     def draw(self):
-        for i in range(MISSILE_TRAIL_LENGTH):
-            tx = int(self.x - math.cos(self.angle) * i)
-            ty = int(self.y - math.sin(self.angle) * i)
-            brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
-            #LED.setpixelCanvas(tx, ty, brightness, brightness, brightness)
-            LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
+        # Draw the missile head
+        tx = int(self.x)
+        ty = int(self.y)
+        if (VIEWPORT_X_OFFSET <= tx < VIEWPORT_X_OFFSET + WIDTH and
+            VIEWPORT_Y_OFFSET <= ty < VIEWPORT_Y_OFFSET + HEIGHT):
+            LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, *MISSILE_COLOR)
+        # Draw the trail using stored positions
+        for i, (tx, ty) in enumerate(self.trail):
+            tx, ty = int(tx), int(ty)
+            if (VIEWPORT_X_OFFSET <= tx < VIEWPORT_X_OFFSET + WIDTH and
+                VIEWPORT_Y_OFFSET <= ty < VIEWPORT_Y_OFFSET + HEIGHT):
+                # Fade brightness based on trail position (oldest points dimmer)
+                brightness = max(MISSILE_TRAIL_MIN, MISSILE_COLOR[0] - i * (MISSILE_COLOR[0] // MISSILE_TRAIL_LENGTH))
+                LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
 
 
 class Ship(GameObject):
