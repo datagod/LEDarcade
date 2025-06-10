@@ -420,6 +420,7 @@ class Asteroid(GameObject):
         self.grow_start_time = time.time()
         self.health = self.target_size * 2
         self.last_hit_time = 0
+        self.alive = True
         if color:
             self.color = color
         else:
@@ -503,6 +504,7 @@ class Missile(GameObject):
         super().__init__(x, y, dx, dy)
         self.angle = angle
         self.speed = MISSILE_SPEED
+        self.alive = True
 
     def move(self):
         self.x += self.dx
