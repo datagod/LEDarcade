@@ -98,8 +98,8 @@ CursorDarkRGB       = (0,50,0)
 ASTEROIDS = 1
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 10
-MIN_ASTEROID_SIZE = 3
-ASTEROID_GROWTH_DURATION = 0.25
+MIN_ASTEROID_SIZE = 2
+ASTEROID_GROWTH_DURATION = 0.15
 FRAME_DELAY = 0.03
 ASTEROID_MIN_SPEED = 0.05
 ASTEROID_MAX_SPEED = 0.4
@@ -940,7 +940,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
             if not asteroids:
                 asteroids.append(Asteroid.create(size=random.randint(MIN_ASTEROID_SIZE,MAX_ASTEROID_SIZE)))
-                asteroids.append(Asteroid.create(size=random.randint(MIN_ASTEROID_SIZE,MAX_ASTEROID_SIZE)))
+                
 
 
             
@@ -1010,7 +1010,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                     hit = asteroids.pop(hit_index)
                     spark_origin_x = hit.x
                     spark_origin_y = hit.y
-                    if hit.size > 1:
+                    if hit.size > MIN_ASTEROID_SIZE:
                         new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1, color=hit.color))
                         new_asteroids.append(Asteroid(hit.x, hit.y, hit.size - 1))
                     missiles.remove(missile)
