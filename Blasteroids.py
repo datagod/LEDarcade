@@ -99,7 +99,7 @@ ASTEROIDS = 3
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 10
 MIN_ASTEROID_SIZE = 2
-ASTEROID_GROWTH_DURATION = 0.15
+ASTEROID_GROWTH_DURATION = 0.25
 FRAME_DELAY = 0.03
 ASTEROID_MIN_SPEED = 0.05
 ASTEROID_MAX_SPEED = 0.4
@@ -488,7 +488,7 @@ class Asteroid(GameObject):
         
         # Handle growth
         if self.growing:
-            grow_duration = 0.5
+            grow_duration = ASTEROID_GROWTH_DURATION
             elapsed = time.time() - self.grow_start_time
             if elapsed >= grow_duration:
                 self.size = self.target_size
