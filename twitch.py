@@ -2040,9 +2040,9 @@ class Bot(commands.Bot ):
                               "image": "CurrentProfile.png",
                               "zoommin" : 1,
                               "zoommax":100,
-                              "zoomfinal" : 8,
+                              "zoomfinal" : 16,
                               "sleep" : 0.010,
-                              "step"  : 4})
+                              "step"  : 1})
 
 
       #SHOW PROFILE
@@ -2104,9 +2104,9 @@ class Bot(commands.Bot ):
                               "image": "UserProfile.png",
                               "zoommin" : 1,
                               "zoommax": 100,
-                              "zoomfinal" : 8,
+                              "zoomfinal" : 16,
                               "sleep" : 0.01,
-                              "step"  : 4})
+                              "step"  : 1})
 
 
 
