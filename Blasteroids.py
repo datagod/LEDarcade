@@ -98,7 +98,7 @@ CursorDarkRGB       = (0,50,0)
 ASTEROIDS = 2
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 10
-MIN_ASTEROID_SIZE = 2
+MIN_ASTEROID_SIZE = 3
 ASTEROID_GROWTH_DURATION = 0.25
 FRAME_DELAY = 0.03
 ASTEROID_MIN_SPEED = 0.05
@@ -440,7 +440,8 @@ class Asteroid(GameObject):
         dy = math.sin(angle) * speed
         super().__init__(x, y, dx, dy)
         self.max_speed = ASTEROID_MAX_SPEED
-        self.target_size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
+        #self.target_size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
+        self.target_size = size if size is not None else random.randint(MIN_ASTEROID_SIZE, MAX_ASTEROID_SIZE)
         self.size = 1  # Start small
         self.growing = True
         self.grow_start_time = time.time()
@@ -1132,7 +1133,7 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 if __name__ == "__main__":
     try:
         #LED.scroll_sentence_star_wars("A long time ago in a clock far far away...", tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf")
-        #LED.scroll_random_movie_intro()
+        LED.scroll_random_movie_intro()
         LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)
 
     except KeyboardInterrupt:

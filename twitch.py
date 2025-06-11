@@ -996,20 +996,22 @@ class Bot(commands.Bot ):
         #-- Trigger Words
         #----------------------------------------
 
-        #HUGS
-        if ("HUG" in message.content.upper()):
-            CommandQueue.put({"Action": "showheart" })
 
-        #Jesus
-        if any(word in message.content.upper() for word in ("JESUS","CHRIST","CHRISTIAN","CHURCH")):
-        
-          CommandQueue.put({"Action": "showimagezoom",
-                    "image": "./images/Jesus1.png",
-                    "zoommin" : 1,
-                    "zoommax":128,
-                    "zoomfinal" : 32,
-                    "sleep" : 0.01,
-                    "step"  : 1})
+        if author.upper() != 'TheClockBot':
+          #HUGS
+          if ("HUG" in message.content.upper()):
+              CommandQueue.put({"Action": "showheart" })
+
+          #Jesus
+          if any(word in message.content.upper() for word in ("JESUS","CHRIST","CHRISTIAN","CHURCH")):
+          
+            CommandQueue.put({"Action": "showimagezoom",
+                      "image": "./images/Jesus1.png",
+                      "zoommin" : 1,
+                      "zoommax":128,
+                      "zoomfinal" : 32,
+                      "sleep" : 0.01,
+                      "step"  : 1})
 
 
         #REDALERT
@@ -2253,7 +2255,7 @@ class Bot(commands.Bot ):
     #----------------------------------------
 
     @commands.command()
-    async def defender(self, ctx: commands.Context):
+    async def blasteroids(self, ctx: commands.Context):
       #Play game Blasteroids
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to earn your wings, kid.  Blow up them space rocks!"
