@@ -61,7 +61,7 @@ BLACKHOLE_GRAVITY  = 6
 BLACKHOLE_MIN_SIZE = 1
 BLACKHOLE_MAX_SIZE = 9
 BLACKHOLE_MAX_SPEED = 2
-BLACKHOLE_APPEAR_INTERVAL = 60
+BLACKHOLE_APPEAR_INTERVAL = 300
 BLACKHOLE_LIFESPAN = 25
 BLACKHOLE_GROW_DURATION = 2
 
@@ -97,7 +97,9 @@ CursorDarkRGB       = (0,50,0)
 # --- Asteroid Parameters ---
 ASTEROIDS = 2
 ASTEROID_SPLIT_THRESHOLD = 2
-MAX_ASTEROID_SIZE = 4
+MAX_ASTEROID_SIZE = 10
+MIN_ASTEROID_SIZE = 2
+ASTEROID_GROWTH_DURATION = 0.25
 FRAME_DELAY = 0.03
 ASTEROID_MIN_SPEED = 0.05
 ASTEROID_MAX_SPEED = 0.4
@@ -105,7 +107,7 @@ THRUST_TRAIL_COLOR = (255, 0, 0)
 ASTEROID_TARGET_COLOR = (255, 255, 0)
 ASTEROID_CROSSHAIR_COLOR = (255, 0, 255)
 ASTEROID_LIGHTING_CONTRAST = 1
-ASTEROID_COLOR_MIN_BRIGHTNESS = 150
+ASTEROID_COLOR_MIN_BRIGHTNESS = 100
 ASTEROID_COLOR_MAX_BRIGHTNESS = 250
 ASTEROID_COLOR_OPTIONS = [
     (ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS, ASTEROID_COLOR_MIN_BRIGHTNESS),  # dark grey
@@ -349,7 +351,7 @@ def apply_blackhole_gravity(obj, asteroids_list=None):
         for _ in range(1,20):
           angle = random.uniform(0, 2 * math.pi)
           speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX * 2)
-          sparks.append(Spark(obj.x, obj.y, angle, speed))
+          sparks.append(Spark(obj.x, obj.y, angle, speed,obj.size * 4))
 
         asteroids_list.remove(obj)  # Remove asteroid on collision
         return
@@ -369,13 +371,14 @@ def apply_blackhole_gravity(obj, asteroids_list=None):
 
 @njit
 def compute_collisions(positions, velocities, sizes):
+    collision_scale = 0.5
     n = len(sizes)
     for i in range(n):
         for j in range(i + 1, n):
             dx = positions[j, 0] - positions[i, 0]
             dy = positions[j, 1] - positions[i, 1]
             dist_sq = dx * dx + dy * dy
-            min_dist = sizes[i] + sizes[j]
+            min_dist = (sizes[i] + sizes[j]) * collision_scale
             if dist_sq < min_dist * min_dist:
                 dist = math.sqrt(dist_sq)
                 if dist == 0:
@@ -416,7 +419,127 @@ def handle_collisions(asteroids):
         a.dx, a.dy = velocities[i]
 
 
+
+
+import random
+import math
+import time
+
+# Assuming these constants are defined elsewhere
+# WIDTH, HEIGHT, VIEWPORT_X_OFFSET, VIEWPORT_Y_OFFSET, ASTEROID_MIN_SPEED, 
+# ASTEROID_MAX_SPEED, MAX_ASTEROID_SIZE, ASTEROID_COLOR_OPTIONS, 
+# ASTEROID_LIGHTING_CONTRAST, LED, GameObject
+
 class Asteroid(GameObject):
+    def __init__(self, x=None, y=None, size=None, color=None):
+        x = x if x is not None else random.uniform(0, WIDTH)
+        y = y if y is not None else random.uniform(0, HEIGHT)
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(ASTEROID_MIN_SPEED, ASTEROID_MAX_SPEED)
+        dx = math.cos(angle) * speed
+        dy = math.sin(angle) * speed
+        super().__init__(x, y, dx, dy)
+        self.max_speed = ASTEROID_MAX_SPEED
+        self.target_size = size if size is not None else random.randint(2, MAX_ASTEROID_SIZE)
+        self.size = 1  # Start small
+        self.growing = True
+        self.grow_start_time = time.time()
+        self.health = self.target_size * 2
+        self.last_hit_time = 0
+        self.alive = True
+        if color:
+            self.color = color
+        else:
+            roll = random.random()
+            if roll < 0.9:
+                self.color = ASTEROID_COLOR_OPTIONS[0]
+            elif roll < 0.95:
+                self.color = ASTEROID_COLOR_OPTIONS[1]
+            else:
+                self.color = ASTEROID_COLOR_OPTIONS[2]
+        
+        # Generate lumps for lumpy shape
+        self.lumps = []
+        number_of_lumps = random.randint(3, 6)
+        for _ in range(number_of_lumps):
+            angle = random.uniform(0, 2 * math.pi)
+            distance_frac = random.uniform(0, 0.5)
+            lump_radius_frac = random.uniform(0.2, 0.5)
+            frac_dx = math.cos(angle) * distance_frac
+            frac_dy = math.sin(angle) * distance_frac
+            self.lumps.append((frac_dx, frac_dy, lump_radius_frac))
+
+    @classmethod
+    def create(cls, **kwargs):
+        asteroid = cls(**kwargs)
+        asteroid.growing = True
+        asteroid.grow_start_time = time.time()
+        asteroid.size = 1
+        return asteroid
+
+    def move(self):
+        self.update_position()
+
+    def draw(self):
+        if not hasattr(self, "_debug_draw_count"):
+            self._debug_draw_count = 0
+        self._debug_draw_count += 1
+        
+        # Handle growth
+        if self.growing:
+            grow_duration = 0.5
+            elapsed = time.time() - self.grow_start_time
+            if elapsed >= grow_duration:
+                self.size = self.target_size
+                self.growing = False
+            else:
+                grow_factor = elapsed / grow_duration
+                self.size = max(1, int(self.target_size * grow_factor))
+        
+        # Define bounding box, slightly larger to account for protruding lumps
+        bounding_size = int(self.size * 1.2)
+        for i in range(-bounding_size, bounding_size + 1):
+            for j in range(-bounding_size, bounding_size + 1):
+                max_depth = -1
+                selected_lump = None
+                # Check each lump
+                for lump in self.lumps:
+                    frac_dx, frac_dy, frac_r = lump
+                    effective_dx = frac_dx * self.size
+                    effective_dy = frac_dy * self.size
+                    effective_radius = frac_r * self.size
+                    distance = math.sqrt((i - effective_dx)**2 + (j - effective_dy)**2)
+                    if distance < effective_radius:
+                        depth = effective_radius - distance
+                        if depth > max_depth:
+                            max_depth = depth
+                            selected_lump = lump
+                if selected_lump:
+                    # Calculate shading using the selected lump
+                    frac_dx, frac_dy, frac_r = selected_lump
+                    effective_dx = frac_dx * self.size
+                    effective_dy = frac_dy * self.size
+                    effective_radius = frac_r * self.size
+                    rel_i = i - effective_dx
+                    rel_j = j - effective_dy
+                    brightness_factor = 1.0 - ASTEROID_LIGHTING_CONTRAST * (rel_i + rel_j) / (2 * effective_radius)
+                    brightness_factor = max(0.5, min(1.5, brightness_factor))
+                    r, g, b = self.color
+                    r_out = min(255, int(r * brightness_factor))
+                    g_out = min(255, int(g * brightness_factor))
+                    b_out = min(255, int(b * brightness_factor))
+                    px = int(self.x) + i
+                    py = int(self.y) + j
+                    if (VIEWPORT_X_OFFSET <= px < VIEWPORT_X_OFFSET + WIDTH and
+                        VIEWPORT_Y_OFFSET <= py < VIEWPORT_Y_OFFSET + HEIGHT):
+                        LED.setpixelCanvas(px - VIEWPORT_X_OFFSET, py - VIEWPORT_Y_OFFSET, r_out, g_out, b_out)
+
+
+
+
+
+
+class Asteroid_old(GameObject):
     def __init__(self, x=None, y=None, size=None, color=None):
         x = x if x is not None else random.uniform(0, WIDTH)
         y = y if y is not None else random.uniform(0, HEIGHT)
@@ -463,24 +586,13 @@ class Asteroid(GameObject):
       if not hasattr(self, "_debug_draw_count"):
           self._debug_draw_count = 0
       self._debug_draw_count += 1
+
+
       if self.growing:
-
-
-        grow_duration = 0.5
+        grow_duration = ASTEROID_GROWTH_DURATION
         elapsed = time.time() - self.grow_start_time
-
-        if elapsed >= grow_duration:
-            self.size = self.target_size
-            self.growing = False
-
-        else:
-            grow_factor = elapsed / grow_duration
-            self.size = max(1, int(self.target_size * grow_factor))
-
-
         grow_factor = elapsed / grow_duration
         if elapsed >= grow_duration:
-
             self.size = self.target_size
             self.growing = False
         else:
@@ -667,19 +779,22 @@ class Ship(GameObject):
 
 
 class Spark:
-    def __init__(self, x, y, angle, speed):
+    def __init__(self, x, y, angle, speed, length):
         self.x = x
         self.y = y
         self.angle = angle
         self.speed = speed
-        self.lifespan = SPARK_TRAIL_LENGTH
+        self.length = length if length is not None else SPARK_TRAIL_LENGTH
+
+        
+        self.lifespan = SPARK_TRAIL_LENGTH #count down timer of how many frames the spark should exist
 
     def move(self):
         self.x += math.cos(self.angle) * self.speed
         self.y += math.sin(self.angle) * self.speed
 
     def draw(self):
-        for i in range(SPARK_TRAIL_LENGTH):
+        for i in range(self.length):
             tx = int(self.x - math.cos(self.angle) * i)
             ty = int(self.y - math.sin(self.angle) * i)
 
@@ -786,6 +901,8 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
                 if bradius >= 5:
                     bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
+                    if bradius >= 5:
+                        bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
 
                 blackhole = BlackHole(bx, by, bradius)
                 blackhole.growing = True
@@ -852,8 +969,9 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                         for _ in range(SPARK_COUNT):
                             angle = random.uniform(0, 2 * math.pi)
                             speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
-                            sparks.append(Spark(asteroid.x, asteroid.y, angle, speed))
-                        asteroids.remove(asteroid)
+                            sparks.append(Spark(asteroid.x, asteroid.y, angle, speed,length=asteroid.size *2))
+                        if asteroid in asteroids:
+                            asteroids.remove(asteroid)
                         continue
                 angle = math.atan2(dy, dx)
                 thrust = MAX_SPEED
@@ -897,7 +1015,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                     for _ in range(SPARK_COUNT):
                         angle = random.uniform(0, 2 * math.pi)
                         speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
-                        sparks.append(Spark(spark_origin_x, spark_origin_y, angle, speed))
+                        sparks.append(Spark(spark_origin_x, spark_origin_y, angle, speed, length=asteroid.size * 2))
                 elif not (0 <= missile.x < PLAYFIELD_WIDTH and 0 <= missile.y < PLAYFIELD_HEIGHT):
 
                     missiles.remove(missile)
