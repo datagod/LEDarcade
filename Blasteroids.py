@@ -67,13 +67,13 @@ BLACKHOLE_GROW_DURATION = 2
 
 
 # --- Ship Parameters ---
-MAX_SPEED = 0.5
-SHIP_THRUST = 0.01
+MAX_SPEED = 0.6
+SHIP_THRUST = 0.008
 SHIP_COLOR = (0, 155, 255)
 SHIP_THRUST_DURATION = 3.0
 SHIP_THRUST_COOLDOWN = 1.0
 THRUST_TRAIL_LENGTH = 8
-SHIP_VISION_RADIUS = 40
+SHIP_VISION_RADIUS = 30
 
 
 # --- Missile Parameters ---
@@ -724,7 +724,7 @@ class Ship(GameObject):
 
         # Update angle
         angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
-        self.angle += max(-0.5, min(0.5, angle_diff))
+        self.angle += max(-0.1, min(0.1, angle_diff))
 
         # Apply thrust if thrusting
         if self.thrusting:
