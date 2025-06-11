@@ -892,13 +892,13 @@ def ShowImageZoom(Command, StopEvent):
 
     image            = Command.get("image",'./images/UserProfile.png')
     zoommin          = Command.get("zoommin",1)
-    zoommax          = Command.get("zoommax",256)
-    zoomfinal        = Command.get("zoomfinal",32)
+    zoommax          = Command.get("zoommax",100)
+    zoomfinal        = Command.get("zoomfinal",16)
     sleep            = Command.get("sleep",0.001)
     step             = Command.get("step",1)
 
-    print("[LEDcommander][ShowImageZoom] Zoom an image")
-
+    print("[LEDcommander][ShowImageZoom] Zoom an image  ZoomMin ZoomMax ZoomFinal",zoommin, zoommax, zoomfinal)
+    
 
     LED.TheMatrix.brightness = GifBrightness
     LED.ZoomImage(ImageName=image,ZoomStart=zoommin,ZoomStop=zoommax,ZoomSleep=sleep,Step=step)

@@ -2039,8 +2039,8 @@ class Bot(commands.Bot ):
       CommandQueue.put({"Action": "showimagezoom",
                               "image": "CurrentProfile.png",
                               "zoommin" : 1,
-                              "zoommax":256,
-                              "zoomfinal" : 32,
+                              "zoommax":100,
+                              "zoomfinal" : 8,
                               "sleep" : 0.010,
                               "step"  : 4})
 
@@ -2103,8 +2103,8 @@ class Bot(commands.Bot ):
         CommandQueue.put({"Action": "showimagezoom",
                               "image": "UserProfile.png",
                               "zoommin" : 1,
-                              "zoommax":256,
-                              "zoomfinal" : 32,
+                              "zoommax": 100,
+                              "zoomfinal" : 8,
                               "sleep" : 0.01,
                               "step"  : 4})
 
