@@ -95,7 +95,7 @@ CursorDarkRGB       = (0,50,0)
 
 
 # --- Asteroid Parameters ---
-ASTEROIDS = 1
+ASTEROIDS = 3
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 10
 MIN_ASTEROID_SIZE = 2
