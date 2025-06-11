@@ -781,7 +781,12 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
             if now - last_blackhole_time > BLACKHOLE_APPEAR_INTERVAL:
                 bx = PLAYFIELD_WIDTH // 2
                 by = PLAYFIELD_HEIGHT // 2
+                
+                #the larger sizes should occur less often
                 bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
+                if bradius >= 5:
+                    bradius = random.randint(BLACKHOLE_MIN_SIZE, BLACKHOLE_MAX_SIZE)
+
                 blackhole = BlackHole(bx, by, bradius)
                 blackhole.growing = True
                 blackhole.grow_start_time = time.time()
