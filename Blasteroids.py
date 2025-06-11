@@ -95,7 +95,7 @@ CursorDarkRGB       = (0,50,0)
 
 
 # --- Asteroid Parameters ---
-ASTEROIDS = 2
+ASTEROIDS = 1
 ASTEROID_SPLIT_THRESHOLD = 2
 MAX_ASTEROID_SIZE = 10
 MIN_ASTEROID_SIZE = 3
@@ -939,8 +939,9 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
 
             if not asteroids:
-                asteroids.append(Asteroid(size=MAX_ASTEROID_SIZE))
-                asteroids.append(Asteroid.create(size=MAX_ASTEROID_SIZE))
+                asteroids.append(Asteroid.create(size=random.randint(MIN_ASTEROID_SIZE,MAX_ASTEROID_SIZE)))
+                asteroids.append(Asteroid.create(size=random.randint(MIN_ASTEROID_SIZE,MAX_ASTEROID_SIZE)))
+
 
             
             handle_collisions(asteroids)
@@ -966,7 +967,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                         asteroid.last_hit_time = time.time()
                     if asteroid.health <= 0:
                         if asteroid.size > 1:
-                            new_asteroids.append(Asteroid(asteroid.x, asteroid.y, asteroid.size - 1, color=asteroid.color))
+                            new_asteroids.append(Asteroid(asteroid.x, asteroid.y, MIN_ASTEROID_SIZE, color=asteroid.color))
                         for _ in range(SPARK_COUNT):
                             angle = random.uniform(0, 2 * math.pi)
                             speed = random.uniform(SPARK_SPEED_MIN, SPARK_SPEED_MAX)
