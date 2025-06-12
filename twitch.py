@@ -2257,9 +2257,9 @@ class Bot(commands.Bot ):
     @commands.command()
     async def blasteroids(self, ctx: commands.Context):
       #Play game Blasteroids
-      if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Time to earn your wings, kid.  Blow up them space rocks!"
-        await self.Channel.send(message)
+      #if(SHOW_CHATBOT_MESSAGES == True):
+      #  message = "Time to earn your wings, kid.  Blow up them space rocks!"
+      #  await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_blasteroids", "Duration": 10 })
 
 

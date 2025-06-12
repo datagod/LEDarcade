@@ -1084,6 +1084,7 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 
   print("ShowIntro:",ShowIntro)
        
+  LED.scroll_random_movie_intro()       
   if(ShowIntro == True):
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
