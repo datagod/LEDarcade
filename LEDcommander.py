@@ -984,7 +984,7 @@ def LaunchBlasteroids(Command, StopEvent):
     import Blasteroids as BL
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchBlasteroids] Launching...")
-    BL.Blasteroids(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    BL.PlayBlasteroids(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
 
