@@ -67,13 +67,14 @@ BLACKHOLE_GROW_DURATION = 2
 
 
 # --- Ship Parameters ---
-MAX_SPEED = 0.4
-SHIP_THRUST = 0.006
-SHIP_COLOR = (0, 155, 255)
-SHIP_THRUST_DURATION = 3.0
+MAX_SPEED      = 0.6
+SHIP_THRUST    = 0.002
+SHIP_TURN_RATE = 0.3
+SHIP_COLOR     = (0, 155, 255)
+SHIP_THRUST_DURATION = 1.0
 SHIP_THRUST_COOLDOWN = 1.0
-THRUST_TRAIL_LENGTH = 8
-SHIP_VISION_RADIUS = 30
+THRUST_TRAIL_LENGTH  = 6
+SHIP_VISION_RADIUS   = 30
 
 
 # --- Missile Parameters ---
@@ -131,8 +132,8 @@ HEIGHT           = LED.HatHeight
 SCROLL_FONT_SIZE = 12
 
 # --- Virtual Playfield Size ---
-PLAYFIELD_WIDTH = 68
-PLAYFIELD_HEIGHT = 40
+PLAYFIELD_WIDTH = 78
+PLAYFIELD_HEIGHT = 50
 
 
 # Center the visible matrix in the virtual playfield
@@ -724,7 +725,7 @@ class Ship(GameObject):
 
         # Update angle
         angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
-        self.angle += max(-0.1, min(0.1, angle_diff))
+        self.angle += max(-SHIP_TURN_RATE, min(SHIP_TURN_RATE, angle_diff))
 
         # Apply thrust if thrusting
         if self.thrusting:
@@ -1135,7 +1136,7 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 if __name__ == "__main__":
     try:
         #LED.scroll_sentence_star_wars("A long time ago in a clock far far away...", tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf")
-        LED.scroll_random_movie_intro()
+        #LED.scroll_random_movie_intro()
         LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=None)
 
     except KeyboardInterrupt:
