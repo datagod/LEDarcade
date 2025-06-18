@@ -114,7 +114,7 @@ def Run(CommandQueue):
             "Action": "showclock",
             "Style": 1,
             "Zoom": 3 ,
-            "Duration": 5,  # minutes
+            "duration": 5,  # minutes
             "Delay": 30
              }
 
@@ -549,7 +549,7 @@ def ShowDigitalClock(Command,StopEvent):
 
     ClockStyle = Command.get("Style", 1)
     ZoomFactor = Command.get("Zoom", 2)
-    RunMinutes = Command.get("Duration", 1)
+    RunMinutes = Command.get("duration", 1)
     AnimationDelay = Command.get("Delay", 30)
 
     print(f"[LEDcommander] Showing clock: Style={ClockStyle}, Zoom={ZoomFactor}, Duration={RunMinutes}")
@@ -577,7 +577,7 @@ def ShowRetroDigital(Command,StopEvent):
 
     ClockStyle = Command.get("Style", 4)
     ZoomFactor = Command.get("Zoom", 1)
-    RunMinutes = Command.get("Duration", 5)
+    RunMinutes = Command.get("duration", 5)
     AnimationDelay = Command.get("Delay", 30)
 
     print(f"[LEDcommander] Showing clock: Style={ClockStyle}, Zoom={ZoomFactor}, Duration={RunMinutes}")

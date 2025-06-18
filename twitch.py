@@ -677,7 +677,7 @@ class Bot(commands.Bot ):
 
 
         #Blasteroids clock (style=5)
-        CommandQueue.put({ "Action": "showclock",   "Style": 5,  "Zoom": 1,   "Duration": 10, "Delay": 10  })
+        CommandQueue.put({ "Action": "showclock",   "Style": 5,  "Zoom": 1,   "duration": 10, "Delay": 10  })
         await asyncio.sleep(RotateClockDelay * 60)
 
 
@@ -685,39 +685,39 @@ class Bot(commands.Bot ):
         await asyncio.sleep(RotateClockDelay * 60)
 
         #StarryNight clock display (style=3)
-        CommandQueue.put({ "Action": "showclock",   "Style": 3,  "Zoom": 2,   "Duration": 10, "Delay": 10  })
+        CommandQueue.put({ "Action": "showclock",   "Style": 3,  "Zoom": 2,   "duration": 10, "Delay": 10  })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
 
-        CommandQueue.put({"Action": "launch_defender", "Duration": 10 })
+        CommandQueue.put({"Action": "launch_defender", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
 
-        CommandQueue.put({"Action": "launch_dotinvaders", "Duration": 10 })
+        CommandQueue.put({"Action": "launch_dotinvaders", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
 
-        CommandQueue.put({"Action": "launch_gravitysim", "Duration": 10 })
+        CommandQueue.put({"Action": "launch_gravitysim", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
 
-        CommandQueue.put({"Action": "launch_tron", "Duration": 10 })
+        CommandQueue.put({"Action": "launch_tron", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
-        CommandQueue.put({"Action": "launch_outbreak", "Duration": 10 })
+        CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
-        CommandQueue.put({"Action": "launch_spacedot", "Duration": 10 })
+        CommandQueue.put({"Action": "launch_spacedot", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
-        CommandQueue.put({"Action": "launch_fallingsand", "Duration": 10 })
+        CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
@@ -1343,7 +1343,7 @@ class Bot(commands.Bot ):
             "Action": "showclock",
             "Style": 1,
             "Zoom": 3 ,
-            "Duration": ClockDuration,  # minutes
+            "duration": ClockDuration,  # minutes
             "Delay": self.AnimationDelay
         })
 
@@ -1853,7 +1853,7 @@ class Bot(commands.Bot ):
             "Action": "showclock",
             "Style": 1,
             "Zoom": 3 if StreamActive else 2,
-            "Duration": 10,  # minutes
+            "duration": 10,  # minutes
             "Delay": 10
         })
 
@@ -2193,7 +2193,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets play a game of DotInvaders"
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_dotinvaders", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_dotinvaders", "duration": 10 })
 
     #----------------------------------------
     # GRAVITY SIM                          --
@@ -2205,7 +2205,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Lets watch comets orbiting a star"
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_gravitysim", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_gravitysim", "duration": 10 })
 
 
 
@@ -2220,7 +2220,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "An infection is spreading..."
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_outbreak", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
 
 
     #----------------------------------------
@@ -2232,7 +2232,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "The sky is falling..."
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_spacedot", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_spacedot", "duration": 10 })
 
 
 
@@ -2246,7 +2246,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to go blast some mutants"
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_defender", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_defender", "duration": 10 })
 
 
 
@@ -2260,7 +2260,7 @@ class Bot(commands.Bot ):
       #if(SHOW_CHATBOT_MESSAGES == True):
       #  message = "Time to earn your wings, kid.  Blow up them space rocks!"
       #  await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_blasteroids", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_blasteroids", "duration": 10 })
 
 
     #----------------------------------------
@@ -2273,7 +2273,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time for some jetbike races"
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_tron", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_tron", "duration": 10 })
 
 
     #----------------------------------------
@@ -2286,7 +2286,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Watch the pretty sand fall...and explode!"
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_fallingsand", "Duration": 10 })
+      CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
 
 
     #----------------------------------------
@@ -2303,7 +2303,7 @@ class Bot(commands.Bot ):
             "Action": "showclock",
             "Style": 3,
             "Zoom": 2,
-            "Duration": 10,  # minutes
+            "duration": 10,  # minutes
             "Delay": 10
         })
 
