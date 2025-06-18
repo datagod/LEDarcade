@@ -61,8 +61,8 @@ BLACKHOLE_GRAVITY  = 6
 BLACKHOLE_MIN_SIZE = 1
 BLACKHOLE_MAX_SIZE = 9
 BLACKHOLE_MAX_SPEED = 2
-BLACKHOLE_APPEAR_INTERVAL = 25
-BLACKHOLE_LIFESPAN = 25
+BLACKHOLE_APPEAR_INTERVAL = 300
+BLACKHOLE_LIFESPAN = 30
 BLACKHOLE_GROW_DURATION = 2
 
 
@@ -220,7 +220,7 @@ def draw_clock_overlay(clock_image):
         for x in range(WIDTH):
             r, g, b = target[y, x]
             if (r, g, b) != (0, 0, 0):
-                LED.setpixelCanvas(x, y, r, g, b)
+                LED.setpixelCanvas(x, y+1, r, g, b)
 
 
 
