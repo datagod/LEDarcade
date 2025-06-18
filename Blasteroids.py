@@ -61,7 +61,7 @@ BLACKHOLE_GRAVITY  = 6
 BLACKHOLE_MIN_SIZE = 1
 BLACKHOLE_MAX_SIZE = 9
 BLACKHOLE_MAX_SPEED = 2
-BLACKHOLE_APPEAR_INTERVAL = 300
+BLACKHOLE_APPEAR_INTERVAL = 25
 BLACKHOLE_LIFESPAN = 25
 BLACKHOLE_GROW_DURATION = 2
 
@@ -78,13 +78,14 @@ SHIP_VISION_RADIUS   = 30
 
 
 # --- Missile Parameters ---
-MISSILE_SPEED = 1.25
-MISSILE_LIFESPAN = 0.75
-FIRE_CHANCE = 0.1
+MISSILE_SPEED         = 1.25
+MISSILE_LIFESPAN      = 0.75
+MISSILE_GRAVITY_FORCE = 0.1
+FIRE_CHANCE   = 0.1
 MISSILE_COLOR = (255, 255, 255)
 MISSILE_TRAIL_MIN_BRIGHTNESS = 10
-MISSILE_TRAIL_LENGTH = 8
-MAX_MISSILES = 2
+MISSILE_TRAIL_LENGTH         = 8
+MAX_MISSILES                 = 2
 
 # --- Terminal Parameters ---
 ScrollSleep         = 0.025
@@ -166,8 +167,64 @@ import numpy as np
 
 
 
+from PIL import Image
 
 def draw_clock_overlay(clock_image):
+    img_w, img_h = clock_image.size
+    H = (WIDTH  - img_w) // 2
+    V = (HEIGHT - img_h) // 2
+
+    if not blackhole:
+        # Just draw centered
+        for y in range(img_h):
+            for x in range(img_w):
+                r, g, b = clock_image.getpixel((x, y))
+                if (r, g, b) != (0, 0, 0):
+                    px = H + x
+                    py = V + y
+                    if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                        LED.setpixelCanvas(px, py, r, g, b)
+        return
+
+    # Create a new blank image the same size as the LED matrix
+    stretched = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0))
+
+    bhx = blackhole.x - VIEWPORT_X_OFFSET
+    bhy = blackhole.y - VIEWPORT_Y_OFFSET
+    
+
+    # Paste original clock centered into LED-space image
+    stretched.paste(clock_image, (H, V))
+
+    # Warp pixels outward toward black hole
+    source = np.array(stretched)
+    target = np.zeros_like(source)
+
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            dx = bhx - x
+            dy = bhy - y
+            dist_sq = dx * dx + dy * dy
+            if dist_sq == 0:
+                src_x, src_y = x, y
+            else:
+                force = BLACKHOLE_GRAVITY * 2 * blackhole.radius / dist_sq
+                src_x = int(x - dx * force)
+                src_y = int(y - dy * force)
+
+            if 0 <= src_x < WIDTH and 0 <= src_y < HEIGHT:
+                target[y, x] = source[src_y, src_x]
+
+    # Draw final warped image
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            r, g, b = target[y, x]
+            if (r, g, b) != (0, 0, 0):
+                LED.setpixelCanvas(x, y, r, g, b)
+
+
+
+def draw_clock_overlay_old(clock_image):
     """
     Draws the clock image centered on the LED display.
 
@@ -361,6 +418,12 @@ def apply_blackhole_gravity(obj, asteroids_list=None):
 
     # Apply gravity if no collision
     force = BLACKHOLE_GRAVITY * blackhole.radius / dist_sq
+
+
+    # Scale it down for missiles
+    if isinstance(obj, Missile):
+        force *= MISSILE_GRAVITY_FORCE
+
     if hasattr(obj, 'dx') and hasattr(obj, 'dy'):
         obj.dx += force * dx / dist
         obj.dy += force * dy / dist
@@ -987,9 +1050,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
             apply_blackhole_gravity(ship)
 
 
-            if len(missiles) < MAX_MISSILES  and random.random() < FIRE_CHANCE and ship.target or blackhole:
-
-
+            if len(missiles) < MAX_MISSILES  and random.random() < FIRE_CHANCE and ship.target:
                 missiles.append(Missile(ship.x, ship.y, ship.angle))
 
             for missile in missiles[:]:
@@ -1083,9 +1144,9 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
 
 def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 
-  print("ShowIntro:",ShowIntro)
+  #print("ShowIntro:",ShowIntro)
        
-  LED.scroll_random_movie_intro()       
+  #LED.scroll_random_movie_intro()       
   if(ShowIntro == True):
     #--------------------------------------
     # M A I N   P R O C E S S I N G      --
