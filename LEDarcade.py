@@ -20667,7 +20667,7 @@ def scroll_sentence_star_wars_old(sentence, tilt_factor=0.6, scroll_delay=0.06, 
 
 
 
-def scroll_random_movie_intro():
+def scroll_random_movie_intro(StopEvent=None):
     intros = [
         # Sci-Fi
         "Space... the final snooze button. This clock's mission: to seek out new alarms... - Clock Trek the Motion Clock",
