@@ -1742,7 +1742,7 @@ class Bot(commands.Bot ):
 
     @commands.command()
     async def clock(self, ctx: commands.Context):
-        await ctx.send('Available commands: ?hello ?hug ?intro ?profile ?me ?retro ?starrynight ?views ?taco ?time ?uptime ?viewers ?who')
+        await ctx.send('Available commands: ?demotivate ?hello ?hug ?intro ?profile ?me ?retro ?starrynight ?views ?taco ?time ?uptime ?viewers ?who')
         time.sleep(4)
         await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
         #time.sleep(4)
@@ -1794,12 +1794,19 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # Intro                                  --
+    # Intro                                --
     #----------------------------------------
     @commands.command()
     async def intro(self, ctx: commands.Context):
       CommandQueue.put({"Action": "showintro"})
 
+
+    #----------------------------------------
+    # Demotivate                           --
+    #----------------------------------------
+    @commands.command()
+    async def demotivate(self, ctx: commands.Context):
+      CommandQueue.put({"Action": "showdemotivate"})
 
 
     

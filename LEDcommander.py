@@ -461,6 +461,19 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+            elif Action == "showdemotivate":
+                print("[LEDcommander][Run] Launching Demotivate")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "showdemotivate"
+                DisplayProcess = Process(target=ShowDemotivate, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
 
             elif Action == "showgif":
                 if DisplayProcess and DisplayProcess.is_alive():
@@ -833,6 +846,21 @@ def ShowIntro(Command, StopEvent):
 
     LED.TheMatrix.brightness = MaxBrightness
     LED.scroll_random_movie_intro(StopEvent=StopEvent)
+    LED.SweepClean()
+
+
+def ShowDemotivate(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    StreamBrightness = 80
+    GifBrightness    = 50
+    MaxBrightness    = 100
+    print("[LEDcommander][ShowDemotivate] Now scrolling text, star wars style")
+
+
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.scroll_random_demotivational_quote(StopEvent=StopEvent)
     LED.SweepClean()
 
 

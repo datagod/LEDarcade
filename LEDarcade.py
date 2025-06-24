@@ -20723,6 +20723,42 @@ def scroll_random_movie_intro(StopEvent=None):
     )
 
 
+def scroll_random_demotivational_quote(StopEvent=None):
+    demotivationals = [
+        "The road to success is always under construction.",
+        "Dream big. Set goals. Then take a nap.",
+        "Believe in yourself. Because no one else does.",
+        "Hard work never killed anyone, but why risk it?",
+        "If at first you don’t succeed, skydiving definitely isn’t for you.",
+        "It could be that the purpose of your life is only to serve as a warning to others.",
+        "You miss 100% of the naps you don’t take.",
+        "A journey of a thousand miles begins with a single 'meh'.",
+        "Mistakes were made. Mostly by you.",
+        "Some people graduate with honors, I am just honored to graduate.",
+        "Teamwork: when you blame someone else together.",
+        "Every corpse on Everest was once a highly motivated person.",
+        "Work hard so you can earn the right to be tired.",
+        "Try and fail, but don’t fail to try... unless it's before coffee.",
+        "The early bird gets the worm, but the second mouse gets the cheese.",
+        "Your best just wasn’t good enough.",
+        "Shoot for the moon. If you miss, you’ll float in space forever.",
+        "Not everyone gets to be extraordinary. That’s what makes it special.",
+        "You’re not being replaced. You’re being upgraded… out of existence.",
+        "When life closes a door, it locks all the windows too.",
+        "The light at the end of the tunnel is a train.",
+    ]
+
+    sentence = random.choice(demotivationals)
+    scroll_sentence_star_wars(
+        sentence,
+        base_font_size=12,
+        TextRGB=(255, 100, 100),
+        tilt_factor=0.4,
+        scroll_delay=0.06,
+        font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf"
+    )
+
+
 
 
 #------------------------------------------------------------------------------
