@@ -68,13 +68,13 @@ BLACKHOLE_GROW_DURATION = 2
 
 # --- Ship Parameters ---
 MAX_SPEED      = 0.4
-SHIP_THRUST    = 0.002
+SHIP_THRUST    = 0.006
 SHIP_TURN_RATE = 0.3
 SHIP_COLOR     = (0, 155, 255)
 SHIP_THRUST_DURATION = 3.0
 SHIP_THRUST_COOLDOWN = 0.5
 THRUST_TRAIL_LENGTH  = 6
-SHIP_VISION_RADIUS   = 10
+SHIP_VISION_RADIUS   = 30
 
 
 # --- Missile Parameters ---
@@ -97,7 +97,7 @@ CursorDarkRGB       = (0,50,0)
 
 
 # --- Asteroid Parameters ---
-ASTEROIDS = 6
+ASTEROIDS = 2
 ASTEROIDS_MERGE_CHANCE = 0.75
 MAX_ASTEROID_SIZE = 15
 MIN_ASTEROID_SIZE = 2
@@ -802,6 +802,8 @@ class Missile(GameObject):
                 LED.setpixelCanvas(tx - VIEWPORT_X_OFFSET, ty - VIEWPORT_Y_OFFSET, brightness, brightness, brightness)
 
 
+# [Previous imports, constants, and other classes remain unchanged]
+
 class Ship(GameObject):
     def __init__(self):
         super().__init__(PLAYFIELD_WIDTH // 2, PLAYFIELD_HEIGHT // 2, 0.0, 0.0)
@@ -815,7 +817,8 @@ class Ship(GameObject):
         self.thrusting = False
 
     def move(self):
-        # Determine thrust and max speed based on black hole presence
+        global missiles
+
         current_thrust = SHIP_THRUST * 2 if blackhole else SHIP_THRUST
         current_max_speed = MAX_SPEED * 2 if blackhole else MAX_SPEED
         desired_angle = 0
@@ -829,66 +832,63 @@ class Ship(GameObject):
             self.thrusting = True
             self.last_thrust_time = current_time
 
-        # Determine desired angle
+        # --- Avoidance and Targeting Logic ---
+        avoid_dx = 0
+        avoid_dy = 0
+        visible_targets = [a for a in asteroids if (a.x - self.x)**2 + (a.y - self.y)**2 <= SHIP_VISION_RADIUS**2]
+        
         if blackhole:
-            # Flee from black hole
-            dx = self.x - blackhole.x  # Vector away from black hole
+            # Flee from black hole with highest priority
+            dx = self.x - blackhole.x
             dy = self.y - blackhole.y
             desired_angle = math.atan2(dy, dx)
-            self.target = None  # Clear target to focus on fleeing
-            #print(f"[Ship] Fleeing black hole at ({blackhole.x:.1f}, {blackhole.y:.1f})")
+            self.target = None
+        elif visible_targets:
+            # Select a target and move toward/attack it
+            self.target = random.choice(visible_targets)
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            desired_angle = math.atan2(dy, dx)
+            
+            # Fire missile if aligned or close
+            distance_sq = dx**2 + dy**2
+            target_angle = math.atan2(dy, dx)
+            angle_delta = abs((target_angle - self.angle + math.pi) % (2 * math.pi) - math.pi)
+            if len(missiles) < MAX_MISSILES and (angle_delta < math.pi / 2 or distance_sq < 25):
+                missiles.append(Missile(self.x, self.y, self.angle))
+            
+            # Avoid if too close
+            if distance_sq < (self.target.size + 2)**2 * 2:
+                scale = ((self.target.size + 2)**2) / (distance_sq + 1e-5) * 0.5
+                avoid_dx += dx * scale
+                avoid_dy += dy * scale
+                desired_angle = math.atan2(avoid_dy, avoid_dx)
         else:
-            # Target asteroid or playfield center
+            # No targets, move to center of visible screen
+            self.target = None
+            cx = VIEWPORT_X_OFFSET + WIDTH / 2
+            cy = VIEWPORT_Y_OFFSET + HEIGHT / 2
+            dx = cx - self.x
+            dy = cy - self.y
+            desired_angle = math.atan2(dy, dx) if dx != 0 or dy != 0 else self.angle
 
-
-            #if not self.target or self.target not in asteroids:
-            if not self.target or self.target not in asteroids or \
-            (self.target and (self.target.x - self.x)**2 + (self.target.y - self.y)**2 > SHIP_VISION_RADIUS**2):
-
-
-                
-                cx = VIEWPORT_X_OFFSET + WIDTH / 2
-                cy = VIEWPORT_Y_OFFSET + HEIGHT / 2
-
-
-                visible_targets = [a for a in asteroids if (a.x - cx)**2 + (a.y - cy)**2 <= SHIP_VISION_RADIUS**2]
-                if visible_targets:
-                    self.target = random.choice(visible_targets)
-                    #print(f"[Ship] New target asteroid at ({self.target.x:.1f}, {self.target.y:.1f})")
-                else:
-                    self.target = None
-                    dx = cx - self.x
-                    dy = cy - self.y
-                    if dx == 0 and dy == 0:
-                        desired_angle = self.angle  # Maintain current angle if at center
-                    else:
-                        desired_angle = math.atan2(dy, dx)
-                    #print(f"[Ship] No targets, moving to center ({cx:.1f}, {cy:.1f})")
-            else:
-                dx = self.target.x - self.x
-                dy = self.target.y - self.y
-                desired_angle = math.atan2(dy, dx)
-                #print(f"[Ship] Targeting asteroid at ({self.target.x:.1f}, {self.target.y:.1f})")
-
-        # Update angle
+        # Apply rotation
         angle_diff = (desired_angle - self.angle + math.pi) % (2 * math.pi) - math.pi
         self.angle += max(-SHIP_TURN_RATE, min(SHIP_TURN_RATE, angle_diff))
 
-        # Apply thrust if thrusting
+        # Apply thrust
         if self.thrusting:
-            if blackhole or (self.target and abs(angle_diff) > math.pi / 2):
-                thrust = current_thrust * 4.0
-            elif self.target and abs(angle_diff) > math.pi / 4:
-                thrust = current_thrust * 2.0
-            else:
-                thrust = current_thrust
-
+            thrust = current_thrust
+            if blackhole:
+                thrust *= 4.0  # Stronger thrust when fleeing black hole
+            elif visible_targets and abs(avoid_dx) > 0.01 or abs(avoid_dy) > 0.01:
+                thrust *= 2.0  # Moderate thrust when avoiding
             ax = math.cos(self.angle) * thrust
             ay = math.sin(self.angle) * thrust
             self.speed_x += ax
             self.speed_y += ay
 
-        # Limit speed
+        # Clamp speed
         speed = math.hypot(self.speed_x, self.speed_y)
         if speed > current_max_speed:
             scale = current_max_speed / speed
@@ -904,7 +904,6 @@ class Ship(GameObject):
         self.y = max(VIEWPORT_Y_OFFSET + 1, min(self.y, VIEWPORT_Y_OFFSET + HEIGHT - 2))
 
         self.frame += 1
-
 
     def draw(self):
         cx = int(self.x)
@@ -922,8 +921,7 @@ class Ship(GameObject):
         LED.setpixelCanvas(cx - VIEWPORT_X_OFFSET, cy - VIEWPORT_Y_OFFSET, r, g, b)
         dx = int(round(math.cos(self.angle)))
         dy = int(round(math.sin(self.angle)))
-        LED.setpixelCanvas(int(cx - dx - VIEWPORT_X_OFFSET), int(cy - dy - VIEWPORT_Y_OFFSET), r, g, b)
-
+        LED.setpixelCanvas(int(cx + dx - VIEWPORT_X_OFFSET), int(cy + dy - VIEWPORT_Y_OFFSET), r, g, b)
 
 
 
@@ -1114,7 +1112,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                     
                 dx = ship.x - asteroid.x
                 dy = ship.y - asteroid.y
-                if dx * dx + dy * dy < asteroid.size * asteroid.size:
+                if dx * dx + dy * dy < (asteroid.size +1)**2:
                     if time.time() - asteroid.last_hit_time > 1.0:
                         asteroid.health -= 1
                         asteroid.last_hit_time = time.time()

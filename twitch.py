@@ -123,7 +123,7 @@ TerminalTypeSpeed   = 0.02  #pause in seconds between characters
 TerminalScrollSpeed = 0.02  #pause in seconds between new lines
 CursorRGB           = (0,255,0)
 CursorDarkRGB       = (0,50,0)
-RotateClockDelay    = 5     #minutes between each clock rotation (launch an LEDarcade display every X minutes using LEDcommander)
+RotateClockDelay    = 10     #minutes between each clock rotation (launch an LEDarcade display every X minutes using LEDcommander)
 ClockDuration       = 1
 
 #TWITCH VARIABLES
