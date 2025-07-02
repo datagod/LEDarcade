@@ -1066,11 +1066,11 @@ class Bot(commands.Bot ):
             CommandQueue.put({"Action": "showgif", "GIF": './images/policefist.gif', "Loops" : 2, "sleep":0.06 })
           
         #FOOD
-        if any(word in message.content.upper() for word in ("FOOD", "CHICKEN","CAKE")):
-          if random.randint(1,2) == 1:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/food1.gif', "Loops" : 1, "sleep":0.06 })
-          else:
-            CommandQueue.put({"Action": "showgif", "GIF": './images/food2.gif', "Loops" : 1, "sleep":0.06 })
+        #if any(word in message.content.upper() for word in ("FOOD", "CHICKEN","CAKE")):
+        #  if random.randint(1,2) == 1:
+        #    CommandQueue.put({"Action": "showgif", "GIF": './images/food1.gif', "Loops" : 1, "sleep":0.06 })
+        #  else:
+        #    CommandQueue.put({"Action": "showgif", "GIF": './images/food2.gif', "Loops" : 1, "sleep":0.06 })
 
 
 
