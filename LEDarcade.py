@@ -1005,6 +1005,63 @@ SuperWormLevels    = 3           #number of levels
 
 
 
+def ShowOnAir(StopEvent=None,duration=60):
+    width  = HatWidth
+    height = HatHeight
+
+    def MakeMessageImage():
+        msg = "ON AIR"
+
+        # Create blank image and drawing context
+        image = Image.new("RGB", (width, height), color=(255, 0, 0))  # Red background
+        draw = ImageDraw.Draw(image)
+
+        #draw shadow
+        font = ImageFont.truetype("/home/pi/LEDarcade/fonts/Anton-Regular.ttf", 21)
+        bbox = draw.textbbox((0, 0), msg, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (width - text_width) // 2
+        y = (height - text_height) // 2 -bbox[1]
+        draw.text((x, y), msg, font=font, fill=(0, 0, 0))  # black (for outline)
+
+
+        #draw text
+        font = ImageFont.truetype("/home/pi/LEDarcade/fonts/Anton-Regular.ttf", 20)
+        # Measure text size and center it
+        bbox = draw.textbbox((0, 0), msg, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (width - text_width) // 2
+        y = (height - text_height) // 2 -bbox[1]
+        draw.text((x, y), msg, font=font, fill=(255, 255, 255))  # black (for outline)
+
+        return image
+
+
+
+    # Display image using LEDarcade canvas
+    image = MakeMessageImage()
+    ScreenArray  = CopyImageToScreenArray(image, 0, 0)
+
+
+
+    SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
+
+    # Timer logic
+    start_time = time.time()
+    try:
+        while True:
+            if StopEvent and StopEvent.is_set():
+                break
+            if time.time() - start_time >= duration:
+                break
+            time.sleep(1)  # prevent busy loop
+    except KeyboardInterrupt:
+        TheMatrix.Clear()
+
+
+
 
 
 

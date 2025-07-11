@@ -461,6 +461,21 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+            elif Action == "showonair":
+                print("[LEDcommander][Run] Launching Intro")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "showintro"
+                DisplayProcess = Process(target=ShowOnAir, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+
             elif Action == "showdemotivate":
                 print("[LEDcommander][Run] Launching Demotivate")
                 if DisplayProcess and DisplayProcess.is_alive():
@@ -831,6 +846,20 @@ def ShowHeart(Command, StopEvent):
     LED.TheMatrix.brightness = MaxBrightness
     LED.SweepClean()
 
+
+
+def ShowOnAir(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    StreamBrightness = 80
+    GifBrightness    = 50
+    MaxBrightness    = 100
+    print("[LEDcommander][ShowOnAir] Show ON AIR sign")
+
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.ShowOnAir(StopEvent,duration=1800) 
+    LED.SweepClean()
 
 
 

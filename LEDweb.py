@@ -114,3 +114,8 @@ def serve_web_control(queue, port=5055):
         return html
 
     app.run(host="0.0.0.0", port=port)
+
+
+if __name__ == "__main__":
+    queue = Queue()
+    serve_web_control(queue, port=5055)
