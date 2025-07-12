@@ -70,6 +70,12 @@ To send more messages:
 To stop TerminalMode:
     CommandQueue.put({"Action": "terminalmode_off"})
 
+
+CHANGE LOG
+==========
+
+2025-07-12  - Adding ability to accept POST requests from other processes
+
 """
 
 
