@@ -43,7 +43,7 @@ import time
 import requests
 
 BUTTON_GPIO = 17
-SERVER_URL = "http://<remote_ip>:5055/command"  # Replace <remote_ip> with the actual IP of the computer running LEDcommander
+SERVER_URL = "http://ledpi:5055/command"  # Replace <remote_ip> with the actual IP of the computer running LEDcommander
 
 on_air = False  # Initial state: off
 
