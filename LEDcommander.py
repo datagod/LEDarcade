@@ -1,4 +1,4 @@
-#LEDcommander.py
+# LEDcommander.py - Multiprocessing Command Dispatcher for LEDarcade
 
 # To do
 # =====
@@ -7,8 +7,8 @@
 #   - this is tough because each different display type is spawned as a process
 #   - perhaps the calling function can take a screen shot (deep copy ScreenArray)
 #     and put that in the CommandQueue so we can fade back to it later
- 
- 
+
+
 """
 ===============================================================================
 LEDcommander.py - Multiprocessing Command Dispatcher for LEDarcade
@@ -70,12 +70,6 @@ To send more messages:
 To stop TerminalMode:
     CommandQueue.put({"Action": "terminalmode_off"})
 
-
-CHANGE LOG
-==========
-
-2025-07-12  - Adding ability to accept POST requests from other processes
-
 """
 
 
@@ -90,13 +84,133 @@ print("")
 
 import time
 import traceback
-
+import random
 
 from multiprocessing import Event, Process, Queue
 import queue
 
-from flask import app, jsonify, request
+from flask import Flask, request, jsonify
+import logging
+import os
 
+IMAGE_DIR = "./images"  # Adjust to your actual path, e.g., "/home/pi/LEDarcade/images"
+
+def serve_web_control(queue, port=5055):
+    """
+    Starts a minimal Flask server to receive control commands and put them into the command queue.
+    Supports all LEDarcade actions with field customization.
+    """
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+
+    app = Flask(__name__)
+
+    VALID_ACTIONS = {
+        "showclock": [],
+        "stopclock": [],
+        "showtitlescreen": ["BigText", "LittleText", "LittleTextRGB", "ScrollText", "ScrollTextRGB", "ScrollSleep", "DisplayTime", "ExitEffect", "LittleTextZoom"],  # Expanded based on code
+        "analogclock": [],
+        "retrodigital": [],
+        "starrynightdisplaytext": ["text1","text2","text3"],
+        "launch_dotinvaders": ["duration"],
+        "launch_defender": ["duration"],
+        "launch_tron": ["duration"],
+        "launch_outbreak": ["duration"],
+        "launch_spacedot": ["duration"],
+        "launch_blasteroids": ["duration"],
+        "launch_fallingsand": ["duration"],
+        "launch_gravitysim": ["duration"],
+        "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
+        "twitchtimer_off": [],
+        "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
+        "terminalmessage": ["Message", "RGB", "ScrollSleep"],
+        "terminalmode_off": [],
+        "showheart": [],
+        "showintro": [],
+        "showonair": ["duration"],
+        "showonair_off": [],
+        "showdemotivate": [],
+        "showgif": ["GIF", "loops", "sleep"],
+        "showviewers": ["chatusers"],
+        "showimagezoom": ["image", "zoommin", "zoommax", "zoomfinal", "sleep", "step"],
+        "quit": []
+    }
+
+    def sanitize_data(data, action):
+        # General RGB tuple parsing
+        for key in data:
+            if 'RGB' in key and isinstance(data[key], str):
+                try:
+                    data[key] = tuple(map(int, data[key].split(",")))
+                except Exception:
+                    data[key] = (255, 255, 255)  # Default white
+        # Action-specific sanitization
+        if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "showonair"]:
+            for key in ["Duration", "loops", "sleep", "ScrollSleep", "DisplayTime", "zoommin", "zoommax", "zoomfinal", "step", "duration"]:
+                if key in data:
+                    try:
+                        data[key] = float(data[key]) if '.' in str(data[key]) else int(data[key])
+                    except ValueError:
+                        pass
+        if action == "showgif":
+            if "GIF" in data and not data["GIF"].startswith("/"):
+                data["GIF"] = os.path.join(IMAGE_DIR, os.path.basename(data["GIF"]))
+        if action == "showimagezoom":
+            if "image" in data and not data["image"].startswith("/"):
+                data["image"] = os.path.join(IMAGE_DIR, os.path.basename(data["image"]))
+        if action == "showviewers":
+            if "chatusers" in data and isinstance(data["chatusers"], str):
+                data["chatusers"] = data["chatusers"].split(",")
+        return data
+
+    @app.route('/command', methods=['POST'])
+    def handle_command():
+        data = request.json if request.is_json else request.form.to_dict()
+        print(f"[LEDweb] Received: {data}")
+        action = data.get("Action")
+        print("[LEDweb] Action:",action)
+        if not action or action not in VALID_ACTIONS:
+            return jsonify({'status': 'error', 'message': f'Invalid or missing action: {action}'}), 400
+        data = sanitize_data(data, action)
+        allowed_fields = set(VALID_ACTIONS[action] + ["Action"])
+        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+        queue.put(filtered_data)
+        return jsonify({'status': 'ok', 'message': f"Queued: {action}"}), 200
+
+    @app.route('/', methods=['GET'])
+    def homepage():
+        html = """
+        <html>
+        <head>
+            <title>LED Commander</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                .command-section { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+                .command-section h2 { margin-top: 0; }
+                input[type="text"] { width: 300px; }
+            </style>
+        </head>
+        <body>
+        <h1>LED Commander Control Panel</h1>
+        """
+        for action, fields in VALID_ACTIONS.items():
+            html += f'<div class="command-section">'
+            html += f'<h2>{action.capitalize().replace("_", " ")} Command</h2>'
+            html += '<form action="/command" method="post">'
+            html += f'<input type="hidden" name="Action" value="{action}"/>'
+            for field in fields:
+                html += f'<label for="{field}">{field}:</label><br>'
+                html += f'<input type="text" name="{field}" id="{field}"/><br><br>'
+            html += '<input type="submit" value="Send Command"/>'
+            html += '</form>'
+            html += '</div>'
+        html += """
+        </body>
+        </html>
+        """
+        return html
+
+    app.run(host="0.0.0.0", port=port, use_reloader=False)  # use_reloader=False for multiprocessing safety
 
 CursorH   = 0
 CursorV   = 0
@@ -116,16 +230,33 @@ def Run(CommandQueue):
     global CurrentDisplayMode
     global TerminalQueue
 
-    OldCommand = {
-            "Action": "showclock",
-            "Style": 1,
-            "Zoom": 3 ,
-            "duration": 5,  # minutes
-            "Delay": 30
-             }
+
+    r = random.randint(3,3)
+    if r == 1:
+        OldCommand = {
+                "Action": "showclock",
+                "Style": 1,
+                "Zoom": 3 ,
+                "duration": 10,  # minutes
+                "Delay": 30
+                }
+
+    if r == 2:
+        OldCommand = {
+                "Action": "showclock",
+                "Style": 4,
+                "duration": 10,  # minutes
+                }
 
 
-    
+    if r == 3:
+        OldCommand = {
+                "Action": "showclock",
+                "Style": 5,
+                "duration": 10,  # minutes
+                }
+
+
     print("\n" + "=" * 65)
     print("🧠 LEDcommander Launched")
     print("=" * 65)
@@ -163,7 +294,6 @@ def Run(CommandQueue):
             print(f"<-- [LEDcommander] Action: {Action}")
             print("<--------------------------------------------->")
             print("")
-
 
 
             #----------------------------------
@@ -468,17 +598,23 @@ def Run(CommandQueue):
 
 
             elif Action == "showonair":
-                print("[LEDcommander][Run] Launching Intro")
+                print("[LEDcommander][Run] Launching OnAir")
                 if DisplayProcess and DisplayProcess.is_alive():
                     print("LED display already in use.  Stopping process then restarting")
                     StopEvent.set()
                     DisplayProcess.join()
 
                 StopEvent.clear()
-                CurrentDisplayMode = "showintro"
+                CurrentDisplayMode = "onair"
                 DisplayProcess = Process(target=ShowOnAir, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+            elif Action == "showonair_off":
+                print("[LEDcommander][Run] Stopping OnAir")
+                StopEvent.set()
+                if DisplayProcess and DisplayProcess.is_alive():
+                    DisplayProcess.join()
+                CurrentDisplayMode = "stopped"
 
 
 
@@ -563,6 +699,7 @@ def Run(CommandQueue):
 
 
 
+
 #----------------------------------------------------------
 #-- Action functions
 #----------------------------------------------------------
@@ -629,7 +766,6 @@ def ShowRetroDigital(Command,StopEvent):
         StopEvent      = StopEvent
     )
     #LED.SweepClean()
-
 
 
 
@@ -710,6 +846,9 @@ def ShowTitleScreen(Command,StopEvent):
       LittleTextZoom      = LittleTextZoom
       )
     LED.SweepClean()
+
+
+
 
 
 
@@ -861,11 +1000,14 @@ def ShowOnAir(Command, StopEvent):
     StreamBrightness = 80
     GifBrightness    = 50
     MaxBrightness    = 100
+    duration = Command.get("duration", 1800)
     print("[LEDcommander][ShowOnAir] Show ON AIR sign")
 
     LED.TheMatrix.brightness = MaxBrightness
-    LED.ShowOnAir(StopEvent,duration=1800) 
-    LED.SweepClean()
+    LED.ShowOnAir(StopEvent,duration=duration) 
+    LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.05)
+
+    #LED.SweepClean()
 
 
 
@@ -1043,7 +1185,7 @@ def LaunchOutbreak(Command, StopEvent):
 
 def LaunchBlasteroids(Command, StopEvent):
     import LEDarcade as LED
-    LED.Initialize()
+    #LED.Initialize()
     import Blasteroids as BL
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchBlasteroids] Launching...")
@@ -1105,7 +1247,7 @@ if __name__ == "__main__":
     commander_process = Process(target=Run, args=(CommandQueue,))
     commander_process.start()
 
-    webserver_process = Process(target=launch_web_control_server, args=(CommandQueue,))
+    webserver_process = Process(target=serve_web_control, args=(CommandQueue,))
     webserver_process.start()
 
     print("")

@@ -18266,10 +18266,13 @@ def DisplayDigitalClock(
         #time.sleep(ScrollSleep)
         time.sleep(ScrollSleep)
 
+
+    #Retro Font
     elif (ClockStyle == 4):
       DisplayCustomFontClock(StopEvent)
       Done = True
 
+    #Blasteroids
     elif (ClockStyle == 5):
       import Blasteroids as BL
       BL.LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=StopEvent)        

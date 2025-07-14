@@ -53,7 +53,7 @@ import pygame
 from datetime import datetime
 
 
-LED.Initialize()
+
 
 
 # --- Black Hole Parameters ---
@@ -1283,7 +1283,7 @@ def LaunchBlasteroids(Duration = 10000,ShowIntro=True,StopEvent=None):
 
 
 
-#execute if this script is called direction
+#execute if this script is executed directly from command line
 if __name__ == "__main__":
     try:
         #LED.scroll_sentence_star_wars("A long time ago in a clock far far away...", tilt_factor=0.6, scroll_delay=0.06, font_path="/usr/share/fonts/truetype/noto/NotoMono-Regular.ttf")

@@ -1,19 +1,35 @@
-from multiprocessing import Process, Queue
-import LEDcommander
+import requests
 import time
-import os
+import argparse
 
-def wait_for_terminalmode_to_start():
-    # Simulate waiting for subprocess to initialize
-    print("[Test] Waiting for TerminalMode to start...")
-    time.sleep(2)
-
+# No need for multiprocessing here; assume LEDcommander is running separately with Flask on port 5055
 
 if __name__ == "__main__":
-    CommandQueue = Queue()
-    LEDProcess = Process(target=LEDcommander.Run, args=(CommandQueue,))
-    LEDProcess.start()
-    CommandQueue.cancel_join_thread()
+    parser = argparse.ArgumentParser(description="Control OnAir display")
+    parser.add_argument('--on', action='store_true', help="Turn OnAir on")
+    parser.add_argument('--off', action='store_true', help="Turn OnAir off")
+    parser.add_argument('--minutes', type=int, default=30, help="Minutes to remain on air (default: 30)")
 
-    CommandQueue.put({"Action": "showonair"})
-  
+    args = parser.parse_args()
+
+    if not (args.on or args.off):
+        print("Error: Must specify --on or --off")
+        parser.print_help()
+        exit(1)
+
+    url = "http://localhost:5055/command"  # Adjust host/port if running remotely
+
+    try:
+        if args.on:
+            duration = args.minutes * 60  # Convert minutes to seconds
+            data = {"Action": "showonair", "duration": duration}
+            response = requests.post(url, json=data)
+            print(f"[OnAir] Response: {response.json() if response.ok else response.text}")
+        elif args.off:
+            data = {"Action": "showonair_off"}
+            response = requests.post(url, json=data)
+            print(f"[OnAir] Response: {response.json() if response.ok else response.text}")
+    except requests.exceptions.ConnectionError:
+        print("[OnAir] Error: Could not connect to LEDcommander Flask server. Ensure it's running.")
+    except Exception as e:
+        print(f"[OnAir] Error: {e}")
