@@ -78,7 +78,7 @@ GPIO.add_event_detect(
     BUTTON_GPIO,
     GPIO.FALLING,
     callback=button_callback,
-    bouncetime=300  # 300ms debounce to prevent rapid toggles
+    bouncetime=30  # 300ms debounce to prevent rapid toggles
 )
 
 print("Waiting for button presses... (Ctrl+C to exit)")
