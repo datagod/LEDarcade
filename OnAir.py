@@ -1,3 +1,42 @@
+# ===============================================================================
+# OnAir.py - On-Air Sign Controller for LED Displays
+# ===============================================================================
+# Author: William McEvoy (@datagod)
+#
+# DESCRIPTION:
+# This script controls an "On-Air" LED display sign via HTTP requests to a
+# LEDcommander server. It supports two modes:
+#   1. Command-line interface (CLI) for manual on/off control with optional
+#      duration (currently commented out).
+#   2. GPIO button integration for toggling the sign on/off using a physical
+#      button connected to a Raspberry Pi.
+#
+# The script assumes LEDcommander is running with a Flask server on port 5055.
+# It sends JSON commands to trigger the "showonair" or "showonair_off" actions.
+#
+# REQUIREMENTS:
+# - requests: For HTTP communication.
+# - RPi.GPIO: For Raspberry Pi GPIO handling (button mode).
+# - argparse: For CLI parsing (if uncommented).
+#
+# USAGE:
+# - Button Mode: Run the script on a Raspberry Pi with a button connected to GPIO 5.
+#   Press the button to toggle the On-Air sign (default duration: 30 minutes).
+# - CLI Mode: Uncomment the CLI section and run with arguments:
+#     python OnAir.py --on --minutes=30  # Turn on for 30 minutes
+#     python OnAir.py --off              # Turn off
+#
+# CONFIGURATION:
+# - BUTTON_GPIO: GPIO pin for the button (default: 5).
+# - SERVER_URL: URL of the LEDcommander Flask server (default: http://ledpi1:5055/command).
+#
+# NOTES:
+# - Ensure LEDcommander is accessible and running before use.
+# - Debounce time is set to 300ms to prevent rapid toggles.
+# - Error handling includes connection issues and general exceptions.
+#
+# ===============================================================================
+
 import requests
 import time
 import argparse
