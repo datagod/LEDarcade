@@ -1210,7 +1210,7 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
             clock.tick(60)  # Cap the frame rate to 60 FPS
 
             fps_counter += 1
-            if time.time() - fps_timer >= 2.0:
+            if time.time() - fps_timer >= 10.0:
                 asteroid_speeds = [math.hypot(a.dx, a.dy) for a in asteroids]
                 avg_speed = sum(asteroid_speeds) / len(asteroid_speeds) if asteroid_speeds else 0
                 print(f"FPS: {fps_counter / (time.time() - fps_timer):.2f} | Asteroids: {len(asteroids)} | Avg Asteroid Speed: {avg_speed:.3f}")

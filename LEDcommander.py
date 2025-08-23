@@ -93,6 +93,10 @@ from flask import Flask, request, jsonify
 import logging
 import os
 
+#GLOBAL VARS
+RotateClockDelay = 10  #minutes between rotation of different display styles
+
+
 IMAGE_DIR = "./images"  # Adjust to your actual path, e.g., "/home/pi/LEDarcade/images"
 
 def serve_web_control(queue, port=5055):
@@ -138,6 +142,7 @@ def serve_web_control(queue, port=5055):
 
     def sanitize_data(data, action):
         # General RGB tuple parsing
+        print("Sanitizing Data")
         for key in data:
             if 'RGB' in key and isinstance(data[key], str):
                 try:
@@ -146,6 +151,7 @@ def serve_web_control(queue, port=5055):
                     data[key] = (255, 255, 255)  # Default white
         # Action-specific sanitization
         if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "showonair"]:
+            print("Action:",action)
             for key in ["Duration", "loops", "sleep", "ScrollSleep", "DisplayTime", "zoommin", "zoommax", "zoomfinal", "step", "duration"]:
                 if key in data:
                     try:
@@ -177,12 +183,14 @@ def serve_web_control(queue, port=5055):
         queue.put(filtered_data)
         return jsonify({'status': 'ok', 'message': f"Queued: {action}"}), 200
 
+
+
     @app.route('/', methods=['GET'])
     def homepage():
         html = """
         <html>
         <head>
-            <title>LED Commander</title>
+            <title>LED Commander 1.0</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 .command-section { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
@@ -191,24 +199,18 @@ def serve_web_control(queue, port=5055):
             </style>
         </head>
         <body>
-        <h1>LED Commander Control Panel</h1>
+        <h1>LED Commander Control Panel 1.0</h1>
         """
         for action, fields in VALID_ACTIONS.items():
-            html += f'<div class="command-section">'
-            html += f'<h2>{action.capitalize().replace("_", " ")} Command</h2>'
-            html += '<form action="/command" method="post">'
-            html += f'<input type="hidden" name="Action" value="{action}"/>'
+            html += f'<div class="command-section"><h2>{action.capitalize()}</h2><form action="/command" method="post">'
+            html += f'<input type="hidden" name="Action" value="{action}">'
             for field in fields:
-                html += f'<label for="{field}">{field}:</label><br>'
-                html += f'<input type="text" name="{field}" id="{field}"/><br><br>'
-            html += '<input type="submit" value="Send Command"/>'
-            html += '</form>'
-            html += '</div>'
-        html += """
-        </body>
-        </html>
-        """
+                html += f'<label>{field}: <input type="text" name="{field}"></label><br>'
+            html += '<input type="submit" value="Send"></form></div>'
+        html += '</body></html>'
         return html
+
+
 
     app.run(host="0.0.0.0", port=port, use_reloader=False)  # use_reloader=False for multiprocessing safety
 
@@ -230,32 +232,9 @@ def Run(CommandQueue):
     global CurrentDisplayMode
     global TerminalQueue
 
+    Command = ''
 
-    r = random.randint(3,3)
-    if r == 1:
-        OldCommand = {
-                "Action": "showclock",
-                "Style": 1,
-                "Zoom": 3 ,
-                "duration": 10,  # minutes
-                "Delay": 30
-                }
-
-    if r == 2:
-        OldCommand = {
-                "Action": "showclock",
-                "Style": 4,
-                "duration": 10,  # minutes
-                }
-
-
-    if r == 3:
-        OldCommand = {
-                "Action": "showclock",
-                "Style": 5,
-                "duration": 10,  # minutes
-                }
-
+    
 
     print("\n" + "=" * 65)
     print("🧠 LEDcommander Launched")
@@ -278,11 +257,12 @@ def Run(CommandQueue):
     while True:
 
         try:
+            #We want to restart a previous process if it was interrupted
+            OldCommand = Command
+
             Command = CommandQueue.get(timeout=1)
             print(f"[LEDcommander][Run] Received command: {Command}")
             
-            #We want to restart a previous process if it was interrupted
-            #OldCommand = Command
 
 
             if not isinstance(Command, dict):
@@ -615,7 +595,9 @@ def Run(CommandQueue):
                 if DisplayProcess and DisplayProcess.is_alive():
                     DisplayProcess.join()
                 CurrentDisplayMode = "stopped"
-
+                #Push a command back on the queue
+                CommandQueue.put({ "Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10 })
+        
 
 
             elif Action == "showdemotivate":
@@ -677,8 +659,13 @@ def Run(CommandQueue):
 
 
         except queue.Empty:
+            #We get to this spot because there are no more commands in the queue.  We will just idle along, checking 
+            #every once in a while
+
             print("[LEDcommander][Run] Queue empty.  Waiting for command...")
-            time.sleep(5)
+            print("Command:",Command)
+            #time.sleep(5)
+           
 
             #If nothing is being displayed, tell it to restart the digital clock
             if CommandQueue.empty():
@@ -1000,8 +987,11 @@ def ShowOnAir(Command, StopEvent):
     StreamBrightness = 80
     GifBrightness    = 50
     MaxBrightness    = 100
-    duration = Command.get("duration", 1800)
-    print("[LEDcommander][ShowOnAir] Show ON AIR sign")
+    try:
+      duration = int(Command.get("duration", 1800))
+    except ValueError:
+      duration = 1800
+    print("[LEDcommander][ShowOnAir] Show ON AIR sign",duration)
 
     LED.TheMatrix.brightness = MaxBrightness
     LED.ShowOnAir(StopEvent,duration=duration) 
@@ -1236,6 +1226,7 @@ def StarryNightDisplayText(Command, StopEvent):
 
 
 
+
 #-------------------------------------------------------------------------------
 # Main Processing
 #
@@ -1258,5 +1249,45 @@ if __name__ == "__main__":
     # webserver_process.join()
 
     # Keep main thread alive so child processes aren’t killed
+    
+    ClockDuration = RotateClockDelay * 60
     while True:
-        time.sleep(1)
+        # Rotate through displays as in the provided chunk
+        # Blasteroids clock (style=5)
+        CommandQueue.put({ "Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10 })
+        time.sleep(RotateClockDelay * 60)
+
+        CommandQueue.put({"Action": "retrodigital", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+
+        # StarryNight clock display (style=3)
+        CommandQueue.put({ "Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10 })
+        time.sleep(RotateClockDelay * 60)
+        # Note: The original calls self.DisplayDigitalClock(ClockDuration) here, but since we're in main,
+        # we'll simulate with a default clock command
+        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
+
+        CommandQueue.put({"Action": "launch_defender", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
+
+        CommandQueue.put({"Action": "launch_dotinvaders", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
+
+        CommandQueue.put({"Action": "launch_gravitysim", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
+
+        CommandQueue.put({"Action": "launch_tron", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+
+        CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+
+        CommandQueue.put({"Action": "launch_spacedot", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+
+        CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
+        time.sleep(RotateClockDelay * 60)
+        # Loop back or add more if needed2.7s        
