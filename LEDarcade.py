@@ -20458,10 +20458,118 @@ def DisplayStockPrice(Symbol="", Price=""):
 
 
 
-
-
+from PIL import Image
+import time
 
 def SpinShrinkTransition(ScreenArray, steps=48, delay=0.03, start_zoom=100, end_zoom=100, StopEvent=None):
+    """
+    Spin and zoom transition for a 64x32 LED matrix, using an off-screen buffer to minimize artifacts and blinking.
+
+    Parameters:
+        ScreenArray : 2D list of RGB tuples
+        steps       : Number of frames
+        delay       : Time per frame (seconds)
+        start_zoom  : Starting zoom percentage (0 = invisible, 100 = normal size, 200 = 2x size)
+        end_zoom    : Ending zoom percentage
+        StopEvent   : Optional multiprocessing event for early exit
+    """
+    global Canvas, HatWidth, HatHeight, TheMatrix
+
+    # Validate inputs
+    if not ScreenArray or not ScreenArray[0]:
+        raise ValueError("ScreenArray must be a non-empty 2D list")
+    if steps < 1:
+        raise ValueError("Steps must be positive")
+    if delay < 0:
+        raise ValueError("Delay cannot be negative")
+
+    h, w = len(ScreenArray), len(ScreenArray[0])
+    total_spin_degrees = 720
+
+    def create_image(buffer):
+        """Convert ScreenArray to PIL Image."""
+        img = Image.new("RGB", (w, h))
+        for y in range(h):
+            for x in range(w):
+                img.putpixel((x, y), buffer[y][x])
+        return img
+
+    def render_image(img, zoom, angle=None):
+        """Render image to an off-screen 64x32 buffer, then copy to Canvas and ScreenArray."""
+        # Create and clear off-screen buffer (64x32)
+        offscreen = Image.new("RGB", (HatWidth, HatHeight), (0, 0, 0))  # Clear to black
+        if zoom <= 0:
+            # Copy cleared buffer to Canvas and ScreenArray
+            for y in range(HatHeight):
+                if StopEvent and StopEvent.is_set():
+                    return
+                for x in range(HatWidth):
+                    setpixelCanvas(x, y, 0, 0, 0)
+            return
+
+        # Calculate scaled size while preserving aspect ratio
+        scale = zoom / 100.0
+        max_size = min(HatWidth, HatHeight)  # Use smaller dimension (32) to fit matrix
+        src_aspect = w / h
+        matrix_aspect = HatWidth / HatHeight  # 64/32 = 2
+        if src_aspect > matrix_aspect:
+            size_w = int(max_size * scale)
+            size_h = int(size_w / src_aspect)
+        else:
+            size_h = int(max_size * scale)
+            size_w = int(size_h * src_aspect)
+        size_w, size_h = max(1, size_w), max(1, size_h)  # Ensure non-zero size
+
+        # Resize and rotate
+        resized_img = img.resize((size_w, size_h), Image.NEAREST)
+        if angle is not None:
+            resized_img = resized_img.rotate(angle, expand=False)  # Keep size consistent
+
+        # Center the image on the off-screen buffer
+        ox = (HatWidth - resized_img.width) // 2
+        oy = (HatHeight - resized_img.height) // 2
+
+        # Draw to off-screen buffer
+        for y in range(resized_img.height):
+            if StopEvent and StopEvent.is_set():
+                return
+            for x in range(resized_img.width):
+                px, py = ox + x, oy + y
+                if 0 <= px < HatWidth and 0 <= py < HatHeight:
+                    r, g, b = resized_img.getpixel((x, y))
+                    offscreen.putpixel((px, py), (r, g, b))
+
+        # Copy off-screen buffer to Canvas and ScreenArray
+        for y in range(HatHeight):
+            if StopEvent and StopEvent.is_set():
+                return
+            for x in range(HatWidth):
+                r, g, b = offscreen.getpixel((x, y))
+                setpixelCanvas(x, y, r, g, b)
+
+    # Create base image once
+    base_img = create_image(ScreenArray)
+
+    # Animation loop
+    for frame in range(steps):
+        if StopEvent and StopEvent.is_set():
+            break
+        t = frame / (steps - 1) if steps > 1 else 1.0
+        zoom = start_zoom + (end_zoom - start_zoom) * t
+        angle = int(round(total_spin_degrees * t))
+        render_image(base_img, zoom, angle)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+        time.sleep(delay)
+
+    # Final frame (no rotation)
+    render_image(base_img, end_zoom)
+    Canvas = TheMatrix.SwapOnVSync(Canvas)
+
+
+
+
+
+def SpinShrinkTransition_old(ScreenArray, steps=48, delay=0.03, start_zoom=100, end_zoom=100, StopEvent=None):
     """
     Spin and zoom transition for LED matrix screens.
 
