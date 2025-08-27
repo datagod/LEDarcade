@@ -85,6 +85,7 @@ print("")
 import time
 import traceback
 import random
+import itertools  # for generator function
 
 from multiprocessing import Event, Process, Queue
 import queue
@@ -95,6 +96,8 @@ import os
 
 #GLOBAL VARS
 RotateClockDelay = 10  #minutes between rotation of different display styles
+IsOnAirActive = False
+RotateClockDelay = 5
 
 
 IMAGE_DIR = "./images"  # Adjust to your actual path, e.g., "/home/pi/LEDarcade/images"
@@ -214,6 +217,14 @@ def serve_web_control(queue, port=5055):
 
     app.run(host="0.0.0.0", port=port, use_reloader=False)  # use_reloader=False for multiprocessing safety
 
+
+
+
+
+
+
+
+
 CursorH   = 0
 CursorV   = 0
 StopEvent = Event()
@@ -224,8 +235,517 @@ ClockFallbackEnabled = True
 
 
 
+def fallback_action_generator():
+    # Your sequence from __main__ in the documents; customize durations/styles
+    actions = [
+        {"Action": "showclock", "Style": 4, "Zoom": 1, "duration": 10, "Delay": 10},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10},
+        {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10},
+        {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 10, "Delay": 30},  
+        {"Action": "launch_defender", "duration": 10},
+        {"Action": "analogclock", "duration": 10 },
+
+        {"Action": "launch_dotinvaders", "duration": 10},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_gravitysim", "duration": 10},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_tron", "duration": 10},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_outbreak", "duration": 10},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_spacedot", "duration": 10},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_fallingsand", "duration": 10},
+    ]
+    for action in itertools.cycle(actions):
+        yield action
+
+ 
+
 
 def Run(CommandQueue):
+    global StopEvent, DisplayProcess, CurrentDisplayMode, IsOnAirActive, FallbackGenerator
+    print("\n" + "=" * 65)
+    print("🧠 LEDcommander Launched")
+    print("=" * 65)
+    print("Multiprocessing control engine for LEDarcade.")
+    print("Handles dynamic screen updates, effects, and real-time commands.")
+    print("Developed by William McEvoy (@datagod) for Raspberry Pi environments.")
+    print("Core Features:")
+    print(" - Isolated subprocess rendering (clock, titles, etc.)")
+    print(" - Clean LED shutdown via command queue")
+    print(" - Expandable message-based architecture")
+    print(" - Safe multiprocessing for GPIO hardware")
+    print("-------------------------------------------------------------")
+    print("Command your pixels like a pro — with LEDcommander.")
+    print("=" * 65 + "\n")
+    print("")
+    print("")
+
+    while True:
+        try:
+            # Get command or handle empty
+            try:
+                Command = CommandQueue.get(timeout=1)
+            except queue.Empty:
+                # Check for timed-out OnAir
+                if IsOnAirActive and DisplayProcess and not DisplayProcess.is_alive():
+                    print("[LEDcommander] OnAir timed out, proceeding to next")
+                    IsOnAirActive = False
+                    CurrentDisplayMode = None
+                # If idle (no OnAir, no process), pull generator
+                if not IsOnAirActive and (DisplayProcess is None or not DisplayProcess.is_alive()):
+                    print("[LEDcommander] Queue empty and idle—using fallback generator")
+                    Command = next(FallbackGenerator)
+                else:
+                    continue  # Wait if something's running
+
+            print(f"[LEDcommander][Run] Received command: {Command}")
+            
+            if not isinstance(Command, dict):
+                continue
+
+            Action = Command.get("Action", "").lower()
+            print(f"<-- [LEDcommander] Action: {Action}")
+
+            # Handle off (force stop, proceed)
+            if Action == "showonair_off":
+                if IsOnAirActive:
+                    print("[LEDcommander] Manual stop OnAir, proceeding to next")
+                    StopEvent.set()
+                    if DisplayProcess and DisplayProcess.is_alive():
+                        DisplayProcess.join(timeout=5)  # Prevent hangs
+                    IsOnAirActive = False
+                    CurrentDisplayMode = None
+                continue  # Loop will now pull next queue/generator
+
+            # Handle on (start with duration)
+            if Action == "showonair":
+                print("[LEDcommander] Starting OnAir")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join(timeout=5)
+                StopEvent.clear()
+                CurrentDisplayMode = "onair"
+                IsOnAirActive = True
+                DisplayProcess = Process(target=ShowOnAir, args=(Command, StopEvent))
+                DisplayProcess.start()
+                continue
+
+            # For other actions (interrupt if OnAir active)
+            if IsOnAirActive:
+                print("[LEDcommander] Non-OnAir command during OnAir—interrupting")
+                StopEvent.set()
+                DisplayProcess.join(timeout=5)
+                IsOnAirActive = False
+                CurrentDisplayMode = None
+
+
+
+            #----------------------------------
+            #-- CLOCK MODE
+            #----------------------------------
+
+            if Action == "showclock":
+                print("Starting the clock")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Restarting")
+                    #time.sleep(10)
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "stopclock":
+                print("Stopping the clock")
+                StopEvent.set()
+                if DisplayProcess and DisplayProcess.is_alive():
+                    DisplayProcess.join()
+
+
+
+            #----------------------------------
+            #-- TITLE SCREEN
+            #----------------------------------
+
+            elif Action == "showtitlescreen":
+                print("Showing title screen")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "title"
+                DisplayProcess = Process(target=ShowTitleScreen, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            #----------------------------------
+            #-- ANALOG CLOCK
+            #----------------------------------
+
+            elif Action == "analogclock":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(target=ShowAnalogClock, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "retrodigital":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(target=ShowRetroDigital, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            #----------------------------------
+            #-- STARRY NIGHT VARIATIONS
+            #----------------------------------
+
+
+            elif Action == "starrynightdisplaytext":
+                print("[LEDcommander][Run] Starry Night Display Text")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "starrynight"
+                DisplayProcess = Process(target=StarryNightDisplayText, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+            #----------------------------------
+            #-- LAUNCH PROGRAMS
+            #----------------------------------
+
+
+            elif Action == "launch_dotinvaders":
+                print("[LEDcommander][Run] Launching DotInvaders")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "dotinvaders"
+                DisplayProcess = Process(target=LaunchDotInvaders, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "launch_defender":
+                print("[LEDcommander][Run] Launching Defender")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "defender"
+                DisplayProcess = Process(target=LaunchDefender, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+
+            elif Action == "launch_tron":
+                print("[LEDcommander][Run] Launching Tron")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "tron"
+                DisplayProcess = Process(target=LaunchTron, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_outbreak":
+                print("[LEDcommander][Run] Launching Outbreak")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "outbreak"
+                DisplayProcess = Process(target=LaunchOutbreak, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+            elif Action == "launch_spacedot":
+                print("[LEDcommander][Run] Launching SpaceDot")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "spacedot"
+                DisplayProcess = Process(target=LaunchSpaceDot, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "launch_blasteroids":
+                print("[LEDcommander][Run] Launching Blasteroids")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "blasteroids"
+                DisplayProcess = Process(target=LaunchBlasteroids, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+            elif Action == "launch_fallingsand":
+                print("[LEDcommander][Run] Launching fallingsand")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "tron"
+                DisplayProcess = Process(target=LaunchFallingSand, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "launch_gravitysim":
+                print("[LEDcommander][Run] Launching GravitySim")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "gravitysim"
+                DisplayProcess = Process(target=LaunchGravitySim, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            #----------------------------------
+            #-- TWITCH TIMER
+            #----------------------------------
+
+            elif Action == "twitchtimer_on":
+                print("Showing title screen")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "twitch"
+                DisplayProcess = Process(target=StartTwitchTimer, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "twitchtimer_off":
+                print("Showing title screen")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display in use.  Stopping process.")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "stopped"
+
+
+
+
+            #----------------------------------
+            #-- TERMINAL MODE
+            #----------------------------------
+
+            elif Action == "terminalmode_on":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("[LEDcommander][Run] TerminalMode already active.")
+                else:
+                    StopEvent.clear()
+                    CurrentDisplayMode = "terminal"
+                    DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
+                    DisplayProcess.start()
+
+
+            elif Action == "terminalmessage":
+                if DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal":
+                    TerminalQueue.put(Command)
+                else:
+                    print("[LEDcommander] TerminalMode not active. Auto-starting it.")
+                    StopEvent.set()
+                    if DisplayProcess and DisplayProcess.is_alive():
+                        DisplayProcess.join()
+                    StopEvent.clear()
+                    CurrentDisplayMode = "terminal"
+                    TerminalQueue = Queue()  # reset queue to avoid stale messages
+                    DisplayProcess = Process(target=StartTerminalMode, args=(TerminalQueue, StopEvent, Command))
+                    DisplayProcess.start()
+
+            # In StartTerminalMode(), replace CommandQueue with TerminalQueue
+
+
+            elif Action == "terminalmode_off":
+                print("[LEDcommander] terminalmode_OFF detected")
+                CurrentDisplayMode = "stopped"
+                DisplayProcess = Process(target=StopTerminalMode, args=())
+                DisplayProcess.start()
+                StopEvent.set()
+                if DisplayProcess and DisplayProcess.is_alive():
+                    DisplayProcess.join()
+                    print("[LEDcommander] TerminalMode stopped.")
+
+
+
+            #----------------------------------------
+            # ANIMATIONS                           --
+            #----------------------------------------
+
+            elif Action == "showheart":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "heart"
+                DisplayProcess = Process(target=ShowHeart, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+            elif Action == "showintro":
+                print("[LEDcommander][Run] Launching Intro")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "showintro"
+                DisplayProcess = Process(target=ShowIntro, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "showonair":
+                print("[LEDcommander][Run] Launching OnAir")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "onair"
+                DisplayProcess = Process(target=ShowOnAir, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "showonair_off":
+                print("[LEDcommander][Run] Stopping OnAir")
+                StopEvent.set()
+                if DisplayProcess and DisplayProcess.is_alive():
+                    DisplayProcess.join()
+                CurrentDisplayMode = "stopped"
+                #Push a command back on the queue
+                CommandQueue.put({ "Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10 })
+        
+
+
+            elif Action == "showdemotivate":
+                print("[LEDcommander][Run] Launching Demotivate")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "showdemotivate"
+                DisplayProcess = Process(target=ShowDemotivate, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+
+            elif Action == "showgif":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "gif"
+                DisplayProcess = Process(target=ShowGIF, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "showviewers":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "gif"
+                DisplayProcess = Process(target=ShowViewers, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+
+            elif Action == "showimagezoom":
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                StopEvent.clear()
+                CurrentDisplayMode = "image"
+                DisplayProcess = Process(target=ShowImageZoom, args=(Command, StopEvent))
+                
+                #After showing Image, we restart the clock
+                CommandQueue.put(OldCommand)
+                DisplayProcess.start()
+
+
+
+            elif Action == "quit":
+                print("[LEDcommander] Quit received.")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    StopEvent.set()
+                    DisplayProcess.join()
+                print("[LEDcommander][Run] Shutdown complete.")
+                break  # Exit the loop and end the process
+
+
+        except Exception as e:
+            print(f"[LEDcommander] Run error: {e}")
+            traceback.print_exc()
+            if ClockFallbackEnabled:
+                CommandQueue.put({"Action": "showclock"})  # Fallback
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def Run_old(CommandQueue):
 
     global StopEvent
     global DisplayProcess
@@ -985,6 +1505,41 @@ def ShowOnAir(Command, StopEvent):
     LED.Initialize()
 
     StreamBrightness = 80
+    GifBrightness = 50
+    MaxBrightness = 100
+    
+    # Safely handle duration with validation   
+    duration_str = Command.get("duration", 1800)  # Default to 1800 if key is missing
+    try:
+        duration = int(duration_str)  # Try converting to int
+        if duration <= 0:  # Ensure positive duration
+            duration = 1800
+    except (ValueError, TypeError):  # Handle empty string, non-numeric, or None
+        print("[LEDcommander][ShowOnAir] Invalid duration provided, using default 1800s")
+        duration = 1800
+
+    print(f"[LEDcommander][ShowOnAir] Show ON AIR sign with duration: {duration}s")    
+
+    LED.TheMatrix.brightness = MaxBrightness
+    
+    start_time = time.time()
+    while (time.time() - start_time < duration) and not StopEvent.is_set():
+        # Refresh/display the OnAir sign (static or animated)
+        LED.ShowOnAir(StopEvent)  # Assume this handles one frame; if not, call LED-specific draw here
+        time.sleep(0.05)  # Frame rate; adjust for HUB75 refresh (avoid too fast to prevent flicker)
+    
+    # Cleanup on exit (timed or stopped)
+    print("[LEDcommander][ShowOnAir] Ending")
+    LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.05)
+    # LED.SweepClean()  # If desired
+
+
+
+def ShowOnAir_old(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    StreamBrightness = 80
     GifBrightness    = 50
     MaxBrightness    = 100
     try:
@@ -1227,14 +1782,17 @@ def StarryNightDisplayText(Command, StopEvent):
 
 
 
+
+
 #-------------------------------------------------------------------------------
 # Main Processing
 #
 #-------------------------------------------------------------------------------
+FallbackGenerator = fallback_action_generator()
 
 if __name__ == "__main__":
-    CommandQueue = Queue()
 
+    CommandQueue = Queue()
     commander_process = Process(target=Run, args=(CommandQueue,))
     commander_process.start()
 
@@ -1249,45 +1807,10 @@ if __name__ == "__main__":
     # webserver_process.join()
 
     # Keep main thread alive so child processes aren’t killed
-    
-    ClockDuration = RotateClockDelay * 60
+
     while True:
-        # Rotate through displays as in the provided chunk
-        # Blasteroids clock (style=5)
-        CommandQueue.put({ "Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10 })
+        command = next(FallbackGenerator)
+        CommandQueue.put(command)
         time.sleep(RotateClockDelay * 60)
 
-        CommandQueue.put({"Action": "retrodigital", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
 
-        # StarryNight clock display (style=3)
-        CommandQueue.put({ "Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10 })
-        time.sleep(RotateClockDelay * 60)
-        # Note: The original calls self.DisplayDigitalClock(ClockDuration) here, but since we're in main,
-        # we'll simulate with a default clock command
-        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
-
-        CommandQueue.put({"Action": "launch_defender", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
-        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
-
-        CommandQueue.put({"Action": "launch_dotinvaders", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
-        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
-
-        CommandQueue.put({"Action": "launch_gravitysim", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
-        CommandQueue.put({ "Action": "showclock", "Style": 1, "Zoom": 3, "duration": ClockDuration, "Delay": 0.05 })
-
-        CommandQueue.put({"Action": "launch_tron", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
-
-        CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
-
-        CommandQueue.put({"Action": "launch_spacedot", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
-
-        CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
-        time.sleep(RotateClockDelay * 60)
-        # Loop back or add more if needed2.7s        

@@ -1106,7 +1106,12 @@ def DisplayCustomFontClock(StopEvent=None):
     try:
         Done = False
         while Done == False:
+            #print ("StopEvent.is_set: ",StopEvent.is_set())
+
             if StopEvent and StopEvent.is_set():
+                print ("STOP DETECTED")
+                print ("StopEvent.is_set: ",StopEvent.is_set())
+                
                 Done = True
                 SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
 
@@ -1130,71 +1135,6 @@ def DisplayCustomFontClock(StopEvent=None):
     except KeyboardInterrupt:
         TheMatrix.Clear()
 
-
-#----------------------------
-#-- Custom Clock Functions --
-#----------------------------
-
-def DisplayCustomFontClock(StopEvent=None):
-    width  = HatWidth
-    height = HatHeight
-
-    def MakeTimeImage():
-        now = datetime.now()
-        current_minute = now.strftime("%H:%M")
-
-        # Create blank image and drawing context
-        image = Image.new("RGB", (width, height))
-        draw = ImageDraw.Draw(image)
-
-        # Measure text size and center it using textbbox
-        bbox = draw.textbbox((0, 0), current_minute, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        x = (width - text_width) // 2
-        y = (height - text_height) // 4
-        draw.text((x, y), current_minute, font=font, fill=(0, 200, 0))  # Red
-        return image
-        
-    font = ImageFont.truetype("/home/pi/LEDarcade/fonts/CHECKBK0.TTF", 22)
-
-    # Display image using LEDarcade canvas
-    image = MakeTimeImage()
-    ScreenArray  = CopyImageToScreenArray(image, 0, 0)
-    ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
-
-
-
-    SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
-
-    # Clock loop
-    last_minute = None
-    try:
-        Done = False
-        while Done == False:
-            if StopEvent and StopEvent.is_set():
-                Done = True
-                SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
-
-                break
-
-
-            now = datetime.now()
-            current_minute = now.strftime("%H:%M")
-
-            if current_minute != last_minute:
-                image = MakeTimeImage()
-                ScreenArray  = CopyImageToScreenArray(image, 0, 0)
-                TransitionBetweenScreenArrays(ScreenArray2,ScreenArray,TransitionType=2,FadeSleep=0.02)
-
-            time.sleep(1)
-            last_minute = current_minute
-            ScreenArray2 = CopyImageToScreenArray(image, 0, 0)
-
-
-
-    except KeyboardInterrupt:
-        TheMatrix.Clear()
 
 
 
@@ -1393,11 +1333,11 @@ def LoadConfigData():
   global HatWidth
   
   PID = get_process_id()
-  print (f"{PID} --Load Config Data--")
+  #print (f"{PID} --Load Config Data--")
   #print ("PacDotHighScore Before Load: ",PacDotHighScore)
     
   if (os.path.exists(ConfigFileName)):
-    print (f"{PID}Config file (",ConfigFileName,"): already exists")
+    #print (f"{PID}Config file (",ConfigFileName,"): already exists")
     ConfigFile = SafeConfigParser()
     ConfigFile.read(ConfigFileName)
 
@@ -1420,8 +1360,8 @@ def LoadConfigData():
     #Get DotInvadersHighScore
     DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
     DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
-    print (f"{PID} DotInvadersHighScore:   ",DotInvadersHighScore)
-    print (f"{PID} DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
+    #print (f"{PID} DotInvadersHighScore:   ",DotInvadersHighScore)
+    #print (f"{PID} DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
     try:
@@ -1432,8 +1372,8 @@ def LoadConfigData():
       
     
     
-    print(f"{PID} HatWidth:               ",HatWidth)
-    print(f"{PID} HatHeight               ",HatHeight)
+    #print(f"{PID} HatWidth:               ",HatWidth)
+    #print(f"{PID} HatHeight               ",HatHeight)
       
 
 
@@ -1442,30 +1382,30 @@ def LoadConfigData():
     #Get Outbreak data
     OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
     OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
-    print (f"{PID} OutbreakHighScore:      ",OutbreakHighScore)
-    print (f"{PID} OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
+    #print (f"{PID} OutbreakHighScore:      ",OutbreakHighScore)
+    #print (f"{PID} OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
 
 
     #Get SpaceDot data
     SpaceDotHighScore   = int(ConfigFile.get("scores","SpaceDotHighScore"))
     SpaceDotGamesPlayed = int(ConfigFile.get("scores","SpaceDotGamesPlayed"))
-    print (f"{PID} SpaceDotHighScore:      ",SpaceDotHighScore)
-    print (f"{PID} SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
+    #print (f"{PID} SpaceDotHighScore:      ",SpaceDotHighScore)
+    #print (f"{PID} SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
 
 
     #Get Defender data
     DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
     DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
-    print (f"{PID} DefenderHighScore:      ",DefenderHighScore)
-    print (f"{PID} DefenderGamesPlayed:    ",DefenderGamesPlayed)
+    #print (f"{PID} DefenderHighScore:      ",DefenderHighScore)
+    #print (f"{PID} DefenderGamesPlayed:    ",DefenderGamesPlayed)
 
 
   else:
     print (f"{PID} Config file not found! Running with default values.")
 
     
-  print (f"{PID} --------------------")
-  print (" ")
+  #print (f"{PID} --------------------")
+  #print (" ")
   
 
 
