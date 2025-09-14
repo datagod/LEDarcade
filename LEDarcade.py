@@ -138,11 +138,11 @@ NOTES:
 import time
 
 
-print("")
-print("==========================================")
-print("== IMPORTING LEDarcade                  ==")
-print("==========================================")
-print("")
+#print("")
+#print("==========================================")
+#print("== IMPORTING LEDarcade                  ==")
+#print("==========================================")
+#print("")
 
 
 import gc
@@ -20976,26 +20976,28 @@ def ActivateRGBMatrix():
 _initialized = False
 def Initialize():
     global TheMatrix, Canvas, ScreenArray, HatWidth, HatHeight, Gamma, _initialized
-    print("\n" + "=" * 65)
-    print("🚀 LEDarcade Initialized")
-    print("=" * 65)
-    print("A retro-inspired LED matrix graphics engine.")
-    print("Created by William McEvoy (@datagod) for Raspberry Pi systems.")
-    print("Features:")
-    print(" - Real-time graphics and animations")
-    print(" - Flight tracking, gaming, and Twitch integrations")
-    print(" - Supports 32x32, 32x64, 32x128 LED panel arrays")
-    print(" - Easily extensible with sprite and animation APIs")
-    print("-------------------------------------------------------------")
-    print("Explore the pixel universe with LEDarcade!")
-    print("=" * 65 + "\n")
-    print("")
-    print("")
-    
     if _initialized:
         print("LEDarcade already initialized.  Skipping")
         return
     _initialized = True
+
+    print("\n" + "=" * 45)
+    print("🚀 LEDarcade Initialized")
+    print("=" * 45)
+
+    #print("A retro-inspired LED matrix graphics engine.")
+    #print("Created by William McEvoy (@datagod) for Raspberry Pi systems.")
+    #print("Features:")
+    #print(" - Real-time graphics and animations")
+    #print(" - Flight tracking, gaming, and Twitch integrations")
+    #print(" - Supports 32x32, 32x64, 32x128 LED panel arrays")
+    #print(" - Easily extensible with sprite and animation APIs")
+    #print("-------------------------------------------------------------")
+    #print("Explore the pixel universe with LEDarcade!")
+    #print("=" * 65 + "\n")
+    #print("")
+    #print("")
+
 
 
 
