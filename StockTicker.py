@@ -204,19 +204,20 @@ def GetStockPrice(symbol):
 # MAIN SECTION                                                               --
 #------------------------------------------------------------------------------
 
-def main(Duration=10,StopEvent=None):
+def main(Duration=10,StopEvent=None,ShowIntro=False):
 
 
-  print ("---------------------------------------------------------------")
-  print ("WELCOME TO THE LED ARCADE - Stock Price Displayorama            ")
-  print ("")
-  print ("BY DATAGOD and The Blue Friend")
-  print ("")
-  print ("This program will display the stock prices for various ")
-  print ("stock symbols.")
-  print ("---------------------------------------------------------------")
-  print ("")
-  print ("")
+  if(ShowIntro==True):
+    print ("---------------------------------------------------------------")
+    print ("WELCOME TO THE LED ARCADE - Stock Price Displayorama            ")
+    print ("")
+    print ("BY DATAGOD and The Blue Friend")
+    print ("")
+    print ("This program will display the stock prices for various ")
+    print ("stock symbols.")
+    print ("---------------------------------------------------------------")
+    print ("")
+    print ("")
 
 
 
