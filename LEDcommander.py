@@ -117,7 +117,7 @@ def serve_web_control(queue, port=5055):
     VALID_ACTIONS = {
         "showclock": [],
         "stopclock": [],
-        "showtitlescreen": ["BigText", "LittleText", "LittleTextRGB", "ScrollText", "ScrollTextRGB", "ScrollSleep", "DisplayTime", "ExitEffect", "LittleTextZoom"],
+        #"showtitlescreen": ["BigText", "LittleText", "LittleTextRGB", "ScrollText", "ScrollTextRGB", "ScrollSleep", "DisplayTime", "ExitEffect", "LittleTextZoom"],
         "analogclock": [],
         "retrodigital": [],
         "starrynightdisplaytext": ["text1","text2","text3"],
@@ -130,9 +130,9 @@ def serve_web_control(queue, port=5055):
         "launch_stockticker": ["duration"],
         "launch_fallingsand": ["duration"],
         "launch_gravitysim": ["duration"],
-        "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
-        "twitchtimer_off": [],
-        "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
+        #"twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
+        #"twitchtimer_off": [],
+        #"terminalmode_on": ["Message", "RGB", "ScrollSleep"],
         "terminalmessage": ["Message", "RGB", "ScrollSleep"],
         "terminalmode_off": [],
         "showheart": [],
@@ -142,7 +142,7 @@ def serve_web_control(queue, port=5055):
         "showdemotivate": [],
         "showgif": ["GIF", "loops", "sleep"],
         "showviewers": ["chatusers"],
-        "showimagezoom": ["image", "zoommin", "zoommax", "zoomfinal", "sleep", "step"],
+        #"showimagezoom": ["image", "zoommin", "zoommax", "zoomfinal", "sleep", "step"],
         "quit": []
     }
 
@@ -222,7 +222,7 @@ def serve_web_control(queue, port=5055):
                 }
                 .commands-container {
                     display: grid;
-                    grid-template-columns: repeat(3, 1fr);
+                    grid-template-columns: repeat(4, 1fr);
                     gap: 20px;
                     position: relative;
                     z-index: 2;
@@ -1074,7 +1074,7 @@ def StopTerminalMode():
         Message="Stopping terminal...",
         CursorH=CursorH,
         CursorV=CursorV,
-        MessageRGB=(0,0,0),
+        MessageRGB=(100,100,0),
         CursorRGB=(0, 255, 0),
         CursorDarkRGB=(0, 50, 0),
         StartingLineFeed=1,
@@ -1106,7 +1106,7 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
             Message="Stopping terminal...",
             CursorH=CursorH,
             CursorV=CursorV,
-            MessageRGB=(0, 0, 0),
+            MessageRGB=(0,200, 0),
             CursorRGB=CursorRGB,
             CursorDarkRGB=CursorDarkRGB,
             StartingLineFeed=1,
@@ -1381,9 +1381,9 @@ def LaunchGravitySim(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import gravitysim as GR
-    Duration         = Command.get("duration",10)
+    Duration         = Command.get("duration",30)
     if Duration=='':
-        Duration = 10
+        Duration = 30
     print("[LEDcommander][LaunchGravitySim] Launching...")
     GR.Launch(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
