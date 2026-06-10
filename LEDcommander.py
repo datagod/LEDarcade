@@ -200,7 +200,7 @@ def serve_web_control(queue, port=5055):
         html = """
         <html>
         <head>
-            <title>LED Commander 1.0</title>
+            <title>LED Commander 1.1</title>
             <style>
                 body { 
                     font-family: 'Courier New', monospace; 
@@ -327,8 +327,8 @@ def serve_web_control(queue, port=5055):
         </head>
         <body>
         <div id="status-message"></div>
+        <h1>LED Commander Control Panel 1.1</h1>
         """ + LEDupdate.UPDATE_BAR_HTML + """
-        <h1>LED Commander Control Panel 1.0</h1>
         <div class="commands-container">
         """
         for action, fields in VALID_ACTIONS.items():
@@ -369,7 +369,7 @@ def serve_web_control(queue, port=5055):
         html = """
         <html>
         <head>
-            <title>LED Commander 1.0</title>
+            <title>LED Commander 1.1</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 .command-section { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
@@ -378,7 +378,7 @@ def serve_web_control(queue, port=5055):
             </style>
         </head>
         <body>
-        <h1>LED Commander Control Panel 1.0</h1>
+        <h1>LED Commander Control Panel 1.1</h1>
         """
         for action, fields in VALID_ACTIONS.items():
             html += f'<div class="command-section"><h2>{action.capitalize()}</h2><form action="/command" method="post">'

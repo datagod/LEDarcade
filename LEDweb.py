@@ -100,7 +100,7 @@ def serve_web_control(queue, port=5055):
         html = """
         <html>
         <head>
-            <title>LED Commander</title>
+            <title>LED Commander 1.1</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 .command-section { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
@@ -114,8 +114,8 @@ def serve_web_control(queue, port=5055):
         </head>
         <body>
         <div id="status-message" style="display:none; padding:10px; margin-bottom:16px; border-radius:5px;"></div>
+        <h1>LED Commander Control Panel 1.1</h1>
         """ + LEDupdate.UPDATE_BAR_HTML + """
-        <h1>LED Commander Control Panel</h1>
         """
         for action, fields in VALID_ACTIONS.items():
             html += f'<div class="command-section">'
