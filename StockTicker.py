@@ -126,6 +126,34 @@ def CheckConfigFiles():
             AdditionalInfo = f"Creating the {KeyConfigFileName} file"
             print(f"[Error] {AdditionalInfo}\n{ErrorMessage}\n{TraceMessage}")
 
+def ParseStockSymbols(symbols):
+    """Normalize stock symbols from a command override (list or comma-separated string)."""
+    if symbols is None:
+        return None
+    if isinstance(symbols, str):
+        raw_symbols = symbols.split(',')
+    elif isinstance(symbols, (list, tuple)):
+        raw_symbols = symbols
+    else:
+        return None
+
+    parsed = []
+    for symbol in raw_symbols:
+        cleaned = str(symbol).strip().upper()
+        if cleaned:
+            parsed.append(cleaned)
+    return parsed or None
+
+
+def ApplyStockSymbols(symbols):
+    """Override STOCK_SYMBOLS when symbols are passed via LED Commander."""
+    global STOCK_SYMBOLS
+    parsed = ParseStockSymbols(symbols)
+    if parsed:
+        STOCK_SYMBOLS = parsed
+        print("STOCK_SYMBOLS (command override):", ', '.join(STOCK_SYMBOLS))
+
+
 def LoadConfigFiles():
     """Load stock symbols from KeyConfig.ini."""
     global STOCK_SYMBOLS
@@ -220,7 +248,7 @@ def GetStockPrice(symbol):
 
 
 
-def main(Duration=10, StopEvent=None, ShowIntro=False):
+def main(Duration=10, StopEvent=None, ShowIntro=False, Symbols=None):
     """Main function to run the stock ticker display."""
     global stock_prices, previous_prices
     try:
@@ -265,6 +293,7 @@ def main(Duration=10, StopEvent=None, ShowIntro=False):
     # Load configuration and stock prices
     CheckConfigFiles()
     LoadConfigFiles()
+    ApplyStockSymbols(Symbols)
     stock_prices = {}
     previous_prices = {symbol: 0.0 for symbol in STOCK_SYMBOLS}  # Initialize before loading
     LoadStockPrices()

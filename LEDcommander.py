@@ -127,7 +127,7 @@ def serve_web_control(queue, port=5055):
         "launch_outbreak": ["duration"],
         "launch_spacedot": ["duration"],
         "launch_blasteroids": ["duration"],
-        "launch_stockticker": ["duration"],
+        "launch_stockticker": ["duration", "symbols"],
         "launch_fallingsand": ["duration"],
         "launch_gravitysim": ["duration"],
         #"twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
@@ -171,6 +171,11 @@ def serve_web_control(queue, port=5055):
         if action == "showviewers":
             if "chatusers" in data and isinstance(data["chatusers"], str):
                 data["chatusers"] = data["chatusers"].split(",")
+        if action == "launch_stockticker" and "symbols" in data:
+            if isinstance(data["symbols"], str):
+                data["symbols"] = [s.strip().upper() for s in data["symbols"].split(",") if s.strip()]
+            elif isinstance(data["symbols"], list):
+                data["symbols"] = [str(s).strip().upper() for s in data["symbols"] if str(s).strip()]
         return data
 
     @app.route('/command', methods=['POST'])
@@ -1433,8 +1438,9 @@ def LaunchStockTicker(Command, StopEvent):
     #LED.Initialize()
     import StockTicker as ST
     Duration         = Command.get("duration",10)
+    Symbols          = Command.get("symbols")
     print("[LEDcommander][LaunchStockTicker] Launching...")
-    ST.main(Duration=Duration, StopEvent=StopEvent)
+    ST.main(Duration=Duration, StopEvent=StopEvent, Symbols=Symbols)
 
 
 

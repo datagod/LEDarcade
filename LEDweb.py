@@ -29,7 +29,7 @@ def serve_web_control(queue, port=5055):
         "launch_outbreak": ["duration"],
         "launch_spacedot": ["duration"],
         "launch_blasteroids": ["duration"],
-        "launch_stockticker": ["duration"],
+        "launch_stockticker": ["duration", "symbols"],
         "launch_fallingsand": ["duration"],
         "launch_gravitysim": ["duration"],
         "twitchtimer_on": [],
@@ -69,6 +69,11 @@ def serve_web_control(queue, port=5055):
                 data["duration"] = float(data["duration"]) if '.' in str(data["duration"]) else int(data["duration"])
             except ValueError:
                 pass
+        if action == "launch_stockticker" and "symbols" in data:
+            if isinstance(data["symbols"], str):
+                data["symbols"] = [s.strip().upper() for s in data["symbols"].split(",") if s.strip()]
+            elif isinstance(data["symbols"], list):
+                data["symbols"] = [str(s).strip().upper() for s in data["symbols"] if str(s).strip()]
         if action == "showgif":
             if "GIF" in data and not data["GIF"].startswith("/"):
                 data["GIF"] = os.path.join(IMAGE_DIR, os.path.basename(data["GIF"]))
