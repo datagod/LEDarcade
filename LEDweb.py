@@ -40,6 +40,8 @@ def serve_web_control(queue, port=5055):
         "terminalmessage": ["Message"],
         "terminalmode_off": [],
         "showheart": [],
+        "showonair": ["duration"],
+        "showonair_off": [],
         "showgif": ["GIF", "Duration"],
         "showviewers": [],
         "showimagezoom": ["Image"],
@@ -66,11 +68,12 @@ def serve_web_control(queue, port=5055):
                     data["Duration"] = int(data["Duration"])
                 except ValueError:
                     pass
-        if action.startswith("launch_") and "duration" in data:
-            try:
-                data["duration"] = float(data["duration"]) if '.' in str(data["duration"]) else int(data["duration"])
-            except ValueError:
-                pass
+        if action in ["showonair"] or action.startswith("launch_"):
+            if "duration" in data:
+                try:
+                    data["duration"] = float(data["duration"]) if '.' in str(data["duration"]) else int(data["duration"])
+                except ValueError:
+                    pass
         if action == "launch_stockticker" and "symbols" in data:
             if isinstance(data["symbols"], str):
                 data["symbols"] = [s.strip().upper() for s in data["symbols"].split(",") if s.strip()]

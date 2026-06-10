@@ -80,30 +80,50 @@ if __name__ == "__main__":
 import RPi.GPIO as GPIO
 import time
 import requests
+import threading
 
 BUTTON_GPIO = 5
 SERVER_URL = "http://ledpi1:5055/command"  # Replace <remote_ip> with the actual IP of the computer running LEDcommander
+ON_AIR_MINUTES = 30
+ON_AIR_SECONDS = ON_AIR_MINUTES * 60
 
-on_air = False  # Initial state: off
+on_air = False
+expiry_timer = None
+
+
+def clear_on_air_state():
+    global on_air
+    on_air = False
+    print(f"[OnAir] {ON_AIR_MINUTES}-minute timer expired; local state reset to off")
+
+
+def schedule_expiry_timer():
+    global expiry_timer
+    if expiry_timer:
+        expiry_timer.cancel()
+    expiry_timer = threading.Timer(ON_AIR_SECONDS, clear_on_air_state)
+    expiry_timer.daemon = True
+    expiry_timer.start()
+
 
 def button_callback(channel):
     global on_air
-    # Check if button is still pressed (LOW)
     if GPIO.input(BUTTON_GPIO) == GPIO.LOW:
         print("Button was pressed!")
         try:
             if on_air:
-                # Turn off
                 data = {"Action": "showonair_off"}
-                response = requests.post(SERVER_URL, json=data)
+                response = requests.post(SERVER_URL, json=data, timeout=5)
                 print(f"[Off] Response: {response.json() if response.ok else response.text}")
                 on_air = False
+                if expiry_timer:
+                    expiry_timer.cancel()
             else:
-                # Turn on (default 30 minutes, but can adjust duration if needed)
-                data = {"Action": "showonair", "duration": 1800}  # 30 minutes in seconds
-                response = requests.post(SERVER_URL, json=data)
+                data = {"Action": "showonair", "duration": ON_AIR_SECONDS}
+                response = requests.post(SERVER_URL, json=data, timeout=5)
                 print(f"[On] Response: {response.json() if response.ok else response.text}")
                 on_air = True
+                schedule_expiry_timer()
         except requests.exceptions.ConnectionError:
             print("Error: Could not connect to LEDcommander server. Ensure it's running.")
         except Exception as e:
@@ -117,7 +137,7 @@ GPIO.add_event_detect(
     BUTTON_GPIO,
     GPIO.FALLING,
     callback=button_callback,
-    bouncetime=30  # 300ms debounce to prevent rapid toggles
+    bouncetime=300
 )
 
 print("Waiting for button presses... (Ctrl+C to exit)")

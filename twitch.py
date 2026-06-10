@@ -1806,7 +1806,7 @@ class Bot(commands.Bot ):
     #----------------------------------------
     @commands.command()
     async def onair(self, ctx: commands.Context):
-      CommandQueue.put({"Action": "showonair"})
+      CommandQueue.put({"Action": "showonair", "duration": 1800})
 
 
     #----------------------------------------

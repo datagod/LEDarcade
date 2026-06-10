@@ -100,6 +100,8 @@ import LEDpanel
 RotateClockDelay = 10  #minutes between rotation of different display styles
 IsOnAirActive = False
 RotateClockDelay = 5
+ON_AIR_DEFAULT_MINUTES = 30
+ON_AIR_DEFAULT_SECONDS = ON_AIR_DEFAULT_MINUTES * 60
 
 
 IMAGE_DIR = "./images"  # Adjust to your actual path, e.g., "/home/pi/LEDarcade/images"
@@ -363,19 +365,18 @@ def Run(CommandQueue):
                     StopEvent.set()
                     DisplayProcess.join(timeout=5)
                 StopEvent.clear()
+                if "duration" not in Command:
+                    Command["duration"] = ON_AIR_DEFAULT_SECONDS
                 CurrentDisplayMode = "onair"
                 IsOnAirActive = True
                 DisplayProcess = Process(target=ShowOnAir, args=(Command, StopEvent))
                 DisplayProcess.start()
                 continue
 
-            # For other actions (interrupt if OnAir active)
-            if IsOnAirActive:
-                print("[LEDcommander] Non-OnAir command during OnAir—interrupting")
-                StopEvent.set()
-                DisplayProcess.join(timeout=5)
-                IsOnAirActive = False
-                CurrentDisplayMode = None
+            # While On Air, hold the display until manual off or duration expiry.
+            if IsOnAirActive and Action not in ("showonair", "showonair_off"):
+                print(f"[LEDcommander] OnAir active—ignoring command: {Action}")
+                continue
 
 
 
@@ -1065,34 +1066,28 @@ def ShowOnAir(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
 
-    StreamBrightness = 80
-    GifBrightness = 50
     MaxBrightness = 100
-    
-    # Safely handle duration with validation   
-    duration_str = Command.get("duration", 1800)  # Default to 1800 if key is missing
-    try:
-        duration = int(duration_str)  # Try converting to int
-        if duration <= 0:  # Ensure positive duration
-            duration = 1800
-    except (ValueError, TypeError):  # Handle empty string, non-numeric, or None
-        print("[LEDcommander][ShowOnAir] Invalid duration provided, using default 1800s")
-        duration = 1800
 
-    print(f"[LEDcommander][ShowOnAir] Show ON AIR sign with duration: {duration}s")    
+    duration_str = Command.get("duration", ON_AIR_DEFAULT_SECONDS)
+    try:
+        duration = int(duration_str)
+        if duration <= 0:
+            duration = ON_AIR_DEFAULT_SECONDS
+    except (ValueError, TypeError):
+        print(f"[LEDcommander][ShowOnAir] Invalid duration provided, using default {ON_AIR_DEFAULT_SECONDS}s")
+        duration = ON_AIR_DEFAULT_SECONDS
+
+    print(f"[LEDcommander][ShowOnAir] Show ON AIR sign for {duration}s ({duration / 60:.0f} minutes)")
 
     LED.TheMatrix.brightness = MaxBrightness
-    
-    start_time = time.time()
-    while (time.time() - start_time < duration) and not StopEvent.is_set():
-        # Refresh/display the OnAir sign (static or animated)
-        LED.ShowOnAir(StopEvent)  # Assume this handles one frame; if not, call LED-specific draw here
-        time.sleep(0.05)  # Frame rate; adjust for HUB75 refresh (avoid too fast to prevent flicker)
-    
-    # Cleanup on exit (timed or stopped)
+    LED.ShowOnAir(StopEvent, duration=duration)
+
     print("[LEDcommander][ShowOnAir] Ending")
+    if StopEvent.is_set():
+        print("[LEDcommander][ShowOnAir] Stopped by showonair_off")
+    else:
+        print("[LEDcommander][ShowOnAir] Duration expired")
     LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.05)
-    # LED.SweepClean()  # If desired
 
 
 
