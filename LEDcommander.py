@@ -93,6 +93,7 @@ import queue
 from flask import Flask, request, jsonify
 import logging
 import os
+import LEDupdate
 
 #GLOBAL VARS
 RotateClockDelay = 10  #minutes between rotation of different display styles
@@ -177,6 +178,8 @@ def serve_web_control(queue, port=5055):
             elif isinstance(data["symbols"], list):
                 data["symbols"] = [str(s).strip().upper() for s in data["symbols"] if str(s).strip()]
         return data
+
+    LEDupdate.register_update_routes(app, queue)
 
     @app.route('/command', methods=['POST'])
     def handle_command():
@@ -283,8 +286,10 @@ def serve_web_control(queue, port=5055):
                     background-color: #440000; 
                     color: #ff0000; 
                 }
+                """ + LEDupdate.UPDATE_STYLES + """
             </style>
             <script>
+                """ + LEDupdate.UPDATE_SCRIPT + """
                 document.addEventListener('DOMContentLoaded', function() {
                     const forms = document.querySelectorAll('form');
                     forms.forEach(form => {
@@ -322,6 +327,7 @@ def serve_web_control(queue, port=5055):
         </head>
         <body>
         <div id="status-message"></div>
+        """ + LEDupdate.UPDATE_BAR_HTML + """
         <h1>LED Commander Control Panel 1.0</h1>
         <div class="commands-container">
         """

@@ -3,6 +3,7 @@ from multiprocessing import Queue
 import os
 from flask import Flask, request, jsonify
 import logging
+import LEDupdate
 
 IMAGE_DIR = "/home/pi/LEDarcade/images"
 
@@ -79,6 +80,8 @@ def serve_web_control(queue, port=5055):
                 data["GIF"] = os.path.join(IMAGE_DIR, os.path.basename(data["GIF"]))
         return data
 
+    LEDupdate.register_update_routes(app, queue)
+
     @app.route('/command', methods=['POST'])
     def handle_command():
         data = request.get_json() if request.is_json else request.form.to_dict()
@@ -103,9 +106,15 @@ def serve_web_control(queue, port=5055):
                 .command-section { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
                 .command-section h2 { margin-top: 0; }
                 input[type="text"] { width: 300px; }
+                """ + LEDupdate.UPDATE_STYLES_SIMPLE + """
             </style>
+            <script>
+                """ + LEDupdate.UPDATE_SCRIPT + """
+            </script>
         </head>
         <body>
+        <div id="status-message" style="display:none; padding:10px; margin-bottom:16px; border-radius:5px;"></div>
+        """ + LEDupdate.UPDATE_BAR_HTML + """
         <h1>LED Commander Control Panel</h1>
         """
         for action, fields in VALID_ACTIONS.items():
