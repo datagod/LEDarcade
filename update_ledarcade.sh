@@ -14,20 +14,22 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG_FILE"
 }
 
+wait_for_panel() {
+    local attempt
+    for attempt in $(seq 1 30); do
+        if curl -sf "http://127.0.0.1:${PORT}/" >/dev/null 2>&1; then
+            log "Control panel is back online on port ${PORT}"
+            return 0
+        fi
+        sleep 2
+    done
+    log "WARNING: Control panel did not respond on port ${PORT} within 60 seconds"
+    return 1
+}
+
 log "=== LEDarcade update started ==="
 
 sleep 2
-
-if pgrep -f "python3 twitch.py" >/dev/null 2>&1; then
-    LAUNCH_CMD="sudo python3 twitch.py"
-    log "Detected twitch.py launcher"
-elif pgrep -f "python3 LEDcommander.py" >/dev/null 2>&1; then
-    LAUNCH_CMD="sudo python3 LEDcommander.py"
-    log "Detected LEDcommander.py launcher"
-else
-    LAUNCH_CMD="sudo python3 twitch.py"
-    log "No launcher detected; defaulting to twitch.py"
-fi
 
 log "Stopping LEDarcade processes"
 pkill -f "python3 twitch.py" 2>/dev/null || true
@@ -45,14 +47,11 @@ else
     exit 1
 fi
 
-log "Relaunching: $LAUNCH_CMD"
-if command -v screen >/dev/null 2>&1; then
-    screen -S ledarcade -X quit 2>/dev/null || true
-    screen -S ledarcade -d -m bash -c "cd '$LEDARCADE_DIR' && $LAUNCH_CMD >> '$LOG_FILE' 2>&1"
-    log "Relaunched in screen session 'ledarcade'"
+log "Auto-restarting LEDarcade"
+if bash "$LEDARCADE_DIR/start_ledarcade.sh" >> "$LOG_FILE" 2>&1; then
+    wait_for_panel || true
+    log "=== LEDarcade update complete ==="
 else
-    nohup bash -c "cd '$LEDARCADE_DIR' && $LAUNCH_CMD" >> "$LOG_FILE" 2>&1 &
-    log "Relaunched with nohup (pid $!)"
+    log "ERROR: Auto-restart failed. Check $LOG_FILE or run: sudo python3 twitch.py"
+    exit 1
 fi
-
-log "=== LEDarcade update complete ==="

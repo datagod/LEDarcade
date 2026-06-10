@@ -5,11 +5,12 @@ import threading
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 UPDATE_SCRIPT = os.path.join(REPO_DIR, "update_ledarcade.sh")
+LAUNCHER_FILE = os.path.join(REPO_DIR, "localdata", "launcher.cmd")
 
 UPDATE_BAR_HTML = """
 <div class="update-bar">
     <button type="button" id="update-button" class="update-button">Update</button>
-    <span id="update-hint">Stop, git pull, and restart LED Commander</span>
+    <span id="update-hint">Stop, git pull, auto-restart LED Commander</span>
 </div>
 """
 
@@ -92,8 +93,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    function waitForPanel() {
+        let attempts = 0;
+        const maxAttempts = 30;
+
+        const timer = setInterval(() => {
+            attempts += 1;
+            fetch('/', { method: 'GET', cache: 'no-store' })
+                .then(response => {
+                    if (response.ok) {
+                        clearInterval(timer);
+                        window.location.reload();
+                    }
+                })
+                .catch(() => {});
+
+            if (attempts >= maxAttempts) {
+                clearInterval(timer);
+            }
+        }, 2000);
+    }
+
     updateButton.addEventListener('click', function() {
-        if (!confirm('Update LEDarcade now? This will stop the display, run git pull, and restart.')) {
+        if (!confirm('Update LEDarcade now? This will stop the display, run git pull, and restart automatically.')) {
             return;
         }
 
@@ -102,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const statusMsg = document.getElementById('status-message');
         if (statusMsg) {
-            statusMsg.innerText = 'Update started. The panel may disconnect while restarting...';
+            statusMsg.innerText = 'Update started. Auto-restarting LED Commander...';
             statusMsg.className = 'success';
             statusMsg.style.display = 'block';
         }
@@ -111,21 +133,32 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(result => {
                 if (statusMsg) {
-                    statusMsg.innerText = result.message || 'Update started.';
+                    statusMsg.innerText = result.message || 'Update started. Waiting for restart...';
                     statusMsg.className = result.status === 'ok' ? 'success' : 'error';
                     statusMsg.style.display = 'block';
+                }
+                if (result.status === 'ok') {
+                    waitForPanel();
                 }
             })
             .catch(() => {
                 if (statusMsg) {
-                    statusMsg.innerText = 'Update triggered. Refresh this page in about 30 seconds.';
+                    statusMsg.innerText = 'Update triggered. Waiting for restart...';
                     statusMsg.className = 'success';
                     statusMsg.style.display = 'block';
                 }
+                waitForPanel();
             });
     });
 });
 """
+
+
+def save_launcher(script_name):
+    """Remember which entry script launched LEDarcade."""
+    os.makedirs(os.path.dirname(LAUNCHER_FILE), exist_ok=True)
+    with open(LAUNCHER_FILE, "w", encoding="utf-8") as launcher_file:
+        launcher_file.write(f'LAUNCH_SCRIPT="{script_name}"\n')
 
 
 def register_update_routes(app, queue):
@@ -150,5 +183,5 @@ def register_update_routes(app, queue):
         threading.Timer(1.0, run_update).start()
         return jsonify({
             'status': 'ok',
-            'message': 'Update started. Pulling latest code and restarting LED Commander...'
+            'message': 'Update started. Pulling latest code and auto-restarting LED Commander...'
         }), 200

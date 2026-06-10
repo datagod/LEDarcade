@@ -3887,7 +3887,9 @@ def start_led_commander():
     from multiprocessing import Queue, Process
     import LEDcommander
     import LEDweb  # <== import here
+    import LEDupdate
 
+    LEDupdate.save_launcher("twitch.py")
     print("Initializing LEDcommander")
 
     command_queue = Queue()

@@ -1503,6 +1503,7 @@ def StarryNightDisplayText(Command, StopEvent):
 FallbackGenerator = fallback_action_generator()
 
 if __name__ == "__main__":
+    LEDupdate.save_launcher("LEDcommander.py")
 
     CommandQueue = Queue()
     commander_process = Process(target=Run, args=(CommandQueue,))
