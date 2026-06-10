@@ -155,7 +155,7 @@ def serve_web_control(queue, port=5055):
                 except Exception:
                     data[key] = (255, 255, 255)  # Default white
         # Action-specific sanitization
-        if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "showonair"]:
+        if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "showonair"] or action.startswith("launch_"):
             for key in ["Duration", "loops", "sleep", "ScrollSleep", "DisplayTime", "zoommin", "zoommax", "zoomfinal", "step", "duration"]:
                 if key in data:
                     try:

@@ -223,6 +223,10 @@ def GetStockPrice(symbol):
 def main(Duration=10, StopEvent=None, ShowIntro=False):
     """Main function to run the stock ticker display."""
     global stock_prices, previous_prices
+    try:
+        Duration = int(Duration)
+    except (TypeError, ValueError):
+        Duration = 10
     # Configure logging
     logging.basicConfig(
         filename=StockHistoryFileName,
@@ -282,6 +286,8 @@ def main(Duration=10, StopEvent=None, ShowIntro=False):
     FETCH_INTERVAL = 900  # 15 minutes
     DISPLAY_DELAY = 2     # 2 seconds
     last_fetch_time = 0
+    start_time = time.time()
+    print(f"[StockTicker] Running for {Duration} minute(s)")
 
     try:
         while True:
@@ -290,6 +296,15 @@ def main(Duration=10, StopEvent=None, ShowIntro=False):
                 print("\n" + "="*40)
                 print("[StockTicker] StopEvent received")
                 print("-> Shutting down gracefully...")
+                print("="*40 + "\n")
+                SaveStockPrices()
+                break
+
+            _, elapsed_minutes, _ = LED.GetElapsedTime(start_time, current_time)
+            if elapsed_minutes >= Duration:
+                print("\n" + "="*40)
+                print(f"[StockTicker] Duration of {Duration} minute(s) reached")
+                print("-> Returning control to LED Commander...")
                 print("="*40 + "\n")
                 SaveStockPrices()
                 break

@@ -23,13 +23,15 @@ def serve_web_control(queue, port=5055):
         "showtitlescreen": ["Text", "RGB", "Duration"],
         "analogclock": [],
         "starrynightdisplaytext": ["text1","text2","text3"],
-        "launch_dotinvaders": [],
-        "launch_defender": [],
-        "launch_tron": [],
-        "launch_outbreak": [],
-        "launch_spacedot": [],
-        "launch_fallingsand": [],
-        "launch_gravitysim": [],
+        "launch_dotinvaders": ["duration"],
+        "launch_defender": ["duration"],
+        "launch_tron": ["duration"],
+        "launch_outbreak": ["duration"],
+        "launch_spacedot": ["duration"],
+        "launch_blasteroids": ["duration"],
+        "launch_stockticker": ["duration"],
+        "launch_fallingsand": ["duration"],
+        "launch_gravitysim": ["duration"],
         "twitchtimer_on": [],
         "twitchtimer_off": [],
         "terminalmode_on": ["Message", "RGB", "Style", "Speed"],
@@ -62,6 +64,11 @@ def serve_web_control(queue, port=5055):
                     data["Duration"] = int(data["Duration"])
                 except ValueError:
                     pass
+        if action.startswith("launch_") and "duration" in data:
+            try:
+                data["duration"] = float(data["duration"]) if '.' in str(data["duration"]) else int(data["duration"])
+            except ValueError:
+                pass
         if action == "showgif":
             if "GIF" in data and not data["GIF"].startswith("/"):
                 data["GIF"] = os.path.join(IMAGE_DIR, os.path.basename(data["GIF"]))
