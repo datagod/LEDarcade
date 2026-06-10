@@ -94,6 +94,7 @@ from flask import Flask, request, jsonify
 import logging
 import os
 import LEDupdate
+import LEDpanel
 
 #GLOBAL VARS
 RotateClockDelay = 10  #minutes between rotation of different display styles
@@ -197,148 +198,7 @@ def serve_web_control(queue, port=5055):
 
     @app.route('/', methods=['GET'])
     def homepage():
-        html = """
-        <html>
-        <head>
-            <title>LED Commander 1.1</title>
-            <style>
-                body { 
-                    font-family: 'Courier New', monospace; 
-                    padding: 20px; 
-                    background-color: #000; 
-                    color: #0f0; 
-                    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-                    position: relative;
-                }
-                body::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: repeating-linear-gradient(
-                        to bottom,
-                        transparent 0px,
-                        transparent 1px,
-                        rgba(0, 0, 0, 0.3) 1px,
-                        rgba(0, 0, 0, 0.3) 2px
-                    );
-                    pointer-events: none;
-                    z-index: 1;
-                    opacity: 0.5;
-                }
-                .commands-container {
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 20px;
-                    position: relative;
-                    z-index: 2;
-                }
-                .command-section { 
-                    padding: 15px; 
-                    border: 1px solid #0f0; 
-                    border-radius: 5px; 
-                    background-color: #111; 
-                    box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
-                }
-                .command-section h2 { 
-                    margin-top: 0; 
-                    color: #0f0;
-                }
-                label { 
-                    color: #0f0;
-                }
-                input[type="text"] { 
-                    width: 100%; 
-                    background-color: #222; 
-                    color: #0f0; 
-                    border: 1px solid #0f0; 
-                    padding: 5px; 
-                    font-family: 'Courier New', monospace;
-                }
-                input[type="submit"] { 
-                    background-color: #0f0; 
-                    color: #000; 
-                    border: none; 
-                    padding: 8px; 
-                    cursor: pointer; 
-                    font-family: 'Courier New', monospace;
-                }
-                input[type="submit"]:hover { 
-                    background-color: #00ff00; 
-                }
-                #status-message { 
-                    position: fixed; 
-                    top: 10px; 
-                    left: 50%; 
-                    transform: translateX(-50%); 
-                    padding: 10px; 
-                    border-radius: 5px; 
-                    z-index: 1000; 
-                    display: none; 
-                }
-                .success { 
-                    background-color: #004400; 
-                    color: #0f0; 
-                }
-                .error { 
-                    background-color: #440000; 
-                    color: #ff0000; 
-                }
-                """ + LEDupdate.UPDATE_STYLES + """
-            </style>
-            <script>
-                """ + LEDupdate.UPDATE_SCRIPT + """
-                document.addEventListener('DOMContentLoaded', function() {
-                    const forms = document.querySelectorAll('form');
-                    forms.forEach(form => {
-                        form.addEventListener('submit', function(event) {
-                            event.preventDefault();  // Prevent page reload
-                            const formData = new FormData(form);
-                            const data = Object.fromEntries(formData.entries());
-                            
-                            fetch('/command', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(data)
-                            })
-                            .then(response => response.json())
-                            .then(result => {
-                                const statusMsg = document.getElementById('status-message');
-                                statusMsg.innerText = result.message;
-                                statusMsg.className = 'success';
-                                statusMsg.style.display = 'block';
-                                setTimeout(() => { statusMsg.style.display = 'none'; }, 3000);
-                            })
-                            .catch(error => {
-                                const statusMsg = document.getElementById('status-message');
-                                statusMsg.innerText = 'Error: ' + error;
-                                statusMsg.className = 'error';
-                                statusMsg.style.display = 'block';
-                                setTimeout(() => { statusMsg.style.display = 'none'; }, 3000);
-                            });
-                        });
-                    });
-                });
-            </script>
-        </head>
-        <body>
-        <div id="status-message"></div>
-        <h1>LED Commander Control Panel 1.1</h1>
-        """ + LEDupdate.UPDATE_BAR_HTML + """
-        <div class="commands-container">
-        """
-        for action, fields in VALID_ACTIONS.items():
-            html += f'<div class="command-section"><h2>{action.capitalize()}</h2><form action="/command" method="post">'
-            html += f'<input type="hidden" name="Action" value="{action}">'
-            for field in fields:
-                html += f'<label>{field}: <input type="text" name="{field}"></label><br>'
-            html += '<input type="submit" value="Submit"></form></div>'
-        html += "</div></body></html>"
-        return html
+        return LEDpanel.render_homepage(VALID_ACTIONS)
 
     app.run(host='0.0.0.0', port=port, threaded=False)
 

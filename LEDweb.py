@@ -4,6 +4,7 @@ import os
 from flask import Flask, request, jsonify
 import logging
 import LEDupdate
+import LEDpanel
 
 IMAGE_DIR = "/home/pi/LEDarcade/images"
 
@@ -97,42 +98,7 @@ def serve_web_control(queue, port=5055):
 
     @app.route('/', methods=['GET'])
     def homepage():
-        html = """
-        <html>
-        <head>
-            <title>LED Commander 1.1</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                .command-section { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-                .command-section h2 { margin-top: 0; }
-                input[type="text"] { width: 300px; }
-                """ + LEDupdate.UPDATE_STYLES_SIMPLE + """
-            </style>
-            <script>
-                """ + LEDupdate.UPDATE_SCRIPT + """
-            </script>
-        </head>
-        <body>
-        <div id="status-message" style="display:none; padding:10px; margin-bottom:16px; border-radius:5px;"></div>
-        <h1>LED Commander Control Panel 1.1</h1>
-        """ + LEDupdate.UPDATE_BAR_HTML + """
-        """
-        for action, fields in VALID_ACTIONS.items():
-            html += f'<div class="command-section">'
-            html += f'<h2>{action} Command</h2>'
-            html += '<form action="/command" method="post">'
-            html += f'<input type="hidden" name="Action" value="{action}"/>'
-            for field in fields:
-                html += f'<label for="{field}">{field}:</label><br>'
-                html += f'<input type="text" name="{field}" id="{field}"/><br><br>'
-            html += '<input type="submit" value="Send Command"/>'
-            html += '</form>'
-            html += '</div>'
-        html += """
-        </body>
-        </html>
-        """
-        return html
+        return LEDpanel.render_homepage(VALID_ACTIONS)
 
     app.run(host="0.0.0.0", port=port)
 
