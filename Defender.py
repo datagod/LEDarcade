@@ -242,6 +242,11 @@ CheckTime        = 60
 #------------------------------
 
 
+def is_alive(sprite):
+    """Return True whether alive is stored as bool or 1/0."""
+    return sprite.alive in (True, 1)
+
+
 def get_alive_human_coords_with_target(Humans, def_h, def_v):
     human_h = []
     human_v = []
@@ -249,7 +254,7 @@ def get_alive_human_coords_with_target(Humans, def_h, def_v):
     min_dist = 1e9
 
     for h in Humans:
-        if h.alive:
+        if is_alive(h):
             human_h.append(h.h)
             human_v.append(h.v)
 
@@ -920,7 +925,7 @@ def AddEnemyShips(EnemyShips,ShipType,ShipCount,Ground,DefenderPlayfield):
     #We might have to let garbage cleanup determine if they are alive or not
     #otherwise the counts get messed up
     #Update total enemy count
-    EnemyShipCount = sum(1 for e in EnemyShips if e.alive == 1)
+    EnemyShipCount = sum(1 for e in EnemyShips if is_alive(e))
     
   return EnemyShips, EnemyShipCount, DefenderPlayfield
 
@@ -941,7 +946,7 @@ def AddHumans(Humans,NewHumanCount,Ground,DefenderPlayfield):
     TheSprite   = LED.HumanSprite
     TheSprite.h = random.randint(63,DefenderWorldWidth)
     TheSprite.v = random.randint(16,LED.HatHeight-1)
-    TheSprite.alive == True
+    TheSprite.alive = True
     
     if(random.randint(0,1) == 1):
       TheSprite.direction = 1
@@ -952,7 +957,7 @@ def AddHumans(Humans,NewHumanCount,Ground,DefenderPlayfield):
     DefenderPlayfield.CopyAnimatedSpriteToPlayfield(Humans[count].h,Humans[count].v,Humans[count])
   
     #HumanCount = len(Humans)
-    HumanCount = sum(1 for h in Humans if h.alive == 1)
+    HumanCount = sum(1 for h in Humans if is_alive(h))
 
   return Humans,HumanCount, DefenderPlayfield
 
@@ -1377,6 +1382,115 @@ def FlattenGround(h1,h2,v,Ground):
   return Ground
 
 
+def advance_wave(
+    fresh_wave,
+    WaveCount,
+    ShipType,
+    EnemyShips,
+    DefenderPlayfield,
+    Ground,
+    Background,
+    Middleground,
+    Foreground,
+    Canvas,
+    Defender,
+    bx,
+    mx,
+    fx,
+    gx,
+    ClockSprite,
+    EnemyCountSprite,
+    HumanCountSprite,
+):
+    """Run WAVE transition and spawn enemies. fresh_wave replaces the wave; otherwise reinforce."""
+    global EnemyShipCount, DefenderSpeed, ExplosionR, ExplosionG, ExplosionB
+
+    ShipType = ShipType + 1
+    if ShipType > 27:
+        ShipType = 0
+
+    ShipH = round((LED.HatWidth - LED.ShipSprites[ShipType].width) / 2)
+    ShipV = 11
+    LED.ShipSprites[ShipType].currentframe = round(LED.ShipSprites[ShipType].frames / 2)
+
+    print("bx mx fx gx:", bx, mx, fx, gx)
+    ScreenA = LED.PaintFourLayerScreenArray(bx, mx, fx, gx, Background, Middleground, Foreground, Ground, Canvas)
+    ScreenA = LED.CopySpriteToScreenArrayZoom(
+        ClockSprite, ClockSprite.h, ClockSprite.v, ClockSprite.rgb,
+        ZoomFactor=ClockZoom, InputScreenArray=ScreenA,
+    )
+    ScreenA = LED.CopySpriteToScreenArrayZoom(
+        EnemyCountSprite, EnemyCountH, EnemyCountV, (EnemyCountRGB), (0, 0, 0),
+        ZoomFactor=1, Fill=False, InputScreenArray=ScreenA,
+    )
+    ScreenA = LED.CopySpriteToScreenArrayZoom(
+        HumanCountSprite, HumanCountH, HumanCountV, (EnemyCountRGB), (0, 0, 0),
+        ZoomFactor=1, Fill=False, InputScreenArray=ScreenA,
+    )
+    ScreenA = LED.CopyAnimatedSpriteToScreenArrayZoom(
+        Defender, Defender.h, Defender.v, ZoomFactor=1, TheScreenArray=ScreenA,
+    )
+    print("Capturing ScreenA")
+    time.sleep(1)
+
+    m, r = divmod(WaveCount, RedrawGroundWaveCount)
+    if r == 0:
+        i = random.randint(0, GroundColorCount - 1)
+        GroundRGB, SurfaceRGB = GroundColorList[i]
+        print("** Redrawing Ground GroundRGB:", GroundRGB)
+        Ground.CreateMountains(GroundRGB, SurfaceRGB, maxheight=MaxMountainHeight)
+        ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(
+            SurfaceRGB, ExplosionBrightnessModifier,
+        )
+    else:
+        print("** Flattening Ground")
+        Ground = FlattenGround(0, Ground.width, MaxMountainHeight, Ground)
+
+    ScreenB = LED.PaintFourLayerScreenArray(bx, mx, fx, gx, Background, Middleground, Foreground, Ground, Canvas)
+    ScreenB = LED.CopyAnimatedSpriteToScreenArrayZoom(
+        Defender, Defender.h, Defender.v, ZoomFactor=1, TheScreenArray=ScreenB,
+    )
+
+    LED.TransitionBetweenScreenArrays(ScreenA, ScreenB, TransitionType=2)
+    print("Transition A --> B")
+    time.sleep(1)
+
+    Message = "WAVE " + str(WaveCount)
+    MessageBanner = LED.CreateBannerSprite(Message)
+    CursorH = round((LED.HatWidth - MessageBanner.width) / 2)
+    ScreenC, CursorH, CursorV = LED.TerminalTypeLine(
+        ScreenB, Message, CursorH=CursorH, CursorV=CursorV, MessageRGB=(0, 100, 0),
+        CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0), StartingLineFeed=1,
+        TypeSpeed=TerminalTypeSpeed, ScrollSpeed=TerminalTypeSpeed * 2,
+    )
+    ScreenD = LED.CopyAnimatedSpriteToScreenArrayZoom(
+        LED.ShipSprites[ShipType], ShipH, ShipV, ZoomFactor=2, TheScreenArray=ScreenC,
+    )
+    LED.TransitionBetweenScreenArrays(ScreenC, ScreenD, TransitionType=1)
+
+    if fresh_wave:
+        EnemyShips, DefenderPlayfield = CreateEnemyWave(
+            ShipType=ShipType, ShipCount=AddEnemyCount, Ground=Ground,
+            DefenderPlayfield=DefenderPlayfield,
+        )
+    else:
+        EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(
+            EnemyShips, ShipType=ShipType, ShipCount=AddEnemyCount, Ground=Ground,
+            DefenderPlayfield=DefenderPlayfield,
+        )
+
+    LED.TransitionBetweenScreenArrays(ScreenD, ScreenB, TransitionType=1)
+    DefenderSpeed = DefenderMinSpeed
+
+    return (
+        ShipType,
+        EnemyShips,
+        DefenderPlayfield,
+        Ground,
+        sum(1 for e in EnemyShips if is_alive(e)),
+    )
+
+
 def PlayDefender(Duration,StopEvent=None):      
  
   global EnemyShipCount
@@ -1393,18 +1507,17 @@ def PlayDefender(Duration,StopEvent=None):
   global DefenderDirection
   global DefenderReversing
 
-  finished            = 'N'
   LevelCount          = 0
   EnemyAliveCount     = 0
   OldEnemyAliveCount  = 0
   OldHumanCount       = 0
   WaveCount           = 1
-  
+  wave_enemies_spawned = False
+  last_wave_advance_time = 0
 
   #time
   random.seed()
   start_time       = time.time()
-  last_check_time  = time.time()
 
 
   ClockSprite   = LED.CreateClockSprite(24)
@@ -1564,6 +1677,8 @@ def PlayDefender(Duration,StopEvent=None):
   EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipType=ShipType,ShipCount=EnemyShipCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
   EnemyShipCountSprite = LED.CreateBannerSprite('E'+str(EnemyShipCount))
   Canvas, EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,'E',EnemyShipCount,Canvas)
+  wave_enemies_spawned = True
+  OldEnemyAliveCount = EnemyShipCount
   
   #Erase message
   LED.TransitionBetweenScreenArrays(NewScreenArray,BackgroundScreenArray,TransitionType=1,FadeSleep=0.08)
@@ -1642,17 +1757,6 @@ def PlayDefender(Duration,StopEvent=None):
       #main counter
       count = count + 1
 
-      #Count alive humans and enemies
-      if time.time() - last_check_time > 5:  # check every 5 seconds
-          last_check_time = time.time()
-
-          if all(not ship.alive for ship in EnemyShips) and all(not human.alive for human in Humans):
-              print("Level complete. All enemies and humans cleared.")
-              finished = 'Y'
-              break
-
-
-      
       #check the time once in a while
       if(random.randint(0,5000) == 1):
         if (ClockSprite.hhmm != datetime.now().strftime('%H:%M')):
@@ -1773,7 +1877,7 @@ def PlayDefender(Duration,StopEvent=None):
       #MoveHumans
       #for i in range (0,HumanCount):
       for Human in Humans:
-        if(Human.alive == True):
+        if is_alive(Human):
           OldH = Human.h
           OldV = Human.v
 
@@ -1840,7 +1944,7 @@ def PlayDefender(Duration,StopEvent=None):
       #for i in range (0,EnemyShipCount):
       for EnemyShip in EnemyShips:
 
-        if(EnemyShip.alive == True):
+        if is_alive(EnemyShip):
           OldH = EnemyShip.h
           OldV = EnemyShip.v
         
@@ -2307,7 +2411,8 @@ def PlayDefender(Duration,StopEvent=None):
 
 
       #Add display
-      EnemyAliveCount = sum(1 for e in EnemyShips if e.alive == 1)
+      EnemyAliveCount = sum(1 for e in EnemyShips if is_alive(e))
+      EnemyShipCount = EnemyAliveCount
       
       #Only change display sprite if the count changes
       if(OldEnemyAliveCount != EnemyAliveCount):
@@ -2316,10 +2421,26 @@ def PlayDefender(Duration,StopEvent=None):
       else:
         Canvas = LED.CopySpriteToCanvasZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
 
-
+      # Level clear: all enemy ships destroyed (humans may still be alive).
+      if (wave_enemies_spawned and EnemyAliveCount == 0 and len(EnemyShips) > 0
+              and time.time() - last_wave_advance_time > 1):
+          LevelCount += 1
+          WaveCount += 1
+          print(f"[Defender] Level complete. Advancing to wave {WaveCount}.")
+          last_wave_advance_time = time.time()
+          ShipType, EnemyShips, DefenderPlayfield, Ground, EnemyAliveCount = advance_wave(
+              True, WaveCount, ShipType, EnemyShips, DefenderPlayfield, Ground,
+              Background, Middleground, Foreground, Canvas, Defender,
+              bx, mx, fx, gx, ClockSprite, EnemyCountSprite, HumanCountSprite,
+          )
+          EnemyShipCount = EnemyAliveCount
+          OldEnemyAliveCount = -1
+          wave_enemies_spawned = True
+          Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
+          continue
 
       #Human counts
-      HumanCount = sum(1 for h in Humans if h.alive == 1)
+      HumanCount = sum(1 for h in Humans if is_alive(h))
       #Only change display if the count changes
       if(OldHumanCount != HumanCount):
         Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,'H', HumanCount,Canvas)
@@ -2348,73 +2469,18 @@ def PlayDefender(Duration,StopEvent=None):
       #-- Add more enemies           --
       #--------------------------------
 
-      if(EnemyShipCount <= SpawnNewEnemiesTargetCount):
-        ShipType = ShipType + 1
-        if (ShipType > 27):
-          ShipType = 0
-        
+      if (0 < EnemyAliveCount <= SpawnNewEnemiesTargetCount
+              and time.time() - last_wave_advance_time > 1):
         WaveCount = WaveCount + 1
-
-        #Display message
-        CursorH = 10
-        CursorV = 2
-        ShipH   = round((LED.HatWidth - LED.ShipSprites[ShipType].width) / 2 )
-        ShipV   = 11
-        LED.ShipSprites[ShipType].currentframe = round(LED.ShipSprites[ShipType].frames / 2)
-
-
-        #Capture new ground and sprites BEFORE
-        print("bx mx fx gx:",bx,mx,fx,gx)
-        ScreenA = LED.PaintFourLayerScreenArray(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
-        ScreenA = LED.CopySpriteToScreenArrayZoom(ClockSprite,ClockSprite.h,ClockSprite.v,ClockSprite.rgb,ZoomFactor=ClockZoom,InputScreenArray=ScreenA)
-        ScreenA = LED.CopySpriteToScreenArrayZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,InputScreenArray=ScreenA)
-        ScreenA = LED.CopySpriteToScreenArrayZoom(HumanCountSprite,HumanCountH,HumanCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,InputScreenArray=ScreenA)
-        ScreenA = LED.CopyAnimatedSpriteToScreenArrayZoom(Defender,Defender.h,Defender.v,ZoomFactor=1,TheScreenArray=ScreenA)
-        print("Capturing ScreenA")
-        time.sleep(1)
-
-        #Redraw ground every X waves
-        m,r = divmod(WaveCount,RedrawGroundWaveCount)
-        if(r == 0):
-          i = random.randint(0,GroundColorCount -1)
-          GroundRGB, SurfaceRGB      = GroundColorList[i]
-          GroundR,GroundG,GroundB    = GroundRGB
-          SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
-          ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
-          print("** Redrawing Ground GroundRGB:",GroundRGB)
-
-          Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
-
-        else:
-          print("** Flattening Ground")
-          Ground = FlattenGround(0,Ground.width,MaxMountainHeight,Ground)
-
-        #capture new ground and sprites AFTER
-        ScreenB = LED.PaintFourLayerScreenArray(bx,mx,fx,gx,Background,Middleground,Foreground,Ground,Canvas)
-        ScreenB = LED.CopyAnimatedSpriteToScreenArrayZoom(Defender,Defender.h,Defender.v,ZoomFactor=1,TheScreenArray=ScreenB)
-
-        #transition old to new
-        LED.TransitionBetweenScreenArrays(ScreenA,ScreenB,TransitionType=2)
-        print("Transition A --> B")
-        time.sleep(1)
-
-        #Show message
-        Message        = "WAVE " + str(WaveCount)
-        MessageBanner  = LED.CreateBannerSprite(Message)  #to determine the length in pixels
-        CursorH        = round((LED.HatWidth - MessageBanner.width) / 2 )
-        ScreenC,CursorH,CursorV = LED.TerminalTypeLine(ScreenB,Message,CursorH=CursorH,CursorV=CursorV,MessageRGB=(0,100,0),CursorRGB=(0,255,0),CursorDarkRGB=(0,50,0),StartingLineFeed=1,TypeSpeed=TerminalTypeSpeed,ScrollSpeed=TerminalTypeSpeed*2)
-        ScreenD        = LED.CopyAnimatedSpriteToScreenArrayZoom(LED.ShipSprites[ShipType],ShipH,ShipV,ZoomFactor=2,TheScreenArray=ScreenC)
-        LED.TransitionBetweenScreenArrays(ScreenC,ScreenD,TransitionType=1)
-        
-        #add enemy ships
-        EnemyShips, EnemyShipCount, DefenderPlayfield = AddEnemyShips(EnemyShips, ShipType=ShipType,ShipCount=AddEnemyCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
-
-        #Erase message
-        LED.TransitionBetweenScreenArrays(ScreenD,ScreenB,TransitionType=1)        
-
-
-        #Reset Defender Speed
-        DefenderSpeed = DefenderMinSpeed
+        last_wave_advance_time = time.time()
+        print(f"[Defender] Reinforcements for wave {WaveCount}.")
+        ShipType, EnemyShips, DefenderPlayfield, Ground, EnemyAliveCount = advance_wave(
+            False, WaveCount, ShipType, EnemyShips, DefenderPlayfield, Ground,
+            Background, Middleground, Foreground, Canvas, Defender,
+            bx, mx, fx, gx, ClockSprite, EnemyCountSprite, HumanCountSprite,
+        )
+        EnemyShipCount = EnemyAliveCount
+        OldEnemyAliveCount = -1
 
 
 
@@ -2436,7 +2502,7 @@ def PlayDefender(Duration,StopEvent=None):
       if random.randint(0, GarbageCleanupChance) == 1:
           EnemyShips = [
               ship for ship in EnemyShips
-              if ship.alive or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
+              if is_alive(ship) or (DeleteH <= ship.h <= DisplayH + LED.HatWidth)
           ]
           #print("Garbage cleanup EnemyShips:", len(EnemyShips))
 
@@ -2454,7 +2520,7 @@ def PlayDefender(Duration,StopEvent=None):
 
       if random.randint(0, GarbageCleanupChance) == 1:
           # Clean up dead humans
-          Humans = [h for h in Humans if h.alive]
+          Humans = [h for h in Humans if is_alive(h)]
 
           # Optional debug print
           # print("Garbage cleanup Human count:", len(Humans))
