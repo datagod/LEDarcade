@@ -11,6 +11,8 @@ import requests
 
 KeyConfigFileName = "KeyConfig.ini"
 DEFAULT_LOCATION = "Ottawa"
+WEATHER_TYPE_SPEED = 0.064  # 25% faster than default terminal TypeSpeed of 0.08
+WEATHER_SCROLL_REPEAT = 2
 
 
 def CheckConfigFiles():

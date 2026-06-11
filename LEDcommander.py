@@ -131,7 +131,7 @@ VALID_WEB_ACTIONS = {
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
     "terminalmessage": ["Message", "RGB", "ScrollSleep"],
     "terminalmode_off": [],
-    "weatherterminal": ["Location", "Units", "duration", "RGB", "ScrollSleep"],
+    "weatherterminal": ["Location", "Units", "duration", "RGB", "ScrollSleep", "TypeSpeed", "Repeat"],
     "showheart": [],
     "showintro": [],
     "showonair": ["duration"],
@@ -188,6 +188,17 @@ def sanitize_web_command(data, action):
     if action == "weatherterminal":
         import WeatherClock as WC
         data["Units"] = WC.NormalizeUnits(data.get("Units", "F"))
+        for key in ["TypeSpeed", "ScrollSleep"]:
+            if key in data:
+                try:
+                    data[key] = float(data[key])
+                except ValueError:
+                    pass
+        if "Repeat" in data:
+            try:
+                data["Repeat"] = max(int(data["Repeat"]), 1)
+            except ValueError:
+                data["Repeat"] = WC.WEATHER_SCROLL_REPEAT
 
     if action == "launch_stockticker" and "symbols" in data:
         if isinstance(data["symbols"], str):
@@ -663,6 +674,8 @@ def Run(CommandQueue):
                     "Message": report,
                     "RGB": Command.get("RGB", (0, 200, 0)),
                     "ScrollSleep": Command.get("ScrollSleep", 0.05),
+                    "TypeSpeed": Command.get("TypeSpeed", WC.WEATHER_TYPE_SPEED),
+                    "Repeat": Command.get("Repeat", WC.WEATHER_SCROLL_REPEAT),
                 })
 
                 def _stop_weather_terminal():
@@ -1053,15 +1066,18 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                 if isinstance(msg, str):
                     rgb = Command.get("RGB", (255, 255, 255))
                     scroll_speed = Command.get("ScrollSleep", 0.05)
-                    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                        LED.ScreenArray, msg,
-                        CursorH=CursorH, CursorV=CursorV,
-                        MessageRGB=rgb,
-                        CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-                        StartingLineFeed=1,
-                        TypeSpeed=TerminalTypeSpeed,
-                        ScrollSpeed=scroll_speed
-                    )
+                    type_speed = Command.get("TypeSpeed", TerminalTypeSpeed)
+                    repeat = max(int(Command.get("Repeat", 1)), 1)
+                    for _ in range(repeat):
+                        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                            LED.ScreenArray, msg,
+                            CursorH=CursorH, CursorV=CursorV,
+                            MessageRGB=rgb,
+                            CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                            StartingLineFeed=1,
+                            TypeSpeed=type_speed,
+                            ScrollSpeed=scroll_speed
+                        )
                 else:
                     print("[TerminalMode] Skipped invalid or missing 'Message'.")
 
