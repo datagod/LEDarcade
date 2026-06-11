@@ -86,6 +86,7 @@ import time
 import traceback
 import random
 import itertools  # for generator function
+import threading
 
 from multiprocessing import Event, Process, Queue
 import queue
@@ -130,6 +131,7 @@ VALID_WEB_ACTIONS = {
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
     "terminalmessage": ["Message", "RGB", "ScrollSleep"],
     "terminalmode_off": [],
+    "weatherterminal": ["Location", "duration", "RGB", "ScrollSleep"],
     "showheart": [],
     "showintro": [],
     "showonair": ["duration"],
@@ -634,6 +636,35 @@ def Run(CommandQueue):
                     CurrentDisplayMode = "terminal"
                     DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
                     DisplayProcess.start()
+
+
+            elif Action == "weatherterminal":
+                import WeatherClock as WC
+
+                location = WC.LoadWeatherLocation(Command.get("Location", ""))
+                report = WC.FetchWeatherReport(location)
+                duration = Command.get("duration", 5)
+                terminal_action = "terminalmessage" if (
+                    DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal"
+                ) else "terminalmode_on"
+
+                print(f"[LEDcommander] Queueing weather via {terminal_action} for {location}")
+
+                if terminal_action == "terminalmode_on":
+                    stop_current_display(Action)
+
+                CommandQueue.put({
+                    "Action": terminal_action,
+                    "Message": report,
+                    "RGB": Command.get("RGB", (0, 200, 0)),
+                    "ScrollSleep": Command.get("ScrollSleep", 0.05),
+                })
+
+                def _stop_weather_terminal():
+                    time.sleep(max(duration, 1) * 60)
+                    CommandQueue.put({"Action": "terminalmode_off"})
+
+                threading.Thread(target=_stop_weather_terminal, daemon=True).start()
 
 
             elif Action == "terminalmessage":
