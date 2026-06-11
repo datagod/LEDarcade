@@ -669,14 +669,24 @@ def Run(CommandQueue):
                 if terminal_action == "terminalmode_on":
                     stop_current_display(Action)
 
-                CommandQueue.put({
+                terminal_cmd = {
                     "Action": terminal_action,
-                    "Message": report,
                     "RGB": Command.get("RGB", (0, 200, 0)),
                     "ScrollSleep": Command.get("ScrollSleep", 0.05),
                     "TypeSpeed": Command.get("TypeSpeed", WC.WEATHER_TYPE_SPEED),
                     "Repeat": Command.get("Repeat", WC.WEATHER_SCROLL_REPEAT),
-                })
+                    "HeaderRGB": WC.WEATHER_HEADER_RGB,
+                }
+                if isinstance(report, dict):
+                    terminal_cmd["MessageHeader"] = report.get("header", "")
+                    terminal_cmd["MessageBody"] = report.get("body", "")
+                    terminal_cmd["Message"] = " ".join(
+                        part for part in [report.get("header", ""), report.get("body", "")] if part
+                    )
+                else:
+                    terminal_cmd["Message"] = report
+
+                CommandQueue.put(terminal_cmd)
 
                 def _stop_weather_terminal():
                     time.sleep(max(duration, 1) * 60)
@@ -1068,16 +1078,51 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                     scroll_speed = Command.get("ScrollSleep", 0.05)
                     type_speed = Command.get("TypeSpeed", TerminalTypeSpeed)
                     repeat = max(int(Command.get("Repeat", 1)), 1)
-                    for _ in range(repeat):
-                        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                            LED.ScreenArray, msg,
-                            CursorH=CursorH, CursorV=CursorV,
-                            MessageRGB=rgb,
-                            CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-                            StartingLineFeed=1,
-                            TypeSpeed=type_speed,
-                            ScrollSpeed=scroll_speed
-                        )
+                    header = Command.get("MessageHeader", "")
+                    body = Command.get("MessageBody", "")
+                    header_rgb = Command.get("HeaderRGB", (200, 200, 0))
+
+                    for repeat_index in range(repeat):
+                        if header and body:
+                            LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                LED.ScreenArray, header,
+                                CursorH=CursorH, CursorV=CursorV,
+                                MessageRGB=header_rgb,
+                                CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                StartingLineFeed=1,
+                                TypeSpeed=type_speed,
+                                ScrollSpeed=scroll_speed
+                            )
+                            LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                LED.ScreenArray, body,
+                                CursorH=CursorH, CursorV=CursorV,
+                                MessageRGB=rgb,
+                                CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                StartingLineFeed=0,
+                                TypeSpeed=type_speed,
+                                ScrollSpeed=scroll_speed
+                            )
+                        else:
+                            LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                LED.ScreenArray, msg,
+                                CursorH=CursorH, CursorV=CursorV,
+                                MessageRGB=rgb,
+                                CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                StartingLineFeed=1,
+                                TypeSpeed=type_speed,
+                                ScrollSpeed=scroll_speed
+                            )
+
+                        if repeat_index < repeat - 1:
+                            LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                LED.ScreenArray, "",
+                                CursorH=CursorH, CursorV=CursorV,
+                                MessageRGB=rgb,
+                                CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                StartingLineFeed=1,
+                                TypeSpeed=0,
+                                ScrollSpeed=scroll_speed
+                            )
                 else:
                     print("[TerminalMode] Skipped invalid or missing 'Message'.")
 

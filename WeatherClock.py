@@ -13,6 +13,7 @@ KeyConfigFileName = "KeyConfig.ini"
 DEFAULT_LOCATION = "Ottawa"
 WEATHER_TYPE_SPEED = 0.064  # 25% faster than default terminal TypeSpeed of 0.08
 WEATHER_SCROLL_REPEAT = 2
+WEATHER_HEADER_RGB = (200, 200, 0)
 
 
 def CheckConfigFiles():
@@ -69,7 +70,7 @@ def FetchWeatherReport(location, units="F"):
         data = response.json()
     except Exception as error:
         print(f"[WeatherClock] Fetch failed for '{location}': {error}")
-        return f"Weather unavailable for {location}. {error}"
+        return {"header": "", "body": f"Weather unavailable for {location}. {error}"}
 
     try:
         area = data["nearest_area"][0]["areaName"][0]["value"]
@@ -98,8 +99,7 @@ def FetchWeatherReport(location, units="F"):
         humidity = current.get("humidity", "?")
         wind_dir = current.get("winddir16Point", "")
 
-        parts = [
-            f"Weather for {area}.",
+        body_parts = [
             f"Now {temp}{temp_label}, {condition}.",
             f"Feels like {feels}{temp_label}.",
             f"Humidity {humidity}%.",
@@ -115,12 +115,14 @@ def FetchWeatherReport(location, units="F"):
                 tomorrow_high = tomorrow.get("maxtempF", "?")
                 tomorrow_low = tomorrow.get("mintempF", "?")
             tomorrow_desc = tomorrow["hourly"][4]["weatherDesc"][0]["value"]
-            parts.append(
+            body_parts.append(
                 f"Tomorrow {tomorrow_desc}, high {tomorrow_high}{temp_label}, low {tomorrow_low}{temp_label}."
             )
 
-        return " ".join(parts)
+        header = f"Weather for {area}."
+        body = " ".join(body_parts)
+        return {"header": header, "body": body}
     except Exception as error:
         print(f"[WeatherClock] Parse error: {error}")
         traceback.print_exc()
-        return f"Weather data parse error for {location}."
+        return {"header": "", "body": f"Weather data parse error for {location}."}
