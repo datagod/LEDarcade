@@ -13,6 +13,7 @@ KeyConfigFileName = "KeyConfig.ini"
 DEFAULT_LOCATION = "Franktown"
 WEATHER_TYPE_SPEED = 0.064  # 25% faster than default terminal TypeSpeed of 0.08
 WEATHER_SCROLL_REPEAT = 2
+WEATHER_POST_SCROLL_WAIT = 30  # seconds to idle after scrolling before exiting
 WEATHER_HEADER_RGB = (200, 200, 0)
 
 

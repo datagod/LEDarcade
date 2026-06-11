@@ -86,7 +86,7 @@ import time
 import traceback
 import random
 import itertools  # for generator function
-import threading
+
 
 from multiprocessing import Event, Process, Queue
 import queue
@@ -131,7 +131,7 @@ VALID_WEB_ACTIONS = {
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
     "terminalmessage": ["Message", "RGB", "ScrollSleep"],
     "terminalmode_off": [],
-    "weatherterminal": ["Location", "Units", "duration", "RGB", "ScrollSleep", "TypeSpeed", "Repeat"],
+    "weatherterminal": ["Location", "Units", "RGB", "ScrollSleep", "TypeSpeed", "Repeat", "PostScrollWait"],
     "showheart": [],
     "showintro": [],
     "showonair": ["duration"],
@@ -199,6 +199,11 @@ def sanitize_web_command(data, action):
                 data["Repeat"] = max(int(data["Repeat"]), 1)
             except ValueError:
                 data["Repeat"] = WC.WEATHER_SCROLL_REPEAT
+        if "PostScrollWait" in data:
+            try:
+                data["PostScrollWait"] = max(float(data["PostScrollWait"]), 0)
+            except ValueError:
+                data["PostScrollWait"] = WC.WEATHER_POST_SCROLL_WAIT
 
     if action == "launch_stockticker" and "symbols" in data:
         if isinstance(data["symbols"], str):
@@ -280,7 +285,7 @@ def fallback_action_generator():
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 10, "Delay": 30},  
         {"Action": "launch_defender", "duration": 10},
         {"Action": "analogclock", "duration": 10 },
-        {"Action": "weatherterminal", "duration": 10},
+        {"Action": "weatherterminal"},
 
         {"Action": "launch_dotinvaders", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
@@ -660,7 +665,6 @@ def Run(CommandQueue):
                 location = WC.LoadWeatherLocation(Command.get("Location", ""))
                 units = WC.NormalizeUnits(Command.get("Units", "F"))
                 report = WC.FetchWeatherReport(location, units=units)
-                duration = Command.get("duration", 5)
                 terminal_action = "terminalmessage" if (
                     DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal"
                 ) else "terminalmode_on"
@@ -676,6 +680,7 @@ def Run(CommandQueue):
                     "ScrollSleep": Command.get("ScrollSleep", 0.05),
                     "TypeSpeed": Command.get("TypeSpeed", WC.WEATHER_TYPE_SPEED),
                     "Repeat": Command.get("Repeat", WC.WEATHER_SCROLL_REPEAT),
+                    "PostScrollWait": Command.get("PostScrollWait", WC.WEATHER_POST_SCROLL_WAIT),
                     "HeaderRGB": WC.WEATHER_HEADER_RGB,
                 }
                 if isinstance(report, dict):
@@ -688,12 +693,6 @@ def Run(CommandQueue):
                     terminal_cmd["Message"] = report
 
                 CommandQueue.put(terminal_cmd)
-
-                def _stop_weather_terminal():
-                    time.sleep(max(duration, 1) * 60)
-                    CommandQueue.put({"Action": "terminalmode_off"})
-
-                threading.Thread(target=_stop_weather_terminal, daemon=True).start()
 
 
             elif Action == "terminalmessage":
@@ -1124,11 +1123,32 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                                 TypeSpeed=0,
                                 ScrollSpeed=scroll_speed
                             )
+
+                    post_scroll_wait = Command.get("PostScrollWait")
+                    if post_scroll_wait is not None and post_scroll_wait > 0:
+                        print(f"[TerminalMode] Post-scroll wait: {post_scroll_wait}s")
+                        wait_end = time.time() + float(post_scroll_wait)
+                        while time.time() < wait_end and not StopEvent.is_set():
+                            LED.BlinkCursor(
+                                CursorH=CursorH,
+                                CursorV=CursorV,
+                                CursorRGB=CursorRGB,
+                                CursorDarkRGB=CursorDarkRGB,
+                                BlinkSpeed=0.50,
+                                BlinkCount=2
+                            )
+                        if not StopEvent.is_set():
+                            _StopTerminalMode()
+                            StopEvent.set()
+                            break
                 else:
                     print("[TerminalMode] Skipped invalid or missing 'Message'.")
 
         except Exception as e:
             print(f"[TerminalMode] Error: {e}")
+
+        if StopEvent.is_set():
+            break
 
         LED.BlinkCursor(
             CursorH=CursorH,
