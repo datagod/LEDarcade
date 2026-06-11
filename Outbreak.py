@@ -223,6 +223,17 @@ class FastRandom:
 VIRUS_DIRECTIONS = 32
 VIRUS_ANGLE_STEP = 2 * math.pi / VIRUS_DIRECTIONS
 VIRUS_QUARTER_TURN = VIRUS_DIRECTIONS // 4
+# Eight grid neighbors; 32 fine headings map to 4 headings per neighbor.
+VIRUS_GRID_NEIGHBORS = (
+    (0, -1),   # N
+    (1, -1),   # NE
+    (1, 0),    # E
+    (1, 1),    # SE
+    (0, 1),    # S
+    (-1, 1),   # SW
+    (-1, 0),   # W
+    (-1, -1),  # NW
+)
 
 
 def _normalize_direction(direction):
@@ -230,13 +241,21 @@ def _normalize_direction(direction):
 
 
 def direction_to_offsets(direction):
+    """Map a fine 32-way heading to the best single grid step (8 neighbors)."""
     idx = _normalize_direction(direction) - 1
     angle = idx * VIRUS_ANGLE_STEP
-    dh = int(round(math.sin(angle)))
-    dv = int(round(-math.cos(angle)))
-    if dh == 0 and dv == 0:
-        dv = -1
-    return dh, dv
+    sin_a = math.sin(angle)
+    north_v = -math.cos(angle)
+
+    best_dh, best_dv = VIRUS_GRID_NEIGHBORS[0]
+    best_score = -2.0
+    for dh, dv in VIRUS_GRID_NEIGHBORS:
+        mag = math.hypot(dh, dv)
+        score = (dh * sin_a + dv * north_v) / mag
+        if score > best_score:
+            best_score = score
+            best_dh, best_dv = dh, dv
+    return best_dh, best_dv
 
 
 def CalculateDotMovement32Way(h, v, direction):
