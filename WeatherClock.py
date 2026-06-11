@@ -10,7 +10,7 @@ from configparser import ConfigParser
 import requests
 
 KeyConfigFileName = "KeyConfig.ini"
-DEFAULT_LOCATION = "Ottawa"
+DEFAULT_LOCATION = "Franktown"
 WEATHER_TYPE_SPEED = 0.064  # 25% faster than default terminal TypeSpeed of 0.08
 WEATHER_SCROLL_REPEAT = 2
 WEATHER_HEADER_RGB = (200, 200, 0)
@@ -23,7 +23,7 @@ def CheckConfigFiles():
     try:
         with open(KeyConfigFileName, "a+") as config_file:
             config_file.write("[KEYS]\n")
-            config_file.write("WEATHER_LOCATION = Ottawa\n")
+            config_file.write("WEATHER_LOCATION = Franktown\n")
             config_file.write("\n")
         print(f"[WeatherClock] Created default {KeyConfigFileName}")
     except Exception as error:

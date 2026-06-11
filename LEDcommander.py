@@ -280,6 +280,7 @@ def fallback_action_generator():
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 10, "Delay": 30},  
         {"Action": "launch_defender", "duration": 10},
         {"Action": "analogclock", "duration": 10 },
+        {"Action": "weatherterminal", "duration": 10},
 
         {"Action": "launch_dotinvaders", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
