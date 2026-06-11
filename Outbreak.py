@@ -1163,40 +1163,136 @@ class Virus(object):
 
 
 
-        
+# Lump-blob obstacle parameters (aligned with Blasteroids.Asteroid)
+OBSTACLE_LIGHTING_CONTRAST = 1
+OBSTACLE_COLOR_MIN_BRIGHTNESS = 100
+OBSTACLE_COLOR_MAX_BRIGHTNESS = 250
+OBSTACLE_COLOR_OPTIONS = [
+    (OBSTACLE_COLOR_MIN_BRIGHTNESS, OBSTACLE_COLOR_MIN_BRIGHTNESS, OBSTACLE_COLOR_MIN_BRIGHTNESS),
+    (OBSTACLE_COLOR_MIN_BRIGHTNESS, OBSTACLE_COLOR_MIN_BRIGHTNESS, OBSTACLE_COLOR_MAX_BRIGHTNESS),
+    (OBSTACLE_COLOR_MAX_BRIGHTNESS, 0, OBSTACLE_COLOR_MAX_BRIGHTNESS),
+]
+OBSTACLE_SHADING_GRADIENT = ['-', '.', '.', '.', 'o', 'O', '@', '#', '$', '*']
+
+
+def _rng_uniform(rng, low, high):
+    return low + rng.random() * (high - low)
+
+
+def generate_random_lumps(rng, count_min=3, count_max=6):
+    """Random overlapping circles — same layout as Blasteroids.Asteroid."""
+    lumps = []
+    for _ in range(rng.randint(count_min, count_max)):
+        angle = _rng_uniform(rng, 0, 2 * math.pi)
+        distance_frac = _rng_uniform(rng, 0, 0.5)
+        lump_radius_frac = _rng_uniform(rng, 0.2, 0.5)
+        lumps.append((
+            math.cos(angle) * distance_frac,
+            math.sin(angle) * distance_frac,
+            lump_radius_frac,
+        ))
+    return lumps
+
+
+def pick_obstacle_base_color(rng):
+    """Same grey / blue / purple roll as Blasteroids asteroids."""
+    roll = rng.random()
+    if roll < 0.9:
+        return OBSTACLE_COLOR_OPTIONS[0]
+    if roll < 0.95:
+        return OBSTACLE_COLOR_OPTIONS[1]
+    return OBSTACLE_COLOR_OPTIONS[2]
+
+
+def _pixel_luminance(r, g, b):
+    return int(0.299 * r + 0.587 * g + 0.114 * b)
+
+
+def luminance_to_shade_char(luminance, gradient, color_list):
+    """Map a shaded grey value to the nearest Outbreak wall character."""
+    best_char = gradient[0]
+    best_diff = 9999
+    for ch in gradient:
+        cr, cg, cb = color_list.get(ch, (0, 0, 0))
+        diff = abs(luminance - cr)
+        if diff < best_diff:
+            best_diff = diff
+            best_char = ch
+    return best_char
+
+
+def compute_lump_blob_luminance(i, j, size, lumps, base_color):
+    """Blasteroids lump union + diagonal shading, returning grey luminance or None."""
+    max_depth = -1
+    selected_lump = None
+    for lump in lumps:
+        frac_dx, frac_dy, frac_r = lump
+        effective_dx = frac_dx * size
+        effective_dy = frac_dy * size
+        effective_radius = frac_r * size
+        distance = math.sqrt((i - effective_dx) ** 2 + (j - effective_dy) ** 2)
+        if distance < effective_radius:
+            depth = effective_radius - distance
+            if depth > max_depth:
+                max_depth = depth
+                selected_lump = lump
+    if not selected_lump:
+        return None
+
+    frac_dx, frac_dy, frac_r = selected_lump
+    effective_dx = frac_dx * size
+    effective_dy = frac_dy * size
+    effective_radius = frac_r * size
+    rel_i = i - effective_dx
+    rel_j = j - effective_dy
+    brightness_factor = 1.0 - OBSTACLE_LIGHTING_CONTRAST * (rel_i + rel_j) / (2 * effective_radius)
+    brightness_factor = max(0.5, min(1.5, brightness_factor))
+    r, g, b = base_color
+    r_out = min(255, int(r * brightness_factor))
+    g_out = min(255, int(g * brightness_factor))
+    b_out = min(255, int(b * brightness_factor))
+    return _pixel_luminance(r_out, g_out, b_out)
+
+
+def stamp_lump_blob_on_grid(grid, center_x, center_y, size, lumps, base_color, shading_gradient, color_list):
+    """Bake one lump blob into the ASCII map at map-generation time."""
+    bounding_size = int(size * 1.2)
+    height = len(grid)
+    width = len(grid[0])
+    for i in range(-bounding_size, bounding_size + 1):
+        for j in range(-bounding_size, bounding_size + 1):
+            gx = center_x + i
+            gy = center_y + j
+            if gx < 1 or gy < 1 or gx >= width - 1 or gy >= height - 1:
+                continue
+            luminance = compute_lump_blob_luminance(i, j, size, lumps, base_color)
+            if luminance is None:
+                continue
+            grid[gy][gx] = luminance_to_shade_char(luminance, shading_gradient, color_list)
+
+
 def CreateSimpleObstacleMap(width, height, block_count=8, min_size=4, max_size=8, virus_count=10):
     
     global fast_rng
 
-    #shading_gradient = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
-    shading_gradient = ['-', '.', '.', '.', 'o', 'O', '@', '#', '$', '*']
+    shading_gradient = OBSTACLE_SHADING_GRADIENT
+    color_list = VirusWorld.DefaultColorList
 
-    
     hall = ' '
     border = '='
 
     grid = [[hall for _ in range(width)] for _ in range(height)]
 
     for _ in range(block_count):
-        w = fast_rng.randint(min_size, max_size)
-        h = fast_rng.randint(min_size, max_size)
-        x = fast_rng.randint(1, width - w - 2)
-        y = fast_rng.randint(1, height - h - 2)
-
-        cx, cy = w / 2, h / 2
-        max_dist = ((cx) ** 2 + (cy) ** 2) ** 0.5
-
-        for dy in range(h):
-            for dx in range(w):
-                gx = x + dx
-                gy = y + dy
-
-                if (dx == 0 and dy == 0) or (dx == 0 and dy == h - 1) or (dx == w - 1 and dy == 0) or (dx == w - 1 and dy == h - 1):
-                    continue  # rounded corner
-
-                dist = ((dx - cx) ** 2 + (dy - cy) ** 2) ** 0.5
-                shade_index = int((dist / max_dist) * (len(shading_gradient) - 1))
-                grid[gy][gx] = shading_gradient[shade_index]
+        size = fast_rng.randint(min_size, max_size)
+        lumps = generate_random_lumps(fast_rng)
+        base_color = pick_obstacle_base_color(fast_rng)
+        bounding_size = int(size * 1.2)
+        center_x = fast_rng.randint(1 + bounding_size, width - bounding_size - 2)
+        center_y = fast_rng.randint(1 + bounding_size, height - bounding_size - 2)
+        stamp_lump_blob_on_grid(
+            grid, center_x, center_y, size, lumps, base_color, shading_gradient, color_list,
+        )
 
     # Borders
     for x in range(width):
