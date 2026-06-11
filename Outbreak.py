@@ -215,6 +215,89 @@ class FastRandom:
 
 
 #--------------------------------------
+# 32-way virus movement              --
+#--------------------------------------
+# Directions 1-32, 11.25° per step.  Direction 1 = North (v-1).
+# Eight steps (45°) match one legacy 8-way turn.
+
+VIRUS_DIRECTIONS = 32
+VIRUS_ANGLE_STEP = 2 * math.pi / VIRUS_DIRECTIONS
+VIRUS_QUARTER_TURN = VIRUS_DIRECTIONS // 4
+
+
+def _normalize_direction(direction):
+    return ((int(direction) - 1) % VIRUS_DIRECTIONS) + 1
+
+
+def direction_to_offsets(direction):
+    idx = _normalize_direction(direction) - 1
+    angle = idx * VIRUS_ANGLE_STEP
+    dh = int(round(math.sin(angle)))
+    dv = int(round(-math.cos(angle)))
+    if dh == 0 and dv == 0:
+        dv = -1
+    return dh, dv
+
+
+def CalculateDotMovement32Way(h, v, direction):
+    dh, dv = direction_to_offsets(direction)
+    return h + dh, v + dv
+
+
+def TurnLeft32Way(direction, steps=1):
+    return ((int(direction) - 1 - steps) % VIRUS_DIRECTIONS) + 1
+
+
+def TurnRight32Way(direction, steps=1):
+    return ((int(direction) - 1 + steps) % VIRUS_DIRECTIONS) + 1
+
+
+def ReverseDirection32Way(direction):
+    return TurnRight32Way(direction, VIRUS_DIRECTIONS // 2)
+
+
+def PointTowardsObject32Way(sourceH, sourceV, targetH, targetV):
+    dh = targetH - sourceH
+    dv = targetV - sourceV
+    if dh == 0 and dv == 0:
+        if fast_rng is not None:
+            return fast_rng.randint(1, VIRUS_DIRECTIONS)
+        return random.randint(1, VIRUS_DIRECTIONS)
+    angle = math.atan2(dh, -dv)
+    if angle < 0:
+        angle += 2 * math.pi
+    idx = int(round(angle / VIRUS_ANGLE_STEP)) % VIRUS_DIRECTIONS
+    return idx + 1
+
+
+def TurnLeftOrRight32Way(direction):
+    which_way = random.randint(1, 4)
+    if which_way == 1:
+        return TurnLeft32Way(direction, VIRUS_QUARTER_TURN * 2)
+    if which_way == 2:
+        return TurnLeft32Way(direction, VIRUS_QUARTER_TURN)
+    if which_way == 3:
+        return TurnRight32Way(direction, VIRUS_QUARTER_TURN)
+    return TurnRight32Way(direction, VIRUS_QUARTER_TURN * 2)
+
+
+def TurnLeftOrRightTwice32Way(direction):
+    if random.randint(1, 2) == 1:
+        return TurnLeft32Way(direction, VIRUS_QUARTER_TURN * 2)
+    return TurnRight32Way(direction, VIRUS_QUARTER_TURN * 2)
+
+
+def TurnLeftScan32Way(direction):
+    """One legacy 8-way left diagonal step (45°)."""
+    return TurnLeft32Way(direction, VIRUS_QUARTER_TURN)
+
+
+def TurnRightScan32Way(direction):
+    """One legacy 8-way right diagonal step (45°)."""
+    return TurnRight32Way(direction, VIRUS_QUARTER_TURN)
+
+
+#--------------------------------------
 # VirusWorld                         --
 #--------------------------------------
 
@@ -405,7 +488,7 @@ class VirusWorld(object):
           
           #(h,v,dh,dv,r,g,b,direction,scandirection,speed,alive,lives,name,score,exploding,radarrange,destination,mutationtype,mutationrate, mutationfactor, replicationrate):
           self.Playfield[v][h] = Virus(h,v,0,0,r,g,b,1,1, self.VirusStartSpeed   ,1,10,VirusName,0,0,10,'West',0,self.mutationrate,0,self.replicationrate,self.mutationdeathrate)
-          #self.Playfield[y][x].direction = PointTowardsObject8Way(x,y,height/2,width/2)
+          #self.Playfield[y][x].direction = PointTowardsObject32Way(x,y,height/2,width/2)
 
           self.Viruses.append(self.Playfield[v][h])
         elif (dottype == "wall"):
@@ -494,7 +577,7 @@ class VirusWorld(object):
 
 
           #self.Playfield[y][x].direction = fast_rng.randint(1,8)
-          self.Playfield[y][x].direction = PointTowardsObject8Way(x,y,height/2,width/2)
+          self.Playfield[y][x].direction = PointTowardsObject32Way(x,y,height/2,width/2)
           self.Viruses.append(self.Playfield[y][x])
         else:
           #print ('EmptyObject')
@@ -1371,49 +1454,49 @@ def IsThereAVirusNearby_old(h,v,direction,VirusName,Playfield):
   
 
   #Scan in front
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   
   #Scan front right diagonal
-  ScanDirection = TurnRight8Way(ScanDirection)
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   #Scan right 
-  ScanDirection = TurnRight8Way(ScanDirection)
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   #Scan behind right diagonal
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   #We don't Scan behind because that is where the virus is!
-  ScanDirection = TurnRight8Way(ScanDirection)
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   #if (Playfield[ScanV][ScanH].name == VirusName):
   #  return 1;
 
 
   #Scan behind left diagonal
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
 
 
   #Scan left
-  ScanDirection = TurnRight8Way(TurnRight8Way(ScanDirection))
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRight32Way(ScanDirection, VIRUS_QUARTER_TURN * 2)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
 
   #Scan front left diagonal
-  ScanH, ScanV = CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
 
@@ -1449,34 +1532,34 @@ def VirusWorldScanAround_old(Virus,Playfield):
   #FlashDot2(h,v,0.005)
 
   #Scan in front
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,Virus.direction)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,Virus.direction)
   ItemList.append(Playfield[ScanV][ScanH].name)
   
   
   #Scan left diagonal
-  ScanDirection = LED.TurnLeft8Way(Virus.direction)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnLeftScan32Way(Virus.direction)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   ItemList.append(Playfield[ScanV][ScanH].name)
   
   #Scan right diagonal
-  ScanDirection = LED.TurnRight8Way(Virus.direction)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(Virus.direction)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   ItemList.append(Playfield[ScanV][ScanH].name)
   
   #Scan behind
-  ScanDirection = LED.ReverseDirection8Way(Virus.direction)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = ReverseDirection32Way(Virus.direction)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   ItemList.append(Playfield[ScanV][ScanH].name)
   
   #Scan left
-  ScanDirection = LED.TurnLeft8Way(LED.TurnLeft8Way(Virus.direction))
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnLeft32Way(Virus.direction, VIRUS_QUARTER_TURN * 2)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   ItemList.append(Playfield[ScanV][ScanH].name)
 
 
   #Scan right
-  ScanDirection = LED.TurnRight8Way(LED.TurnRight8Way(Virus.direction))
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRight32Way(Virus.direction, VIRUS_QUARTER_TURN * 2)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   ItemList.append(Playfield[ScanV][ScanH].name)
 
 
@@ -1500,15 +1583,15 @@ def VirusWorldScanAround(Virus, Playfield):
 
     directions = [
         Virus.direction,
-        LED.TurnLeft8Way(Virus.direction),
-        LED.TurnRight8Way(Virus.direction),
-        LED.ReverseDirection8Way(Virus.direction),
-        LED.TurnLeft8Way(LED.TurnLeft8Way(Virus.direction)),
-        LED.TurnRight8Way(LED.TurnRight8Way(Virus.direction))
+        TurnLeftScan32Way(Virus.direction),
+        TurnRightScan32Way(Virus.direction),
+        ReverseDirection32Way(Virus.direction),
+        TurnLeft32Way(Virus.direction, VIRUS_QUARTER_TURN * 2),
+        TurnRight32Way(Virus.direction, VIRUS_QUARTER_TURN * 2)
     ]
 
     for dir in directions:
-        ScanH, ScanV = LED.CalculateDotMovement8Way(h, v, dir)
+        ScanH, ScanV = CalculateDotMovement32Way(h, v, dir)
         ItemList.append(SafeGetName(Playfield, ScanH, ScanV))
 
     return ItemList
@@ -1546,49 +1629,49 @@ def IsThereAVirusNearby_old(h,v,direction,VirusName,Playfield):
   
 
   #Scan in front
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   
   #Scan front right diagonal
-  ScanDirection = LED.TurnRight8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   #Scan right 
-  ScanDirection = LED.TurnRight8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   #Scan behind right diagonal
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
   
   #We don't Scan behind because that is where the virus is!
-  ScanDirection = LED.TurnRight8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   #if (Playfield[ScanV][ScanH].name == VirusName):
   #  return 1;
 
 
   #Scan behind left diagonal
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
 
 
   #Scan left
-  ScanDirection = LED.TurnRight8Way(LED.TurnRight8Way(ScanDirection))
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRight32Way(ScanDirection, VIRUS_QUARTER_TURN * 2)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
 
   #Scan front left diagonal
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     return 1;
 
@@ -1615,49 +1698,49 @@ def CountNearbyViruses(h,v,direction,VirusName,Playfield):
   
 
   #Scan in front
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
   
   
   #Scan front right diagonal
-  ScanDirection = LED.TurnRight8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
   
   #Scan right 
-  ScanDirection = LED.TurnRight8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
   
   #Scan behind right diagonal
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
   
   #Scan behind
-  ScanDirection = LED.TurnRight8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRightScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
 
 
   #Scan behind left diagonal
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
 
 
   #Scan left
-  ScanDirection = LED.TurnRight8Way(LED.TurnRight8Way(ScanDirection))
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnRight32Way(ScanDirection, VIRUS_QUARTER_TURN * 2)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
 
   #Scan front left diagonal
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   if (Playfield[ScanV][ScanH].name == VirusName):
     count = count + 1
 
@@ -1684,10 +1767,10 @@ def CountVirusesBehind(h,v,direction,VirusName,Playfield):
   
 
   #Scan behind left diagonal
-  ScanDirection = LED.TurnLeft8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
-  ScanDirection = LED.TurnLeft8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnLeftScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
+  ScanDirection = TurnLeftScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
 
 
   TheObject = GetPlayfieldObject(h=ScanH,v=ScanV,Playfield=Playfield)
@@ -1696,15 +1779,15 @@ def CountVirusesBehind(h,v,direction,VirusName,Playfield):
 
   
   #Scan behind
-  ScanDirection = LED.TurnLeft8Way(ScanDirection)
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanDirection = TurnLeftScan32Way(ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   TheObject = GetPlayfieldObject(h=ScanH,v=ScanV,Playfield=Playfield)
 
   if (TheObject.name == VirusName):
     count = count + 1
   
   #Scan behind right diagonal
-  ScanH, ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+  ScanH, ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
   TheObject = GetPlayfieldObject(h=ScanH,v=ScanV,Playfield=Playfield)
   if (TheObject.name == VirusName):
     count = count + 1
@@ -1815,15 +1898,15 @@ def ReplicateVirus(Virus,DinnerPlate):
     
       if (ItemList[5] == 'EmptyObject'):
         #print ("Open space to the left")
-        scandirection  = LED.TurnLeft8Way(LED.TurnLeft8Way(direction))
+        scandirection  = TurnLeft32Way(direction, VIRUS_QUARTER_TURN * 2)
         #print ("direction scandirection",direction,scandirection)
 
       elif (ItemList[6] == 'EmptyObject'):
         #print ("Open space to the right")
-        scandirection = LED.TurnRight8Way(LED.TurnRight8Way(direction))
+        scandirection = TurnRight32Way(direction, VIRUS_QUARTER_TURN * 2)
 
 
-      ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,scandirection)
+      ScanH,ScanV = CalculateDotMovement32Way(h,v,scandirection)
       VirusCopy.v = ScanV
       VirusCopy.h = ScanH
       VirusCopy.AdjustSpeed(ReplicationSpeed)
@@ -1888,35 +1971,35 @@ def MoveVirus(Virus,Playfield):
 
   #Grab breakable wall object
   if (ItemList[1] == "WallBreakable"):
-    ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,Virus.direction)
+    ScanH,ScanV = CalculateDotMovement32Way(h,v,Virus.direction)
     WallInFront = GetPlayfieldObject(ScanH, ScanV, Playfield)
 
 
   #Grab potential viruses in scan zones NW N NE S
   #Grab Virus in front
   if (ItemList[1] != "Wall" and ItemList[1] != "WallBreakable" and ItemList[1] != 'EmptyObject' and ItemList[1] != 'OutOfBounds'):
-    ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,Virus.direction)
+    ScanH,ScanV = CalculateDotMovement32Way(h,v,Virus.direction)
     VirusInFront = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanFront    ",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
 
   #Grab Virus left diagonal
   if (ItemList[2] != "Wall" and ItemList[2] != "WallBreakable" and ItemList[2] != 'EmptyObject' and ItemList[2] != 'OutOfBounds'):
-    ScanDirection = LED.TurnLeft8Way(Virus.direction)
-    ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+    ScanDirection = TurnLeftScan32Way(Virus.direction)
+    ScanH,ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
     VirusLeftDiag = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanLeftDiag ",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
 
   #Grab Virus right diagonal
   if (ItemList[3] != "Wall" and ItemList[3] != "WallBreakable" and ItemList[3] != 'EmptyObject' and ItemList[3] != 'OutOfBounds'):
-    ScanDirection = LED.TurnRight8Way(Virus.direction)
-    ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+    ScanDirection = TurnRightScan32Way(Virus.direction)
+    ScanH,ScanV = CalculateDotMovement32Way(h,v,ScanDirection)
     VirusRightDiag = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanRightDiag",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
   
         
   if (ItemList[4] != "Wall" and ItemList[4] != "WallBreakable" and ItemList[4] != 'EmptyObject' and ItemList[4] != 'OutOfBounds'):
-    ScanDirection = LED.ReverseDirection8Way(Virus.direction)
-    ScanH,ScanV   = LED.CalculateDotMovement8Way(h,v,ScanDirection)
+    ScanDirection = ReverseDirection32Way(Virus.direction)
+    ScanH,ScanV   = CalculateDotMovement32Way(h,v,ScanDirection)
     VirusInRear     = GetPlayfieldObject(ScanH, ScanV, Playfield)
     #print ("ScanRear",VirusInFront.name,VirusLeftDiag.name,VirusRightDiag.name,VirusInRear.name)
   
@@ -1947,13 +2030,13 @@ def MoveVirus(Virus,Playfield):
   #Check left diagonal Virus
   if (VirusLeftDiag.name != 'EmptyObject'):
     if (VirusLeftDiag.name != Virus.name):
-      SpreadInfection(Virus,VirusLeftDiag,(LED.TurnLeft8Way(Virus.direction)))
+      SpreadInfection(Virus,VirusLeftDiag,(TurnLeftScan32Way(Virus.direction)))
 
 
   #Check right diagonal Virus
   if (VirusRightDiag.name != 'EmptyObject'):
     if (VirusRightDiag.name != Virus.name):
-      SpreadInfection(Virus,VirusRightDiag,(LED.TurnRight8Way(Virus.direction)))
+      SpreadInfection(Virus,VirusRightDiag,(TurnRightScan32Way(Virus.direction)))
 
 
   #Check rear Virus
@@ -1989,28 +2072,28 @@ def MoveVirus(Virus,Playfield):
     
 
     if (ItemList[1] == "WallBreakable"):
-      Virus.direction = LED.TurnLeftOrRight8Way(Virus.direction)
+      Virus.direction = TurnLeftOrRight32Way(Virus.direction)
 
 
     elif((ItemList[1] == "Wall" or ItemList[1] == "WallBreakable") 
       and ItemList[2] == 'EmptyObject' 
       and ItemList[3] == 'EmptyObject'):
-      Virus.direction = LED.TurnLeftOrRight8Way(Virus.direction)
+      Virus.direction = TurnLeftOrRight32Way(Virus.direction)
 
     elif((ItemList[1] == "Wall" or ItemList[1] == "WallBreakable") 
       and(ItemList[2] == "Wall" or ItemList[2] == "WallBreakable") 
       and ItemList[3] == 'EmptyObject'):
-      Virus.direction = LED.TurnRight8Way(Virus.direction)
+      Virus.direction = TurnRightScan32Way(Virus.direction)
 
     elif((ItemList[1] == "Wall" or ItemList[1] == "WallBreakable")
       and ItemList[2] == 'EmptyObject' 
       and(ItemList[3] == "Wall" or ItemList[3] == "WallBreakable")):
-      Virus.direction = LED.TurnLeft8Way(Virus.direction)
+      Virus.direction = TurnLeftScan32Way(Virus.direction)
 
     elif((ItemList[1] == "Wall" or ItemList[1] == "WallBreakable")
      and (ItemList[2] == "Wall" or ItemList[2] == "WallBreakable")
      and (ItemList[3] == "Wall" or ItemList[3] == "WallBreakable")):
-      Virus.direction = LED.TurnLeftOrRightTwice8Way(LED.ReverseDirection8Way(Virus.direction))
+      Virus.direction = TurnLeftOrRightTwice32Way(ReverseDirection32Way(Virus.direction))
  
 
   #-----------------------------------------
@@ -2042,22 +2125,22 @@ def MoveVirus(Virus,Playfield):
 
 
 
-  #apply directional mutations
+  #apply directional mutations (1 step = 11.25° for finer 32-way wobble)
   if (Virus.mutationtype in (1,2,8)):
     m,r = divmod(VirusMoves,Virus.mutationfactor)
     if (r == 0):
-      Virus.direction = LED.TurnLeft8Way(Virus.direction)
+      Virus.direction = TurnLeft32Way(Virus.direction, 1)
 
   elif(Virus.mutationtype in (3,4,9)):
     m,r = divmod(VirusMoves,Virus.mutationfactor)
     if (r == 0):
-      Virus.direction = LED.TurnRight8Way(Virus.direction)
+      Virus.direction = TurnRight32Way(Virus.direction, 1)
   
   elif(Virus.mutationtype == 7):
     m,r = divmod(VirusMoves,Virus.mutationfactor)
     if (r == 0):
-      Virus.direction = LED.TurnRight8Way(Virus.direction)
-      LED.TurnLeftOrRight8Way(Virus.direction)
+      Virus.direction = TurnRight32Way(Virus.direction, 1)
+      TurnLeftOrRight32Way(Virus.direction)
 
 
 
@@ -2071,7 +2154,7 @@ def MoveVirus(Virus,Playfield):
   if (Virus.alive == 1 and Virus.eating == False):  
 
     #Only move if the space decided upon is actually empty!
-    ScanH,ScanV = LED.CalculateDotMovement8Way(h,v,Virus.direction)
+    ScanH,ScanV = CalculateDotMovement32Way(h,v,Virus.direction)
     
     TargetObject = GetPlayfieldObject(ScanH,ScanV,Playfield)
     
@@ -2106,7 +2189,7 @@ def MoveVirus(Virus,Playfield):
       #print ("spot moving to is not empty: ",Playfield[ScanV][ScanH].name, ScanV,ScanH)
       #Introduce some instability into the virus
       #if (fast_rng.randint(0,InstabilityFactor) == 1):
-      #  Virus.direction = LED.TurnLeftOrRight8Way(Virus.direction)
+      #  Virus.direction = TurnLeftOrRight32Way(Virus.direction)
       #  Virus.AdjustSpeed(fast_rng.randint(-1,1))
 
 
@@ -3757,7 +3840,7 @@ def PlayOutbreak(Duration,StopEvent):
               SourceH=virus.h, SourceV=virus.v, Radius=FoodCheckRadius,
               ObjectType='WallBreakable')
           if LED.CheckBoundary(FoodH, FoodV) == 0:
-              virus.direction = LED.PointTowardsObject8Way(virus.h, virus.v, FoodH, FoodV)
+              virus.direction = PointTowardsObject32Way(virus.h, virus.v, FoodH, FoodV)
 
       # Random death
       if fast_rng.randint(0, virus.chanceofdying) == 1:
@@ -3803,7 +3886,7 @@ def PlayOutbreak(Duration,StopEvent):
             DinnerPlate.Playfield[BigFoodV][BigFoodH] = LED.Wall(BigFoodH,BigFoodV,r,g,b,1,BigFoodLives,'WallBreakable')
             print ("Random food appears:",BigFoodH,BigFoodV)
             for x in range(0,VirusCount):
-              DinnerPlate.Viruses[x].direction = LED.PointTowardsObject8Way(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,BigFoodH,BigFoodV)
+              DinnerPlate.Viruses[x].direction = PointTowardsObject32Way(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,BigFoodH,BigFoodV)
               DinnerPlate.Viruses[x].AdjustSpeed(-1) 
               DinnerPlate.Viruses[x].eating = 0
               DinnerPlate.Viruses[x].clumping = True
@@ -3814,7 +3897,7 @@ def PlayOutbreak(Duration,StopEvent):
       if (BigFoodAlive == True and fast_rng.randint(1,50) == 1):
         if (DinnerPlate.Playfield[BigFoodV][BigFoodH].name == 'WallBreakable'):
             for x in range(0,VirusCount):
-              DinnerPlate.Viruses[x].direction = LED.PointTowardsObject8Way(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,BigFoodH,BigFoodV)
+              DinnerPlate.Viruses[x].direction = PointTowardsObject32Way(DinnerPlate.Viruses[x].h,DinnerPlate.Viruses[x].v,BigFoodH,BigFoodV)
               #DinnerPlate.Viruses[x].AdjustSpeed(-5) 
               DinnerPlate.Viruses[x].eating = 0
               #DinnerPlate.Viruses[x].clumping = False
