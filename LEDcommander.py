@@ -131,7 +131,7 @@ VALID_WEB_ACTIONS = {
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
     "terminalmessage": ["Message", "RGB", "ScrollSleep"],
     "terminalmode_off": [],
-    "weatherterminal": ["Location", "duration", "RGB", "ScrollSleep"],
+    "weatherterminal": ["Location", "Units", "duration", "RGB", "ScrollSleep"],
     "showheart": [],
     "showintro": [],
     "showonair": ["duration"],
@@ -184,6 +184,10 @@ def sanitize_web_command(data, action):
 
     if action == "showviewers" and "chatusers" in data and isinstance(data["chatusers"], str):
         data["chatusers"] = [user.strip() for user in data["chatusers"].split(",") if user.strip()]
+
+    if action == "weatherterminal":
+        import WeatherClock as WC
+        data["Units"] = WC.NormalizeUnits(data.get("Units", "F"))
 
     if action == "launch_stockticker" and "symbols" in data:
         if isinstance(data["symbols"], str):
@@ -642,7 +646,8 @@ def Run(CommandQueue):
                 import WeatherClock as WC
 
                 location = WC.LoadWeatherLocation(Command.get("Location", ""))
-                report = WC.FetchWeatherReport(location)
+                units = WC.NormalizeUnits(Command.get("Units", "F"))
+                report = WC.FetchWeatherReport(location, units=units)
                 duration = Command.get("duration", 5)
                 terminal_action = "terminalmessage" if (
                     DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal"

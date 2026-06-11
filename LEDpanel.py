@@ -88,6 +88,21 @@ input[type="submit"] {
 input[type="submit"]:hover {
     background-color: #00ff00;
 }
+.unit-choice {
+    display: flex;
+    gap: 16px;
+    margin: 8px 0 12px 0;
+}
+.unit-choice label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+.unit-choice input[type="radio"] {
+    accent-color: #0f0;
+}
 #status-message {
     position: fixed;
     top: 10px;
@@ -157,6 +172,11 @@ def render_weather_section(default_location=DEFAULT_LOCATION):
                 <label>Location
                     <input type="text" name="Location" value="{default_location}" placeholder="{default_location}">
                 </label>
+                <div class="unit-choice">
+                    <span>Units:</span>
+                    <label><input type="radio" name="Units" value="F" checked> F</label>
+                    <label><input type="radio" name="Units" value="C"> C</label>
+                </div>
                 <input type="submit" value="Weather Report">
             </form>
         </div>

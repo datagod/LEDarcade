@@ -44,8 +44,16 @@ def LoadWeatherLocation(location_override=""):
         return DEFAULT_LOCATION
 
 
-def FetchWeatherReport(location):
+def NormalizeUnits(units="F"):
+    """Return 'C' or 'F' for supported temperature units."""
+    if str(units).strip().upper().startswith("C"):
+        return "C"
+    return "F"
+
+
+def FetchWeatherReport(location, units="F"):
     """Fetch weather from wttr.in and return a scrollable text report."""
+    units = NormalizeUnits(units)
     encoded_location = urllib.parse.quote(location)
     url = f"https://wttr.in/{encoded_location}?format=j1"
 
@@ -67,30 +75,46 @@ def FetchWeatherReport(location):
         today = data["weather"][0]
         tomorrow = data["weather"][1] if len(data.get("weather", [])) > 1 else None
 
-        temp_f = current.get("temp_F", "?")
-        feels_f = current.get("FeelsLikeF", temp_f)
+        if units == "C":
+            temp = current.get("temp_C", "?")
+            feels = current.get("FeelsLikeC", temp)
+            temp_label = "C"
+            wind_speed = current.get("windspeedKmph", "?")
+            wind_label = "km/h"
+            today_high = today.get("maxtempC", "?")
+            today_low = today.get("mintempC", "?")
+        else:
+            temp = current.get("temp_F", "?")
+            feels = current.get("FeelsLikeF", temp)
+            temp_label = "F"
+            wind_speed = current.get("windspeedMiles", "?")
+            wind_label = "mph"
+            today_high = today.get("maxtempF", "?")
+            today_low = today.get("mintempF", "?")
+
         condition = current["weatherDesc"][0]["value"]
         humidity = current.get("humidity", "?")
-        wind_mph = current.get("windspeedMiles", "?")
         wind_dir = current.get("winddir16Point", "")
-        today_high = today.get("maxtempF", "?")
-        today_low = today.get("mintempF", "?")
 
         parts = [
             f"Weather for {area}.",
-            f"Now {temp_f}F, {condition}.",
-            f"Feels like {feels_f}F.",
+            f"Now {temp}{temp_label}, {condition}.",
+            f"Feels like {feels}{temp_label}.",
             f"Humidity {humidity}%.",
-            f"Wind {wind_mph} mph {wind_dir}.".strip(),
-            f"Today high {today_high}F, low {today_low}F.",
+            f"Wind {wind_speed} {wind_label} {wind_dir}.".strip(),
+            f"Today high {today_high}{temp_label}, low {today_low}{temp_label}.",
         ]
 
         if tomorrow:
-            tomorrow_high = tomorrow.get("maxtempF", "?")
-            tomorrow_low = tomorrow.get("mintempF", "?")
+            if units == "C":
+                tomorrow_high = tomorrow.get("maxtempC", "?")
+                tomorrow_low = tomorrow.get("mintempC", "?")
+            else:
+                tomorrow_high = tomorrow.get("maxtempF", "?")
+                tomorrow_low = tomorrow.get("mintempF", "?")
             tomorrow_desc = tomorrow["hourly"][4]["weatherDesc"][0]["value"]
             parts.append(
-                f"Tomorrow {tomorrow_desc}, high {tomorrow_high}F, low {tomorrow_low}F."
+                f"Tomorrow {tomorrow_desc}, high {tomorrow_high}{temp_label}, low {tomorrow_low}{temp_label}."
             )
 
         return " ".join(parts)
