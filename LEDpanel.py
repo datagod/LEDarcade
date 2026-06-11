@@ -1,5 +1,6 @@
 # LEDpanel.py - Shared CRT-styled control panel for LED Commander
 import LEDupdate
+from WeatherClock import DEFAULT_LOCATION
 
 PANEL_VERSION = "1.1"
 PANEL_TITLE = f"LED Commander Control Panel {PANEL_VERSION}"
@@ -146,6 +147,22 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 
+def render_weather_section(default_location=DEFAULT_LOCATION):
+    """Dedicated weather report control with location input."""
+    return f"""
+        <div class="command-section weather-section">
+            <h2>Weather Report</h2>
+            <form class="command-form" action="/command" method="post">
+                <input type="hidden" name="Action" value="weatherterminal">
+                <label>Location
+                    <input type="text" name="Location" value="{default_location}" placeholder="{default_location}">
+                </label>
+                <input type="submit" value="Weather Report">
+            </form>
+        </div>
+    """
+
+
 def render_homepage(valid_actions):
     """Render the CRT-themed LED Commander control panel."""
     html = f"""
@@ -169,7 +186,11 @@ def render_homepage(valid_actions):
         <div class="commands-container">
     """
 
+    html += render_weather_section()
+
     for action, fields in valid_actions.items():
+        if action == "weatherterminal":
+            continue
         html += f'<div class="command-section"><h2>{action}</h2>'
         html += '<form class="command-form" action="/command" method="post">'
         html += f'<input type="hidden" name="Action" value="{action}">'

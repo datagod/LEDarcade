@@ -160,7 +160,7 @@ def sanitize_web_command(data, action):
             except Exception:
                 data[key] = (255, 255, 255)
 
-    if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "showonair", "twitchtimer_on"] or action.startswith("launch_"):
+    if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "weatherterminal", "showonair", "twitchtimer_on"] or action.startswith("launch_"):
         for key in ["Duration", "loops", "sleep", "ScrollSleep", "DisplayTime", "zoommin", "zoommax", "zoomfinal", "step", "duration"]:
             if key in data:
                 try:

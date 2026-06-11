@@ -10,7 +10,7 @@ from configparser import ConfigParser
 import requests
 
 KeyConfigFileName = "KeyConfig.ini"
-DEFAULT_LOCATION = "Chicago"
+DEFAULT_LOCATION = "Ottawa"
 
 
 def CheckConfigFiles():
@@ -20,7 +20,7 @@ def CheckConfigFiles():
     try:
         with open(KeyConfigFileName, "a+") as config_file:
             config_file.write("[KEYS]\n")
-            config_file.write("WEATHER_LOCATION = Chicago\n")
+            config_file.write("WEATHER_LOCATION = Ottawa\n")
             config_file.write("\n")
         print(f"[WeatherClock] Created default {KeyConfigFileName}")
     except Exception as error:
