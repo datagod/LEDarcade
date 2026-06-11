@@ -34,7 +34,6 @@ sleep 2
 log "Stopping LEDarcade processes"
 pkill -f "python3 twitch.py" 2>/dev/null || true
 pkill -f "python3 LEDcommander.py" 2>/dev/null || true
-pkill -f "LEDweb.py" 2>/dev/null || true
 sleep 2
 
 cd "$LEDARCADE_DIR" || exit 1

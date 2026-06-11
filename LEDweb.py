@@ -1,111 +1,11 @@
-# LEDweb.py - Control for LEDarcade actions
-from multiprocessing import Queue
-import os
-from flask import Flask, request, jsonify
-import logging
-import LEDupdate
-import LEDpanel
+# LEDweb.py - Backward-compatible shim.
+# Web control lives in LEDcommander.serve_web_control().
+from LEDcommander import serve_web_control
 
-IMAGE_DIR = "/home/pi/LEDarcade/images"
-
-
-def serve_web_control(queue, port=5055):
-    """
-    Starts a minimal Flask server to receive control commands.
-    Supports all LEDarcade actions with field customization.
-    """
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
-
-    app = Flask(__name__)
-
-    VALID_ACTIONS = {
-        "showclock": [],
-        "stopclock": [],
-        "showtitlescreen": ["Text", "RGB", "Duration"],
-        "analogclock": [],
-        "starrynightdisplaytext": ["text1","text2","text3"],
-        "launch_dotinvaders": ["duration"],
-        "launch_defender": ["duration"],
-        "launch_tron": ["duration"],
-        "launch_outbreak": ["duration"],
-        "launch_spacedot": ["duration"],
-        "launch_blasteroids": ["duration"],
-        "launch_stockticker": ["duration", "symbols"],
-        "launch_fallingsand": ["duration"],
-        "launch_gravitysim": ["duration"],
-        "twitchtimer_on": [],
-        "twitchtimer_off": [],
-        "terminalmode_on": ["Message", "RGB", "Style", "Speed"],
-        "terminalmessage": ["Message"],
-        "terminalmode_off": [],
-        "showheart": [],
-        "showonair": ["duration"],
-        "showonair_off": [],
-        "showgif": ["GIF", "Duration"],
-        "showviewers": [],
-        "showimagezoom": ["Image"],
-        "quit": []
-    }
-
-    def sanitize_data(data, action):
-        if action in ["showtitlescreen", "terminalmode_on"]:
-            if "RGB" in data and isinstance(data["RGB"], str):
-                try:
-                    data["RGB"] = tuple(map(int, data["RGB"].split(",")))
-                except Exception:
-                    data["RGB"] = (255, 255, 255)
-        if action == "terminalmode_on":
-            for key in ["Style", "Speed"]:
-                if key in data:
-                    try:
-                        data[key] = int(data[key])
-                    except ValueError:
-                        pass
-        if action in ["showtitlescreen", "showgif"]:
-            if "Duration" in data:
-                try:
-                    data["Duration"] = int(data["Duration"])
-                except ValueError:
-                    pass
-        if action in ["showonair"] or action.startswith("launch_"):
-            if "duration" in data:
-                try:
-                    data["duration"] = float(data["duration"]) if '.' in str(data["duration"]) else int(data["duration"])
-                except ValueError:
-                    pass
-        if action == "launch_stockticker" and "symbols" in data:
-            if isinstance(data["symbols"], str):
-                data["symbols"] = [s.strip().upper() for s in data["symbols"].split(",") if s.strip()]
-            elif isinstance(data["symbols"], list):
-                data["symbols"] = [str(s).strip().upper() for s in data["symbols"] if str(s).strip()]
-        if action == "showgif":
-            if "GIF" in data and not data["GIF"].startswith("/"):
-                data["GIF"] = os.path.join(IMAGE_DIR, os.path.basename(data["GIF"]))
-        return data
-
-    LEDupdate.register_update_routes(app, queue)
-
-    @app.route('/command', methods=['POST'])
-    def handle_command():
-        data = request.get_json() if request.is_json else request.form.to_dict()
-        print(f"[LEDweb] Received: {data}")
-        action = data.get("Action")
-        if not action or action not in VALID_ACTIONS:
-            return jsonify({'status': 'error', 'message': f'Invalid or missing action: {action}'}), 400
-        data = sanitize_data(data, action)
-        allowed_fields = set(VALID_ACTIONS[action] + ["Action"])
-        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-        queue.put(filtered_data)
-        return jsonify({'status': 'ok', 'message': f"Queued: {action}"}), 200
-
-    @app.route('/', methods=['GET'])
-    def homepage():
-        return LEDpanel.render_homepage(VALID_ACTIONS)
-
-    app.run(host="0.0.0.0", port=port)
-
+__all__ = ["serve_web_control"]
 
 if __name__ == "__main__":
-    queue = Queue()
-    serve_web_control(queue, port=5055)
+    from multiprocessing import Queue
+
+    command_queue = Queue()
+    serve_web_control(command_queue, port=5055)

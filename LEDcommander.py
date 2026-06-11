@@ -97,110 +97,132 @@ import LEDupdate
 import LEDpanel
 
 #GLOBAL VARS
-RotateClockDelay = 10  #minutes between rotation of different display styles
+RotateClockDelay = 5  # minutes between rotation of different display styles
 IsOnAirActive = False
-RotateClockDelay = 5
 ON_AIR_DEFAULT_MINUTES = 30
 ON_AIR_DEFAULT_SECONDS = ON_AIR_DEFAULT_MINUTES * 60
 
+REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGE_DIR = os.path.join(REPO_DIR, "images")
 
-IMAGE_DIR = "./images"  # Adjust to your actual path, e.g., "/home/pi/LEDarcade/images"
+VALID_WEB_ACTIONS = {
+    "showclock": [],
+    "stopclock": [],
+    "showtitlescreen": [
+        "BigText", "LittleText", "LittleTextRGB", "ScrollText", "ScrollTextRGB",
+        "ScrollSleep", "DisplayTime", "ExitEffect", "LittleTextZoom",
+    ],
+    "analogclock": [],
+    "retrodigital": [],
+    "starrynightdisplaytext": ["text1", "text2", "text3"],
+    "launch_dotinvaders": ["duration"],
+    "launch_defender": ["duration"],
+    "launch_tron": ["duration"],
+    "launch_outbreak": ["duration"],
+    "launch_spacedot": ["duration"],
+    "launch_blasteroids": ["duration"],
+    "launch_stockticker": ["duration", "symbols"],
+    "launch_fallingsand": ["duration"],
+    "launch_gravitysim": ["duration"],
+    "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
+    "twitchtimer_off": [],
+    "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
+    "terminalmessage": ["Message", "RGB", "ScrollSleep"],
+    "terminalmode_off": [],
+    "showheart": [],
+    "showintro": [],
+    "showonair": ["duration"],
+    "showonair_off": [],
+    "showdemotivate": [],
+    "showgif": ["GIF", "loops", "sleep"],
+    "showviewers": ["chatusers"],
+    "showimagezoom": ["image", "zoommin", "zoommax", "zoomfinal", "sleep", "step"],
+    "quit": [],
+}
+
+
+def sanitize_web_command(data, action):
+    """Normalize and validate web command fields before queueing."""
+    if "Loops" in data and "loops" not in data:
+        data["loops"] = data["Loops"]
+    if "Image" in data and "image" not in data:
+        data["image"] = data["Image"]
+    if "Duration" in data and "duration" not in data and action in ["showonair"] + [a for a in VALID_WEB_ACTIONS if a.startswith("launch_")]:
+        data["duration"] = data["Duration"]
+
+    for key in data:
+        if "RGB" in key and isinstance(data[key], str):
+            try:
+                data[key] = tuple(map(int, data[key].split(",")))
+            except Exception:
+                data[key] = (255, 255, 255)
+
+    if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "showonair", "twitchtimer_on"] or action.startswith("launch_"):
+        for key in ["Duration", "loops", "sleep", "ScrollSleep", "DisplayTime", "zoommin", "zoommax", "zoomfinal", "step", "duration"]:
+            if key in data:
+                try:
+                    data[key] = float(data[key]) if '.' in str(data[key]) else int(data[key])
+                except ValueError:
+                    pass
+
+    if action == "terminalmode_on":
+        for key in ["Style", "Speed"]:
+            if key in data:
+                try:
+                    data[key] = int(data[key])
+                except ValueError:
+                    pass
+
+    if action == "showgif" and "GIF" in data and not str(data["GIF"]).startswith("/"):
+        data["GIF"] = os.path.join(IMAGE_DIR, os.path.basename(data["GIF"]))
+
+    if action == "showimagezoom" and "image" in data and not str(data["image"]).startswith("/"):
+        data["image"] = os.path.join(IMAGE_DIR, os.path.basename(data["image"]))
+
+    if action == "showviewers" and "chatusers" in data and isinstance(data["chatusers"], str):
+        data["chatusers"] = [user.strip() for user in data["chatusers"].split(",") if user.strip()]
+
+    if action == "launch_stockticker" and "symbols" in data:
+        if isinstance(data["symbols"], str):
+            data["symbols"] = [s.strip().upper() for s in data["symbols"].split(",") if s.strip()]
+        elif isinstance(data["symbols"], list):
+            data["symbols"] = [str(s).strip().upper() for s in data["symbols"] if str(s).strip()]
+
+    return data
 
 
 
 def serve_web_control(queue, port=5055):
     """
-    Starts a minimal Flask server to receive control commands and put them into the command queue.
-    Supports all LEDarcade actions with field customization.
+    LED Commander web control panel and /command API.
+    This is the single source of truth for remote display commands.
     """
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
     app = Flask(__name__)
-
-    VALID_ACTIONS = {
-        "showclock": [],
-        "stopclock": [],
-        #"showtitlescreen": ["BigText", "LittleText", "LittleTextRGB", "ScrollText", "ScrollTextRGB", "ScrollSleep", "DisplayTime", "ExitEffect", "LittleTextZoom"],
-        "analogclock": [],
-        "retrodigital": [],
-        "starrynightdisplaytext": ["text1","text2","text3"],
-        "launch_dotinvaders": ["duration"],
-        "launch_defender": ["duration"],
-        "launch_tron": ["duration"],
-        "launch_outbreak": ["duration"],
-        "launch_spacedot": ["duration"],
-        "launch_blasteroids": ["duration"],
-        "launch_stockticker": ["duration", "symbols"],
-        "launch_fallingsand": ["duration"],
-        "launch_gravitysim": ["duration"],
-        #"twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
-        #"twitchtimer_off": [],
-        #"terminalmode_on": ["Message", "RGB", "ScrollSleep"],
-        "terminalmessage": ["Message", "RGB", "ScrollSleep"],
-        "terminalmode_off": [],
-        "showheart": [],
-        "showintro": [],
-        "showonair": ["duration"],
-        "showonair_off": [],
-        "showdemotivate": [],
-        "showgif": ["GIF", "loops", "sleep"],
-        "showviewers": ["chatusers"],
-        #"showimagezoom": ["image", "zoommin", "zoommax", "zoomfinal", "sleep", "step"],
-        "quit": []
-    }
-
-    def sanitize_data(data, action):
-        # General RGB tuple parsing
-        for key in data:
-            if 'RGB' in key and isinstance(data[key], str):
-                try:
-                    data[key] = tuple(map(int, data[key].split(",")))
-                except Exception:
-                    data[key] = (255, 255, 255)  # Default white
-        # Action-specific sanitization
-        if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "showonair"] or action.startswith("launch_"):
-            for key in ["Duration", "loops", "sleep", "ScrollSleep", "DisplayTime", "zoommin", "zoommax", "zoomfinal", "step", "duration"]:
-                if key in data:
-                    try:
-                        data[key] = float(data[key]) if '.' in str(data[key]) else int(data[key])
-                    except ValueError:
-                        pass
-        if action == "showgif":
-            if "GIF" in data and not data["GIF"].startswith("/"):
-                data["GIF"] = os.path.join(IMAGE_DIR, os.path.basename(data["GIF"]))
-        if action == "showimagezoom":
-            if "image" in data and not data["image"].startswith("/"):
-                data["image"] = os.path.join(IMAGE_DIR, os.path.basename(data["image"]))
-        if action == "showviewers":
-            if "chatusers" in data and isinstance(data["chatusers"], str):
-                data["chatusers"] = data["chatusers"].split(",")
-        if action == "launch_stockticker" and "symbols" in data:
-            if isinstance(data["symbols"], str):
-                data["symbols"] = [s.strip().upper() for s in data["symbols"].split(",") if s.strip()]
-            elif isinstance(data["symbols"], list):
-                data["symbols"] = [str(s).strip().upper() for s in data["symbols"] if str(s).strip()]
-        return data
-
     LEDupdate.register_update_routes(app, queue)
 
     @app.route('/command', methods=['POST'])
     def handle_command():
-        data = request.json if request.is_json else request.form.to_dict()
-        print(f"[LEDweb] Received: {data}")
+        data = request.get_json() if request.is_json else request.form.to_dict()
+        print(f"[LEDcommander][web] Received: {data}")
         action = data.get("Action")
-        print("[LEDweb] Action:",action)
-        if not action or action not in VALID_ACTIONS:
+        if isinstance(action, str):
+            action = action.lower()
+            data["Action"] = action
+        print(f"[LEDcommander][web] Action: {action}")
+        if not action or action not in VALID_WEB_ACTIONS:
             return jsonify({'status': 'error', 'message': f'Invalid or missing action: {action}'}), 400
-        data = sanitize_data(data, action)
-        allowed_fields = set(VALID_ACTIONS[action] + ["Action"])
+        data = sanitize_web_command(data, action)
+        allowed_fields = set(VALID_WEB_ACTIONS[action] + ["Action"])
         filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
         queue.put(filtered_data)
         return jsonify({'status': 'ok', 'message': f"Queued: {action}"}), 200
 
     @app.route('/', methods=['GET'])
     def homepage():
-        return LEDpanel.render_homepage(VALID_ACTIONS)
+        return LEDpanel.render_homepage(VALID_WEB_ACTIONS)
 
     app.run(host='0.0.0.0', port=port, threaded=False)
 
@@ -210,50 +232,7 @@ def serve_web_control(queue, port=5055):
 
 
 
-    @app.route('/command', methods=['POST'])
-    def handle_command():
-        data = request.json if request.is_json else request.form.to_dict()
-        print(f"[LEDweb] Received: {data}")
-        action = data.get("Action")
-        print("[LEDweb] Action:",action)
-        if not action or action not in VALID_ACTIONS:
-            return jsonify({'status': 'error', 'message': f'Invalid or missing action: {action}'}), 400
-        data = sanitize_data(data, action)
-        allowed_fields = set(VALID_ACTIONS[action] + ["Action"])
-        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-        queue.put(filtered_data)
-        return jsonify({'status': 'ok', 'message': f"Queued: {action}"}), 200
 
-
-
-    @app.route('/', methods=['GET'])
-    def homepage():
-        html = """
-        <html>
-        <head>
-            <title>LED Commander 1.1</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                .command-section { margin-bottom: 40px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-                .command-section h2 { margin-top: 0; }
-                input[type="text"] { width: 300px; }
-            </style>
-        </head>
-        <body>
-        <h1>LED Commander Control Panel 1.1</h1>
-        """
-        for action, fields in VALID_ACTIONS.items():
-            html += f'<div class="command-section"><h2>{action.capitalize()}</h2><form action="/command" method="post">'
-            html += f'<input type="hidden" name="Action" value="{action}">'
-            for field in fields:
-                html += f'<label>{field}: <input type="text" name="{field}"></label><br>'
-            html += '<input type="submit" value="Send"></form></div>'
-        html += '</body></html>'
-        return html
-
-
-
-    app.run(host="0.0.0.0", port=port, use_reloader=False)  # use_reloader=False for multiprocessing safety
 
 
 

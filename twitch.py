@@ -3886,7 +3886,6 @@ def start_led_commander():
 
     from multiprocessing import Queue, Process
     import LEDcommander
-    import LEDweb  # <== import here
     import LEDupdate
 
     LEDupdate.save_launcher("twitch.py")
@@ -3894,14 +3893,14 @@ def start_led_commander():
 
     command_queue = Queue()
     commander = Process(target=LEDcommander.Run, args=(command_queue,))
-    webserver = Process(target=LEDweb.serve_web_control, args=(command_queue,))
+    webserver = Process(target=LEDcommander.serve_web_control, args=(command_queue,))
 
     commander.start()
     webserver.start()
 
     command_queue.cancel_join_thread()
 
-    print("LEDcommander and LEDweb launched.")
+    print("LEDcommander launched (dispatcher + web panel).")
     return command_queue, commander, webserver
 
 
