@@ -99,6 +99,7 @@ import LEDpanel
 #GLOBAL VARS
 RotateClockDelay = 5  # minutes between rotation of different display styles
 IsOnAirActive = False
+IsStockTickerPinned = False
 ON_AIR_DEFAULT_MINUTES = 30
 ON_AIR_DEFAULT_SECONDS = ON_AIR_DEFAULT_MINUTES * 60
 
@@ -281,8 +282,17 @@ def fallback_action_generator():
  
 
 
+def stop_current_display(preempted_by):
+    """Stop the active display subprocess and log what interrupted it."""
+    global StopEvent, DisplayProcess, CurrentDisplayMode
+    if DisplayProcess and DisplayProcess.is_alive():
+        print(f"[LEDcommander] Stopping '{CurrentDisplayMode}' (preempted by: {preempted_by})")
+        StopEvent.set()
+        DisplayProcess.join()
+
+
 def Run(CommandQueue):
-    global StopEvent, DisplayProcess, CurrentDisplayMode, IsOnAirActive, FallbackGenerator
+    global StopEvent, DisplayProcess, CurrentDisplayMode, IsOnAirActive, IsStockTickerPinned, FallbackGenerator
     print("\n" + "=" * 65)
     print("🧠 LEDcommander Launched")
     print("=" * 65)
@@ -311,8 +321,13 @@ def Run(CommandQueue):
                     print("[LEDcommander] OnAir timed out, proceeding to next")
                     IsOnAirActive = False
                     CurrentDisplayMode = None
-                # If idle (no OnAir, no process), pull generator
-                if not IsOnAirActive and (DisplayProcess is None or not DisplayProcess.is_alive()):
+                if IsStockTickerPinned and DisplayProcess and not DisplayProcess.is_alive():
+                    print("[LEDcommander] Stock ticker finished, releasing pin")
+                    IsStockTickerPinned = False
+                    CurrentDisplayMode = None
+                # If idle (no OnAir, no pinned stock ticker, no process), pull generator
+                if (not IsOnAirActive and not IsStockTickerPinned
+                        and (DisplayProcess is None or not DisplayProcess.is_alive())):
                     print("[LEDcommander] Queue empty and idle—using fallback generator")
                     Command = next(FallbackGenerator)
                 else:
@@ -355,6 +370,12 @@ def Run(CommandQueue):
             # While On Air, hold the display until manual off or duration expiry.
             if IsOnAirActive and Action not in ("showonair", "showonair_off"):
                 print(f"[LEDcommander] OnAir active—ignoring command: {Action}")
+                continue
+
+            # While stock ticker is pinned (user set duration), hold until it finishes.
+            if (IsStockTickerPinned
+                    and Action not in ("launch_stockticker", "showonair", "showonair_off", "quit")):
+                print(f"[LEDcommander] Stock ticker pinned—ignoring command: {Action}")
                 continue
 
 
@@ -533,14 +554,13 @@ def Run(CommandQueue):
 
 
             elif Action == "launch_stockticker":
-                print("[LEDcommander][Run] Launching StockTicker")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
-
+                duration = Command.get("duration", 10)
+                pin = "duration" in Command
+                print(f"[LEDcommander][Run] Launching StockTicker (duration={duration} min, pinned={pin})")
+                stop_current_display(Action)
                 StopEvent.clear()
                 CurrentDisplayMode = "stockticker"
+                IsStockTickerPinned = pin
                 DisplayProcess = Process(target=LaunchStockTicker, args=(Command, StopEvent))
                 DisplayProcess.start()
 
@@ -1353,11 +1373,10 @@ if __name__ == "__main__":
     # commander_process.join()
     # webserver_process.join()
 
-    # Keep main thread alive so child processes aren’t killed
-
+    # Keep main thread alive so child processes aren't killed.
+    # Display rotation when idle is handled inside Run(); do not push timed
+    # commands here — that loop preempted web-panel launches every RotateClockDelay minutes.
     while True:
-        command = next(FallbackGenerator)
-        CommandQueue.put(command)
-        time.sleep(RotateClockDelay * 60)
+        time.sleep(60)
 
 
