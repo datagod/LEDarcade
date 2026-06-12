@@ -1458,6 +1458,7 @@ def advance_wave(
     Message = "WAVE " + str(WaveCount)
     MessageBanner = LED.CreateBannerSprite(Message)
     CursorH = round((LED.HatWidth - MessageBanner.width) / 2)
+    CursorV = 2
     ScreenC, CursorH, CursorV = LED.TerminalTypeLine(
         ScreenB, Message, CursorH=CursorH, CursorV=CursorV, MessageRGB=(0, 100, 0),
         CursorRGB=(0, 255, 0), CursorDarkRGB=(0, 50, 0), StartingLineFeed=1,

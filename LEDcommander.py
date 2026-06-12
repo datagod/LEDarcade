@@ -1492,7 +1492,7 @@ def LaunchDefender(Command, StopEvent):
     LED.Initialize()
     import Defender as DE
     Duration         = Command.get("duration",1)
-    print("[LEDcommander][LaunchDefender] Launching...")
+    print(f"[LEDcommander][LaunchDefender] Launching for {Duration} minutes...")
 
     DE.LaunchDefender(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     LED.SweepClean()
