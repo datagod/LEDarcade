@@ -1165,7 +1165,7 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                                 details = entry.get("details", "")
                                 if symbol:
                                     LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                                        LED.ScreenArray, symbol + " ",
+                                        LED.ScreenArray, " " + symbol + " ",
                                         CursorH=CursorH, CursorV=CursorV,
                                         MessageRGB=symbol_rgb,
                                         CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
