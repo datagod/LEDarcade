@@ -1150,6 +1150,7 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
 
                     for repeat_index in range(repeat):
                         if stock_lines:
+                            import StockReport as SR
                             if header:
                                 LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
                                     LED.ScreenArray, header + " ",
@@ -1160,21 +1161,27 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                                     TypeSpeed=type_speed,
                                     ScrollSpeed=scroll_speed
                                 )
-                            for entry in stock_lines:
-                                symbol = entry.get("symbol", "")
-                                details = entry.get("details", "")
-                                LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                                    LED.ScreenArray, "",
-                                    CursorH=CursorH, CursorV=CursorV,
-                                    MessageRGB=rgb,
-                                    CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-                                    StartingLineFeed=1,
-                                    TypeSpeed=0,
-                                    ScrollSpeed=scroll_speed
+                            for stock_index, entry in enumerate(stock_lines):
+                                blank_line_count = (
+                                    SR.STOCK_BLANK_LINES_BEFORE_FIRST
+                                    if stock_index == 0
+                                    else SR.STOCK_BLANK_LINES_BETWEEN
                                 )
+                                for _ in range(blank_line_count):
+                                    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                        LED.ScreenArray, "",
+                                        CursorH=CursorH, CursorV=CursorV,
+                                        MessageRGB=rgb,
+                                        CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                        StartingLineFeed=1,
+                                        TypeSpeed=0,
+                                        ScrollSpeed=scroll_speed
+                                    )
+
+                                symbol = entry.get("symbol", "")
                                 if symbol:
                                     LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                                        LED.ScreenArray, symbol + " ",
+                                        LED.ScreenArray, symbol,
                                         CursorH=CursorH, CursorV=CursorV,
                                         MessageRGB=symbol_rgb,
                                         CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
@@ -1182,13 +1189,14 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                                         TypeSpeed=type_speed,
                                         ScrollSpeed=scroll_speed
                                     )
-                                if details:
+
+                                for detail_line in entry.get("detail_lines", []):
                                     LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                                        LED.ScreenArray, details,
+                                        LED.ScreenArray, detail_line,
                                         CursorH=CursorH, CursorV=CursorV,
                                         MessageRGB=rgb,
                                         CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-                                        StartingLineFeed=0,
+                                        StartingLineFeed=1,
                                         TypeSpeed=type_speed,
                                         ScrollSpeed=scroll_speed
                                     )

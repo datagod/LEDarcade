@@ -14,6 +14,8 @@ STOCK_SCROLL_REPEAT = 2
 STOCK_POST_SCROLL_WAIT = 0
 STOCK_HEADER_RGB = (200, 200, 0)
 STOCK_SYMBOL_RGB = (200, 0, 200)
+STOCK_BLANK_LINES_BEFORE_FIRST = 1
+STOCK_BLANK_LINES_BETWEEN = 2
 
 
 def CheckConfigFiles():
@@ -80,31 +82,106 @@ def _FormatChangePercent(change_percent):
     return value
 
 
+def _FormatPrice(value):
+    if value is None:
+        return None
+    try:
+        return f"${float(value):.2f}"
+    except (TypeError, ValueError):
+        return None
+
+
+def _FormatLargeCount(value):
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+
+    abs_number = abs(number)
+    if abs_number >= 1_000_000_000_000:
+        return f"{number / 1_000_000_000_000:.2f}T"
+    if abs_number >= 1_000_000_000:
+        return f"{number / 1_000_000_000:.2f}B"
+    if abs_number >= 1_000_000:
+        return f"{number / 1_000_000:.2f}M"
+    if abs_number >= 1_000:
+        return f"{number / 1_000:.2f}K"
+    return f"{int(number)}"
+
+
+def _FormatMarketCap(value):
+    formatted = _FormatLargeCount(value)
+    if formatted is None:
+        return None
+    return f"${formatted}"
+
+
+def _JoinParts(parts):
+    return "  ".join(part for part in parts if part)
+
+
 def _FormatSymbolEntry(symbol, info):
     price = info.get("regularMarketPrice")
     if price is None:
-        return {"symbol": symbol, "details": "unavailable."}
+        return {"symbol": symbol, "detail_lines": ["Data unavailable."]}
 
     try:
         price_value = float(price)
     except (TypeError, ValueError):
-        return {"symbol": symbol, "details": "unavailable."}
+        return {"symbol": symbol, "detail_lines": ["Data unavailable."]}
 
+    name = info.get("shortName") or info.get("longName") or symbol
     change = info.get("regularMarketChange")
     change_percent = _FormatChangePercent(info.get("regularMarketChangePercent"))
 
-    parts = [f"${price_value:.2f}"]
+    price_parts = [f"Price ${price_value:.2f}"]
     if change is not None:
         try:
             change_value = float(change)
             sign = "+" if change_value >= 0 else ""
-            parts.append(f"{sign}{change_value:.2f} today")
+            price_parts.append(f"{sign}{change_value:.2f} today")
         except (TypeError, ValueError):
             pass
     if change_percent is not None:
-        parts.append(f"({change_percent:+.2f}%)")
+        price_parts.append(f"({change_percent:+.2f}%)")
 
-    return {"symbol": symbol, "details": " ".join(parts) + " "}
+    lines = [
+        name,
+        _JoinParts(price_parts),
+        _JoinParts([
+            f"Open {_FormatPrice(info.get('regularMarketOpen'))}" if _FormatPrice(info.get('regularMarketOpen')) else None,
+            f"High {_FormatPrice(info.get('regularMarketDayHigh'))}" if _FormatPrice(info.get('regularMarketDayHigh')) else None,
+            f"Low {_FormatPrice(info.get('regularMarketDayLow'))}" if _FormatPrice(info.get('regularMarketDayLow')) else None,
+        ]),
+        _JoinParts([
+            f"Prev close {_FormatPrice(info.get('regularMarketPreviousClose'))}" if _FormatPrice(info.get('regularMarketPreviousClose')) else None,
+            f"Volume {_FormatLargeCount(info.get('regularMarketVolume'))}" if _FormatLargeCount(info.get('regularMarketVolume')) else None,
+            f"Avg vol {_FormatLargeCount(info.get('averageVolume'))}" if _FormatLargeCount(info.get('averageVolume')) else None,
+        ]),
+        _JoinParts([
+            f"52 week low {_FormatPrice(info.get('fiftyTwoWeekLow'))}" if _FormatPrice(info.get('fiftyTwoWeekLow')) else None,
+            f"high {_FormatPrice(info.get('fiftyTwoWeekHigh'))}" if _FormatPrice(info.get('fiftyTwoWeekHigh')) else None,
+        ]),
+        _JoinParts([
+            f"Market cap {_FormatMarketCap(info.get('marketCap'))}" if _FormatMarketCap(info.get('marketCap')) else None,
+            f"PE {float(info.get('trailingPE')):.2f}" if info.get("trailingPE") is not None else None,
+            f"Fwd PE {float(info.get('forwardPE')):.2f}" if info.get("forwardPE") is not None else None,
+        ]),
+        _JoinParts([
+            f"Bid {_FormatPrice(info.get('bid'))}" if _FormatPrice(info.get('bid')) else None,
+            f"Ask {_FormatPrice(info.get('ask'))}" if _FormatPrice(info.get('ask')) else None,
+            f"Yield {float(info.get('dividendYield')) * 100:.2f}%" if info.get("dividendYield") is not None else None,
+        ]),
+        _JoinParts([
+            info.get("fullExchangeName") or info.get("exchange"),
+            info.get("currency"),
+        ]),
+    ]
+
+    detail_lines = [line for line in lines if line]
+    return {"symbol": symbol, "detail_lines": detail_lines}
 
 
 def FetchSymbolInfo(symbol):
@@ -145,7 +222,10 @@ def FetchStockReport(symbols=None):
             "stock_lines": [],
         }
 
-    body_parts = [f"{entry['symbol']} {entry['details'].strip()}" for entry in stock_lines]
+    body_parts = []
+    for entry in stock_lines:
+        body_parts.append(entry["symbol"])
+        body_parts.extend(entry.get("detail_lines", []))
     if errors:
         body_parts.append(f"Unavailable: {', '.join(errors)}.")
 
