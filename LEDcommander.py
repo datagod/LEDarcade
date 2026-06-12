@@ -1163,9 +1163,18 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                             for entry in stock_lines:
                                 symbol = entry.get("symbol", "")
                                 details = entry.get("details", "")
+                                LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                    LED.ScreenArray, "",
+                                    CursorH=CursorH, CursorV=CursorV,
+                                    MessageRGB=rgb,
+                                    CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                    StartingLineFeed=1,
+                                    TypeSpeed=0,
+                                    ScrollSpeed=scroll_speed
+                                )
                                 if symbol:
                                     LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-                                        LED.ScreenArray, " " + symbol + " ",
+                                        LED.ScreenArray, symbol + " ",
                                         CursorH=CursorH, CursorV=CursorV,
                                         MessageRGB=symbol_rgb,
                                         CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
