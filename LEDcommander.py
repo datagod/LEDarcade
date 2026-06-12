@@ -132,6 +132,7 @@ VALID_WEB_ACTIONS = {
     "terminalmessage": ["Message", "RGB", "ScrollSleep"],
     "terminalmode_off": [],
     "weatherterminal": ["Location", "Units", "RGB", "ScrollSleep", "TypeSpeed", "Repeat", "PostScrollWait"],
+    "stockterminal": ["symbols", "RGB", "ScrollSleep", "TypeSpeed", "Repeat", "PostScrollWait"],
     "showheart": [],
     "showintro": [],
     "showonair": ["duration"],
@@ -204,6 +205,29 @@ def sanitize_web_command(data, action):
                 data["PostScrollWait"] = max(float(data["PostScrollWait"]), 0)
             except ValueError:
                 data["PostScrollWait"] = WC.WEATHER_POST_SCROLL_WAIT
+
+    if action == "stockterminal":
+        import StockReport as SR
+        for key in ["TypeSpeed", "ScrollSleep"]:
+            if key in data:
+                try:
+                    data[key] = float(data[key])
+                except ValueError:
+                    pass
+        if "Repeat" in data:
+            try:
+                data["Repeat"] = max(int(data["Repeat"]), 1)
+            except ValueError:
+                data["Repeat"] = SR.STOCK_SCROLL_REPEAT
+        if "PostScrollWait" in data:
+            try:
+                data["PostScrollWait"] = max(float(data["PostScrollWait"]), 0)
+            except ValueError:
+                data["PostScrollWait"] = SR.STOCK_POST_SCROLL_WAIT
+        if "symbols" in data:
+            parsed = SR.ParseStockSymbols(data["symbols"])
+            if parsed:
+                data["symbols"] = parsed
 
     if action == "launch_stockticker" and "symbols" in data:
         if isinstance(data["symbols"], str):
@@ -286,6 +310,7 @@ def fallback_action_generator():
         {"Action": "launch_defender", "duration": 10},
         {"Action": "analogclock", "duration": 10 },
         {"Action": "weatherterminal"},
+        {"Action": "stockterminal"},
 
         {"Action": "launch_dotinvaders", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
@@ -691,6 +716,38 @@ def Run(CommandQueue):
                     )
                 else:
                     terminal_cmd["Message"] = report
+
+                CommandQueue.put(terminal_cmd)
+
+
+            elif Action == "stockterminal":
+                import StockReport as SR
+
+                symbols = Command.get("symbols")
+                report = SR.FetchStockReport(symbols)
+                terminal_action = "terminalmessage" if (
+                    DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal"
+                ) else "terminalmode_on"
+
+                print(f"[LEDcommander] Queueing stock report via {terminal_action}")
+
+                if terminal_action == "terminalmode_on":
+                    stop_current_display(Action)
+
+                terminal_cmd = {
+                    "Action": terminal_action,
+                    "RGB": Command.get("RGB", (0, 200, 0)),
+                    "ScrollSleep": Command.get("ScrollSleep", 0.05),
+                    "TypeSpeed": Command.get("TypeSpeed", SR.STOCK_TYPE_SPEED),
+                    "Repeat": Command.get("Repeat", SR.STOCK_SCROLL_REPEAT),
+                    "PostScrollWait": Command.get("PostScrollWait", SR.STOCK_POST_SCROLL_WAIT),
+                    "HeaderRGB": SR.STOCK_HEADER_RGB,
+                    "MessageHeader": report.get("header", ""),
+                    "MessageBody": report.get("body", ""),
+                    "Message": " ".join(
+                        part for part in [report.get("header", ""), report.get("body", "")] if part
+                    ),
+                }
 
                 CommandQueue.put(terminal_cmd)
 

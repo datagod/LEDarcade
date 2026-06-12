@@ -162,6 +162,20 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 
+def render_stock_section():
+    """Dedicated stock report control."""
+    return """
+        <div class="command-section stock-section">
+            <h2>Stock Report</h2>
+            <form class="command-form" action="/command" method="post">
+                <input type="hidden" name="Action" value="stockterminal">
+                <p>Uses STOCK_SYMBOLS from KeyConfig.ini</p>
+                <input type="submit" value="Stock Report">
+            </form>
+        </div>
+    """
+
+
 def render_weather_section(default_location=DEFAULT_LOCATION):
     """Dedicated weather report control with location input."""
     return f"""
@@ -207,9 +221,10 @@ def render_homepage(valid_actions):
     """
 
     html += render_weather_section()
+    html += render_stock_section()
 
     for action, fields in valid_actions.items():
-        if action == "weatherterminal":
+        if action in ("weatherterminal", "stockterminal"):
             continue
         html += f'<div class="command-section"><h2>{action}</h2>'
         html += '<form class="command-form" action="/command" method="post">'
