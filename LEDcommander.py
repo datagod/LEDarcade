@@ -340,7 +340,8 @@ def stop_current_display(preempted_by):
 
 
 def Run(CommandQueue):
-    global StopEvent, DisplayProcess, CurrentDisplayMode, IsOnAirActive, IsStockTickerPinned, FallbackGenerator
+    global StopEvent, DisplayProcess, CurrentDisplayMode, TerminalQueue
+    global IsOnAirActive, IsStockTickerPinned, FallbackGenerator
     print("\n" + "=" * 65)
     print("🧠 LEDcommander Launched")
     print("=" * 65)
@@ -675,12 +676,20 @@ def Run(CommandQueue):
             #----------------------------------
 
             elif Action == "terminalmode_on":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("[LEDcommander][Run] TerminalMode already active.")
+                if DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal":
+                    print("[LEDcommander][Run] TerminalMode already active; queueing message.")
+                    TerminalQueue.put(Command)
                 else:
+                    if DisplayProcess and DisplayProcess.is_alive():
+                        StopEvent.set()
+                        DisplayProcess.join()
                     StopEvent.clear()
                     CurrentDisplayMode = "terminal"
-                    DisplayProcess = Process(target=StartTerminalMode, args=(CommandQueue, StopEvent, Command))
+                    TerminalQueue = Queue()
+                    DisplayProcess = Process(
+                        target=StartTerminalMode,
+                        args=(TerminalQueue, StopEvent, Command),
+                    )
                     DisplayProcess.start()
 
 
