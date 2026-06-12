@@ -1,6 +1,7 @@
 # LEDpanel.py - Shared CRT-styled control panel for LED Commander
 import LEDupdate
 from WeatherClock import DEFAULT_LOCATION
+from StockReport import LoadStockSymbols
 
 PANEL_VERSION = "1.1"
 PANEL_TITLE = f"LED Commander Control Panel {PANEL_VERSION}"
@@ -65,6 +66,11 @@ label {
     color: #0f0;
     display: block;
     margin-bottom: 8px;
+}
+p {
+    color: #0a0;
+    font-size: 0.85rem;
+    margin: 0 0 8px 0;
 }
 input[type="text"] {
     width: 100%;
@@ -162,14 +168,19 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 
-def render_stock_section():
+def render_stock_section(default_symbols=None):
     """Dedicated stock report control."""
-    return """
+    if default_symbols is None:
+        default_symbols = ", ".join(LoadStockSymbols())
+    return f"""
         <div class="command-section stock-section">
             <h2>Stock Report</h2>
             <form class="command-form" action="/command" method="post">
                 <input type="hidden" name="Action" value="stockterminal">
-                <p>Uses STOCK_SYMBOLS from KeyConfig.ini</p>
+                <label>Symbols
+                    <input type="text" name="symbols" value="{default_symbols}" placeholder="TSLA MSFT AAPL">
+                </label>
+                <p>Comma or space separated. Leave blank to use KeyConfig.ini.</p>
                 <input type="submit" value="Stock Report">
             </form>
         </div>

@@ -724,6 +724,8 @@ def Run(CommandQueue):
                 import StockReport as SR
 
                 symbols = Command.get("symbols")
+                if isinstance(symbols, str) and not symbols.strip():
+                    symbols = None
                 report = SR.FetchStockReport(symbols)
                 terminal_action = "terminalmessage" if (
                     DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal"
@@ -742,12 +744,16 @@ def Run(CommandQueue):
                     "Repeat": Command.get("Repeat", SR.STOCK_SCROLL_REPEAT),
                     "PostScrollWait": Command.get("PostScrollWait", SR.STOCK_POST_SCROLL_WAIT),
                     "HeaderRGB": SR.STOCK_HEADER_RGB,
+                    "SymbolRGB": SR.STOCK_SYMBOL_RGB,
+                    "StockLines": report.get("stock_lines", []),
                     "MessageHeader": report.get("header", ""),
                     "MessageBody": report.get("body", ""),
                     "Message": " ".join(
                         part for part in [report.get("header", ""), report.get("body", "")] if part
                     ),
                 }
+                if report.get("errors"):
+                    terminal_cmd["ErrorText"] = f"Unavailable: {', '.join(report['errors'])}."
 
                 CommandQueue.put(terminal_cmd)
 
@@ -1138,9 +1144,56 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                     header = Command.get("MessageHeader", "")
                     body = Command.get("MessageBody", "")
                     header_rgb = Command.get("HeaderRGB", (200, 200, 0))
+                    stock_lines = Command.get("StockLines", [])
+                    symbol_rgb = Command.get("SymbolRGB", (200, 0, 200))
+                    error_text = Command.get("ErrorText", "")
 
                     for repeat_index in range(repeat):
-                        if header and body:
+                        if stock_lines:
+                            if header:
+                                LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                    LED.ScreenArray, header + " ",
+                                    CursorH=CursorH, CursorV=CursorV,
+                                    MessageRGB=header_rgb,
+                                    CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                    StartingLineFeed=1,
+                                    TypeSpeed=type_speed,
+                                    ScrollSpeed=scroll_speed
+                                )
+                            for entry in stock_lines:
+                                symbol = entry.get("symbol", "")
+                                details = entry.get("details", "")
+                                if symbol:
+                                    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                        LED.ScreenArray, symbol + " ",
+                                        CursorH=CursorH, CursorV=CursorV,
+                                        MessageRGB=symbol_rgb,
+                                        CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                        StartingLineFeed=0,
+                                        TypeSpeed=type_speed,
+                                        ScrollSpeed=scroll_speed
+                                    )
+                                if details:
+                                    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                        LED.ScreenArray, details,
+                                        CursorH=CursorH, CursorV=CursorV,
+                                        MessageRGB=rgb,
+                                        CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                        StartingLineFeed=0,
+                                        TypeSpeed=type_speed,
+                                        ScrollSpeed=scroll_speed
+                                    )
+                            if error_text:
+                                LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+                                    LED.ScreenArray, error_text,
+                                    CursorH=CursorH, CursorV=CursorV,
+                                    MessageRGB=rgb,
+                                    CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
+                                    StartingLineFeed=1,
+                                    TypeSpeed=type_speed,
+                                    ScrollSpeed=scroll_speed
+                                )
+                        elif header and body:
                             LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
                                 LED.ScreenArray, header,
                                 CursorH=CursorH, CursorV=CursorV,
@@ -1181,19 +1234,20 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
                                 ScrollSpeed=scroll_speed
                             )
 
-                    post_scroll_wait = Command.get("PostScrollWait")
-                    if post_scroll_wait is not None and post_scroll_wait > 0:
-                        print(f"[TerminalMode] Post-scroll wait: {post_scroll_wait}s")
-                        wait_end = time.time() + float(post_scroll_wait)
-                        while time.time() < wait_end and not StopEvent.is_set():
-                            LED.BlinkCursor(
-                                CursorH=CursorH,
-                                CursorV=CursorV,
-                                CursorRGB=CursorRGB,
-                                CursorDarkRGB=CursorDarkRGB,
-                                BlinkSpeed=0.50,
-                                BlinkCount=2
-                            )
+                    if "PostScrollWait" in Command:
+                        post_scroll_wait = float(Command.get("PostScrollWait", 0))
+                        if post_scroll_wait > 0:
+                            print(f"[TerminalMode] Post-scroll wait: {post_scroll_wait}s")
+                            wait_end = time.time() + post_scroll_wait
+                            while time.time() < wait_end and not StopEvent.is_set():
+                                LED.BlinkCursor(
+                                    CursorH=CursorH,
+                                    CursorV=CursorV,
+                                    CursorRGB=CursorRGB,
+                                    CursorDarkRGB=CursorDarkRGB,
+                                    BlinkSpeed=0.50,
+                                    BlinkCount=2
+                                )
                         if not StopEvent.is_set():
                             _StopTerminalMode()
                             StopEvent.set()

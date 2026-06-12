@@ -3,6 +3,7 @@ Fetch and format stock reports for LEDarcade terminal scrolling.
 """
 
 import os
+import re
 import traceback
 from configparser import ConfigParser
 
@@ -10,8 +11,9 @@ KeyConfigFileName = "KeyConfig.ini"
 DEFAULT_SYMBOLS = ["TSLA", "MSFT", "AAPL"]
 STOCK_TYPE_SPEED = 0.064
 STOCK_SCROLL_REPEAT = 2
-STOCK_POST_SCROLL_WAIT = 30
+STOCK_POST_SCROLL_WAIT = 0
 STOCK_HEADER_RGB = (200, 200, 0)
+STOCK_SYMBOL_RGB = (200, 0, 200)
 
 
 def CheckConfigFiles():
@@ -32,7 +34,7 @@ def ParseStockSymbols(symbols):
     if symbols is None:
         return None
     if isinstance(symbols, str):
-        raw_symbols = symbols.split(",")
+        raw_symbols = re.split(r"[,\s]+", symbols.strip())
     elif isinstance(symbols, (list, tuple)):
         raw_symbols = symbols
     else:
@@ -78,20 +80,20 @@ def _FormatChangePercent(change_percent):
     return value
 
 
-def _FormatSymbolLine(symbol, info):
+def _FormatSymbolEntry(symbol, info):
     price = info.get("regularMarketPrice")
     if price is None:
-        return f"{symbol} unavailable."
+        return {"symbol": symbol, "details": "unavailable."}
 
     try:
         price_value = float(price)
     except (TypeError, ValueError):
-        return f"{symbol} unavailable."
+        return {"symbol": symbol, "details": "unavailable."}
 
     change = info.get("regularMarketChange")
     change_percent = _FormatChangePercent(info.get("regularMarketChangePercent"))
 
-    parts = [f"{symbol} ${price_value:.2f}"]
+    parts = [f"${price_value:.2f}"]
     if change is not None:
         try:
             change_value = float(change)
@@ -102,7 +104,7 @@ def _FormatSymbolLine(symbol, info):
     if change_percent is not None:
         parts.append(f"({change_percent:+.2f}%)")
 
-    return " ".join(parts)
+    return {"symbol": symbol, "details": " ".join(parts) + " "}
 
 
 def FetchSymbolInfo(symbol):
@@ -126,27 +128,30 @@ def FetchSymbolInfo(symbol):
 def FetchStockReport(symbols=None):
     """Fetch stock data and return a scrollable header/body report."""
     symbol_list = LoadStockSymbols(symbols)
-    lines = []
+    stock_lines = []
     errors = []
 
     for symbol in symbol_list:
         info = FetchSymbolInfo(symbol)
         if info:
-            lines.append(_FormatSymbolLine(symbol, info))
+            stock_lines.append(_FormatSymbolEntry(symbol, info))
         else:
             errors.append(symbol)
 
-    if not lines and errors:
+    if not stock_lines and errors:
         return {
             "header": "",
             "body": f"Stock data unavailable for {', '.join(errors)}.",
+            "stock_lines": [],
         }
 
-    body_parts = lines
+    body_parts = [f"{entry['symbol']} {entry['details'].strip()}" for entry in stock_lines]
     if errors:
         body_parts.append(f"Unavailable: {', '.join(errors)}.")
 
     return {
         "header": "Stock report.",
         "body": " ".join(body_parts),
+        "stock_lines": stock_lines,
+        "errors": errors,
     }
