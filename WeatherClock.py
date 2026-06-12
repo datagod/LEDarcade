@@ -103,7 +103,7 @@ def FetchWeatherReport(location, units="F"):
         body_parts = [
             f"Now {temp}{temp_label}, {condition}.",
             f"Feels like {feels}{temp_label}.",
-            f"Humidity {humidity}%.",
+            f"Humidity {humidity} pct.",
             f"Wind {wind_speed} {wind_label} {wind_dir}.".strip(),
             f"Today high {today_high}{temp_label}, low {today_low}{temp_label}.",
         ]

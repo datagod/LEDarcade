@@ -1091,6 +1091,7 @@ def StartTerminalMode(TerminalQueue, StopEvent, InitialCommand=None):
     CursorDarkRGB = (0, 50, 0)
 
     def _StopTerminalMode():
+        nonlocal CursorH, CursorV
         print("=========================")
         print("== STOP TERMINAL MODE ==")
         print("=========================")

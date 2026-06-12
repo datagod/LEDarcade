@@ -145,7 +145,7 @@ def _FormatSymbolEntry(symbol, info):
         except (TypeError, ValueError):
             pass
     if change_percent is not None:
-        price_parts.append(f"({change_percent:+.2f}%)")
+        price_parts.append(f"({change_percent:+.2f} pct)")
 
     lines = [
         name,
@@ -172,7 +172,7 @@ def _FormatSymbolEntry(symbol, info):
         _JoinParts([
             f"Bid {_FormatPrice(info.get('bid'))}" if _FormatPrice(info.get('bid')) else None,
             f"Ask {_FormatPrice(info.get('ask'))}" if _FormatPrice(info.get('ask')) else None,
-            f"Yield {float(info.get('dividendYield')) * 100:.2f}%" if info.get("dividendYield") is not None else None,
+            f"Yield {float(info.get('dividendYield')) * 100:.2f} pct" if info.get("dividendYield") is not None else None,
         ]),
         _JoinParts([
             info.get("fullExchangeName") or info.get("exchange"),
