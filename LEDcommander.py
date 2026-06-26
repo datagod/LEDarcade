@@ -127,6 +127,7 @@ VALID_WEB_ACTIONS = {
     "launch_stockticker": ["duration", "symbols"],
     "launch_fallingsand": ["duration"],
     "launch_gravitysim": ["duration"],
+    "launch_mazecar": ["duration"],
     "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
     "twitchtimer_off": [],
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
@@ -324,6 +325,7 @@ def fallback_action_generator():
         {"Action": "launch_spacedot", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_fallingsand", "duration": 10},
+        {"Action": "launch_mazecar", "duration": 10},
     ]
     for action in itertools.cycle(actions):
         yield action
@@ -650,6 +652,18 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "gravitysim"
                 DisplayProcess = Process(target=LaunchGravitySim, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_mazecar":
+                print("[LEDcommander][Run] Launching MazeCar")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "mazecar"
+                DisplayProcess = Process(target=LaunchMazeCar, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1582,6 +1596,15 @@ def LaunchStockTicker(Command, StopEvent):
     ST.main(Duration=Duration, StopEvent=StopEvent, Symbols=Symbols)
 
 
+
+
+def LaunchMazeCar(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import MazeCar as MC
+    Duration = Command.get("duration", 10)
+    print(f"[LEDcommander][LaunchMazeCar] Launching for {Duration} minutes...")
+    MC.LaunchMazeCar(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
 def LaunchFallingSand(Command, StopEvent):

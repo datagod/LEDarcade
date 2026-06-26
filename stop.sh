@@ -113,6 +113,7 @@ LAUNCHERS=(
     gravitysim.py
     Tron.py
     SpaceDot.py
+    MazeCar.py
     StockTicker.py
     AnalogClock.py
     WeatherClock.py
