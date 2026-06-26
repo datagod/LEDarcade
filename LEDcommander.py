@@ -537,7 +537,7 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
-            elif Action == "launch_defender":
+            elif Action in ("launch_defender", "launch_defender2"):
                 print("[LEDcommander][Run] Launching Defender")
                 if DisplayProcess and DisplayProcess.is_alive():
                     print("LED display already in use.  Stopping process then restarting")
@@ -547,19 +547,6 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "defender"
                 DisplayProcess = Process(target=LaunchDefender, args=(Command, StopEvent))
-                DisplayProcess.start()
-
-
-            elif Action == "launch_defender2":
-                print("[LEDcommander][Run] Launching Defender2")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
-
-                StopEvent.clear()
-                CurrentDisplayMode = "defender2"
-                DisplayProcess = Process(target=LaunchDefender2, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1516,22 +1503,11 @@ def LaunchDotInvaders(Command, StopEvent):
 def LaunchDefender(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
-    import Defender as DE
+    import Defender2 as DE
     Duration         = Command.get("duration",1)
-    print(f"[LEDcommander][LaunchDefender] Launching for {Duration} minutes...")
+    print(f"[LEDcommander][LaunchDefender] Launching Defender2 for {Duration} minutes...")
 
-    DE.LaunchDefender(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
-    LED.SweepClean()
-
-
-def LaunchDefender2(Command, StopEvent):
-    import LEDarcade as LED
-    LED.Initialize()
-    import Defender2 as DE2
-    Duration         = Command.get("duration",1)
-    print(f"[LEDcommander][LaunchDefender2] Launching for {Duration} minutes...")
-
-    DE2.LaunchDefender2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    DE.LaunchDefender2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     LED.SweepClean()
 
 
