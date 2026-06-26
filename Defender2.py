@@ -120,9 +120,10 @@ ExplosionB = 0
 
 
 
-LaserR = 150
-LaserG = 75
+LaserR = 0
+LaserG = 255
 LaserB = 0
+GroundLaserRGB = (0, 255, 0)
 
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
@@ -133,6 +134,11 @@ SpawnNewEnemiesTargetCount = 5
 SpawnNewHumansTargetCount  = 5
 ShipTypes                  = 27
 RedrawGroundWaveCount      = 5
+ShowHumans                 = True
+ShowEnemies                = True
+ShowCountHUD               = False
+BOMB_CRATER_SCALE          = 0.7
+BOMB_FLASH_MAX_RADIUS      = 5
 #GameSleep                  = 0.005
 
 
@@ -319,6 +325,47 @@ def find_nearest_human(def_h, def_v, human_h_list, human_v_list):
             target_v = v
 
     return target_h, target_v
+
+
+def find_nearest_alive_human(Humans, playfield_h, playfield_v):
+    """Nearest living human in playfield coordinates."""
+    min_dist = 1e9
+    target_h = -1
+    target_v = -1
+
+    for human in Humans:
+        if not is_alive(human):
+            continue
+        dist = abs(human.h - playfield_h) + abs(human.v - playfield_v)
+        if dist < min_dist:
+            min_dist = dist
+            target_h = human.h
+            target_v = human.v
+
+    return target_h, target_v
+
+
+def apply_human_hunt_steering(Defender, gx, Humans, hat_height):
+    """Steer toward the nearest human once all enemies are gone."""
+    global DefenderSpeed
+
+    playfield_h = round(gx + Defender.h)
+    nearest_h, nearest_v = find_nearest_alive_human(
+        Humans, playfield_h + 12, Defender.v,
+    )
+    if nearest_h < 0:
+        return
+
+    if nearest_v > Defender.v + 1:
+        Defender.v = min(Defender.v + 2, hat_height - 3)
+    elif nearest_v < Defender.v - 1:
+        Defender.v = max(Defender.v - 2, 5)
+
+    human_screen_h = nearest_h - round(gx)
+    if human_screen_h > Defender.h + 12:
+        DefenderSpeed = min(DefenderSpeed + DefenderSpeedIncrement * 2, DefenderMaxSpeed)
+    elif human_screen_h < Defender.h - 2:
+        DefenderSpeed = max(DefenderSpeed - DefenderSpeedIncrement, DefenderMinSpeed)
 
 
 
@@ -596,18 +643,38 @@ def LookForTargets(H,V,TargetName,Defender, DefenderPlayfield,Canvas):
 
 
 
-def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
+def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips,hunt_humans=False):
   global RequestBombDrop
   global RequestGroundLaser
 
   #upper left hand corner of currently displayed playfield window
   PlayfieldH   = round(DefenderPlayfield.DisplayH)
   PlayfieldV   = DefenderPlayfield.DisplayV
-  RadarWidth   = 10
-  RadarHeight  = 6
+  RadarWidth   = 18 if hunt_humans else 10
+  RadarHeight  = 8 if hunt_humans else 6
   RadarAdjustH = 5
   RadarAdjustV = 5
   GroundV      = 0
+
+  if hunt_humans:
+      aim_h = PlayfieldH + Defender.h + 10
+      aim_v = Defender.v
+      nearest_h, nearest_v = find_nearest_alive_human(Humans, aim_h, aim_v)
+      if nearest_h >= 0:
+          RequestGroundLaser = True
+          RequestBombDrop = True
+          GroundV = max(0, nearest_v - 1)
+          StartX = max(0, nearest_h - RadarWidth // 2)
+          StopX = min(DefenderPlayfield.width - 1, nearest_h + RadarWidth // 2)
+          StartY = max(0, nearest_v - 2)
+          StopY = min(LED.HatHeight - 1, nearest_v + RadarHeight)
+          for human in Humans:
+              if (is_alive(human)
+                      and StartX <= human.h <= StopX
+                      and StartY <= human.v <= StopY):
+                  GroundV = max(0, human.v - 1)
+                  break
+      return RequestGroundLaser, RequestBombDrop, GroundV, Humans, EnemyShips
 
   
   #avoid end of the playfield
@@ -639,8 +706,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   Found = False
   
   for human in Humans:
-    if StartX <= human.h <= StopX and StartY <= human.v <= StopY:
-        #print(f"Human in laser range at H={human.h}, V={human.v}")
+    if is_alive(human) and StartX <= human.h <= StopX and StartY <= human.v <= StopY:
         RequestGroundLaser = True
         RequestBombDrop = True
         Found = True
@@ -648,8 +714,7 @@ def LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips):
   
   
   for ship in EnemyShips:
-    if StartX <= ship.h <= StopX and StartY <= ship.v <= StopY:
-        #print(f"Enemy in laser range at H={ship.h}, V={ship.v}")
+    if is_alive(ship) and StartX <= ship.h <= StopX and StartY <= ship.v <= StopY:
         RequestGroundLaser = True
         RequestBombDrop = True
         Found = True
@@ -732,9 +797,7 @@ def ShootGround(PlayfieldH, PlayfieldV, GroundV, Defender, DefenderPlayfield, Gr
   #    if GroundRGB != (0,0,0):
   #      break
   
-  LaserR = random.randint(50,255)
-  LaserG = random.randint(0,100)
-  LaserB = random.randint(50,255)
+  LaserR, LaserG, LaserB = GroundLaserRGB
   if(ScanH  >= DefenderPlayfield.width - 1):
     ScanH = DefenderPlayfield.width - 1
   
@@ -1111,6 +1174,74 @@ def KillEnemiesInBlastZone(BlastH,BlastV,BlastStrength, Humans, HumanParticles, 
   return HumanParticles, DefenderPlayfield
 
 
+def draw_bomb_explosion_flash(Canvas, cx, cy, blast_strength):
+    """Brief tight impact flash — small rings, not a big blast."""
+    flash_colors = (
+        (255, 255, 255),
+        (255, 255, 180),
+        (255, 230, 60),
+        (255, 160, 0),
+        (255, 80, 0),
+    )
+    flash_radius = min(BOMB_FLASH_MAX_RADIUS, max(3, blast_strength // 3))
+
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            Canvas.SetPixel(cx + dx, cy + dy, 255, 255, 255)
+    for i, rgb in enumerate(flash_colors[:flash_radius]):
+        graphics.DrawCircle(Canvas, cx, cy, i + 1, graphics.Color(*rgb))
+
+
+def carve_irregular_bomb_crater(ground_map, gh, gv, blast_strength, rng=None):
+    """Carve a natural irregular crater instead of the legacy cone-shaped blast."""
+    if rng is None:
+        rng = random.Random()
+
+    blast_strength = max(2, round(blast_strength * BOMB_CRATER_SCALE))
+
+    height = len(ground_map)
+    width = len(ground_map[0]) if height else 0
+    if width == 0:
+        return ground_map
+
+    h_span = blast_strength + rng.randint(2, 5)
+    v_span_up = rng.randint(3, 6)
+    v_span_down = blast_strength + rng.randint(0, 3)
+    h_min = max(0, gh - h_span)
+    h_max = min(width - 1, gh + h_span)
+    v_min = max(0, gv - v_span_up)
+    v_max = min(height - 1, gv + v_span_down)
+
+    blobs = []
+    for _ in range(rng.randint(4, 7)):
+        blobs.append((
+            gh + rng.randint(-blast_strength // 2, blast_strength // 2),
+            gv + rng.randint(-2, max(1, blast_strength // 2)),
+            rng.uniform(0.35, 1.05) * (blast_strength + rng.uniform(-1, 2)),
+            rng.uniform(0.35, 1.15) * (blast_strength + rng.uniform(-1, 3)),
+            rng.uniform(0.62, 1.18),
+        ))
+
+    for gy in range(v_min, v_max + 1):
+        for gx in range(h_min, h_max + 1):
+            if ground_map[gy][gx] == (0, 0, 0):
+                continue
+
+            destroy = False
+            for cx, cy, rx, ry, edge in blobs:
+                dx = (gx - cx) / max(rx, 0.5)
+                dy = (gy - cy) / max(ry, 0.5)
+                dist = math.sqrt(dx * dx + dy * dy)
+                if dist < edge + rng.uniform(-0.2, 0.2):
+                    destroy = True
+                    break
+
+            if destroy:
+                ground_map[gy][gx] = (0, 0, 0)
+
+    return ground_map
+
+
 def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParticles,Humans,HumanParticles,EnemyShips, DefenderPlayfield,Canvas,GroundRGB, SurfaceRGB):
   # PlayfieldH, PlayfieldV = upper left hand corner of the window being displayed
   #Defenderbomb.h is relative to the  64x32 display
@@ -1129,19 +1260,6 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
   else:
     BlastStrength  = round( (LED.HatWidth - DefenderBomb.h)     / 10 + BlastFactor)
 
-  explosion_colors = [
-      (255, 255, 255),  # core
-      (255, 200, 0),    # yellow
-      (255, 100, 0),    # orange
-      (255, 0, 0),      # red
-      (175, 0, 175),    # purple smoke
-  ]
-
-  
-  
-  SurfaceR, SurfaceG, SurfaceB = SurfaceRGB
-   
-  
   try:
 
     #Blow up bomb if it touches ground or runs out of velocity
@@ -1156,32 +1274,12 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
        ):
 
       
-      #destroy ground
-      gv = BlastV
-      gh = BlastH+PlayfieldH
-
-      for j in range(-4, BlastStrength):
-          for i in range(-BlastStrength + j, BlastStrength - j):
-              pixel_v = gv + j
-              pixel_h = gh + i
-
-              if 0 <= pixel_v < LED.HatHeight and 0 <= pixel_h < Ground.width:
-                  Ground.map[pixel_v][pixel_h] = (0, 0, 0)
-
-          # Surface coloring only for j >= 0
-          if j >= 0:
-              left_h  = gh - BlastStrength + j - 1
-              right_h = gh + BlastStrength - j
-              pixel_v = gv + j
-
-              if 0 <= pixel_v < LED.HatHeight:
-                  if 0 <= left_h < Ground.width:
-                      if Ground.map[pixel_v][left_h] != (0, 0, 0):
-                          Ground.map[pixel_v][left_h] = (SurfaceR, SurfaceG, SurfaceB)
-
-                  if 0 <= right_h < Ground.width:
-                      if Ground.map[pixel_v][right_h] != (0, 0, 0):
-                          Ground.map[pixel_v][right_h] = (SurfaceR, SurfaceG, SurfaceB)
+      carve_irregular_bomb_crater(
+          Ground.map,
+          BlastH + PlayfieldH,
+          BlastV,
+          BlastStrength,
+      )
 
 
   except:
@@ -1189,24 +1287,15 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
 
   try:
-
-      # Limit how many rings we draw to avoid performance hit
-      max_rings = min(BlastStrength, len(explosion_colors))
-
-      for i in range(max_rings):
-          color = graphics.Color(*explosion_colors[i])
-          graphics.DrawCircle(Canvas, BlastH, BlastV, i + 1, color)
-
-  except:
-    print("Bomb error drawing explosion  BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
-
-  try:
-
-      #Explode Ground
-      for i in range(0,round(BlastStrength / 2)):
-        GroundParticles = AddGroundParticles(BlastH,BlastV,ExplosionR, ExplosionG, ExplosionB,GroundParticles)
-
-      Humans, HumanParticles, EnemyShips = KillEnemiesInBlastZone(BlastH + PlayfieldH,BlastV,BlastStrength, Humans, HumanParticles,EnemyShips, DefenderPlayfield)
+      draw_bomb_explosion_flash(Canvas, BlastH, BlastV, BlastStrength)
+      for i in range(0, round(BlastStrength / 2)):
+          GroundParticles = AddGroundParticles(
+              BlastH, BlastV, ExplosionR, ExplosionG, ExplosionB, GroundParticles,
+          )
+      Humans, HumanParticles, EnemyShips = KillEnemiesInBlastZone(
+          BlastH + PlayfieldH, BlastV, BlastStrength,
+          Humans, HumanParticles, EnemyShips, DefenderPlayfield,
+      )
      
       DefenderBomb.alive = False
       #DefenderBomb.bounces = 0
@@ -1214,7 +1303,7 @@ def DetonateBombIfAtGround(PlayfieldH,PLayfieldV,DefenderBomb,Ground,GroundParti
 
 
   except:
-    print("Bomb error exploding ground  BlastH BlastV PlayfieldH:",BlastH, BlastV ,PlayfieldH)      
+    print("Bomb error drawing explosion BlastH BlastV PlayfieldH:",BlastH, BlastV, PlayfieldH)
 
 
   if(DefenderBomb.alive == False):
@@ -1299,15 +1388,13 @@ def MoveHumanParticles (HumanParticles,Canvas):
 
     if(Particle.alive == True):
       Particle.UpdateLocationWithGravity(HumanParticleGravity)
-      hph = Particle.h
-      hpv = Particle.v
-      
-          
-      #only display particles on screen
-      r  = Particle.r
-      g  = Particle.g
-      b  = Particle.b
-      Canvas.SetPixel(hph,hpv,r,g,b)
+      if ShowHumans:
+        hph = Particle.h
+        hpv = Particle.v
+        r  = Particle.r
+        g  = Particle.g
+        b  = Particle.b
+        Canvas.SetPixel(hph,hpv,r,g,b)
         
 
 def DisplayCount(h,v,RGB, Header,Count,Canvas):
@@ -1316,6 +1403,165 @@ def DisplayCount(h,v,RGB, Header,Count,Canvas):
   #Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
   return Canvas, CountSprite
 
+
+
+# Blasteroids-style overlapping lump blobs for shaded terrain (see Outbreak obstacle stamping).
+TERRAIN_LUMP_STAMP_SPACING = 3
+TERRAIN_LUMP_SIZE_MIN = 6
+TERRAIN_LUMP_SIZE_MAX = 14
+TERRAIN_LUMP_CONTRAST = 1
+
+
+def generate_terrain_lumps(rng, count_min=3, count_max=6):
+    """Random overlapping circles — same layout as Blasteroids.Asteroid."""
+    lumps = []
+    for _ in range(rng.randint(count_min, count_max)):
+        angle = rng.uniform(0, 2 * math.pi)
+        distance_frac = rng.uniform(0, 0.5)
+        lump_radius_frac = rng.uniform(0.2, 0.5)
+        lumps.append((
+            math.cos(angle) * distance_frac,
+            math.sin(angle) * distance_frac,
+            lump_radius_frac,
+        ))
+    return lumps
+
+
+def compute_lump_shaded_rgb(i, j, size, lumps, base_rgb, contrast=TERRAIN_LUMP_CONTRAST):
+    """Return shaded RGB for a pixel inside the lump union, or None for outside."""
+    max_depth = -1
+    selected_lump = None
+    for frac_dx, frac_dy, frac_r in lumps:
+        effective_dx = frac_dx * size
+        effective_dy = frac_dy * size
+        effective_radius = frac_r * size
+        distance = math.sqrt((i - effective_dx) ** 2 + (j - effective_dy) ** 2)
+        if distance < effective_radius:
+            depth = effective_radius - distance
+            if depth > max_depth:
+                max_depth = depth
+                selected_lump = (frac_dx, frac_dy, frac_r)
+
+    if selected_lump is None:
+        return None
+
+    frac_dx, frac_dy, frac_r = selected_lump
+    effective_dx = frac_dx * size
+    effective_dy = frac_dy * size
+    effective_radius = frac_r * size
+    rel_i = i - effective_dx
+    rel_j = j - effective_dy
+    brightness_factor = 1.0 - contrast * (rel_i + rel_j) / (2 * effective_radius)
+    brightness_factor = max(0.5, min(1.5, brightness_factor))
+    r, g, b = base_rgb
+    return (
+        min(255, int(r * brightness_factor)),
+        min(255, int(g * brightness_factor)),
+        min(255, int(b * brightness_factor)),
+    )
+
+
+def column_ground_extent(ground_map, x, height):
+    """Return (top_y, bottom_y) for non-empty ground in a column, or None."""
+    top_y = None
+    for y in range(height):
+        if ground_map[y][x] != (0, 0, 0):
+            top_y = y
+            break
+    if top_y is None:
+        return None
+    bottom_y = top_y
+    for y in range(height - 1, top_y - 1, -1):
+        if ground_map[y][x] != (0, 0, 0):
+            bottom_y = y
+            break
+    return top_y, bottom_y
+
+
+def terrain_base_rgb(y, ground_rgb):
+    """Depth-shaded base color for lump texture (no bright surface-top line)."""
+    return LED.AdjustBrightnessRGB(ground_rgb, -y + 20)
+
+
+def terrain_fallback_shade(base_rgb, gx, gy):
+    """Light dither so gaps between lump circles are not flat fills."""
+    nudge = ((gx * 7 + gy * 13) % 7) - 3
+    return LED.AdjustBrightnessRGB(base_rgb, nudge)
+
+
+def apply_lumpy_terrain_shading(Ground, ground_rgb, surface_rgb, seed=None):
+    """Stamp Blasteroids-style lump shading across the full ground column."""
+    ground_map = Ground.map
+    height = Ground.height
+    width = Ground.width
+    rng = random.Random(seed if seed is not None else random.randint(0, 2**31 - 1))
+    stamp_cache = {}
+
+    for gx in range(width):
+        extent = column_ground_extent(ground_map, gx, height)
+        if extent is None:
+            continue
+        top_y, bottom_y = extent
+        col_depth = bottom_y - top_y + 1
+
+        band = gx // TERRAIN_LUMP_STAMP_SPACING
+        if band not in stamp_cache:
+            band_rng = random.Random(rng.randint(0, 2**31 - 1))
+            stamp_cache[band] = (
+                band_rng.randint(TERRAIN_LUMP_SIZE_MIN, TERRAIN_LUMP_SIZE_MAX),
+                generate_terrain_lumps(band_rng, count_min=5, count_max=9),
+            )
+        size, lumps = stamp_cache[band]
+        size = max(size, col_depth + 2)
+
+        cx = band * TERRAIN_LUMP_STAMP_SPACING + (TERRAIN_LUMP_STAMP_SPACING // 2)
+        cy = (top_y + bottom_y) // 2
+
+        for gy in range(top_y, bottom_y + 1):
+            base = terrain_base_rgb(gy, ground_rgb)
+            shaded = compute_lump_shaded_rgb(gx - cx, gy - cy, size, lumps, base)
+            if shaded is not None:
+                ground_map[gy][gx] = shaded
+            else:
+                ground_map[gy][gx] = terrain_fallback_shade(base, gx, gy)
+
+
+def create_mountains_base(Ground, ground_rgb, maxheight=MaxMountainHeight):
+    """Mountain silhouette with depth shading only (no bright surface-top pixel)."""
+    mv = LED.HatHeight - 1
+    chance = 10
+    step = random.randint(1, 3)
+    half_width = round(Ground.width / 2)
+
+    for x in range(0, half_width):
+        if random.randint(0, chance) == 1:
+            mv = mv - step
+        elif random.randint(0, chance) == 2:
+            mv = mv + step
+
+        if mv > LED.HatHeight - 1:
+            mv = LED.HatHeight - 1
+        if mv < LED.HatHeight - maxheight:
+            mv = LED.HatHeight - maxheight
+
+        for y in range(0, LED.HatHeight):
+            if y >= mv:
+                Ground.map[y][x] = LED.AdjustBrightnessRGB(ground_rgb, -y + 20)
+            else:
+                Ground.map[y][x] = (0, 0, 0)
+
+    for x in range(0, half_width):
+        for y in range(0, LED.HatHeight):
+            Ground.map[y][x + half_width] = Ground.map[y][half_width - 1 - x]
+
+    return Ground
+
+
+def create_lumpy_mountains(Ground, ground_rgb, surface_rgb, maxheight=MaxMountainHeight, seed=None):
+    """Build scrolling mountains, then bake lumpy shaded texture into the dirt."""
+    create_mountains_base(Ground, ground_rgb, maxheight=maxheight)
+    apply_lumpy_terrain_shading(Ground, ground_rgb, surface_rgb, seed=seed)
+    return Ground
 
 
 def FlattenGround(h1,h2,v,Ground):
@@ -1429,6 +1675,8 @@ def advance_wave(
     ClockSprite,
     EnemyCountSprite,
     HumanCountSprite,
+    ground_rgb,
+    surface_rgb,
 ):
     """Run WAVE transition and spawn enemies. fresh_wave replaces the wave; otherwise reinforce."""
     global EnemyShipCount, DefenderSpeed, ExplosionR, ExplosionG, ExplosionB
@@ -1447,14 +1695,15 @@ def advance_wave(
         ClockSprite, ClockSprite.h, ClockSprite.v, ClockSprite.rgb,
         ZoomFactor=ClockZoom, InputScreenArray=ScreenA,
     )
-    ScreenA = LED.CopySpriteToScreenArrayZoom(
-        EnemyCountSprite, EnemyCountH, EnemyCountV, (EnemyCountRGB), (0, 0, 0),
-        ZoomFactor=1, Fill=False, InputScreenArray=ScreenA,
-    )
-    ScreenA = LED.CopySpriteToScreenArrayZoom(
-        HumanCountSprite, HumanCountH, HumanCountV, (EnemyCountRGB), (0, 0, 0),
-        ZoomFactor=1, Fill=False, InputScreenArray=ScreenA,
-    )
+    if ShowCountHUD:
+        ScreenA = LED.CopySpriteToScreenArrayZoom(
+            EnemyCountSprite, EnemyCountH, EnemyCountV, (EnemyCountRGB), (0, 0, 0),
+            ZoomFactor=1, Fill=False, InputScreenArray=ScreenA,
+        )
+        ScreenA = LED.CopySpriteToScreenArrayZoom(
+            HumanCountSprite, HumanCountH, HumanCountV, (EnemyCountRGB), (0, 0, 0),
+            ZoomFactor=1, Fill=False, InputScreenArray=ScreenA,
+        )
     ScreenA = LED.CopyAnimatedSpriteToScreenArrayZoom(
         LED.Defender, Defender.h, Defender.v, ZoomFactor=1, TheScreenArray=ScreenA,
     )
@@ -1464,15 +1713,18 @@ def advance_wave(
     m, r = divmod(WaveCount, RedrawGroundWaveCount)
     if r == 0:
         i = random.randint(0, GroundColorCount - 1)
-        GroundRGB, SurfaceRGB = GroundColorList[i]
-        print("** Redrawing Ground GroundRGB:", GroundRGB)
-        Ground.CreateMountains(GroundRGB, SurfaceRGB, maxheight=MaxMountainHeight)
+        ground_rgb, surface_rgb = GroundColorList[i]
+        print("** Redrawing Ground GroundRGB:", ground_rgb)
+        Ground = create_lumpy_mountains(
+            Ground, ground_rgb, surface_rgb, maxheight=MaxMountainHeight, seed=WaveCount * 1337,
+        )
         ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(
-            SurfaceRGB, ExplosionBrightnessModifier,
+            surface_rgb, ExplosionBrightnessModifier,
         )
     else:
         print("** Flattening Ground")
         Ground = FlattenGround(0, Ground.width, MaxMountainHeight, Ground)
+        apply_lumpy_terrain_shading(Ground, ground_rgb, surface_rgb, seed=WaveCount * 1337 + 7)
 
     ScreenB = LED.PaintFourLayerScreenArray(bx, mx, fx, gx, Background, Middleground, Foreground, Ground, Canvas)
     ScreenB = LED.CopyAnimatedSpriteToScreenArrayZoom(
@@ -1517,6 +1769,8 @@ def advance_wave(
         DefenderPlayfield,
         Ground,
         count_alive(EnemyShips),
+        ground_rgb,
+        surface_rgb,
     )
 
 
@@ -1622,7 +1876,7 @@ def PlayDefender2(Duration,StopEvent=None):
   SurfaceR,SurfaceG,SurfaceB = SurfaceRGB
   ExplosionR, ExplosionG, ExplosionB = LED.AdjustBrightnessRGB(SurfaceRGB,ExplosionBrightnessModifier)
 
-  Ground.CreateMountains(GroundRGB,SurfaceRGB,maxheight=MaxMountainHeight)
+  Ground = create_lumpy_mountains(Ground, GroundRGB, SurfaceRGB, maxheight=MaxMountainHeight, seed=WaveCount * 1337)
   
 
 
@@ -1700,12 +1954,13 @@ def PlayDefender2(Duration,StopEvent=None):
 
   Humans,     DefenderPlayfield = CreateHumans(HumanCount=HumanCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
   HumanCountSprite = LED.CreateBannerSprite('H' + str(HumanCount))
-  Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,'H',HumanCount,Canvas)
-    
+  if ShowCountHUD:
+    Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,'H',HumanCount,Canvas)
 
   EnemyShips, DefenderPlayfield = CreateEnemyWave(ShipType=ShipType,ShipCount=EnemyShipCount, Ground=Ground,DefenderPlayfield=DefenderPlayfield)
-  EnemyShipCountSprite = LED.CreateBannerSprite('E'+str(EnemyShipCount))
-  Canvas, EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,'E',EnemyShipCount,Canvas)
+  EnemyCountSprite = LED.CreateBannerSprite('E'+str(EnemyShipCount))
+  if ShowCountHUD:
+    Canvas, EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,'E',EnemyShipCount,Canvas)
   wave_enemies_spawned = True
   OldEnemyAliveCount = EnemyShipCount
   
@@ -1940,7 +2195,7 @@ def PlayDefender2(Duration,StopEvent=None):
           hV = Human.v
         
           #check if human is in currently displayed area
-          if(DisplayH <=  hH  <= DisplayMaxH):
+          if ShowHumans and (DisplayH <=  hH  <= DisplayMaxH):
             Canvas = Human.PaintAnimatedToCanvas(hH-DisplayH,hV,Canvas)
 
          
@@ -2031,7 +2286,7 @@ def PlayDefender2(Duration,StopEvent=None):
             
         
           #check if Enemy is in currently displayed area
-          if(DisplayH - EnemyShip.width <=  EnemyShip.h  <= (DisplayH + hat_width + EnemyShip.width)):
+          if ShowEnemies and (DisplayH - EnemyShip.width <=  EnemyShip.h  <= (DisplayH + hat_width + EnemyShip.width)):
             Canvas = EnemyShip.PaintAnimatedToCanvas(EnemyShip.h-DisplayH,EnemyShip.v,Canvas)
             
           
@@ -2047,11 +2302,10 @@ def PlayDefender2(Duration,StopEvent=None):
               pv = Particle.v
 
               #only display particles on screen
-              if(DisplayH <=  ph  <= DisplayMaxH):
+              if ShowEnemies and (DisplayH <=  ph  <= DisplayMaxH):
                 r  = Particle.r
                 g  = Particle.g
                 b  = Particle.b
-                #print("Ship Particle:",i,j)  
                 Canvas.SetPixel(ph - DisplayH,pv,r,g,b)
               
               #kill the particle if the go off the screen
@@ -2068,15 +2322,14 @@ def PlayDefender2(Duration,StopEvent=None):
       #shoot enemies
       #pick up humans
       GroundV = 0
-      
-      # Fix JIT and NUMB later for performance reasons, look it up
-      #hh, hv, nearest_human = get_alive_human_coords_with_target(Humans, Defender.h + DisplayH, Defender.v)
-      #target_h, target_v = find_nearest_human(Defender.h + DisplayH, Defender.v, hh, hv)
 
+      enemy_alive_now = count_alive(EnemyShips)
+      human_alive_now = count_alive(Humans)
+      human_hunt_mode = enemy_alive_now == 0 and human_alive_now > 0
 
-
-      #move defender up or down randomly
-      if (DefenderReversing == 0):
+      if human_hunt_mode:
+        apply_human_hunt_steering(Defender, gx, Humans, hat_height)
+      elif (DefenderReversing == 0):
         if chance(UpDownChance):
           Defender.v = Defender.v -1
         elif chance(UpDownChance):
@@ -2134,7 +2387,7 @@ def PlayDefender2(Duration,StopEvent=None):
 
       TargetFound = False
       #Shoot forward laser
-      if chance(FrontRadarChance):
+      if (not human_hunt_mode) and chance(FrontRadarChance):
         EnemyName, EnemyH, EnemyV, TargetFound = LookForTargets2(gx,0, 'EnemyShip',Defender,DefenderPlayfield,Canvas,EnemyShips)
         #EnemyName, EnemyH, EnemyV, TargetFound = LookForTargets(gx,0, 'EnemyShip',Defender,DefenderPlayfield,Canvas)
         
@@ -2164,10 +2417,12 @@ def PlayDefender2(Duration,StopEvent=None):
 
             RequestBombDrop = True
 
-      #Shoot ground laser when X ships left
-
       #Look for targets on the ground
-      if(EnemyShipCount <= ShootGroundShipCount ):
+      if human_hunt_mode:
+        RequestGroundLaser, RequestBombDrop, GroundV, Humans, EnemyShips = LookForGroundTargets(
+            Defender, DefenderPlayfield, Ground, Humans, EnemyShips, hunt_humans=True,
+        )
+      elif(EnemyShipCount <= ShootGroundShipCount):
         if chance(GroundRadarChance):
           RequestGroundLaser, RequestBombDrop, GroundV,Humans,EnemyShips = LookForGroundTargets(Defender,DefenderPlayfield,Ground,Humans,EnemyShips)
 
@@ -2317,12 +2572,14 @@ def PlayDefender2(Duration,StopEvent=None):
 
       #start dropping bombs when 15 enemies left
       #print("EnemyShipCount:",EnemyShipCount)
-      if (RequestBombDrop == True  or (ShootGroundShipCount <= EnemyShipCount <= (ShootGroundShipCount * 2))):
+      if (RequestBombDrop == True
+              or human_hunt_mode
+              or (ShootGroundShipCount <= EnemyShipCount <= (ShootGroundShipCount * 2))):
       
         if(DefenderBomb.alive == False):
           #Lob the bombs for increased range and blast
           #print("Lobbing Bombs")
-          if chance(BombDropChance):
+          if human_hunt_mode or chance(BombDropChance):
             DefenderBomb.alive = True
             RequestBombDrop = False
             DefenderBomb.h = Defender.h + (3 * DefenderDirection)
@@ -2422,24 +2679,28 @@ def PlayDefender2(Duration,StopEvent=None):
       EnemyAliveCount = count_alive(EnemyShips)
       EnemyShipCount = EnemyAliveCount
       
-      #Only change display sprite if the count changes
-      if(OldEnemyAliveCount != EnemyAliveCount):
-        Canvas,EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,'E',EnemyAliveCount,Canvas)
-        OldEnemyAliveCount = EnemyAliveCount
-      else:
-        Canvas = LED.CopySpriteToCanvasZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+      if ShowCountHUD:
+        if(OldEnemyAliveCount != EnemyAliveCount):
+          Canvas,EnemyCountSprite = DisplayCount(EnemyCountH, EnemyCountV, EnemyCountRGB,'E',EnemyAliveCount,Canvas)
+          OldEnemyAliveCount = EnemyAliveCount
+        else:
+          Canvas = LED.CopySpriteToCanvasZoom(EnemyCountSprite,EnemyCountH,EnemyCountV,(EnemyCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
 
-      # Level clear: all enemy ships destroyed (humans may still be alive).
-      if (wave_enemies_spawned and EnemyAliveCount == 0 and len(EnemyShips) > 0
+      # Level clear: all enemies and humans eliminated before next wave.
+      humans_alive_now = count_alive(Humans)
+      if (wave_enemies_spawned and EnemyAliveCount == 0 and humans_alive_now == 0
+              and len(EnemyShips) > 0
               and time.time() - last_wave_advance_time > 1):
           LevelCount += 1
           WaveCount += 1
           print(f"[Defender2] Level complete. Advancing to wave {WaveCount}.")
           last_wave_advance_time = time.time()
-          ShipType, EnemyShips, DefenderPlayfield, Ground, EnemyAliveCount = advance_wave(
+          (ShipType, EnemyShips, DefenderPlayfield, Ground, EnemyAliveCount,
+           GroundRGB, SurfaceRGB) = advance_wave(
               True, WaveCount, ShipType, EnemyShips, DefenderPlayfield, Ground,
               Background, Middleground, Foreground, Canvas, Defender,
               bx, mx, fx, gx, ClockSprite, EnemyCountSprite, HumanCountSprite,
+              GroundRGB, SurfaceRGB,
           )
           EnemyShipCount = EnemyAliveCount
           OldEnemyAliveCount = -1
@@ -2448,18 +2709,13 @@ def PlayDefender2(Duration,StopEvent=None):
           Canvas = LED.TheMatrix.SwapOnVSync(Canvas)
           continue
 
-      #Human counts
       HumanCount = count_alive(Humans)
-      #Only change display if the count changes
-      if(OldHumanCount != HumanCount):
-        Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,'H', HumanCount,Canvas)
-        OldHumanCount = HumanCount
-        
-        #this is just a test
-        #Background = LED.CopySpriteToLayerZoom(HumanCountSprite,gx + 64,HumanCountV + 10,(5,0,5),(0,0,0),ZoomFactor = 2,Fill=True,Layer=Background)
-
-      else:
-        Canvas = LED.CopySpriteToCanvasZoom(HumanCountSprite,HumanCountH,HumanCountV,(HumanCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
+      if ShowCountHUD:
+        if(OldHumanCount != HumanCount):
+          Canvas, HumanCountSprite = DisplayCount(HumanCountH, HumanCountV, HumanCountRGB,'H', HumanCount,Canvas)
+          OldHumanCount = HumanCount
+        else:
+          Canvas = LED.CopySpriteToCanvasZoom(HumanCountSprite,HumanCountH,HumanCountV,(HumanCountRGB),(0,0,0),ZoomFactor = 1,Fill=False,Canvas=Canvas)
 
     
    
@@ -2483,10 +2739,12 @@ def PlayDefender2(Duration,StopEvent=None):
         WaveCount = WaveCount + 1
         last_wave_advance_time = time.time()
         print(f"[Defender2] Reinforcements for wave {WaveCount}.")
-        ShipType, EnemyShips, DefenderPlayfield, Ground, EnemyAliveCount = advance_wave(
+        (ShipType, EnemyShips, DefenderPlayfield, Ground, EnemyAliveCount,
+         GroundRGB, SurfaceRGB) = advance_wave(
             False, WaveCount, ShipType, EnemyShips, DefenderPlayfield, Ground,
             Background, Middleground, Foreground, Canvas, Defender,
             bx, mx, fx, gx, ClockSprite, EnemyCountSprite, HumanCountSprite,
+            GroundRGB, SurfaceRGB,
         )
         EnemyShipCount = EnemyAliveCount
         OldEnemyAliveCount = -1

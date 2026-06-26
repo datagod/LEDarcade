@@ -105,6 +105,7 @@ LAUNCHERS=(
     arcade.py
     particles.py
     Defender.py
+    Defender2.py
     Outbreak.py
     Blasteroids.py
     DotInvaders.py

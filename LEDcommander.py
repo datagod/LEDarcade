@@ -119,6 +119,7 @@ VALID_WEB_ACTIONS = {
     "starrynightdisplaytext": ["text1", "text2", "text3"],
     "launch_dotinvaders": ["duration"],
     "launch_defender": ["duration"],
+    "launch_defender2": ["duration"],
     "launch_tron": ["duration"],
     "launch_outbreak": ["duration"],
     "launch_spacedot": ["duration"],
@@ -547,6 +548,17 @@ def Run(CommandQueue):
                 DisplayProcess.start()
 
 
+            elif Action == "launch_defender2":
+                print("[LEDcommander][Run] Launching Defender2")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "defender2"
+                DisplayProcess = Process(target=LaunchDefender2, args=(Command, StopEvent))
+                DisplayProcess.start()
 
 
             elif Action == "launch_tron":
@@ -1495,6 +1507,17 @@ def LaunchDefender(Command, StopEvent):
     print(f"[LEDcommander][LaunchDefender] Launching for {Duration} minutes...")
 
     DE.LaunchDefender(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    LED.SweepClean()
+
+
+def LaunchDefender2(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Defender2 as DE2
+    Duration         = Command.get("duration",1)
+    print(f"[LEDcommander][LaunchDefender2] Launching for {Duration} minutes...")
+
+    DE2.LaunchDefender2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     LED.SweepClean()
 
 
