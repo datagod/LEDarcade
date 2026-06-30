@@ -114,6 +114,7 @@ LAUNCHERS=(
     Tron.py
     SpaceDot.py
     MazeCar.py
+    SpaceExplorer.py
     StockTicker.py
     AnalogClock.py
     WeatherClock.py

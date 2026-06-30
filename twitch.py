@@ -689,7 +689,7 @@ class Bot(commands.Bot ):
         self.DisplayDigitalClock(ClockDuration)
 
 
-        CommandQueue.put({"Action": "launch_defender", "duration": 10 })
+        CommandQueue.put({"Action": "launch_defender2", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
@@ -1743,7 +1743,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?demotivate ?hello ?hug ?intro ?onair ?profile ?me ?retro ?starrynight ?views ?taco ?time ?uptime ?viewers ?who')
         time.sleep(4)
-        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?tron')
+        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?particles ?spaceexplorer ?tron')
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
 
@@ -2261,7 +2261,7 @@ class Bot(commands.Bot ):
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Time to go blast some mutants"
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_defender", "duration": 10 })
+      CommandQueue.put({"Action": "launch_defender2", "duration": 10 })
 
 
 
@@ -2302,6 +2302,30 @@ class Bot(commands.Bot ):
         message = "Watch the pretty sand fall...and explode!"
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
+
+
+    #----------------------------------------
+    # PARTICLES (sand clock)               --
+    #----------------------------------------
+
+    @commands.command()
+    async def particles(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Sand is spraying time into life..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_particles", "duration": 10 })
+
+
+    #----------------------------------------
+    # SPACE EXPLORER                       --
+    #----------------------------------------
+
+    @commands.command()
+    async def spaceexplorer(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Explore the depths of space..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_spaceexplorer", "duration": 10 })
 
 
     #----------------------------------------

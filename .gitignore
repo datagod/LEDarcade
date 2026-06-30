@@ -148,4 +148,5 @@ CurrentProfile.png
 UserProfile.png
 FlightConfig.ini
 RefreshToken.sh
-./localdata
+localdata/
+localdata/launcher.cmd

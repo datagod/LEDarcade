@@ -126,8 +126,10 @@ VALID_WEB_ACTIONS = {
     "launch_blasteroids": ["duration"],
     "launch_stockticker": ["duration", "symbols"],
     "launch_fallingsand": ["duration"],
+    "launch_particles": ["duration"],
     "launch_gravitysim": ["duration"],
     "launch_mazecar": ["duration"],
+    "launch_spaceexplorer": ["duration"],
     "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
     "twitchtimer_off": [],
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
@@ -325,7 +327,9 @@ def fallback_action_generator():
         {"Action": "launch_spacedot", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_fallingsand", "duration": 10},
+        {"Action": "launch_particles", "duration": 10},
         {"Action": "launch_mazecar", "duration": 10},
+        {"Action": "launch_spaceexplorer", "duration": 10},
     ]
     for action in itertools.cycle(actions):
         yield action
@@ -628,6 +632,18 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=LaunchFallingSand, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+            elif Action == "launch_particles":
+                print("[LEDcommander][Run] Launching Particles")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "particles"
+                DisplayProcess = Process(target=LaunchParticles, args=(Command, StopEvent))
+                DisplayProcess.start()
+
 
             elif Action == "launch_gravitysim":
                 print("[LEDcommander][Run] Launching GravitySim")
@@ -651,6 +667,18 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "mazecar"
                 DisplayProcess = Process(target=LaunchMazeCar, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_spaceexplorer":
+                print("[LEDcommander][Run] Launching SpaceExplorer")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "spaceexplorer"
+                DisplayProcess = Process(target=LaunchSpaceExplorer, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1583,6 +1611,15 @@ def LaunchMazeCar(Command, StopEvent):
     MC.LaunchMazeCar(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
 
 
+def LaunchSpaceExplorer(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import SpaceExplorer as SE
+    Duration = Command.get("duration", 10)
+    print(f"[LEDcommander][LaunchSpaceExplorer] Launching for {Duration} minutes...")
+    SE.LaunchSpaceExplorer(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+
+
 def LaunchFallingSand(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
@@ -1590,6 +1627,15 @@ def LaunchFallingSand(Command, StopEvent):
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchFallingSand] Launching...")
     FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+def LaunchParticles(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import particles as PT
+    Duration = Command.get("duration", 10)
+    print(f"[LEDcommander][LaunchParticles] Launching for {Duration} minutes...")
+    PT.LaunchParticles(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
 
 
 

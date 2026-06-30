@@ -3,8 +3,49 @@ import LEDupdate
 from WeatherClock import DEFAULT_LOCATION
 from StockReport import LoadStockSymbols
 
-PANEL_VERSION = "1.1"
+PANEL_VERSION = "1.3"
 PANEL_TITLE = f"LED Commander Control Panel {PANEL_VERSION}"
+
+DEFAULT_GAME_DURATION = 10
+
+GAME_LAUNCHERS = [
+    ("launch_dotinvaders", "Dot Invaders"),
+    ("launch_defender", "Defender"),
+    ("launch_defender2", "Defender 2"),
+    ("launch_tron", "Tron"),
+    ("launch_outbreak", "Outbreak"),
+    ("launch_spacedot", "Space Dot"),
+    ("launch_blasteroids", "Blasteroids"),
+    ("launch_fallingsand", "Falling Sand"),
+    ("launch_particles", "Particles"),
+    ("launch_gravitysim", "Gravity Sim"),
+    ("launch_mazecar", "Maze Car"),
+    ("launch_spaceexplorer", "Space Explorer"),
+]
+
+ACTION_LABELS = {
+    "showclock": "Digital Clock",
+    "stopclock": "Stop Clock",
+    "showtitlescreen": "Title Screen",
+    "analogclock": "Analog Clock",
+    "retrodigital": "Retro Digital",
+    "starrynightdisplaytext": "Starry Night Text",
+    "launch_stockticker": "Stock Ticker",
+    "twitchtimer_on": "Twitch Timer On",
+    "twitchtimer_off": "Twitch Timer Off",
+    "terminalmode_on": "Terminal Mode On",
+    "terminalmessage": "Terminal Message",
+    "terminalmode_off": "Terminal Mode Off",
+    "showheart": "Show Heart",
+    "showintro": "Show Intro",
+    "showonair": "On Air",
+    "showonair_off": "On Air Off",
+    "showdemotivate": "Demotivator",
+    "showgif": "Show GIF",
+    "showviewers": "Show Viewers",
+    "showimagezoom": "Image Zoom",
+    "quit": "Quit",
+}
 
 PANEL_STYLES = """
 body {
@@ -129,6 +170,20 @@ input[type="submit"]:hover {
     color: #ff0000;
     border: 1px solid #ff0000;
 }
+.games-section {
+    grid-column: 1 / -1;
+}
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-top: 12px;
+}
+.game-card h3 {
+    margin: 0 0 10px 0;
+    color: #0f0;
+    font-size: 1rem;
+}
 """ + LEDupdate.UPDATE_STYLES
 
 FORM_SUBMIT_SCRIPT = """
@@ -208,6 +263,56 @@ def render_weather_section(default_location=DEFAULT_LOCATION):
     """
 
 
+def _action_label(action):
+    return ACTION_LABELS.get(action, action)
+
+
+def _game_launcher_actions(valid_actions):
+    return [
+        (action, title)
+        for action, title in GAME_LAUNCHERS
+        if action in valid_actions
+    ]
+
+
+def render_games_section(valid_actions):
+    """Grouped launch controls for arcade games and sims."""
+    games = _game_launcher_actions(valid_actions)
+    if not games:
+        return ""
+
+    cards = []
+    for action, title in games:
+        fields = valid_actions[action]
+        field_html = ""
+        for field in fields:
+            value = DEFAULT_GAME_DURATION if field == "duration" else ""
+            field_html += (
+                f'<label>{field}'
+                f'<input type="text" name="{field}" value="{value}"></label>'
+            )
+        cards.append(f"""
+            <div class="command-section game-card">
+                <h3>{title}</h3>
+                <form class="command-form" action="/command" method="post">
+                    <input type="hidden" name="Action" value="{action}">
+                    {field_html}
+                    <input type="submit" value="Launch {title}">
+                </form>
+            </div>
+        """)
+
+    return f"""
+        <div class="command-section games-section">
+            <h2>Games &amp; Simulations</h2>
+            <p>Duration is in minutes. Games here are part of the idle rotation.</p>
+            <div class="games-grid">
+                {"".join(cards)}
+            </div>
+        </div>
+    """
+
+
 def render_homepage(valid_actions):
     """Render the CRT-themed LED Commander control panel."""
     html = f"""
@@ -233,16 +338,19 @@ def render_homepage(valid_actions):
 
     html += render_weather_section()
     html += render_stock_section()
+    html += render_games_section(valid_actions)
 
+    game_actions = {action for action, _ in GAME_LAUNCHERS}
     for action, fields in valid_actions.items():
-        if action in ("weatherterminal", "stockterminal"):
+        if action in ("weatherterminal", "stockterminal") or action in game_actions:
             continue
-        html += f'<div class="command-section"><h2>{action}</h2>'
+        label = _action_label(action)
+        html += f'<div class="command-section"><h2>{label}</h2>'
         html += '<form class="command-form" action="/command" method="post">'
         html += f'<input type="hidden" name="Action" value="{action}">'
         for field in fields:
             html += f'<label>{field}<input type="text" name="{field}"></label>'
-        html += '<input type="submit" value="Submit"></form></div>'
+        html += f'<input type="submit" value="{label}"></form></div>'
 
     html += """
         </div>

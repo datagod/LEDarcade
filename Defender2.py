@@ -123,7 +123,8 @@ ExplosionB = 0
 LaserR = 0
 LaserG = 255
 LaserB = 0
-GroundLaserRGB = (0, 255, 0)
+GROUND_LASER_MIN = 50
+GROUND_LASER_MAX = 255
 
 DefenderWorldWidth = 2048
 MaxMountainHeight  = 16
@@ -797,7 +798,9 @@ def ShootGround(PlayfieldH, PlayfieldV, GroundV, Defender, DefenderPlayfield, Gr
   #    if GroundRGB != (0,0,0):
   #      break
   
-  LaserR, LaserG, LaserB = GroundLaserRGB
+  LaserR = 0
+  LaserG = random.randint(GROUND_LASER_MIN, GROUND_LASER_MAX)
+  LaserB = 0
   if(ScanH  >= DefenderPlayfield.width - 1):
     ScanH = DefenderPlayfield.width - 1
   
@@ -1410,6 +1413,17 @@ TERRAIN_LUMP_STAMP_SPACING = 3
 TERRAIN_LUMP_SIZE_MIN = 6
 TERRAIN_LUMP_SIZE_MAX = 14
 TERRAIN_LUMP_CONTRAST = 1
+TERRAIN_BRIGHTNESS = 1.15
+
+
+def terrain_ground_rgb(ground_rgb):
+    """Scale base dirt palette before depth and lump shading."""
+    r, g, b = ground_rgb
+    return (
+        min(255, int(r * TERRAIN_BRIGHTNESS)),
+        min(255, int(g * TERRAIN_BRIGHTNESS)),
+        min(255, int(b * TERRAIN_BRIGHTNESS)),
+    )
 
 
 def generate_terrain_lumps(rng, count_min=3, count_max=6):
@@ -1480,7 +1494,7 @@ def column_ground_extent(ground_map, x, height):
 
 def terrain_base_rgb(y, ground_rgb):
     """Depth-shaded base color for lump texture (no bright surface-top line)."""
-    return LED.AdjustBrightnessRGB(ground_rgb, -y + 20)
+    return LED.AdjustBrightnessRGB(terrain_ground_rgb(ground_rgb), -y + 20)
 
 
 def terrain_fallback_shade(base_rgb, gx, gy):
@@ -1546,7 +1560,7 @@ def create_mountains_base(Ground, ground_rgb, maxheight=MaxMountainHeight):
 
         for y in range(0, LED.HatHeight):
             if y >= mv:
-                Ground.map[y][x] = LED.AdjustBrightnessRGB(ground_rgb, -y + 20)
+                Ground.map[y][x] = LED.AdjustBrightnessRGB(terrain_ground_rgb(ground_rgb), -y + 20)
             else:
                 Ground.map[y][x] = (0, 0, 0)
 
