@@ -21,6 +21,7 @@ GAME_LAUNCHERS = [
     ("launch_gravitysim", "Gravity Sim"),
     ("launch_mazecar", "Maze Car"),
     ("launch_spaceexplorer", "Space Explorer"),
+    ("launch_skyfall", "Skyfall"),
 ]
 
 ACTION_LABELS = {

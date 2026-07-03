@@ -720,6 +720,10 @@ class Bot(commands.Bot ):
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
+        CommandQueue.put({"Action": "launch_skyfall", "duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
+
 
 
 
@@ -1743,7 +1747,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?demotivate ?hello ?hug ?intro ?onair ?profile ?me ?retro ?starrynight ?views ?taco ?time ?uptime ?viewers ?who')
         time.sleep(4)
-        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?particles ?spaceexplorer ?tron')
+        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?particles ?skyfall ?spaceexplorer ?tron')
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
 
@@ -2326,6 +2330,18 @@ class Bot(commands.Bot ):
         message = "Explore the depths of space..."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_spaceexplorer", "duration": 10 })
+
+
+    #----------------------------------------
+    # SKYFALL                              --
+    #----------------------------------------
+
+    @commands.command()
+    async def skyfall(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Rocks fall. The ship shoots back."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_skyfall", "duration": 10 })
 
 
     #----------------------------------------

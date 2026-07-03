@@ -130,6 +130,7 @@ VALID_WEB_ACTIONS = {
     "launch_gravitysim": ["duration"],
     "launch_mazecar": ["duration"],
     "launch_spaceexplorer": ["duration"],
+    "launch_skyfall": ["duration"],
     "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
     "twitchtimer_off": [],
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
@@ -330,6 +331,7 @@ def fallback_action_generator():
         {"Action": "launch_particles", "duration": 10},
         {"Action": "launch_mazecar", "duration": 10},
         {"Action": "launch_spaceexplorer", "duration": 10},
+        {"Action": "launch_skyfall", "duration": 10},
     ]
     for action in itertools.cycle(actions):
         yield action
@@ -679,6 +681,18 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "spaceexplorer"
                 DisplayProcess = Process(target=LaunchSpaceExplorer, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_skyfall":
+                print("[LEDcommander][Run] Launching Skyfall")
+                if DisplayProcess and DisplayProcess.is_alive():
+                    print("LED display already in use.  Stopping process then restarting")
+                    StopEvent.set()
+                    DisplayProcess.join()
+
+                StopEvent.clear()
+                CurrentDisplayMode = "skyfall"
+                DisplayProcess = Process(target=LaunchSkyfall, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1618,6 +1632,15 @@ def LaunchSpaceExplorer(Command, StopEvent):
     Duration = Command.get("duration", 10)
     print(f"[LEDcommander][LaunchSpaceExplorer] Launching for {Duration} minutes...")
     SE.LaunchSpaceExplorer(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+
+
+def LaunchSkyfall(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Skyfall as SF
+    Duration = Command.get("duration", 10)
+    print(f"[LEDcommander][LaunchSkyfall] Launching for {Duration} minutes...")
+    SF.LaunchSkyfall(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
 
 
 def LaunchFallingSand(Command, StopEvent):
