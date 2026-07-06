@@ -66,11 +66,14 @@ ASTEROID_SPAWN_ABOVE = 10
 ASTEROID_SPEED_MIN = 0.52
 ASTEROID_SPEED_MAX = 1.21
 ASTEROID_ANGLE_SPREAD = 0.85
-ASTEROID_SIZE_RANGE = (2, 7)
+ASTEROID_SIZE_TIER_MIN = 2
+ASTEROID_SIZE_TIER_MAX = 7
+ASTEROID_SIZE_TIER_SMALL = (3, 5)    # was size 2
+ASTEROID_SIZE_TIER_MEDIUM = (6, 13)  # was size 3
+MIN_ASTEROID_SPLIT_SIZE = 3
 MAX_ASTEROIDS = 18
 
 ROCK_SPLIT_COUNT = 2
-MIN_ASTEROID_SPLIT_SIZE = 3
 SPLIT_FLY_APART = (0.25, 0.46)
 SPLIT_PARENT_MOMENTUM = 0.40
 SPLIT_PERP_SPREAD_RAD = 0.85
@@ -84,6 +87,7 @@ ENEMY_SPEED_MIN = 0.40
 ENEMY_SPEED_MAX = 0.83
 ENEMY_BRIGHTNESS = 1.85
 ENEMY_RGB_FLOOR = 52
+ENEMY_ANIMATION_SLOWDOWN = 5
 
 ASTEROID_LIGHTING_CONTRAST = 1.0
 ASTEROID_COLORS = (
@@ -147,7 +151,7 @@ SHIP_DEBRIS_SPEED_XY = 2.07
 SHIP_DEBRIS_SPEED_Y = 2.88
 ENEMY_PARTICLE_LIFESPAN = 76
 
-PARALLAX_LAYER_HEIGHT_MULT = 4
+PARALLAX_LAYER_HEIGHT_MULT = 12
 FAR_STAR_STARCHANCE = 170
 NEAR_STAR_STARCHANCE = 72
 FAR_SCROLL_SPEED = 0.18
@@ -155,14 +159,32 @@ NEAR_SCROLL_SPEED = 0.55
 GAS_GIANT_SCROLL_SPEED = 0.90
 GAS_GIANT_MIN_RADIUS = 20
 GAS_GIANT_MAX_RADIUS = 36
+GAS_GIANT_COUNT = 3
 GAS_GIANT_APPEAR_INTERVAL = 20.0
-GAS_GIANT_PER_CYCLE = 1
+PLANET_SCROLL_SPEED = 0.72
+PLANET_COUNT = 5
+PLANET_MIN_RADIUS = 5
+PLANET_MAX_RADIUS = 15
+PLANET_APPEAR_INTERVAL = 20.0
 STAR_DIM_FACTOR = 0.7
 CLOCK_FONT_PATH = "/home/pi/LEDarcade/fonts/CHECKBK0.TTF"
 CLOCK_DIGIT_RGB = (48, 200, 140)
 CLOCK_SIZE_FACTOR = 0.7425
 CLOCK_RESPAWN_DELAY = 10.0
 CLOCK_SLIDE_DURATION = 0.52
+
+TITLE_WORD = "SKYFALL"
+TITLE_LETTER_ZOOM = 2
+TITLE_LETTER_GAP = 1
+TITLE_LETTER_RGB = (90, 180, 255)
+TITLE_LETTER_SHADOW_RGB = (15, 35, 70)
+TITLE_LETTER_STAGGER = 0.25
+TITLE_LETTER_GRAVITY = 0.62
+TITLE_LETTER_BOUNCE_DAMP = 0.44
+TITLE_LETTER_SETTLE_V = 0.38
+TITLE_LETTER_MAX_BOUNCES = 3
+TITLE_HOLD_SECONDS = 2.0
+TITLE_INTRO_MAX_SECONDS = 18.0
 
 
 def _panel_size():
@@ -230,6 +252,16 @@ def _build_asteroid_sprite_pixels(size, color, lumps, dim_factor=1.0):
             brightness = max(0.64, min(1.35, brightness)) * dim_factor
             pixels.append((i, j, _shade_asteroid_color(color, brightness)))
     return pixels
+
+
+def _roll_asteroid_spawn_size():
+    """Only the two smallest tiers are enlarged; sizes 4–7 stay original."""
+    tier = random.randint(ASTEROID_SIZE_TIER_MIN, ASTEROID_SIZE_TIER_MAX)
+    if tier == 2:
+        return random.randint(*ASTEROID_SIZE_TIER_SMALL)
+    if tier == 3:
+        return random.randint(*ASTEROID_SIZE_TIER_MEDIUM)
+    return tier
 
 
 def _split_child_pair(parent_size):
@@ -413,7 +445,7 @@ class FallingAsteroid:
     def __init__(self, x, y, size=None, color=None, vx=None, vy=None, is_red=None, is_blue=None):
         self.x = float(x)
         self.y = float(y)
-        self.size = size if size is not None else random.randint(*ASTEROID_SIZE_RANGE)
+        self.size = size if size is not None else _roll_asteroid_spawn_size()
         if color is None:
             self.color, self.is_red, self.is_blue = _pick_asteroid_type(is_red, is_blue)
         else:
@@ -570,7 +602,7 @@ class SkyfallEnemy:
         self.x += self.vx * step
         self.y += self.vy * step
         self.ticks += 1
-        framerate = max(1, self.sprite.framerate)
+        framerate = max(1, self.sprite.framerate) * ENEMY_ANIMATION_SLOWDOWN
         if self.ticks >= framerate:
             self.currentframe += 1
             self.ticks = 0
@@ -820,6 +852,86 @@ def _create_parallax_star_map(width, layer_height, starchance, brightness_range)
     return layer
 
 
+class Planet:
+    """Small water-world with smooth cloud cover — no rings."""
+
+    OCEAN_DEEP = (18, 55, 105)
+    OCEAN_MID = (35, 95, 155)
+    OCEAN_SHALLOW = (55, 130, 185)
+    CLOUD_WISP = (165, 200, 225)
+    CLOUD_BRIGHT = (205, 228, 245)
+
+    def __init__(self, cx, cy, radius=None, seed=None):
+        self.cx = cx
+        self.cy = cy
+        self.radius = radius if radius is not None else random.randint(
+            PLANET_MIN_RADIUS, PLANET_MAX_RADIUS,
+        )
+        self.seed = seed if seed is not None else random.random() * 1000.0
+
+    @property
+    def extent(self):
+        return self.radius, self.radius
+
+    def _cloud_cover(self, u, v):
+        """Smooth sinusoidal cloud field in normalized disk coordinates."""
+        s = self.seed
+        cover = (
+            0.50
+            + 0.26 * math.sin(u * 2.35 + v * 1.85 + s)
+            + 0.18 * math.cos(u * 3.80 - v * 2.95 + s * 1.55)
+            + 0.14 * math.sin((u + v) * 5.10 + s * 0.85)
+            + 0.10 * math.cos(u * 6.40 + v * 4.20 - s * 1.20)
+        )
+        return max(0.0, min(1.0, cover))
+
+    def _ocean_rgb(self, u, v, r_norm):
+        lat = math.sin(v * 2.65 + self.seed * 0.4) * 0.5 + 0.5
+        if lat < 0.34:
+            base = self.OCEAN_DEEP
+        elif lat < 0.68:
+            base = self.OCEAN_MID
+        else:
+            base = self.OCEAN_SHALLOW
+        limb = 1.0 - 0.38 * r_norm ** 1.18
+        light = 1.0 + 0.14 * max(0.0, (-u * 0.55 - v * 0.70))
+        factor = max(0.32, min(1.25, limb * light))
+        return tuple(min(255, int(channel * factor)) for channel in base)
+
+    def _blend_rgb(self, ocean, cover):
+        if cover < 0.58:
+            return ocean
+        blend = min(1.0, (cover - 0.58) / 0.42)
+        cloud_rgb = self.CLOUD_BRIGHT if cover > 0.82 else self.CLOUD_WISP
+        return tuple(
+            min(255, int(ocean[i] * (1.0 - blend) + cloud_rgb[i] * blend))
+            for i in range(3)
+        )
+
+    def rgb_at(self, dx, dy):
+        dist = math.hypot(dx, dy)
+        if dist > self.radius:
+            return None
+        u = dx / max(self.radius, 1)
+        v = dy / max(self.radius, 1)
+        r_norm = dist / max(self.radius, 1)
+        ocean = self._ocean_rgb(u, v, r_norm)
+        cover = self._cloud_cover(u, v)
+        return self._blend_rgb(ocean, cover)
+
+    def paint_to_map(self, layer, width, layer_height):
+        pad = 2
+        for dy in range(-self.radius - pad, self.radius + pad + 1):
+            for dx in range(-self.radius - pad, self.radius + pad + 1):
+                x = self.cx + dx
+                y = self.cy + dy
+                if not (0 <= x < width and 0 <= y < layer_height):
+                    continue
+                rgb = self.rgb_at(dx, dy)
+                if rgb is not None:
+                    layer[y][x] = rgb
+
+
 def _gas_giant_rgb(dx, dy, radius, colors):
     dist = math.hypot(dx, dy)
     if dist > radius:
@@ -860,44 +972,80 @@ def _gas_giant_extent(radius, ringed):
 
 
 def _gas_giant_layer_height(display_height):
-    """Tall enough for doubled-size planets spaced ~20s of scroll apart."""
+    """Tall scroll map for gas giants, spaced ~20s apart."""
     max_extent_y = GAS_GIANT_MAX_RADIUS + 4
     scroll_gap = int(GAS_GIANT_APPEAR_INTERVAL * GAS_GIANT_SCROLL_SPEED * TARGET_FPS)
     slot_height = display_height + 2 * max_extent_y
-    return GAS_GIANT_PER_CYCLE * (scroll_gap + slot_height)
+    return GAS_GIANT_COUNT * (scroll_gap + slot_height) * 3
 
 
-def _create_gas_giant_parallax_map(width, layer_height, display_height):
-    """Foreground parallax — rare huge planets drift closest to the camera."""
-    layer = [[(0, 0, 0) for _ in range(width)] for _ in range(layer_height)]
+def _planet_layer_height(display_height):
+    """Tall scroll map for water worlds, spaced ~20s apart."""
+    max_extent_y = PLANET_MAX_RADIUS + 2
+    scroll_gap = int(PLANET_APPEAR_INTERVAL * PLANET_SCROLL_SPEED * TARGET_FPS)
+    slot_height = display_height + 2 * max_extent_y
+    return PLANET_COUNT * (scroll_gap + slot_height) * 3
+
+
+def _place_gas_giant(layer, width, layer_height, slot_start, slot_height):
+    radius = random.randint(GAS_GIANT_MIN_RADIUS, GAS_GIANT_MAX_RADIUS)
     palettes = (
         ((185, 145, 95), (150, 105, 65), (205, 165, 105)),
         ((215, 185, 135), (165, 135, 95), (110, 85, 60)),
         ((75, 115, 175), (50, 85, 140), (115, 150, 205)),
         ((120, 85, 150), (85, 55, 110), (160, 120, 185)),
     )
+    colors = random.choice(palettes)
+    ringed = random.random() < 0.4
+    hx, hy = _gas_giant_extent(radius, ringed)
+    cx = random.randint(-hx + 2, width + hx - 2)
+    cy = random.randint(
+        slot_start + hy // 2,
+        max(slot_start + hy // 2, slot_start + slot_height - hy // 2),
+    )
+    _paint_gas_giant_to_map(layer, width, layer_height, cx, cy, radius, colors, ringed)
+
+
+def _place_planet(layer, width, layer_height, slot_start, slot_height):
+    radius = random.randint(PLANET_MIN_RADIUS, PLANET_MAX_RADIUS)
+    hx = hy = radius
+    cx = random.randint(hx, max(hx, width - hx))
+    cy_low = slot_start + hy
+    cy_high = max(cy_low, slot_start + slot_height - hy)
+    planet = Planet(cx, random.randint(cy_low, cy_high), radius=radius)
+    planet.paint_to_map(layer, width, layer_height)
+
+
+def _create_gas_giant_parallax_map(width, layer_height, display_height):
+    """Layer 3 — huge gas giants closest to the camera."""
+    layer = [[(0, 0, 0) for _ in range(width)] for _ in range(layer_height)]
     max_extent_y = GAS_GIANT_MAX_RADIUS + 4
     scroll_gap = int(GAS_GIANT_APPEAR_INTERVAL * GAS_GIANT_SCROLL_SPEED * TARGET_FPS)
     slot_height = display_height + 2 * max_extent_y
 
-    for cycle_idx in range(GAS_GIANT_PER_CYCLE):
-        radius = random.randint(GAS_GIANT_MIN_RADIUS, GAS_GIANT_MAX_RADIUS)
-        colors = random.choice(palettes)
-        ringed = random.random() < 0.4
-        hx, hy = _gas_giant_extent(radius, ringed)
+    for cycle_idx in range(GAS_GIANT_COUNT):
         slot_start = cycle_idx * (scroll_gap + slot_height) + scroll_gap
-        cx = random.randint(-hx + 2, width + hx - 2)
-        cy = random.randint(
-            slot_start + hy // 2,
-            max(slot_start + hy // 2, slot_start + slot_height - hy // 2),
-        )
-        _paint_gas_giant_to_map(layer, width, layer_height, cx, cy, radius, colors, ringed)
+        _place_gas_giant(layer, width, layer_height, slot_start, slot_height)
+    return layer
+
+
+def _create_planet_parallax_map(width, layer_height, display_height):
+    """Layer between gas giants and clock — watery cloud planets."""
+    layer = [[(0, 0, 0) for _ in range(width)] for _ in range(layer_height)]
+    max_extent_y = PLANET_MAX_RADIUS + 2
+    scroll_gap = int(PLANET_APPEAR_INTERVAL * PLANET_SCROLL_SPEED * TARGET_FPS)
+    slot_height = display_height + 2 * max_extent_y
+
+    for cycle_idx in range(PLANET_COUNT):
+        slot_start = cycle_idx * (scroll_gap + slot_height) + scroll_gap
+        _place_planet(layer, width, layer_height, slot_start, slot_height)
     return layer
 
 
 def _build_parallax_layers(width, height):
     layer_height = max(height * PARALLAX_LAYER_HEIGHT_MULT, height + 8)
     giant_height = _gas_giant_layer_height(height)
+    planet_height = _planet_layer_height(height)
     far_layer = _create_parallax_star_map(
         width, layer_height, FAR_STAR_STARCHANCE, (22, 95),
     )
@@ -905,7 +1053,8 @@ def _build_parallax_layers(width, height):
         width, layer_height, NEAR_STAR_STARCHANCE, (45, 185),
     )
     giant_layer = _create_gas_giant_parallax_map(width, giant_height, height)
-    return far_layer, near_layer, giant_layer, layer_height, giant_height
+    planet_layer = _create_planet_parallax_map(width, planet_height, height)
+    return far_layer, near_layer, giant_layer, planet_layer, layer_height, giant_height, planet_height
 
 
 def _draw_parallax_layer(canvas, layer_map, scroll_y, width, height, tick=0, twinkle=False):
@@ -1141,14 +1290,15 @@ def _draw_clock_pixels(canvas, clock_pixels, slide_offset_y=0.0):
 
 
 def _draw_parallax_background(
-    canvas, far_layer, near_layer, giant_layer,
-    far_scroll, near_scroll, giant_scroll, tick, clock_pixels,
+    canvas, far_layer, near_layer, giant_layer, planet_layer,
+    far_scroll, near_scroll, giant_scroll, planet_scroll, tick, clock_pixels,
     clock_slide_offset=0.0,
 ):
-    """Far stars, near stars, gas giants, then fixed clock above both."""
+    """Far stars, near stars, gas giants, planets, then fixed clock above all."""
     _draw_parallax_layer(canvas, far_layer, far_scroll, WIDTH, HEIGHT)
     _draw_parallax_layer(canvas, near_layer, near_scroll, WIDTH, HEIGHT, tick=tick, twinkle=True)
     _draw_parallax_layer(canvas, giant_layer, giant_scroll, WIDTH, HEIGHT)
+    _draw_parallax_layer(canvas, planet_layer, planet_scroll, WIDTH, HEIGHT)
     _draw_clock_pixels(canvas, clock_pixels, clock_slide_offset)
 
 
@@ -2138,7 +2288,230 @@ def _handle_ship_collision(collision, ship_x, ship_y, sparks, particles):
     return WIDTH / 2.0, MAX_ACTIVE_SHOTS
 
 
-def PlaySkyfall(Duration=10, StopEvent=None):
+def _skyfall_letter_sprite(char):
+    ch = char.upper()
+    if not ("A" <= ch <= "Z"):
+        return None
+    idx = ord(ch) - ord("A")
+    return LED.TrimSprite(copy.deepcopy(LED.AlphaSpriteList[idx]))
+
+
+def _sprite_pixels_zoomed(sprite, zoom, rgb, shadow_rgb):
+    """Expand banner sprite pixels — each lit cell becomes a zoom×zoom block."""
+    pixels = []
+    shadow_pixels = []
+    sw, sh = sprite.width, sprite.height
+    for count in range(sw * sh):
+        if sprite.grid[count] == 0:
+            continue
+        y, x = divmod(count, sw)
+        for zv in range(zoom):
+            for zh in range(zoom):
+                pixels.append((x * zoom + zh, y * zoom + zv, rgb))
+                shadow_pixels.append((x * zoom + zh + 1, y * zoom + zv + 1, shadow_rgb))
+    return pixels, shadow_pixels, sw * zoom, sh * zoom
+
+
+class TitleLetter:
+    """Single banner letter that drops, bounces, and rests on the bottom row."""
+
+    def __init__(self, char, pixels, shadow_pixels, width, height, rest_x, rest_y, drop_delay):
+        self.char = char
+        self.pixels = pixels
+        self.shadow_pixels = shadow_pixels
+        self.width = width
+        self.height = height
+        self.rest_x = rest_x
+        self.rest_y = rest_y
+        self.drop_delay = drop_delay
+        self.x = float(rest_x)
+        self.y = float(-height - 6)
+        self.vy = 0.0
+        self.dropped = False
+        self.settled = False
+        self.shattered = False
+        self.bounce_count = 0
+
+    def update(self, step, elapsed, gravity, bounce_damp, settle_v, max_bounces):
+        if self.settled:
+            self.y = self.rest_y
+            return
+        if elapsed < self.drop_delay:
+            return
+        self.dropped = True
+        self.vy += gravity * step
+        self.y += self.vy * step
+        if self.y >= self.rest_y:
+            self.y = self.rest_y
+            if abs(self.vy) < settle_v or self.bounce_count >= max_bounces:
+                self.vy = 0.0
+                self.settled = True
+            else:
+                self.vy = -abs(self.vy) * bounce_damp
+                self.bounce_count += 1
+
+    def force_settle(self):
+        self.x = float(self.rest_x)
+        self.y = float(self.rest_y)
+        self.vy = 0.0
+        self.dropped = True
+        self.settled = True
+
+    def draw(self, canvas):
+        sx = int(round(self.x))
+        sy = int(round(self.y))
+        set_pixel = canvas.SetPixel
+        for dx, dy, rgb in self.shadow_pixels:
+            px = sx + dx
+            py = sy + dy
+            if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                set_pixel(px, py, *rgb)
+        for dx, dy, rgb in self.pixels:
+            px = sx + dx
+            py = sy + dy
+            if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                set_pixel(px, py, *rgb)
+
+
+def _build_title_letters(width, height):
+    specs = []
+    for char in TITLE_WORD:
+        sprite = _skyfall_letter_sprite(char)
+        if sprite is None:
+            continue
+        pixels, shadow_pixels, letter_w, letter_h = _sprite_pixels_zoomed(
+            sprite, TITLE_LETTER_ZOOM, TITLE_LETTER_RGB, TITLE_LETTER_SHADOW_RGB,
+        )
+        specs.append((char, pixels, shadow_pixels, letter_w, letter_h))
+
+    total_width = sum(spec[3] for spec in specs) + TITLE_LETTER_GAP * max(0, len(specs) - 1)
+    start_x = max(0, (width - total_width) // 2)
+    letter_height = max(spec[4] for spec in specs) if specs else 0
+    rest_y = height - letter_height
+
+    letters = []
+    x_cursor = start_x
+    for index, (char, pixels, shadow_pixels, letter_w, letter_h) in enumerate(specs):
+        rest_x = x_cursor
+        y_offset = letter_height - letter_h
+        letters.append(TitleLetter(
+            char, pixels, shadow_pixels, letter_w, letter_h,
+            rest_x, rest_y + y_offset,
+            drop_delay=index * TITLE_LETTER_STAGGER,
+        ))
+        x_cursor += letter_w + TITLE_LETTER_GAP
+    return letters
+
+
+def _draw_title_letters(canvas, letters):
+    for letter in letters:
+        if letter.shattered:
+            continue
+        if letter.dropped or letter.settled:
+            letter.draw(canvas)
+
+
+def _shatter_title_letters(letters, particles):
+    """Burst title glyphs into drifting debris — same feel as the background clock."""
+    for letter in letters:
+        if letter.shattered:
+            continue
+        sx = int(round(letter.x))
+        sy = int(round(letter.y))
+        for dx, dy, rgb in letter.pixels:
+            px = sx + dx
+            py = sy + dy
+            particles.append(DebrisParticle(
+                px, py, rgb[0], rgb[1], rgb[2],
+                random.uniform(-1.4, 1.4) * 1.15,
+                random.uniform(-1.8, 0.8) * 1.15,
+            ))
+        for dx, dy, rgb in letter.shadow_pixels:
+            px = sx + dx
+            py = sy + dy
+            particles.append(DebrisParticle(
+                px, py, rgb[0], rgb[1], rgb[2],
+                random.uniform(-1.2, 1.2) * 1.15,
+                random.uniform(-1.5, 0.6) * 1.15,
+            ))
+        letter.shattered = True
+
+
+def PlaySkyfallTitleIntro(StopEvent=None):
+    """Drop SKYFALL one letter at a time; letters remain on the bottom row."""
+    global WIDTH, HEIGHT
+
+    WIDTH, HEIGHT = _panel_size()
+    letters = _build_title_letters(WIDTH, HEIGHT)
+    if not letters:
+        return letters, []
+
+    print("[Skyfall] Title intro — dropping letters")
+    canvas = LED.TheMatrix.CreateFrameCanvas()
+    intro_particles = []
+    start = time.time()
+    last_frame_time = start
+    hold_start = None
+
+    try:
+        while True:
+            if StopEvent and StopEvent.is_set():
+                for letter in letters:
+                    letter.force_settle()
+                _shatter_title_letters(letters, intro_particles)
+                break
+
+            now = time.time()
+            elapsed = now - start
+            if elapsed >= TITLE_INTRO_MAX_SECONDS:
+                for letter in letters:
+                    letter.force_settle()
+                _shatter_title_letters(letters, intro_particles)
+                break
+
+            frame_dt = now - last_frame_time
+            last_frame_time = now
+            step = _motion_step(frame_dt)
+
+            for letter in letters:
+                letter.update(
+                    step, elapsed,
+                    TITLE_LETTER_GRAVITY, TITLE_LETTER_BOUNCE_DAMP,
+                    TITLE_LETTER_SETTLE_V, TITLE_LETTER_MAX_BOUNCES,
+                )
+
+            if hold_start is None and all(letter.settled for letter in letters):
+                hold_start = now
+
+            shatter_now = (
+                hold_start is not None
+                and now - hold_start >= TITLE_HOLD_SECONDS
+            )
+            if shatter_now:
+                print("[Skyfall] Title intro — shattering letters")
+                _shatter_title_letters(letters, intro_particles)
+
+            canvas.Fill(0, 0, 0)
+            if not shatter_now:
+                _draw_title_letters(canvas, letters)
+            for particle in intro_particles:
+                if particle.alive:
+                    particle.move(step)
+                    particle.draw(canvas)
+            canvas = LED.TheMatrix.SwapOnVSync(canvas)
+
+            if shatter_now:
+                break
+
+    except KeyboardInterrupt:
+        for letter in letters:
+            letter.force_settle()
+        _shatter_title_letters(letters, intro_particles)
+
+    return letters, intro_particles
+
+
+def PlaySkyfall(Duration=10, StopEvent=None, title_letters=None, intro_particles=None):
     global WIDTH, HEIGHT
 
     WIDTH, HEIGHT = _panel_size()
@@ -2159,14 +2532,18 @@ def PlaySkyfall(Duration=10, StopEvent=None):
     crystals = []
     gems = []
     sparks = []
-    particles = []
-    far_stars, near_stars, giant_layer, _, giant_height = _build_parallax_layers(WIDTH, HEIGHT)
+    particles = list(intro_particles or [])
+    (
+        far_stars, near_stars, giant_layer, planet_layer,
+        _, giant_height, planet_height,
+    ) = _build_parallax_layers(WIDTH, HEIGHT)
     clock_pixels, clock_displayed_minute, clock_slide = _rebuild_clock_pixels(animate_entrance=False)
     clock_respawn_until = 0.0
     power_was_active = False
     far_scroll = 0.0
     near_scroll = 0.0
     giant_scroll = 0.0
+    planet_scroll = 0.0
     canvas = LED.TheMatrix.CreateFrameCanvas()
 
     start_time = time.time()
@@ -2320,6 +2697,7 @@ def PlaySkyfall(Duration=10, StopEvent=None):
             far_scroll = (far_scroll + FAR_SCROLL_SPEED * step) % (len(far_stars) * 1000)
             near_scroll = (near_scroll + NEAR_SCROLL_SPEED * step) % (len(near_stars) * 1000)
             giant_scroll = (giant_scroll + GAS_GIANT_SCROLL_SPEED * step) % (giant_height * 1000)
+            planet_scroll = (planet_scroll + PLANET_SCROLL_SPEED * step) % (planet_height * 1000)
 
             canvas.Fill(0, 0, 0)
             display_minute = time.strftime("%H:%M")
@@ -2333,10 +2711,12 @@ def PlaySkyfall(Duration=10, StopEvent=None):
                 )
 
             _draw_parallax_background(
-                canvas, far_stars, near_stars, giant_layer,
-                far_scroll, near_scroll, giant_scroll, tick, clock_pixels,
+                canvas, far_stars, near_stars, giant_layer, planet_layer,
+                far_scroll, near_scroll, giant_scroll, planet_scroll, tick, clock_pixels,
                 clock_slide_offset,
             )
+            if title_letters and any(not letter.shattered for letter in title_letters):
+                _draw_title_letters(canvas, title_letters)
             for asteroid in asteroids:
                 if asteroid.alive:
                     asteroid.draw(canvas)
@@ -2384,25 +2764,30 @@ def PlaySkyfall(Duration=10, StopEvent=None):
 
 
 def LaunchSkyfall(Duration=10, ShowIntro=False, StopEvent=None):
-    if ShowIntro:
-        LED.LoadConfigData()
-        LED.ShowTitleScreen(
-            BigText="SKY",
-            BigTextRGB=LED.HighBlue,
-            BigTextShadowRGB=(0, 0, 40),
-            LittleText="FALL",
-            LittleTextRGB=LED.MedOrange,
-            LittleTextShadowRGB=(40, 10, 0),
-            ScrollText="Rocks fall. The ship shoots back.",
-            ScrollTextRGB=LED.MedYellow,
-            ScrollSleep=0.03,
-            DisplayTime=1,
-            ExitEffect=0,
-        )
-
     LED.ClearBigLED()
     LED.ClearBuffers()
-    PlaySkyfall(Duration=Duration, StopEvent=StopEvent)
+    title_letters, intro_particles = PlaySkyfallTitleIntro(StopEvent=StopEvent)
+
+    if ShowIntro:
+        LED.ScreenArray, _, _ = LED.TerminalScroll(
+            LED.ScreenArray,
+            Message="Rocks fall. The ship shoots back.",
+            CursorH=0,
+            CursorV=0,
+            MessageRGB=LED.MedYellow,
+            CursorRGB=(0, 255, 0),
+            CursorDarkRGB=(0, 50, 0),
+            StartingLineFeed=1,
+            TypeSpeed=0.03,
+            ScrollSpeed=0.03,
+        )
+
+    PlaySkyfall(
+        Duration=Duration,
+        StopEvent=StopEvent,
+        title_letters=title_letters,
+        intro_particles=intro_particles,
+    )
 
 
 if __name__ == "__main__":
