@@ -1069,7 +1069,7 @@ def ShowOnAir(StopEvent=None,duration=60):
 #-- Custom Clock Functions --
 #----------------------------
 
-def DisplayCustomFontClock(StopEvent=None):
+def DisplayCustomFontClock(StopEvent=None, RunMinutes=5):
     width  = HatWidth
     height = HatHeight
 
@@ -1103,20 +1103,22 @@ def DisplayCustomFontClock(StopEvent=None):
 
     # Clock loop
     last_minute = None
+    start_time = time.time()
     try:
         Done = False
         while Done == False:
-            #print ("StopEvent.is_set: ",StopEvent.is_set())
-
             if StopEvent and StopEvent.is_set():
-                print ("STOP DETECTED")
-                print ("StopEvent.is_set: ",StopEvent.is_set())
-                
+                print("[LEDarcade][DisplayCustomFontClock] Stop requested — exiting.")
                 Done = True
                 SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
-
                 break
 
+            elapsed_minutes = (time.time() - start_time) / 60
+            if elapsed_minutes >= RunMinutes:
+                print(f"[LEDarcade][DisplayCustomFontClock] Duration reached ({RunMinutes} min) — exiting.")
+                Done = True
+                SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=100, end_zoom=0)
+                break
 
             now = datetime.now()
             current_minute = now.strftime("%H:%M")
@@ -18209,7 +18211,7 @@ def DisplayDigitalClock(
 
     #Retro Font
     elif (ClockStyle == 4):
-      DisplayCustomFontClock(StopEvent)
+      DisplayCustomFontClock(StopEvent, RunMinutes=RunMinutes)
       Done = True
 
     #Blasteroids

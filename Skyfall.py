@@ -976,7 +976,7 @@ def _gas_giant_layer_height(display_height):
     max_extent_y = GAS_GIANT_MAX_RADIUS + 4
     scroll_gap = int(GAS_GIANT_APPEAR_INTERVAL * GAS_GIANT_SCROLL_SPEED * TARGET_FPS)
     slot_height = display_height + 2 * max_extent_y
-    return GAS_GIANT_COUNT * (scroll_gap + slot_height) * 3
+    return GAS_GIANT_COUNT * (scroll_gap + slot_height)
 
 
 def _planet_layer_height(display_height):
@@ -984,7 +984,7 @@ def _planet_layer_height(display_height):
     max_extent_y = PLANET_MAX_RADIUS + 2
     scroll_gap = int(PLANET_APPEAR_INTERVAL * PLANET_SCROLL_SPEED * TARGET_FPS)
     slot_height = display_height + 2 * max_extent_y
-    return PLANET_COUNT * (scroll_gap + slot_height) * 3
+    return PLANET_COUNT * (scroll_gap + slot_height)
 
 
 def _place_gas_giant(layer, width, layer_height, slot_start, slot_height):
@@ -1024,7 +1024,7 @@ def _create_gas_giant_parallax_map(width, layer_height, display_height):
     slot_height = display_height + 2 * max_extent_y
 
     for cycle_idx in range(GAS_GIANT_COUNT):
-        slot_start = cycle_idx * (scroll_gap + slot_height) + scroll_gap
+        slot_start = cycle_idx * (scroll_gap + slot_height)
         _place_gas_giant(layer, width, layer_height, slot_start, slot_height)
     return layer
 
@@ -1037,7 +1037,7 @@ def _create_planet_parallax_map(width, layer_height, display_height):
     slot_height = display_height + 2 * max_extent_y
 
     for cycle_idx in range(PLANET_COUNT):
-        slot_start = cycle_idx * (scroll_gap + slot_height) + scroll_gap
+        slot_start = cycle_idx * (scroll_gap + slot_height)
         _place_planet(layer, width, layer_height, slot_start, slot_height)
     return layer
 
@@ -2696,8 +2696,8 @@ def PlaySkyfall(Duration=10, StopEvent=None, title_letters=None, intro_particles
 
             far_scroll = (far_scroll + FAR_SCROLL_SPEED * step) % (len(far_stars) * 1000)
             near_scroll = (near_scroll + NEAR_SCROLL_SPEED * step) % (len(near_stars) * 1000)
-            giant_scroll = (giant_scroll + GAS_GIANT_SCROLL_SPEED * step) % (giant_height * 1000)
-            planet_scroll = (planet_scroll + PLANET_SCROLL_SPEED * step) % (planet_height * 1000)
+            giant_scroll = (giant_scroll + GAS_GIANT_SCROLL_SPEED * step) % giant_height
+            planet_scroll = (planet_scroll + PLANET_SCROLL_SPEED * step) % planet_height
 
             canvas.Fill(0, 0, 0)
             display_minute = time.strftime("%H:%M")

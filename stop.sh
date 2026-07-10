@@ -107,6 +107,9 @@ LAUNCHERS=(
     Defender.py
     Defender2.py
     Outbreak.py
+    Outbreak2.py
+    Outbreak3.py
+    Outbreak4.py
     Blasteroids.py
     DotInvaders.py
     FallingSand.py

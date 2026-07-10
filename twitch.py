@@ -674,6 +674,9 @@ class Bot(commands.Bot ):
     #---------------------------------------
     async def RotateClockDisplays(self, RotateClockDelay: int = 5):
 
+        CommandQueue.put({"Action": "launch_skyfall", "duration": 10 })
+        await asyncio.sleep(RotateClockDelay * 60)
+        self.DisplayDigitalClock(ClockDuration)
 
         #Blasteroids clock (style=5)
         CommandQueue.put({ "Action": "showclock",   "Style": 5,  "Zoom": 1,   "duration": 10, "Delay": 10  })
@@ -716,11 +719,11 @@ class Bot(commands.Bot ):
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
-        CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
+        CommandQueue.put({"Action": "launch_spaceexplorer", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
-        CommandQueue.put({"Action": "launch_skyfall", "duration": 10 })
+        CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
         await asyncio.sleep(RotateClockDelay * 60)
         self.DisplayDigitalClock(ClockDuration)
 
@@ -1747,7 +1750,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?demotivate ?hello ?hug ?intro ?onair ?profile ?me ?retro ?starrynight ?views ?taco ?time ?uptime ?viewers ?who')
         time.sleep(4)
-        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?particles ?skyfall ?spaceexplorer ?tron')
+        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?outbreak2 ?outbreak3 ?particles ?skyfall ?spaceexplorer ?tron')
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
 
@@ -2240,6 +2243,22 @@ class Bot(commands.Bot ):
         message = "An infection is spreading..."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
+
+
+    @commands.command()
+    async def outbreak2(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "A new strain is spreading..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_outbreak2", "duration": 10 })
+
+
+    @commands.command()
+    async def outbreak3(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Single cells. Join, fight, or flee."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_outbreak3", "duration": 10 })
 
 
     #----------------------------------------

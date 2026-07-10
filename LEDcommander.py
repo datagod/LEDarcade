@@ -122,6 +122,9 @@ VALID_WEB_ACTIONS = {
     "launch_defender2": ["duration"],
     "launch_tron": ["duration"],
     "launch_outbreak": ["duration"],
+    "launch_outbreak2": ["duration"],
+    "launch_outbreak3": ["duration"],
+    "launch_outbreak4": ["duration"],
     "launch_spacedot": ["duration"],
     "launch_blasteroids": ["duration"],
     "launch_stockticker": ["duration", "symbols"],
@@ -307,7 +310,7 @@ ClockFallbackEnabled = True
 def fallback_action_generator():
     # Your sequence from __main__ in the documents; customize durations/styles
     actions = [
-        {"Action": "showclock", "Style": 4, "Zoom": 1, "duration": 10, "Delay": 10},
+        {"Action": "launch_skyfall", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10},
         {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10},
@@ -327,11 +330,11 @@ def fallback_action_generator():
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_spacedot", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_spaceexplorer", "duration": 10},
+        {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_fallingsand", "duration": 10},
         {"Action": "launch_particles", "duration": 10},
         {"Action": "launch_mazecar", "duration": 10},
-        {"Action": "launch_spaceexplorer", "duration": 10},
-        {"Action": "launch_skyfall", "duration": 10},
     ]
     for action in itertools.cycle(actions):
         yield action
@@ -568,16 +571,34 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=LaunchTron, args=(Command, StopEvent))
                 DisplayProcess.start()
 
-            elif Action == "launch_outbreak":
-                print("[LEDcommander][Run] Launching Outbreak")
+            elif Action in ("launch_outbreak", "launch_outbreak2", "launch_outbreak3", "launch_outbreak4"):
+                outbreak_labels = {
+                    "launch_outbreak": "Outbreak",
+                    "launch_outbreak2": "Outbreak2",
+                    "launch_outbreak3": "Outbreak3",
+                    "launch_outbreak4": "Outbreak4",
+                }
+                outbreak_modes = {
+                    "launch_outbreak": "outbreak",
+                    "launch_outbreak2": "outbreak2",
+                    "launch_outbreak3": "outbreak3",
+                    "launch_outbreak4": "outbreak4",
+                }
+                outbreak_launchers = {
+                    "launch_outbreak": LaunchOutbreak,
+                    "launch_outbreak2": LaunchOutbreak2,
+                    "launch_outbreak3": LaunchOutbreak3,
+                    "launch_outbreak4": LaunchOutbreak4,
+                }
+                print(f"[LEDcommander][Run] Launching {outbreak_labels[Action]}")
                 if DisplayProcess and DisplayProcess.is_alive():
                     print("LED display already in use.  Stopping process then restarting")
                     StopEvent.set()
                     DisplayProcess.join()
 
                 StopEvent.clear()
-                CurrentDisplayMode = "outbreak"
-                DisplayProcess = Process(target=LaunchOutbreak, args=(Command, StopEvent))
+                CurrentDisplayMode = outbreak_modes[Action]
+                DisplayProcess = Process(target=outbreak_launchers[Action], args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1593,6 +1614,33 @@ def LaunchOutbreak(Command, StopEvent):
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchOutbreak] Launching...")
     OB.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+def LaunchOutbreak2(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Outbreak2 as OB2
+    Duration         = Command.get("duration",10)
+    print("[LEDcommander][LaunchOutbreak2] Launching...")
+    OB2.LaunchOutbreak2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+def LaunchOutbreak3(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Outbreak3 as OB3
+    Duration         = Command.get("duration",10)
+    print("[LEDcommander][LaunchOutbreak3] Launching...")
+    OB3.LaunchOutbreak3(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+
+
+def LaunchOutbreak4(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Outbreak4 as OB4
+    Duration = Command.get("duration", 10)
+    print("[LEDcommander][LaunchOutbreak4] Launching...")
+    OB4.LaunchOutbreak4(duration=Duration, show_intro=True, stop_event=StopEvent)
 
 
 def LaunchBlasteroids(Command, StopEvent):
