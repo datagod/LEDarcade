@@ -2437,6 +2437,30 @@ def _shatter_title_letters(letters, particles):
         letter.shattered = True
 
 
+def _stop_requested(StopEvent):
+    """True if LEDcommander (or caller) asked us to exit."""
+    try:
+        return StopEvent is not None and StopEvent.is_set()
+    except Exception:
+        return False
+
+
+def _skyfall_cleanup():
+    """Release the matrix cleanly so the next LEDcommander process can take over."""
+    try:
+        LED.ClearBigLED()
+    except Exception:
+        pass
+    try:
+        LED.ClearBuffers()
+    except Exception:
+        pass
+    try:
+        LED.TheMatrix.SwapOnVSync(LED.Canvas)
+    except Exception:
+        pass
+
+
 def PlaySkyfallTitleIntro(StopEvent=None):
     """Drop SKYFALL one letter at a time; letters remain on the bottom row."""
     global WIDTH, HEIGHT
@@ -2446,19 +2470,26 @@ def PlaySkyfallTitleIntro(StopEvent=None):
     if not letters:
         return letters, []
 
+    if _stop_requested(StopEvent):
+        print("[Skyfall] Title intro skipped (StopEvent)")
+        return letters, []
+
     print("[Skyfall] Title intro — dropping letters")
     canvas = LED.TheMatrix.CreateFrameCanvas()
     intro_particles = []
     start = time.time()
     last_frame_time = start
     hold_start = None
+    stopped = False
 
     try:
         while True:
-            if StopEvent and StopEvent.is_set():
+            if _stop_requested(StopEvent):
+                print("[Skyfall] Title intro — StopEvent, aborting")
                 for letter in letters:
                     letter.force_settle()
                 _shatter_title_letters(letters, intro_particles)
+                stopped = True
                 break
 
             now = time.time()
@@ -2500,7 +2531,7 @@ def PlaySkyfallTitleIntro(StopEvent=None):
                     particle.draw(canvas)
             canvas = LED.TheMatrix.SwapOnVSync(canvas)
 
-            if shatter_now:
+            if shatter_now or stopped:
                 break
 
     except KeyboardInterrupt:
@@ -2513,6 +2544,11 @@ def PlaySkyfallTitleIntro(StopEvent=None):
 
 def PlaySkyfall(Duration=10, StopEvent=None, title_letters=None, intro_particles=None):
     global WIDTH, HEIGHT
+
+    if _stop_requested(StopEvent):
+        print("[Skyfall] Play aborted before start (StopEvent)")
+        _skyfall_cleanup()
+        return
 
     WIDTH, HEIGHT = _panel_size()
     ship_y = HEIGHT - SHIP_HEIGHT
@@ -2555,18 +2591,27 @@ def PlaySkyfall(Duration=10, StopEvent=None, title_letters=None, intro_particles
     score = 0
     last_frame_time = start_time
 
+    try:
+        duration_min = float(Duration) if Duration is not None else 0.0
+    except (TypeError, ValueError):
+        duration_min = 10.0
+
     print(f"[Skyfall] {WIDTH}x{HEIGHT} — red/blue rocks, loot powers, spark stream")
+    print(f"[Skyfall] Duration={duration_min} min  StopEvent={'yes' if StopEvent is not None else 'no'}")
 
     try:
         while True:
-            if StopEvent and StopEvent.is_set():
+            # Honor LEDcommander stop / preemption every frame
+            if _stop_requested(StopEvent):
+                print("[Skyfall] StopEvent received — exiting game loop")
                 break
 
             now = time.time()
             frame_dt = now - last_frame_time
             last_frame_time = now
             step = _motion_step(frame_dt)
-            if Duration and (now - start_time) / 60.0 >= Duration:
+            if duration_min > 0 and (now - start_time) / 60.0 >= duration_min:
+                print("[Skyfall] Duration reached")
                 break
 
             ship_active = now >= ship_respawn_until
@@ -2751,39 +2796,67 @@ def PlaySkyfall(Duration=10, StopEvent=None, title_letters=None, intro_particles
             canvas = LED.TheMatrix.SwapOnVSync(canvas)
             tick += 1
 
+            # Re-check stop after the heavy frame so preemption is snappy
+            if _stop_requested(StopEvent):
+                print("[Skyfall] StopEvent received after frame — exiting")
+                break
+
     except KeyboardInterrupt:
         print("[Skyfall] Interrupted")
-
-    LED.ClearBuffers()
-    try:
-        LED.TheMatrix.SwapOnVSync(LED.Canvas)
-    except Exception:
-        pass
-
-    print(f"[Skyfall] Score: {score}")
+    finally:
+        _skyfall_cleanup()
+        print(f"[Skyfall] Score: {score}")
 
 
 def LaunchSkyfall(Duration=10, ShowIntro=False, StopEvent=None):
+    """
+    Entry used by LEDcommander and CLI.
+    Always honors StopEvent so other LEDcommander actions can preempt Skyfall.
+    """
+    try:
+        duration_min = float(Duration) if Duration is not None else 10.0
+    except (TypeError, ValueError):
+        duration_min = 10.0
+
+    if _stop_requested(StopEvent):
+        print("[Skyfall] Launch aborted (StopEvent already set)")
+        _skyfall_cleanup()
+        return
+
     LED.ClearBigLED()
     LED.ClearBuffers()
     title_letters, intro_particles = PlaySkyfallTitleIntro(StopEvent=StopEvent)
 
-    if ShowIntro:
-        LED.ScreenArray, _, _ = LED.TerminalScroll(
-            LED.ScreenArray,
-            Message="Rocks fall. The ship shoots back.",
-            CursorH=0,
-            CursorV=0,
-            MessageRGB=LED.MedYellow,
-            CursorRGB=(0, 255, 0),
-            CursorDarkRGB=(0, 50, 0),
-            StartingLineFeed=1,
-            TypeSpeed=0.03,
-            ScrollSpeed=0.03,
-        )
+    if _stop_requested(StopEvent):
+        print("[Skyfall] Stopped after title intro")
+        _skyfall_cleanup()
+        return
+
+    if ShowIntro and not _stop_requested(StopEvent):
+        # TerminalScroll does not poll StopEvent; keep it short and skip if stopping
+        try:
+            LED.ScreenArray, _, _ = LED.TerminalScroll(
+                LED.ScreenArray,
+                Message="Rocks fall. The ship shoots back.",
+                CursorH=0,
+                CursorV=0,
+                MessageRGB=LED.MedYellow,
+                CursorRGB=(0, 255, 0),
+                CursorDarkRGB=(0, 50, 0),
+                StartingLineFeed=1,
+                TypeSpeed=0.03,
+                ScrollSpeed=0.03,
+            )
+        except Exception as exc:
+            print(f"[Skyfall] Intro scroll skipped: {exc}")
+
+    if _stop_requested(StopEvent):
+        print("[Skyfall] Stopped before main loop")
+        _skyfall_cleanup()
+        return
 
     PlaySkyfall(
-        Duration=Duration,
+        Duration=duration_min,
         StopEvent=StopEvent,
         title_letters=title_letters,
         intro_particles=intro_particles,

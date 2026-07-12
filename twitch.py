@@ -1750,7 +1750,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send('Available commands: ?demotivate ?hello ?hug ?intro ?onair ?profile ?me ?retro ?starrynight ?views ?taco ?time ?uptime ?viewers ?who')
         time.sleep(4)
-        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?outbreak ?outbreak2 ?outbreak3 ?particles ?skyfall ?spaceexplorer ?tron')
+        await ctx.send('Available games: ?astrosmash ?blasteroids ?defender ?fallingsand ?gravity ?invaders ?tv ?outbreak ?outbreak2 ?outbreak3 ?particles ?skyfall ?spaceexplorer ?tron')
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
 
@@ -2361,6 +2361,27 @@ class Bot(commands.Bot ):
         message = "Rocks fall. The ship shoots back."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_skyfall", "duration": 10 })
+
+
+    #----------------------------------------
+    # LEDTV — channel surfing (?tv)        --
+    #----------------------------------------
+
+    @commands.command(name="tv", aliases=["ledtv", "LEDTV", "LEDtv", "led_tv"])
+    async def tv(self, ctx: commands.Context):
+      """Surf the LED matrix TV: static, channel flashes, random clips.
+
+      Chat: ?tv   (aliases: ?ledtv)
+      """
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Tuning LEDTV… static, channel surf, random videos."
+        await self.Channel.send(message)
+      print(f"[twitch] ?tv from {getattr(ctx.author, 'name', '?')} — queueing launch_ledtv")
+      CommandQueue.put({
+          "Action": "launch_ledtv",
+          "duration": 5,
+          "effect": "channels",
+      })
 
 
     #----------------------------------------

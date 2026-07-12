@@ -48,15 +48,15 @@ def LoadWeatherLocation(location_override=""):
         return DEFAULT_LOCATION
 
 
-def NormalizeUnits(units="F"):
-    """Return 'C' or 'F' for supported temperature units."""
-    if str(units).strip().upper().startswith("C"):
-        return "C"
-    return "F"
+def NormalizeUnits(units="C"):
+    """Return 'C' or 'F' for supported temperature units. Default metric (°C)."""
+    if str(units).strip().upper().startswith("F"):
+        return "F"
+    return "C"
 
 
-def FetchWeatherReport(location, units="F"):
-    """Fetch weather from wttr.in and return a scrollable text report."""
+def FetchWeatherReport(location, units="C"):
+    """Fetch weather from wttr.in and return a scrollable text report (default °C)."""
     units = NormalizeUnits(units)
     encoded_location = urllib.parse.quote(location)
     url = f"https://wttr.in/{encoded_location}?format=j1"

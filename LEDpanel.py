@@ -17,6 +17,7 @@ GAME_LAUNCHERS = [
     ("launch_outbreak2", "Outbreak 2"),
     ("launch_outbreak3", "Outbreak 3"),
     ("launch_outbreak4", "Outbreak 4"),
+    ("launch_ledtv", "LED TV"),
     ("launch_spacedot", "Space Dot"),
     ("launch_blasteroids", "Blasteroids"),
     ("launch_fallingsand", "Falling Sand"),
@@ -30,11 +31,13 @@ GAME_LAUNCHERS = [
 ACTION_LABELS = {
     "showclock": "Digital Clock",
     "stopclock": "Stop Clock",
+    "stop": "Stop Display",
     "showtitlescreen": "Title Screen",
     "analogclock": "Analog Clock",
     "retrodigital": "Retro Digital",
     "starrynightdisplaytext": "Starry Night Text",
     "launch_stockticker": "Stock Ticker",
+    "launch_ledtv": "LED TV",
     "twitchtimer_on": "Twitch Timer On",
     "twitchtimer_off": "Twitch Timer Off",
     "terminalmode_on": "Terminal Mode On",
@@ -258,10 +261,28 @@ def render_weather_section(default_location=DEFAULT_LOCATION):
                 </label>
                 <div class="unit-choice">
                     <span>Units:</span>
-                    <label><input type="radio" name="Units" value="F" checked> F</label>
-                    <label><input type="radio" name="Units" value="C"> C</label>
+                    <label><input type="radio" name="Units" value="C" checked> C</label>
+                    <label><input type="radio" name="Units" value="F"> F</label>
                 </div>
                 <input type="submit" value="Weather Report">
+            </form>
+        </div>
+    """
+
+
+def render_ledtv_section():
+    """Dedicated LED TV launch control (same action as Twitch ?tv)."""
+    return f"""
+        <div class="command-section ledtv-section">
+            <h2>LED TV</h2>
+            <form class="command-form" action="/command" method="post">
+                <input type="hidden" name="Action" value="launch_ledtv">
+                <input type="hidden" name="effect" value="channels">
+                <label>Duration (minutes)
+                    <input type="text" name="duration" value="5" placeholder="5">
+                </label>
+                <p>Channel surf: static, CHn flashes, videos &amp; specialty channels. Same as Twitch <code>?tv</code>.</p>
+                <input type="submit" value="Launch LED TV">
             </form>
         </div>
     """
@@ -287,10 +308,16 @@ def render_games_section(valid_actions):
 
     cards = []
     for action, title in games:
+        # LED TV has its own top-level section; skip duplicate card
+        if action == "launch_ledtv":
+            continue
         fields = valid_actions[action]
         field_html = ""
         for field in fields:
-            value = DEFAULT_GAME_DURATION if field == "duration" else ""
+            if field == "duration":
+                value = DEFAULT_GAME_DURATION
+            else:
+                value = ""
             field_html += (
                 f'<label>{field}'
                 f'<input type="text" name="{field}" value="{value}"></label>'
@@ -342,11 +369,13 @@ def render_homepage(valid_actions):
 
     html += render_weather_section()
     html += render_stock_section()
+    if "launch_ledtv" in valid_actions:
+        html += render_ledtv_section()
     html += render_games_section(valid_actions)
 
     game_actions = {action for action, _ in GAME_LAUNCHERS}
     for action, fields in valid_actions.items():
-        if action in ("weatherterminal", "stockterminal") or action in game_actions:
+        if action in ("weatherterminal", "stockterminal", "launch_ledtv") or action in game_actions:
             continue
         label = _action_label(action)
         html += f'<div class="command-section"><h2>{label}</h2>'

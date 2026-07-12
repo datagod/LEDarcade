@@ -110,6 +110,7 @@ IMAGE_DIR = os.path.join(REPO_DIR, "images")
 VALID_WEB_ACTIONS = {
     "showclock": [],
     "stopclock": [],
+    "stop": [],
     "showtitlescreen": [
         "BigText", "LittleText", "LittleTextRGB", "ScrollText", "ScrollTextRGB",
         "ScrollSleep", "DisplayTime", "ExitEffect", "LittleTextZoom",
@@ -125,6 +126,7 @@ VALID_WEB_ACTIONS = {
     "launch_outbreak2": ["duration"],
     "launch_outbreak3": ["duration"],
     "launch_outbreak4": ["duration"],
+    "launch_ledtv": ["duration", "effect", "youtube_url", "channel"],
     "launch_spacedot": ["duration"],
     "launch_blasteroids": ["duration"],
     "launch_stockticker": ["duration", "symbols"],
@@ -196,7 +198,7 @@ def sanitize_web_command(data, action):
 
     if action == "weatherterminal":
         import WeatherClock as WC
-        data["Units"] = WC.NormalizeUnits(data.get("Units", "F"))
+        data["Units"] = WC.NormalizeUnits(data.get("Units", "C"))
         for key in ["TypeSpeed", "ScrollSleep"]:
             if key in data:
                 try:
@@ -342,13 +344,41 @@ def fallback_action_generator():
  
 
 
-def stop_current_display(preempted_by):
-    """Stop the active display subprocess and log what interrupted it."""
+def stop_current_display(preempted_by, join_timeout=5):
+    """Stop the active display subprocess and log what interrupted it.
+
+    Sets the shared StopEvent so well-behaved games (Skyfall, LEDtv, …) exit
+    their loops promptly. Waits up to join_timeout seconds, then terminates
+    the process if it is still alive so the next LEDcommander action can run.
+    """
     global StopEvent, DisplayProcess, CurrentDisplayMode
     if DisplayProcess and DisplayProcess.is_alive():
-        print(f"[LEDcommander] Stopping '{CurrentDisplayMode}' (preempted by: {preempted_by})")
-        StopEvent.set()
-        DisplayProcess.join()
+        mode = CurrentDisplayMode or "unknown"
+        print(f"[LEDcommander] Stopping '{mode}' (preempted by: {preempted_by})")
+        try:
+            StopEvent.set()
+        except Exception:
+            pass
+        DisplayProcess.join(timeout=join_timeout)
+        if DisplayProcess.is_alive():
+            print(
+                f"[LEDcommander] '{mode}' did not exit after "
+                f"{join_timeout}s — terminating process"
+            )
+            try:
+                DisplayProcess.terminate()
+            except Exception:
+                pass
+            DisplayProcess.join(timeout=2)
+            if DisplayProcess.is_alive():
+                try:
+                    DisplayProcess.kill()
+                except Exception:
+                    pass
+                DisplayProcess.join(timeout=1)
+        DisplayProcess = None
+        if CurrentDisplayMode == mode:
+            CurrentDisplayMode = None
 
 
 def Run(CommandQueue):
@@ -406,19 +436,14 @@ def Run(CommandQueue):
             if Action == "showonair_off":
                 if IsOnAirActive:
                     print("[LEDcommander] Manual stop OnAir, proceeding to next")
-                    StopEvent.set()
-                    if DisplayProcess and DisplayProcess.is_alive():
-                        DisplayProcess.join(timeout=5)  # Prevent hangs
+                    stop_current_display(Action)
                     IsOnAirActive = False
-                    CurrentDisplayMode = None
                 continue  # Loop will now pull next queue/generator
 
             # Handle on (start with duration)
             if Action == "showonair":
                 print("[LEDcommander] Starting OnAir")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join(timeout=5)
+                stop_current_display(Action)
                 StopEvent.clear()
                 if "duration" not in Command:
                     Command["duration"] = ON_AIR_DEFAULT_SECONDS
@@ -428,14 +453,26 @@ def Run(CommandQueue):
                 DisplayProcess.start()
                 continue
 
+            # Explicit stop: clear pin flags and preempt Skyfall / any display
+            if Action in ("stop", "stopclock"):
+                print(f"[LEDcommander] Stop command ({Action}) — ending '{CurrentDisplayMode}'")
+                IsOnAirActive = False
+                IsStockTickerPinned = False
+                stop_current_display(Action)
+                CurrentDisplayMode = "stopped"
+                continue
+
             # While On Air, hold the display until manual off or duration expiry.
-            if IsOnAirActive and Action not in ("showonair", "showonair_off"):
+            if IsOnAirActive and Action not in ("showonair", "showonair_off", "stop", "stopclock", "quit"):
                 print(f"[LEDcommander] OnAir active—ignoring command: {Action}")
                 continue
 
             # While stock ticker is pinned (user set duration), hold until it finishes.
             if (IsStockTickerPinned
-                    and Action not in ("launch_stockticker", "showonair", "showonair_off", "quit")):
+                    and Action not in (
+                        "launch_stockticker", "showonair", "showonair_off",
+                        "quit", "stop", "stopclock",
+                    )):
                 print(f"[LEDcommander] Stock ticker pinned—ignoring command: {Action}")
                 continue
 
@@ -447,22 +484,11 @@ def Run(CommandQueue):
 
             if Action == "showclock":
                 print("Starting the clock")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Restarting")
-                    #time.sleep(10)
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
                 StopEvent.clear()
                 CurrentDisplayMode = "clock"
                 DisplayProcess = Process(target=ShowDigitalClock, args=(Command, StopEvent))
                 DisplayProcess.start()
-
-
-            elif Action == "stopclock":
-                print("Stopping the clock")
-                StopEvent.set()
-                if DisplayProcess and DisplayProcess.is_alive():
-                    DisplayProcess.join()
 
 
 
@@ -472,10 +498,7 @@ def Run(CommandQueue):
 
             elif Action == "showtitlescreen":
                 print("Showing title screen")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "title"
@@ -488,9 +511,7 @@ def Run(CommandQueue):
             #----------------------------------
 
             elif Action == "analogclock":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "clock"
@@ -499,9 +520,7 @@ def Run(CommandQueue):
 
 
             elif Action == "retrodigital":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "clock"
@@ -516,10 +535,7 @@ def Run(CommandQueue):
 
             elif Action == "starrynightdisplaytext":
                 print("[LEDcommander][Run] Starry Night Display Text")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "starrynight"
@@ -535,10 +551,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_dotinvaders":
                 print("[LEDcommander][Run] Launching DotInvaders")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "dotinvaders"
@@ -548,10 +561,7 @@ def Run(CommandQueue):
 
             elif Action in ("launch_defender", "launch_defender2"):
                 print("[LEDcommander][Run] Launching Defender")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "defender"
@@ -561,10 +571,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_tron":
                 print("[LEDcommander][Run] Launching Tron")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "tron"
@@ -591,10 +598,7 @@ def Run(CommandQueue):
                     "launch_outbreak4": LaunchOutbreak4,
                 }
                 print(f"[LEDcommander][Run] Launching {outbreak_labels[Action]}")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = outbreak_modes[Action]
@@ -603,12 +607,18 @@ def Run(CommandQueue):
 
 
 
+            elif Action == "launch_ledtv":
+                print("[LEDcommander][Run] Launching LEDtv")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "ledtv"
+                DisplayProcess = Process(target=LaunchLEDtv, args=(Command, StopEvent))
+                DisplayProcess.start()
+
             elif Action == "launch_spacedot":
                 print("[LEDcommander][Run] Launching SpaceDot")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "spacedot"
@@ -618,10 +628,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_blasteroids":
                 print("[LEDcommander][Run] Launching Blasteroids")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "blasteroids"
@@ -645,10 +652,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_fallingsand":
                 print("[LEDcommander][Run] Launching fallingsand")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "tron"
@@ -657,10 +661,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_particles":
                 print("[LEDcommander][Run] Launching Particles")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "particles"
@@ -670,10 +671,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_gravitysim":
                 print("[LEDcommander][Run] Launching GravitySim")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "gravitysim"
@@ -682,10 +680,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_mazecar":
                 print("[LEDcommander][Run] Launching MazeCar")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "mazecar"
@@ -694,10 +689,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_spaceexplorer":
                 print("[LEDcommander][Run] Launching SpaceExplorer")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "spaceexplorer"
@@ -706,10 +698,7 @@ def Run(CommandQueue):
 
             elif Action == "launch_skyfall":
                 print("[LEDcommander][Run] Launching Skyfall")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "skyfall"
@@ -723,10 +712,7 @@ def Run(CommandQueue):
 
             elif Action == "twitchtimer_on":
                 print("Showing title screen")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "twitch"
@@ -736,10 +722,7 @@ def Run(CommandQueue):
 
             elif Action == "twitchtimer_off":
                 print("Showing title screen")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display in use.  Stopping process.")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "stopped"
@@ -756,9 +739,7 @@ def Run(CommandQueue):
                     print("[LEDcommander][Run] TerminalMode already active; queueing message.")
                     TerminalQueue.put(Command)
                 else:
-                    if DisplayProcess and DisplayProcess.is_alive():
-                        StopEvent.set()
-                        DisplayProcess.join()
+                    stop_current_display(Action)
                     StopEvent.clear()
                     CurrentDisplayMode = "terminal"
                     TerminalQueue = Queue()
@@ -773,7 +754,7 @@ def Run(CommandQueue):
                 import WeatherClock as WC
 
                 location = WC.LoadWeatherLocation(Command.get("Location", ""))
-                units = WC.NormalizeUnits(Command.get("Units", "F"))
+                units = WC.NormalizeUnits(Command.get("Units", "C"))
                 report = WC.FetchWeatherReport(location, units=units)
                 terminal_action = "terminalmessage" if (
                     DisplayProcess and DisplayProcess.is_alive() and CurrentDisplayMode == "terminal"
@@ -848,9 +829,7 @@ def Run(CommandQueue):
                     TerminalQueue.put(Command)
                 else:
                     print("[LEDcommander] TerminalMode not active. Auto-starting it.")
-                    StopEvent.set()
-                    if DisplayProcess and DisplayProcess.is_alive():
-                        DisplayProcess.join()
+                    stop_current_display(Action)
                     StopEvent.clear()
                     CurrentDisplayMode = "terminal"
                     TerminalQueue = Queue()  # reset queue to avoid stale messages
@@ -862,13 +841,10 @@ def Run(CommandQueue):
 
             elif Action == "terminalmode_off":
                 print("[LEDcommander] terminalmode_OFF detected")
+                stop_current_display(Action)
+                StopEvent.clear()
                 CurrentDisplayMode = "stopped"
-                DisplayProcess = Process(target=StopTerminalMode, args=())
-                DisplayProcess.start()
-                StopEvent.set()
-                if DisplayProcess and DisplayProcess.is_alive():
-                    DisplayProcess.join()
-                    print("[LEDcommander] TerminalMode stopped.")
+                print("[LEDcommander] TerminalMode stopped.")
 
 
 
@@ -877,9 +853,7 @@ def Run(CommandQueue):
             #----------------------------------------
 
             elif Action == "showheart":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "heart"
@@ -890,10 +864,7 @@ def Run(CommandQueue):
 
             elif Action == "showintro":
                 print("[LEDcommander][Run] Launching Intro")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "showintro"
@@ -906,10 +877,7 @@ def Run(CommandQueue):
 
             elif Action == "showdemotivate":
                 print("[LEDcommander][Run] Launching Demotivate")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    print("LED display already in use.  Stopping process then restarting")
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
 
                 StopEvent.clear()
                 CurrentDisplayMode = "showdemotivate"
@@ -919,9 +887,7 @@ def Run(CommandQueue):
 
 
             elif Action == "showgif":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
                 StopEvent.clear()
                 CurrentDisplayMode = "gif"
                 DisplayProcess = Process(target=ShowGIF, args=(Command, StopEvent))
@@ -929,9 +895,7 @@ def Run(CommandQueue):
 
 
             elif Action == "showviewers":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
                 StopEvent.clear()
                 CurrentDisplayMode = "gif"
                 DisplayProcess = Process(target=ShowViewers, args=(Command, StopEvent))
@@ -939,9 +903,7 @@ def Run(CommandQueue):
 
 
             elif Action == "showimagezoom":
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
                 StopEvent.clear()
                 CurrentDisplayMode = "image"
                 DisplayProcess = Process(target=ShowImageZoom, args=(Command, StopEvent))
@@ -954,9 +916,7 @@ def Run(CommandQueue):
 
             elif Action == "quit":
                 print("[LEDcommander] Quit received.")
-                if DisplayProcess and DisplayProcess.is_alive():
-                    StopEvent.set()
-                    DisplayProcess.join()
+                stop_current_display(Action)
                 print("[LEDcommander][Run] Shutdown complete.")
                 break  # Exit the loop and end the process
 
@@ -1643,6 +1603,42 @@ def LaunchOutbreak4(Command, StopEvent):
     OB4.LaunchOutbreak4(duration=Duration, show_intro=True, stop_event=StopEvent)
 
 
+def LaunchLEDtv(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import LEDtv as TV
+    # Default: 5 min channel surf — title drop → static → flashes → video
+    # Only switches to YouTube/local play when a non-empty URL is provided.
+    Duration = Command.get("duration", 5)
+    try:
+        Duration = float(Duration) if Duration not in (None, "") else 5.0
+    except (TypeError, ValueError):
+        Duration = 5.0
+    YoutubeUrl = Command.get("youtube_url") or Command.get("url") or ""
+    YoutubeUrl = str(YoutubeUrl).strip() or None
+    Channel = Command.get("channel")
+    if Channel is not None and str(Channel).strip() == "":
+        Channel = None
+    # Empty/missing URL → always full channel-surf sequence (ignore blank effect)
+    if YoutubeUrl:
+        Effect = (Command.get("effect") or "youtube")
+    else:
+        Effect = "channels"
+    print(
+        "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r}".format(
+            Duration, Effect, YoutubeUrl,
+        )
+    )
+    TV.LaunchLEDtv(
+        duration=Duration,
+        show_intro=True,
+        stop_event=StopEvent,
+        effect=Effect,
+        youtube_url=YoutubeUrl,
+        channel=Channel,
+    )
+
+
 def LaunchBlasteroids(Command, StopEvent):
     import LEDarcade as LED
     #LED.Initialize()
@@ -1687,8 +1683,23 @@ def LaunchSkyfall(Command, StopEvent):
     LED.Initialize()
     import Skyfall as SF
     Duration = Command.get("duration", 10)
-    print(f"[LEDcommander][LaunchSkyfall] Launching for {Duration} minutes...")
-    SF.LaunchSkyfall(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+    try:
+        Duration = float(Duration) if Duration not in (None, "") else 10.0
+    except (TypeError, ValueError):
+        Duration = 10.0
+    print(
+        f"[LEDcommander][LaunchSkyfall] Launching for {Duration} minutes "
+        f"(StopEvent wired)..."
+    )
+    try:
+        SF.LaunchSkyfall(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+    finally:
+        print("[LEDcommander][LaunchSkyfall] Process exit")
+        try:
+            LED.ClearBigLED()
+            LED.ClearBuffers()
+        except Exception:
+            pass
 
 
 def LaunchFallingSand(Command, StopEvent):

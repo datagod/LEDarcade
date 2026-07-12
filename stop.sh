@@ -110,6 +110,7 @@ LAUNCHERS=(
     Outbreak2.py
     Outbreak3.py
     Outbreak4.py
+    LEDtv.py
     Blasteroids.py
     DotInvaders.py
     FallingSand.py
