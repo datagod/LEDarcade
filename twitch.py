@@ -2369,17 +2369,17 @@ class Bot(commands.Bot ):
 
     @commands.command(name="tv", aliases=["ledtv", "LEDTV", "LEDtv", "led_tv"])
     async def tv(self, ctx: commands.Context):
-      """Surf the LED matrix TV: static, channel flashes, random clips.
+      """Surf the LED matrix TV for 2 minutes.
 
       Chat: ?tv   (aliases: ?ledtv)
       """
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Tuning LEDTV… static, channel surf, random videos."
+        message = "Tuning LEDTV for 2 minutes… static, channel surf, random clips."
         await self.Channel.send(message)
-      print(f"[twitch] ?tv from {getattr(ctx.author, 'name', '?')} — queueing launch_ledtv")
+      print(f"[twitch] ?tv from {getattr(ctx.author, 'name', '?')} — queueing launch_ledtv (2 min)")
       CommandQueue.put({
           "Action": "launch_ledtv",
-          "duration": 5,
+          "duration": 2,
           "effect": "channels",
       })
 

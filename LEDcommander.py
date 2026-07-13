@@ -1511,15 +1511,20 @@ def LaunchDotInvaders(Command, StopEvent):
     import DotInvaders as DI
 
     StreamBrightness = 80
-    GifBrightness    = 80
     MaxBrightness    = 100
 
     Duration         = Command.get("duration",1)
 
     print("[LEDcommander][LaunchDotInvaders] Launching...")
-
-    DI.LaunchDotInvaders(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
-    LED.SweepClean()
+    try:
+        LED.TheMatrix.brightness = StreamBrightness
+        DI.LaunchDotInvaders(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    finally:
+        try:
+            LED.TheMatrix.brightness = MaxBrightness
+        except Exception:
+            pass
+        LED.SweepClean()
     
 
 
@@ -1607,6 +1612,9 @@ def LaunchLEDtv(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import LEDtv as TV
+    # Stream-safe brightness (same as other games / GIFs under Twitch)
+    StreamBrightness = 80
+    MaxBrightness = 100
     # Default: 5 min channel surf — title drop → static → flashes → video
     # Only switches to YouTube/local play when a non-empty URL is provided.
     Duration = Command.get("duration", 5)
@@ -1625,18 +1633,29 @@ def LaunchLEDtv(Command, StopEvent):
     else:
         Effect = "channels"
     print(
-        "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r}".format(
-            Duration, Effect, YoutubeUrl,
+        "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r} brightness={}".format(
+            Duration, Effect, YoutubeUrl, StreamBrightness,
         )
     )
-    TV.LaunchLEDtv(
-        duration=Duration,
-        show_intro=True,
-        stop_event=StopEvent,
-        effect=Effect,
-        youtube_url=YoutubeUrl,
-        channel=Channel,
-    )
+    try:
+        LED.TheMatrix.brightness = StreamBrightness
+        TV.LaunchLEDtv(
+            duration=Duration,
+            show_intro=True,
+            stop_event=StopEvent,
+            effect=Effect,
+            youtube_url=YoutubeUrl,
+            channel=Channel,
+        )
+    finally:
+        try:
+            LED.TheMatrix.brightness = MaxBrightness
+        except Exception:
+            pass
+        try:
+            LED.SweepClean()
+        except Exception:
+            pass
 
 
 def LaunchBlasteroids(Command, StopEvent):
@@ -1682,6 +1701,9 @@ def LaunchSkyfall(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import Skyfall as SF
+    # Stream-safe brightness (same as other games under Twitch)
+    StreamBrightness = 80
+    MaxBrightness = 100
     Duration = Command.get("duration", 10)
     try:
         Duration = float(Duration) if Duration not in (None, "") else 10.0
@@ -1689,12 +1711,17 @@ def LaunchSkyfall(Command, StopEvent):
         Duration = 10.0
     print(
         f"[LEDcommander][LaunchSkyfall] Launching for {Duration} minutes "
-        f"(StopEvent wired)..."
+        f"(StopEvent wired, brightness={StreamBrightness})..."
     )
     try:
+        LED.TheMatrix.brightness = StreamBrightness
         SF.LaunchSkyfall(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
     finally:
         print("[LEDcommander][LaunchSkyfall] Process exit")
+        try:
+            LED.TheMatrix.brightness = MaxBrightness
+        except Exception:
+            pass
         try:
             LED.ClearBigLED()
             LED.ClearBuffers()
