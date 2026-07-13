@@ -47,6 +47,9 @@ HEIGHT = LED.HatHeight
 _HERE = os.path.dirname(os.path.abspath(__file__))
 GIF_DIR = os.path.join(_HERE, "images")
 VIDEO_DIR = os.path.join(_HERE, "videos")
+# Pre-baked panel frames (same filter as live scale). Originals in videos/ untouched.
+PANEL_VIDEO_DIR = os.path.join(VIDEO_DIR, "panel")
+PREFER_PANEL_BAKE = True      # play videos/panel/<name> when present
 GIF_FRAME_SLEEP = 0.06       # default delay between GIF frames
 GIF_LOOPS_EACH = 2           # full plays of one GIF before picking another
 GIF_BETWEEN_BARS_SEC = 0.35  # brief black between channel items
@@ -76,8 +79,8 @@ CHANNEL_CHANGE_FLASH_SEC = 0.0
 FFMPEG_KILL_WAIT_SEC = 0.25
 
 # --- youtube / video ---
-# Low FPS keeps the Pi and the 64x32 readable; bump if the board can take it
-VIDEO_FPS = 12
+# Full 30 fps — hardware can keep up; panel bakes should match this rate
+VIDEO_FPS = 30
 VIDEO_FRAME_BYTES = WIDTH * HEIGHT * 3
 # Prefer a recent yt-dlp binary if present
 _YT_DLP_CANDIDATES = (
@@ -1189,6 +1192,8 @@ def play_news_channel(
         alt = os.path.join(VIDEO_DIR, "yt_qHJi8SMFrec.mp4")
         if os.path.isfile(alt):
             video_path = alt
+    if os.path.isfile(video_path):
+        video_path = resolve_panel_source(video_path)
     print(
         "[LEDtv] {}  News channel  video={}  ({:.0f}s + banner ticker)".format(
             label, os.path.basename(video_path), play_seconds,
@@ -1211,15 +1216,21 @@ def play_news_channel(
 
     seek = _random_seek_sec(video_path, play_seconds=play_seconds)
     frame_bytes = WIDTH * HEIGHT * 3
+    news_already_panel = (
+        os.path.dirname(os.path.abspath(video_path)) == os.path.abspath(PANEL_VIDEO_DIR)
+        or is_panel_dimensions(video_path)
+    )
     # Decode at fixed NEWS_FPS without ffmpeg -re; we pace ourselves for smooth ticker
     cmd = _ffmpeg_rgb_cmd(
         video_path, fps=NEWS_FPS, realtime=False, start_sec=seek,
+        already_panel=news_already_panel,
     )
     print(
         "[LEDtv] VIDEO  {}  name={}  seek={:.1f}s  max={:.0f}s  "
-        "ticker=banner @ {}fps / {}px".format(
+        "ticker=banner @ {}fps / {}px  panel_bake={}".format(
             label, os.path.basename(video_path), seek, play_seconds,
             NEWS_FPS, NEWS_TICKER_PX_PER_FRAME,
+            "yes" if news_already_panel else "no",
         ),
         flush=True,
     )
@@ -1666,9 +1677,9 @@ def list_gifs(folder=None):
     return _dedupe_paths(paths)
 
 
-def list_videos(folder=None):
-    """Local video files under videos/ (gitignored cache)."""
-    folder = folder or VIDEO_DIR
+def list_panel_videos(folder=None):
+    """Pre-baked 64x32 (panel-sized) clips under videos/panel/."""
+    folder = folder or PANEL_VIDEO_DIR
     if not os.path.isdir(folder):
         return []
     paths = []
@@ -1676,6 +1687,234 @@ def list_videos(folder=None):
         paths += glob.glob(os.path.join(folder, "*" + ext))
         paths += glob.glob(os.path.join(folder, "*" + ext.upper()))
     return _dedupe_paths(sorted(paths))
+
+
+def list_source_videos(folder=None):
+    """Full-res sources under videos/ only (excludes videos/panel/)."""
+    folder = folder or VIDEO_DIR
+    if not os.path.isdir(folder):
+        return []
+    paths = []
+    for ext in VIDEO_EXTS:
+        paths += glob.glob(os.path.join(folder, "*" + ext))
+        paths += glob.glob(os.path.join(folder, "*" + ext.upper()))
+    panel_abs = os.path.abspath(PANEL_VIDEO_DIR)
+    paths = [
+        p for p in paths
+        if os.path.abspath(os.path.dirname(p)) != panel_abs
+    ]
+    return _dedupe_paths(sorted(paths))
+
+
+def list_videos(folder=None):
+    """
+    Playlist for channel surf.
+
+    Prefer pre-baked panel clips (videos/panel/) when present; otherwise
+    fall back to full-res sources under videos/. Originals may be deleted
+    after baking — panel files alone are enough to run LEDtv.
+    """
+    if folder is not None:
+        # Explicit folder: list that dir only (no panel merge)
+        if not os.path.isdir(folder):
+            return []
+        paths = []
+        for ext in VIDEO_EXTS:
+            paths += glob.glob(os.path.join(folder, "*" + ext))
+            paths += glob.glob(os.path.join(folder, "*" + ext.upper()))
+        return _dedupe_paths(sorted(paths))
+
+    if PREFER_PANEL_BAKE:
+        panel = list_panel_videos()
+        if panel:
+            return panel
+    return list_source_videos()
+
+
+def panel_bake_path(source_path):
+    """Destination path for a baked panel file (same basename, .mp4)."""
+    base = os.path.splitext(os.path.basename(str(source_path)))[0] + ".mp4"
+    return os.path.join(PANEL_VIDEO_DIR, base)
+
+
+def resolve_panel_source(source_path):
+    """
+    Prefer pre-baked panel file when PREFER_PANEL_BAKE and the file exists.
+    Original path is never modified or deleted.
+    """
+    if not source_path:
+        return source_path
+    abspath = os.path.abspath(str(source_path))
+    panel_abs = os.path.abspath(PANEL_VIDEO_DIR)
+    if os.path.dirname(abspath) == panel_abs and os.path.isfile(abspath):
+        return abspath
+    if not PREFER_PANEL_BAKE:
+        return abspath if os.path.isfile(abspath) else source_path
+    baked = panel_bake_path(abspath)
+    if os.path.isfile(baked):
+        return os.path.abspath(baked)
+    return abspath if os.path.isfile(abspath) else source_path
+
+
+def _probe_wh(path):
+    """Return (width, height) or (None, None)."""
+    if not path or not os.path.isfile(path) or not os.path.isfile(_FFPROBE):
+        return None, None
+    try:
+        proc = subprocess.run(
+            [
+                _FFPROBE, "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height",
+                "-of", "csv=p=0:s=x",
+                path,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=15,
+        )
+        text = (proc.stdout or "").strip()
+        if "x" not in text:
+            return None, None
+        w_s, h_s = text.split("x", 1)
+        return int(w_s), int(h_s)
+    except Exception:
+        return None, None
+
+
+def is_panel_dimensions(path):
+    """True if file is already WIDTH x HEIGHT (ready for the matrix)."""
+    w, h = _probe_wh(path)
+    return w == WIDTH and h == HEIGHT
+
+
+def panel_scale_vf(fps=None):
+    """
+    Same filter LEDtv uses for live decode → panel:
+    lanczos letterbox + light unsharp + fps.
+    """
+    if fps is None:
+        fps = VIDEO_FPS
+    return (
+        "scale={w}:{h}:force_original_aspect_ratio=decrease:"
+        "flags=lanczos+accurate_rnd+full_chroma_int,"
+        "pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,"
+        "unsharp=3:3:0.5:3:3:0.0,"
+        "fps={fps}".format(w=WIDTH, h=HEIGHT, fps=int(fps))
+    )
+
+
+def bake_panel_video(source_path, dest_path=None, force=False, fps=None):
+    """
+    Permanently bake source → panel-sized MP4 under videos/panel/.
+    Never overwrites the original. Skips if dest exists unless force=True.
+    Returns dest path on success, None on skip/failure.
+    """
+    if fps is None:
+        fps = VIDEO_FPS
+    if not source_path or not os.path.isfile(source_path):
+        print("[LEDtv] bake skip (missing): {}".format(source_path))
+        return None
+    if not os.path.isfile(_FFMPEG):
+        print("[LEDtv] bake failed: ffmpeg not found")
+        return None
+
+    src = os.path.abspath(source_path)
+    # Refuse to bake from inside panel dir into itself as a source chain mess
+    if os.path.dirname(src) == os.path.abspath(PANEL_VIDEO_DIR):
+        print("[LEDtv] bake skip (already panel dir): {}".format(os.path.basename(src)))
+        return src
+
+    dest = os.path.abspath(dest_path or panel_bake_path(src))
+    if os.path.abspath(dest) == src:
+        print("[LEDtv] bake refuse overwrite original: {}".format(src))
+        return None
+
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if os.path.isfile(dest) and not force:
+        print("[LEDtv] bake exists, skip: {}".format(dest))
+        return dest
+
+    tmp = dest + ".tmp.mp4"
+    vf = panel_scale_vf(fps=fps)
+    cmd = [
+        _FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", src,
+        "-an",
+        "-vf", vf,
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "16",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        tmp,
+    ]
+    print(
+        "[LEDtv] Baking panel {}x{}  {} → {}".format(
+            WIDTH, HEIGHT, os.path.basename(src), dest,
+        ),
+        flush=True,
+    )
+    try:
+        proc = subprocess.run(cmd, timeout=600)
+        if proc.returncode != 0 or not os.path.isfile(tmp):
+            print("[LEDtv] bake ffmpeg failed for {}".format(os.path.basename(src)))
+            if os.path.isfile(tmp):
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+            return None
+        os.replace(tmp, dest)
+        print(
+            "[LEDtv] bake OK  {}  ({:.1f} KB)".format(
+                os.path.basename(dest),
+                os.path.getsize(dest) / 1024.0,
+            ),
+            flush=True,
+        )
+        return dest
+    except Exception as exc:
+        print("[LEDtv] bake error {}: {}".format(os.path.basename(src), exc))
+        if os.path.isfile(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        return None
+
+
+def bake_all_panel_videos(folder=None, force=False, fps=None):
+    """
+    Bake every video in videos/ (not panel/) into videos/panel/.
+    Returns (ok_count, skip_count, fail_count).
+    """
+    folder = folder or VIDEO_DIR
+    sources = list_source_videos(folder)
+    ok = skip = fail = 0
+    print(
+        "[LEDtv] Panel bake  {} sources → {}  ({}x{}, {} fps)".format(
+            len(sources), PANEL_VIDEO_DIR, WIDTH, HEIGHT, int(fps or VIDEO_FPS),
+        ),
+        flush=True,
+    )
+    for src in sources:
+        dest = panel_bake_path(src)
+        if os.path.isfile(dest) and not force:
+            skip += 1
+            print("[LEDtv] bake exists, skip: {}".format(os.path.basename(dest)))
+            continue
+        result = bake_panel_video(src, dest_path=dest, force=force, fps=fps)
+        if result:
+            ok += 1
+        else:
+            fail += 1
+    print(
+        "[LEDtv] Panel bake done  ok={}  skipped={}  failed={}".format(ok, skip, fail),
+        flush=True,
+    )
+    return ok, skip, fail
 
 
 # When False, channel rotation only plays local videos/ (no GIFs).
@@ -2220,19 +2459,19 @@ def _random_seek_sec(path, play_seconds=None):
     return random.uniform(0.0, max_start)
 
 
-def _ffmpeg_rgb_cmd(input_url, fps=VIDEO_FPS, realtime=True, start_sec=None):
+def _ffmpeg_rgb_cmd(input_url, fps=VIDEO_FPS, realtime=True, start_sec=None, already_panel=False):
     """
-    ffmpeg command that emits fixed-size RGB24 frames:
-    scale to fit WIDTH x HEIGHT (aspect preserved) + black pad.
+    ffmpeg command that emits fixed-size RGB24 frames for the matrix.
+
+    Normal sources: lanczos letterbox + unsharp + fps (panel_scale_vf).
+    Pre-baked panel files (already WIDTH x HEIGHT): fps only — no second scale.
     Optional start_sec seeks to a random/absolute offset (-ss before -i).
     """
-    # force_original_aspect_ratio=decrease then pad → never stretches wider
-    vf = (
-        "scale={w}:{h}:force_original_aspect_ratio=decrease:"
-        "flags=bilinear,"
-        "pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,"
-        "fps={fps}".format(w=WIDTH, h=HEIGHT, fps=int(fps))
-    )
+    if already_panel:
+        # Baked file is already matrix-sized; only match playback fps
+        vf = "fps={fps}".format(fps=int(fps))
+    else:
+        vf = panel_scale_vf(fps=fps)
     cmd = [
         _FFMPEG,
         "-hide_banner",
@@ -2286,25 +2525,46 @@ def _play_video_once(
         print("[LEDtv] ffmpeg not found — skip video")
         return True
 
+    # Prefer pre-baked panel file (exact screen output); original stays untouched
+    play_source = source
+    if _is_local_media_path(source) or (source and os.path.isfile(str(source))):
+        resolved = _resolve_local_path(source) if not os.path.isfile(str(source)) else os.path.abspath(str(source))
+        if resolved:
+            play_source = resolve_panel_source(resolved)
+    already_panel = False
+    try:
+        play_dir = os.path.dirname(os.path.abspath(str(play_source)))
+        already_panel = (
+            play_dir == os.path.abspath(PANEL_VIDEO_DIR)
+            or is_panel_dimensions(play_source)
+        )
+    except Exception:
+        already_panel = False
+
     # Random in-file start for local media (all videos)
     seek = start_sec
-    if seek is None and random_seek and os.path.isfile(str(source)):
-        seek = _random_seek_sec(source, play_seconds=max_seconds or VIDEO_PLAY_SEC)
+    if seek is None and random_seek and os.path.isfile(str(play_source)):
+        seek = _random_seek_sec(play_source, play_seconds=max_seconds or VIDEO_PLAY_SEC)
     if seek is None:
         seek = 0.0
 
     frame_bytes = WIDTH * HEIGHT * 3
     # Fast open: input seek already set; no ffmpeg -re stall if realtime=False preferred
-    cmd = _ffmpeg_rgb_cmd(source, fps=fps, realtime=realtime, start_sec=seek)
-    video_name = os.path.basename(str(source))
+    cmd = _ffmpeg_rgb_cmd(
+        play_source, fps=fps, realtime=realtime, start_sec=seek,
+        already_panel=already_panel,
+    )
+    video_name = os.path.basename(str(play_source))
     # Always log the video name (commander/twitch often buffer stdout otherwise)
     print(
-        "[LEDtv] VIDEO  {}  name={}  seek={:.1f}s  max={}s  channel={}".format(
+        "[LEDtv] VIDEO  {}  name={}  seek={:.1f}s  max={}s  channel={}  "
+        "panel_bake={}".format(
             label or "?",
             video_name,
             float(seek or 0),
             "{:.0f}".format(max_seconds) if max_seconds is not None else "full",
             label or "?",
+            "yes" if already_panel else "no",
         ),
         flush=True,
     )
@@ -2725,6 +2985,7 @@ def LaunchLEDtv(
 
 def _parse_args(argv):
     """Minimal CLI: --youtube URL|path [--duration MIN] [--channel N] [--effect NAME] [--no-intro]
+       --bake [--force]  bake all videos/ into videos/panel/ (does not play)
 
     Standalone default: no time limit (STANDALONE_DURATION_MIN).
     Commander/Twitch still default to DEFAULT_DURATION_MIN (5).
@@ -2734,6 +2995,8 @@ def _parse_args(argv):
     effect = "channels"
     channel = None
     show_intro = True
+    bake = False
+    bake_force = False
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -2753,6 +3016,12 @@ def _parse_args(argv):
         elif a in ("--no-intro",):
             show_intro = False
             i += 1
+        elif a in ("--bake",):
+            bake = True
+            i += 1
+        elif a in ("--force", "--bake-force"):
+            bake_force = True
+            i += 1
         elif a.startswith("http://") or a.startswith("https://"):
             url = a
             effect = "youtube"
@@ -2763,12 +3032,16 @@ def _parse_args(argv):
             i += 1
         else:
             i += 1
-    return effect, url, duration, channel, show_intro
+    return effect, url, duration, channel, show_intro, bake, bake_force
 
 
 if __name__ == "__main__":
     LED.LoadConfigData()
-    effect, url, duration, channel, show_intro = _parse_args(sys.argv[1:])
+    effect, url, duration, channel, show_intro, bake, bake_force = _parse_args(sys.argv[1:])
+    if bake:
+        # Bake only — no matrix required for encoding, but LoadConfigData is fine
+        bake_all_panel_videos(force=bake_force)
+        sys.exit(0)
     print("[LEDtv] Standalone  duration={} min{}".format(
         duration,
         " (no limit)" if duration >= STANDALONE_DURATION_MIN else "",
