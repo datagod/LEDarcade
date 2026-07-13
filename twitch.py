@@ -385,7 +385,7 @@ class Bot(commands.Bot ):
     MinutesToWaitBeforeClosing        = 0       #close chat after X minutes of inactivity
     #MinutesMaxTime                   = 10      #exit chat terminal after X minutes and display clock
     BotStartTime        = time.time()
-    SendStartupMessage  = True
+    SendStartupMessage  = False  # off for now — no random clockbot greetings in chat
     BotTypeSpeed        = TerminalTypeSpeed
     BotScrollSpeed      = TerminalScrollSpeed
     MessageCount        = 0
@@ -551,7 +551,7 @@ class Bot(commands.Bot ):
 
 
             h,m,s = LED.GetElapsedTime(self.LastChatInfoTime,time.time())
-            if (m >= self.MinutesToWaitBeforeChatInfo):
+            if (SHOW_CHATBOT_MESSAGES and m >= self.MinutesToWaitBeforeChatInfo):
                 await self.SendChatMessage("Don't forget to interact with the LED display.  Type ?clock for a list of commands.")
                 self.LastChatInfoTime = time.time()
 
@@ -663,7 +663,8 @@ class Bot(commands.Bot ):
               })
 
 
-          await self.SendRandomChatGreeting()
+          if self.SendStartupMessage:
+              await self.SendRandomChatGreeting()
         await self.PerformTimeBasedActions()
 
     
@@ -1263,14 +1264,16 @@ class Bot(commands.Bot ):
     # Send random chat greeting           --
     #---------------------------------------
     async def SendRandomChatGreeting(self):
+      # Disabled when SendStartupMessage is False (no clockbot greetings for now)
+      if not self.SendStartupMessage:
+        return
       x = len(ChatStartMessages)
       i = random.randint(0,x-1)
       message = ChatStartMessages[i]         
       print("Message:",message)
-      
 
       #send startup message if stream is active
-      if (self.SendStartupMessage == True and StreamActive == True):
+      if StreamActive == True:
         await self.Channel.send(message)
     
 
