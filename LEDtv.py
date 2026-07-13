@@ -89,11 +89,47 @@ _YT_DLP_CANDIDATES = (
     "/usr/bin/yt-dlp",
     shutil.which("yt-dlp") or "",
 )
-_FFMPEG = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
-_FFPROBE = shutil.which("ffprobe") or "/usr/bin/ffprobe"
+# Common locations — subprocess PATH under sudo/LEDcommander is often empty
+_FFMPEG_CANDIDATES = (
+    "/usr/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
+    "/bin/ffmpeg",
+    shutil.which("ffmpeg") or "",
+)
+_FFPROBE_CANDIDATES = (
+    "/usr/bin/ffprobe",
+    "/usr/local/bin/ffprobe",
+    "/bin/ffprobe",
+    shutil.which("ffprobe") or "",
+)
+
+
+def _resolve_tool(candidates, name="tool"):
+    """Return first existing executable path from candidates, or None."""
+    for path in candidates:
+        if path and os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    # Last resort: PATH lookup at call time (env may differ from import)
+    found = shutil.which(name)
+    if found and os.path.isfile(found):
+        return found
+    return None
+
+
+def get_ffmpeg():
+    """ffmpeg path (resolved at call time so sudo/subprocess PATH still works)."""
+    return _resolve_tool(_FFMPEG_CANDIDATES, "ffmpeg")
+
+
+def get_ffprobe():
+    return _resolve_tool(_FFPROBE_CANDIDATES, "ffprobe")
+
+
+# Back-compat module-level names (may be None until tools exist)
+_FFMPEG = get_ffmpeg() or "/usr/bin/ffmpeg"
+_FFPROBE = get_ffprobe() or "/usr/bin/ffprobe"
 # Cache of probed durations (path → seconds); avoids re-probing every surf
 _DURATION_CACHE = {}
-
 # --- white noise ---
 NOISE_FPS = 30
 NOISE_MIN = 8
@@ -1238,8 +1274,12 @@ def play_news_channel(
             session_start, duration_minutes, stop_event, label, play_seconds,
         )
 
-    if not os.path.isfile(_FFMPEG):
-        print("[LEDtv] ffmpeg not found — news video skip", flush=True)
+    if not get_ffmpeg():
+        print(
+            "[LEDtv] ffmpeg not found — news video skip  "
+            "(install: sudo apt-get install -y ffmpeg)",
+            flush=True,
+        )
         return _play_news_ticker_only(
             session_start, duration_minutes, stop_event, label, play_seconds,
         )
@@ -1838,12 +1878,15 @@ def resolve_panel_source(source_path):
 
 def _probe_wh(path):
     """Return (width, height) or (None, None)."""
-    if not path or not os.path.isfile(path) or not os.path.isfile(_FFPROBE):
+    if not path or not os.path.isfile(path) or not get_ffprobe():
         return None, None
     try:
+        ffprobe = get_ffprobe()
+        if not ffprobe:
+            return None, None
         proc = subprocess.run(
             [
-                _FFPROBE, "-v", "error",
+                ffprobe, "-v", "error",
                 "-select_streams", "v:0",
                 "-show_entries", "stream=width,height",
                 "-of", "csv=p=0:s=x",
@@ -1896,8 +1939,9 @@ def bake_panel_video(source_path, dest_path=None, force=False, fps=None):
     if not source_path or not os.path.isfile(source_path):
         print("[LEDtv] bake skip (missing): {}".format(source_path))
         return None
-    if not os.path.isfile(_FFMPEG):
-        print("[LEDtv] bake failed: ffmpeg not found")
+    ffmpeg = get_ffmpeg()
+    if not ffmpeg:
+        print("[LEDtv] bake failed: ffmpeg not found (sudo apt-get install -y ffmpeg)")
         return None
 
     src = os.path.abspath(source_path)
@@ -1919,7 +1963,7 @@ def bake_panel_video(source_path, dest_path=None, force=False, fps=None):
     tmp = dest + ".tmp.mp4"
     vf = panel_scale_vf(fps=fps)
     cmd = [
-        _FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
+        ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
         "-i", src,
         "-an",
         "-vf", vf,
@@ -2217,9 +2261,23 @@ def play_channel_rotation(
         CH5  clock | CH13 weather | CH14–15 GIFs | else random video
       when time is up: color bars → fade to black
     """
-    # Channel surf always opens on CH2 (ignore stale/wrong start_channel from
-    # commander/panel — users expect dial to begin at the low end every session).
-    channel = CH_START
+    # Default start CH2; allow ?tvN / commander to land on a specific channel
+    if start_channel is None or str(start_channel).strip() == "":
+        channel = CH_START
+    else:
+        try:
+            channel = int(start_channel)
+        except (TypeError, ValueError):
+            channel = CH_START
+    if channel < CH_START or channel > CH_MAX:
+        print(
+            "[LEDtv] start channel {} out of range — using {}".format(
+                channel, channel_label(CH_START),
+            ),
+            flush=True,
+        )
+        channel = CH_START
+    start_channel_pin = channel  # first land after boot
     start = time.time()
 
     # List media and kick off duration warm ASAP (background) so boot static
@@ -2266,19 +2324,21 @@ def play_channel_rotation(
             return
 
     if boot_intro:
-        # White noise runs free while duration warm continues in the background
-        # Always label boot static as CH2
+        # White noise while duration warm continues; label with start channel
         play_boot_intro(
-            stop_event=stop_event, seconds=STATIC_BOOT_SEC, channel=CH_START,
+            stop_event=stop_event, seconds=STATIC_BOOT_SEC, channel=start_channel_pin,
         )
         if stop_event is not None and stop_event.is_set():
             LED.ClearBigLED()
             return
 
-    # Re-pin after boot so the first full dwell is always CH2 (never CH5 clock, etc.)
-    channel = CH_START
+    # First full dwell on the requested start channel (default CH2)
+    channel = start_channel_pin
     print(
-        "[LEDtv] First land {} (forced start)".format(channel_label(channel)),
+        "[LEDtv] First land {}{}".format(
+            channel_label(channel),
+            "  [session start]" if channel == CH_START else "  [tuned start]",
+        ),
         flush=True,
     )
 
@@ -2291,9 +2351,8 @@ def play_channel_rotation(
     while not _time_up(start, duration_minutes, stop_event):
         # --- sequential channel surf (always on; previews optional) ---
         if CHANNEL_PREVIEWS_ENABLED:
-            # Previews only between lands — never before the first CH2 dwell
             if first_cycle:
-                channel = CH_START
+                channel = start_channel_pin
             else:
                 n_flashes = 1
                 print("[LEDtv] Channel surf x{} (sequential up)".format(n_flashes))
@@ -2313,7 +2372,7 @@ def play_channel_rotation(
             if not first_cycle:
                 channel = next_channel(channel)
             else:
-                channel = CH_START
+                channel = start_channel_pin
 
         dwell = channel_dwell_sec()  # 10s after title/static warmup
         print(
@@ -2507,14 +2566,15 @@ def _probe_duration_sec(path):
     key = os.path.abspath(str(path))
     if key in _DURATION_CACHE:
         return _DURATION_CACHE[key]
-    if not os.path.isfile(_FFPROBE):
+    ffprobe = get_ffprobe()
+    if not ffprobe:
         return None
     if not os.path.isfile(key):
         return None
     try:
         proc = subprocess.run(
             [
-                _FFPROBE, "-v", "error",
+                ffprobe, "-v", "error",
                 "-show_entries", "format=duration",
                 "-of", "default=noprint_wrappers=1:nokey=1",
                 key,
@@ -2563,13 +2623,16 @@ def _ffmpeg_rgb_cmd(input_url, fps=VIDEO_FPS, realtime=True, start_sec=None, alr
     Pre-baked panel files (already WIDTH x HEIGHT): fps only — no second scale.
     Optional start_sec seeks to a random/absolute offset (-ss before -i).
     """
+    ffmpeg = get_ffmpeg()
+    if not ffmpeg:
+        raise RuntimeError("ffmpeg not found (install: sudo apt-get install -y ffmpeg)")
     if already_panel:
         # Baked file is already matrix-sized; only match playback fps
         vf = "fps={fps}".format(fps=int(fps))
     else:
         vf = panel_scale_vf(fps=fps)
     cmd = [
-        _FFMPEG,
+        ffmpeg,
         "-hide_banner",
         "-loglevel", "error",
     ]
@@ -2617,8 +2680,12 @@ def _play_video_once(
     """
     if show_channel_sec is None:
         show_channel_sec = CHANNEL_BUG_SHOW_SEC
-    if not os.path.isfile(_FFMPEG):
-        print("[LEDtv] ffmpeg not found — skip video")
+    if not get_ffmpeg():
+        print(
+            "[LEDtv] ffmpeg not found — skip video  "
+            "(install on this Pi: sudo apt-get install -y ffmpeg)",
+            flush=True,
+        )
         return True
 
     # Prefer pre-baked panel file (exact screen output); original stays untouched
@@ -2902,8 +2969,8 @@ def play_youtube(
     """
     if not url:
         raise ValueError("play_youtube requires a url or local path")
-    if not os.path.isfile(_FFMPEG):
-        raise RuntimeError("ffmpeg not found at {}".format(_FFMPEG))
+    if not get_ffmpeg():
+        raise RuntimeError("ffmpeg not found (install: sudo apt install ffmpeg)")
 
     channel = CH_START if channel is None else int(channel)
     label = channel_label(channel)
@@ -2969,14 +3036,14 @@ def PlayLEDtv(
     effect="channels",
     youtube_url=None,
     channel=None,
+    boot_intro=True,
 ):
     """
     Run the requested LEDtv effect / channel.
 
-    No youtube_url → always the agreed channel-surf loop
-    (static after title is handled by LaunchLEDtv / boot_intro):
-      static → channel flashes → random video 30s → dial → repeat
-    With youtube_url → play that stream/file.
+    No youtube_url → channel-surf loop (title handled by LaunchLEDtv):
+      optional static → sequential CHn → specialty channels
+    channel: first land (default CH2). boot_intro: white-noise cold open.
     """
     youtube_url = _normalize_url(youtube_url)
     effect = (effect or "channels").lower().strip()
@@ -2996,16 +3063,26 @@ def PlayLEDtv(
         "channels", "rotation", "random_gif", "gif", "gifs",
         "channel_gif", "media", "default", "tv",
     ):
-        # Full channel surf always begins at CH2 (ignore passed channel)
+        # Default CH2; ?tvN / commander can pass a start channel
+        start_ch = CH_START if channel is None else channel
         print(
-            "[LEDtv] Channel-surf mode (no URL)  start={}".format(
-                channel_label(CH_START),
+            "[LEDtv] Channel-surf mode (no URL)  start={}  boot_intro={}".format(
+                channel_label(start_ch), bool(boot_intro),
             ),
             flush=True,
         )
+        ffmpeg = get_ffmpeg()
+        if not ffmpeg:
+            print(
+                "[LEDtv] WARNING: ffmpeg not found — video channels will be blank.  "
+                "Install: sudo apt-get install -y ffmpeg",
+                flush=True,
+            )
+        else:
+            print("[LEDtv] ffmpeg OK: {}".format(ffmpeg), flush=True)
         play_channel_rotation(
-            duration_minutes, stop_event=stop_event, start_channel=CH_START,
-            boot_intro=True,
+            duration_minutes, stop_event=stop_event, start_channel=start_ch,
+            boot_intro=bool(boot_intro),
         )
     elif effect in ("youtube", "yt", "video"):
         if not youtube_url:
@@ -3013,7 +3090,7 @@ def PlayLEDtv(
             play_channel_rotation(
                 duration_minutes, stop_event=stop_event,
                 start_channel=channel if channel is not None else CH_START,
-                boot_intro=True,
+                boot_intro=bool(boot_intro),
             )
         else:
             play_youtube(
@@ -3027,7 +3104,7 @@ def PlayLEDtv(
         play_channel_rotation(
             duration_minutes, stop_event=stop_event,
             start_channel=channel if channel is not None else CH_START,
-            boot_intro=True,
+            boot_intro=bool(boot_intro),
         )
 
 
@@ -3138,18 +3215,14 @@ def LaunchLEDtv(
     effect="channels",
     youtube_url=None,
     channel=None,
+    boot_intro=True,
 ):
     """
     Entry used by LEDcommander / Twitch / CLI / LEDpanel.
 
-    No URL (default):
-      1. LEDTV letters drop from the sky (Skyfall-style)
-      2. Analog static 3s
-      3. Channel flashes 2–5× @ 1s
-      4. Random local video 30s (CHn 3s then hide)
-      5. Channel up/down; repeat until duration
-
-    With URL: title drop (if show_intro) then play that YouTube/local video.
+    No URL (default): channel surf from CH2 (or `channel` if set).
+    show_intro: LEDTV title drop. boot_intro: static cold open.
+    ?tvN passes channel=N with intros off for a fast tune.
     Default duration is 5 minutes.
     """
     youtube_url = _normalize_url(youtube_url)
@@ -3169,9 +3242,14 @@ def LaunchLEDtv(
         if effect in ("channels", "rotation", "random_gif", "default", "tv", ""):
             effect = "youtube"
 
-    print("[LEDtv] Launch  duration={}min  effect={!r}  url={!r}  intro={}".format(
-        duration, effect, youtube_url, bool(show_intro),
-    ))
+    print(
+        "[LEDtv] Launch  duration={}min  effect={!r}  url={!r}  "
+        "intro={}  boot={}  channel={!r}".format(
+            duration, effect, youtube_url, bool(show_intro), bool(boot_intro),
+            channel,
+        ),
+        flush=True,
+    )
 
     if show_intro:
         play_title_drop(stop_event=stop_event)
@@ -3184,6 +3262,7 @@ def LaunchLEDtv(
         effect=effect,
         youtube_url=youtube_url,
         channel=channel,
+        boot_intro=bool(boot_intro),
     )
 
 

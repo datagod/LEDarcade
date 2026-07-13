@@ -30,12 +30,24 @@ LEDtv prefers `videos/panel/` when it has files. Originals are **not** required 
 
 ## Requirements
 
-On the Pi (or any machine used to prepare media):
+On **every** Pi that runs LEDtv (including remotes after `git pull`):
 
 ```bash
-# ffmpeg (decode / scale / encode)
+# Required for PLAYBACK of panel videos (not just baking)
+sudo apt-get update
 sudo apt-get install -y ffmpeg
 
+# Confirm:
+which ffmpeg ffprobe
+# expect: /usr/bin/ffmpeg  /usr/bin/ffprobe
+```
+
+Without `ffmpeg`, LEDtv will skip every video channel (`ffmpeg not found — skip video`)
+and appear to “jump” to specialty channels (clock CH5, weather, GIFs).
+
+Optional for downloading/preparing media on a build machine:
+
+```bash
 # yt-dlp (YouTube download) — keep it updated
 sudo pip3 install -U yt-dlp
 # or:  sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
@@ -236,11 +248,12 @@ python3 bake_panel_videos.py --force
 | Symptom | Fix |
 |---------|-----|
 | No video channels | Ensure `videos/panel/` has `.mp4` files. |
+| Log: `ffmpeg not found — skip video` | **Install ffmpeg on that Pi:** `sudo apt-get install -y ffmpeg` then restart. Pre-baked files still need ffmpeg to *decode*. |
+| Lands on CH5 clock with no video first | Same as above — CH2–4 videos failed instantly without ffmpeg. |
 | `panel_bake=no` in log | File is not under `panel/` and is not 64×32 — bake it. |
 | yt-dlp / JS runtime warnings | Update yt-dlp; see [yt-dlp EJS wiki](https://github.com/yt-dlp/yt-dlp/wiki/EJS). |
 | Matrix busy / black screen | `sudo bash ./stop.sh` then start LEDtv as root. |
 | Bake refuses overwrite | Sources are never overwritten; only `videos/panel/` is written. Use `--force` to replace a bake. |
-
 ---
 
 ## Git note

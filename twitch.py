@@ -722,20 +722,29 @@ class Bot(commands.Bot ):
         # For now we just want to ignore them...
         if message.echo:
           return
-        
+
+        # Remove emoji before command / ?tvN parse
+        message.content = LED.deEmojify(message.content)
+
+        author = message.author.display_name
+        print('CHAT| ',author,':',message.content)
+
+        # ?tvN → tune LEDtv to channel N (start or switch via re-launch)
+        tv_ch = re.match(r'^\?tv\s*(\d{1,2})\s*$', (message.content or '').strip(), re.I)
+        if tv_ch:
+            try:
+                ch_num = int(tv_ch.group(1))
+            except ValueError:
+                ch_num = None
+            if ch_num is not None:
+                self.QueueLEDtv(channel=ch_num, from_user=author)
+                return
+
         # Since we have commands and are overriding the default `event_message`
         # We must let the bot know we want to handle and invoke our commands...
         await self.handle_commands(message)
 
-
         # Check for special key words
-        #Remove emoji from message
-        message.content = LED.deEmojify(message.content)
-
-        author = message.author.display_name
-
-        #Log Chat
-        print('CHAT| ',author,':',message.content)
 
 
         #---------------------------------------
@@ -1731,13 +1740,13 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send(
             'Available commands: ?demotivate ?hello ?hug ?intro ?onair ?profile ?me '
-            '?retro ?starrynight ?taco ?time ?tv ?uptime ?viewers ?views ?who'
+            '?retro ?starrynight ?taco ?time ?tv ?tv2-15 ?uptime ?viewers ?views ?who'
         )
         time.sleep(4)
         await ctx.send(
             'Available games: ?astrosmash ?blasteroids ?defender ?fallingsand '
             '?gravity ?invaders ?outbreak ?outbreak2 ?outbreak3 ?particles '
-            '?skyfall ?spaceexplorer ?tron ?tv'
+            '?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8)'
         )
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
@@ -2352,24 +2361,56 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # LEDTV — channel surfing (?tv)        --
+    # LEDTV — channel surfing (?tv / ?tvN) --
     #----------------------------------------
+
+    def QueueLEDtv(self, channel=None, duration=5, from_user=None):
+      """
+      Queue LEDtv for `duration` minutes (default 5).
+      channel=None → start at CH2 with full intro.
+      channel=N    → start/switch to that channel (fast tune, no title/static).
+      Re-launch preempts any running display (including LEDtv) = channel switch.
+      """
+      cmd = {
+          "Action": "launch_ledtv",
+          "duration": duration,
+          "effect": "channels",
+      }
+      if channel is not None:
+          try:
+              ch = int(channel)
+          except (TypeError, ValueError):
+              ch = None
+          if ch is not None:
+              cmd["channel"] = ch
+              # Fast tune when targeting a channel (running or not)
+              cmd["show_intro"] = False
+              cmd["boot_intro"] = False
+      who = from_user or "?"
+      if channel is not None:
+          print(
+              f"[twitch] ?tv{channel} from {who} — LEDtv "
+              f"{duration} min start CH{channel}",
+              flush=True,
+          )
+      else:
+          print(
+              f"[twitch] ?tv from {who} — LEDtv {duration} min (CH2 start)",
+              flush=True,
+          )
+      CommandQueue.put(cmd)
 
     @commands.command(name="tv", aliases=["ledtv", "LEDTV", "LEDtv", "led_tv"])
     async def tv(self, ctx: commands.Context):
-      """Surf the LED matrix TV for 2 minutes.
+      """Surf the LED matrix TV for 5 minutes from CH2.
 
-      Chat: ?tv   (aliases: ?ledtv)
+      Chat: ?tv          → 5 min channel surf from CH2
+            ?tv8         → tune to CH8 (and continue surfing)
       """
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Tuning LEDTV for 2 minutes… static, channel surf, random clips."
+        message = "Tuning LEDTV for 5 minutes… static, channel surf, random clips."
         await self.Channel.send(message)
-      print(f"[twitch] ?tv from {getattr(ctx.author, 'name', '?')} — queueing launch_ledtv (2 min)")
-      CommandQueue.put({
-          "Action": "launch_ledtv",
-          "duration": 2,
-          "effect": "channels",
-      })
+      self.QueueLEDtv(channel=None, duration=5, from_user=getattr(ctx.author, 'name', '?'))
 
 
     #----------------------------------------

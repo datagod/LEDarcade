@@ -1658,27 +1658,45 @@ def LaunchLEDtv(Command, StopEvent):
     Channel = Command.get("channel")
     if Channel is not None and str(Channel).strip() == "":
         Channel = None
+    elif Channel is not None:
+        try:
+            Channel = int(Channel)
+        except (TypeError, ValueError):
+            Channel = None
     # Empty/missing URL → always full channel-surf sequence (ignore blank effect)
     if YoutubeUrl:
         Effect = (Command.get("effect") or "youtube")
     else:
         Effect = "channels"
-        # Full surf always starts at CH2 — do not pass a stuck channel number
-        Channel = None
+    # show_intro / boot_intro: ?tv full cold open; ?tvN tunes fast (no title/static)
+    ShowIntro = Command.get("show_intro", True)
+    if isinstance(ShowIntro, str):
+        ShowIntro = ShowIntro.strip().lower() not in ("0", "false", "no", "off")
+    BootIntro = Command.get("boot_intro", True)
+    if isinstance(BootIntro, str):
+        BootIntro = BootIntro.strip().lower() not in ("0", "false", "no", "off")
+    # Tuning to a channel: skip intros unless explicitly requested
+    if Channel is not None and "show_intro" not in Command:
+        ShowIntro = False
+    if Channel is not None and "boot_intro" not in Command:
+        BootIntro = False
     print(
-        "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r} channel={!r} brightness={}".format(
-            Duration, Effect, YoutubeUrl, Channel, STREAM_GAME_BRIGHTNESS,
+        "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r} "
+        "channel={!r} intro={} boot={} brightness={}".format(
+            Duration, Effect, YoutubeUrl, Channel, ShowIntro, BootIntro,
+            STREAM_GAME_BRIGHTNESS,
         )
     )
     try:
         _run_game_dimmed(
             lambda: TV.LaunchLEDtv(
                 duration=Duration,
-                show_intro=True,
+                show_intro=bool(ShowIntro),
                 stop_event=StopEvent,
                 effect=Effect,
                 youtube_url=YoutubeUrl,
                 channel=Channel,
+                boot_intro=bool(BootIntro),
             )
         )
     finally:
