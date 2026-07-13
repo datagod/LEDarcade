@@ -2217,7 +2217,16 @@ def play_channel_rotation(
         CH5  clock | CH13 weather | CH14–15 GIFs | else random video
       when time is up: color bars → fade to black
     """
-    channel = CH_START if start_channel is None else int(start_channel)
+    # Always begin the dial at CH2 unless a valid start channel was requested
+    if start_channel is None or str(start_channel).strip() == "":
+        channel = CH_START
+    else:
+        try:
+            channel = int(start_channel)
+        except (TypeError, ValueError):
+            channel = CH_START
+    if channel < CH_START or channel > CH_MAX:
+        channel = CH_START
     start = time.time()
 
     # List media and kick off duration warm ASAP (background) so boot static
@@ -2226,9 +2235,9 @@ def play_channel_rotation(
     n_gif_dir = len(list_gifs(gif_dir))
     n_vid = sum(1 for i in items if i["kind"] == "video")
     print(
-        "[LEDtv] Channel surf  CH{}–CH{}  dwell={:.0f}s (after warmup)  "
+        "[LEDtv] Channel surf  CH{}–CH{}  start={}  dwell={:.0f}s (after warmup)  "
         "videos={}  gifs_on_ch14-15={}  (in {})".format(
-            CH_START, CH_MAX,
+            CH_START, CH_MAX, channel_label(channel),
             CHANNEL_DWELL_SEC,
             n_vid, n_gif_dir, gif_dir or GIF_DIR,
         ),
@@ -2981,7 +2990,15 @@ def PlayLEDtv(
         "channels", "rotation", "random_gif", "gif", "gifs",
         "channel_gif", "media", "default", "tv",
     ):
-        print("[LEDtv] Channel-surf mode (no URL)")
+        # Default dial always starts at CH2 (CH_START)
+        if channel is None:
+            channel = CH_START
+        print(
+            "[LEDtv] Channel-surf mode (no URL)  start={}".format(
+                channel_label(channel),
+            ),
+            flush=True,
+        )
         play_channel_rotation(
             duration_minutes, stop_event=stop_event, start_channel=channel,
             boot_intro=True,
@@ -2990,7 +3007,8 @@ def PlayLEDtv(
         if not youtube_url:
             print("[LEDtv] youtube effect needs URL — falling back to channel surf")
             play_channel_rotation(
-                duration_minutes, stop_event=stop_event, start_channel=channel,
+                duration_minutes, stop_event=stop_event,
+                start_channel=channel if channel is not None else CH_START,
                 boot_intro=True,
             )
         else:
@@ -3003,7 +3021,8 @@ def PlayLEDtv(
     else:
         print("[LEDtv] Unknown effect {!r} — falling back to channel surf".format(effect))
         play_channel_rotation(
-            duration_minutes, stop_event=stop_event, start_channel=channel,
+            duration_minutes, stop_event=stop_event,
+            start_channel=channel if channel is not None else CH_START,
             boot_intro=True,
         )
 
