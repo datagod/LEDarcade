@@ -144,7 +144,8 @@ CHANNEL_GIF_MAX = 15
 
 # --- CH8 news ---
 NEWS_VIDEO_NAME = "yt_qHJi8SMFrec_60s.mp4"
-NEWS_VIDEO_PATH = os.path.join(VIDEO_DIR, NEWS_VIDEO_NAME)
+# Prefer panel bake (runtime library); fall back to source if present
+NEWS_VIDEO_PATH = os.path.join(PANEL_VIDEO_DIR, NEWS_VIDEO_NAME)
 # Specialty channels use channel_dwell_sec() (global limit); keep alias for clarity
 NEWS_PLAY_SEC = None              # None → channel_dwell_sec()
 NEWS_FPS = 30                     # fixed pace; higher rate + 1px steps = smooth, no flicker
@@ -1169,6 +1170,33 @@ def _draw_news_ticker_banner(img, scroll_x, banner):
         _paint_banner_on_image(img, banner, int(scroll_x), _news_ticker_v())
 
 
+def _resolve_news_video_path():
+    """
+    CH8 news clip: prefer panel bake, then source under videos/.
+    Originals may be deleted after baking — panel alone is enough.
+    """
+    candidates = [
+        os.path.join(PANEL_VIDEO_DIR, NEWS_VIDEO_NAME),
+        os.path.join(VIDEO_DIR, NEWS_VIDEO_NAME),
+        os.path.join(PANEL_VIDEO_DIR, "yt_qHJi8SMFrec.mp4"),
+        os.path.join(VIDEO_DIR, "yt_qHJi8SMFrec.mp4"),
+    ]
+    # Also honor resolve_panel_source for any basename mapping
+    for base in (NEWS_VIDEO_NAME, "yt_qHJi8SMFrec.mp4"):
+        candidates.append(resolve_panel_source(os.path.join(VIDEO_DIR, base)))
+    seen = set()
+    for path in candidates:
+        if not path:
+            continue
+        abspath = os.path.abspath(path)
+        if abspath in seen:
+            continue
+        seen.add(abspath)
+        if os.path.isfile(abspath):
+            return abspath
+    return None
+
+
 def play_news_channel(
     session_start,
     duration_minutes,
@@ -1188,23 +1216,24 @@ def play_news_channel(
         play_seconds = NEWS_PLAY_SEC if NEWS_PLAY_SEC is not None else channel_dwell_sec()
     play_seconds = float(play_seconds)
     label = channel_label(channel)
-    video_path = NEWS_VIDEO_PATH
-    if not os.path.isfile(video_path):
-        alt = os.path.join(VIDEO_DIR, "yt_qHJi8SMFrec.mp4")
-        if os.path.isfile(alt):
-            video_path = alt
-    if os.path.isfile(video_path):
-        video_path = resolve_panel_source(video_path)
+    video_path = _resolve_news_video_path()
     print(
         "[LEDtv] {}  News channel  video={}  ({:.0f}s + banner ticker)".format(
-            label, os.path.basename(video_path), play_seconds,
+            label,
+            os.path.basename(video_path) if video_path else "MISSING",
+            play_seconds,
         ),
         flush=True,
     )
 
     # No black flash — cut straight to news; CHn shows on first frames
-    if not os.path.isfile(video_path):
-        print("[LEDtv] News video missing: {}".format(video_path), flush=True)
+    if not video_path or not os.path.isfile(video_path):
+        print(
+            "[LEDtv] News video missing (need panel or source {})".format(
+                NEWS_VIDEO_NAME,
+            ),
+            flush=True,
+        )
         return _play_news_ticker_only(
             session_start, duration_minutes, stop_event, label, play_seconds,
         )
@@ -2210,7 +2239,8 @@ def play_channel_rotation(
         play_end_sequence(stop_event=stop_event)
         return
 
-    extra = [NEWS_VIDEO_PATH] if os.path.isfile(NEWS_VIDEO_PATH) else []
+    news_path = _resolve_news_video_path()
+    extra = [news_path] if news_path else []
     _start_duration_warm_async(items, extra_paths=extra)
 
     # Shuffle is cheap; do it now so the first clip is ready after static
