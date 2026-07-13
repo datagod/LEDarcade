@@ -307,6 +307,28 @@ CurrentDisplayMode   = None
 TerminalQueue        = Queue()
 ClockFallbackEnabled = True
 
+# Twitch / stream matrix brightness (0–100)
+STREAM_GAME_BRIGHTNESS = 70
+STREAM_CLOCK_BRIGHTNESS = 80
+STREAM_MAX_BRIGHTNESS = 100
+
+
+def _apply_matrix_brightness(level):
+    try:
+        import LEDarcade as LED
+        LED.TheMatrix.brightness = int(level)
+    except Exception:
+        pass
+
+
+def _run_game_dimmed(launch_fn):
+    """Run a game at stream game brightness, restore full brightness after."""
+    _apply_matrix_brightness(STREAM_GAME_BRIGHTNESS)
+    try:
+        return launch_fn()
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
 
 
 def fallback_action_generator():
@@ -945,62 +967,65 @@ def ShowDigitalClock(Command,StopEvent):
 
     print("RedR: ",LED.RedR)
 
-    #Sprite display locations ??  maybe not needed
-    #LED.ClockH,      LED.ClockV,      LED.ClockRGB      = 0,0,  (0,150,0)
-    #LED.DayOfWeekH,  LED.DayOfWeekV,  LED.DayOfWeekRGB  = 8,20,  (125,20,20)
-    #LED.MonthH,      LED.MonthV,      LED.MonthRGB      = 28,20, (125,30,0)
-    #LED.DayOfMonthH, LED.DayOfMonthV, LED.DayOfMonthRGB = 47,20, (115,40,10)
-
-   
-
     ClockStyle = Command.get("Style", 1)
     ZoomFactor = Command.get("Zoom", 2)
     RunMinutes = Command.get("duration", 1)
     AnimationDelay = Command.get("Delay", 30)
 
-    print(f"[LEDcommander] Showing clock: Style={ClockStyle}, Zoom={ZoomFactor}, Duration={RunMinutes}")
-
-    LED.DisplayDigitalClock(
-        ClockStyle=ClockStyle,
-        CenterHoriz=True,
-        v=1,
-        hh=24,
-        RGB=LED.LowGreen,
-        ShadowRGB      = LED.ShadowGreen,
-        ZoomFactor     = ZoomFactor,
-        AnimationDelay = AnimationDelay,
-        RunMinutes     = RunMinutes,
-        StopEvent      = StopEvent
+    print(
+        f"[LEDcommander] Showing clock: Style={ClockStyle}, Zoom={ZoomFactor}, "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
-    #LED.SweepClean()
+
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        LED.DisplayDigitalClock(
+            ClockStyle=ClockStyle,
+            CenterHoriz=True,
+            v=1,
+            hh=24,
+            RGB=LED.LowGreen,
+            ShadowRGB      = LED.ShadowGreen,
+            ZoomFactor     = ZoomFactor,
+            AnimationDelay = AnimationDelay,
+            RunMinutes     = RunMinutes,
+            StopEvent      = StopEvent
+        )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
 
 
 
 def ShowRetroDigital(Command,StopEvent):
     import LEDarcade as LED
     LED.Initialize()
-   
 
     ClockStyle = Command.get("Style", 4)
     ZoomFactor = Command.get("Zoom", 1)
     RunMinutes = Command.get("duration", 5)
     AnimationDelay = Command.get("Delay", 30)
 
-    print(f"[LEDcommander] Showing clock: Style={ClockStyle}, Zoom={ZoomFactor}, Duration={RunMinutes}")
-
-    LED.DisplayDigitalClock(
-        ClockStyle=ClockStyle,
-        CenterHoriz=True,
-        v=1,
-        hh=24,
-        RGB=LED.LowGreen,
-        ShadowRGB      = LED.ShadowGreen,
-        ZoomFactor     = ZoomFactor,
-        AnimationDelay = AnimationDelay,
-        RunMinutes     = RunMinutes,
-        StopEvent      = StopEvent
+    print(
+        f"[LEDcommander] Showing retro clock: Style={ClockStyle}, Zoom={ZoomFactor}, "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
-    #LED.SweepClean()
+
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        LED.DisplayDigitalClock(
+            ClockStyle=ClockStyle,
+            CenterHoriz=True,
+            v=1,
+            hh=24,
+            RGB=LED.LowGreen,
+            ShadowRGB      = LED.ShadowGreen,
+            ZoomFactor     = ZoomFactor,
+            AnimationDelay = AnimationDelay,
+            RunMinutes     = RunMinutes,
+            StopEvent      = StopEvent
+        )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
 
 
 
@@ -1510,22 +1535,16 @@ def LaunchDotInvaders(Command, StopEvent):
     LED.Initialize()
     import DotInvaders as DI
 
-    StreamBrightness = 80
-    MaxBrightness    = 100
-
     Duration         = Command.get("duration",1)
 
     print("[LEDcommander][LaunchDotInvaders] Launching...")
     try:
-        LED.TheMatrix.brightness = StreamBrightness
-        DI.LaunchDotInvaders(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+        _run_game_dimmed(
+            lambda: DI.LaunchDotInvaders(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+        )
     finally:
-        try:
-            LED.TheMatrix.brightness = MaxBrightness
-        except Exception:
-            pass
         LED.SweepClean()
-    
+
 
 
 def LaunchDefender(Command, StopEvent):
@@ -1534,9 +1553,12 @@ def LaunchDefender(Command, StopEvent):
     import Defender2 as DE
     Duration         = Command.get("duration",1)
     print(f"[LEDcommander][LaunchDefender] Launching Defender2 for {Duration} minutes...")
-
-    DE.LaunchDefender2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
-    LED.SweepClean()
+    try:
+        _run_game_dimmed(
+            lambda: DE.LaunchDefender2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+        )
+    finally:
+        LED.SweepClean()
 
 
 def LaunchGravitySim(Command, StopEvent):
@@ -1547,7 +1569,9 @@ def LaunchGravitySim(Command, StopEvent):
     if Duration=='':
         Duration = 30
     print("[LEDcommander][LaunchGravitySim] Launching...")
-    GR.Launch(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: GR.Launch(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchTron(Command, StopEvent):
@@ -1556,8 +1580,9 @@ def LaunchTron(Command, StopEvent):
     import Tron as TR
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchTron] Launching...")
-
-    TR.LaunchTron(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: TR.LaunchTron(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchSpaceDot(Command, StopEvent):
@@ -1566,8 +1591,9 @@ def LaunchSpaceDot(Command, StopEvent):
     import SpaceDot as SD
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchSpaceDot] Launching...")
-
-    SD.LaunchSpaceDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: SD.LaunchSpaceDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 
@@ -1578,7 +1604,9 @@ def LaunchOutbreak(Command, StopEvent):
     import Outbreak as OB
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchOutbreak] Launching...")
-    OB.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: OB.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchOutbreak2(Command, StopEvent):
@@ -1587,7 +1615,9 @@ def LaunchOutbreak2(Command, StopEvent):
     import Outbreak2 as OB2
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchOutbreak2] Launching...")
-    OB2.LaunchOutbreak2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: OB2.LaunchOutbreak2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchOutbreak3(Command, StopEvent):
@@ -1596,7 +1626,9 @@ def LaunchOutbreak3(Command, StopEvent):
     import Outbreak3 as OB3
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchOutbreak3] Launching...")
-    OB3.LaunchOutbreak3(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: OB3.LaunchOutbreak3(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchOutbreak4(Command, StopEvent):
@@ -1605,16 +1637,15 @@ def LaunchOutbreak4(Command, StopEvent):
     import Outbreak4 as OB4
     Duration = Command.get("duration", 10)
     print("[LEDcommander][LaunchOutbreak4] Launching...")
-    OB4.LaunchOutbreak4(duration=Duration, show_intro=True, stop_event=StopEvent)
+    _run_game_dimmed(
+        lambda: OB4.LaunchOutbreak4(duration=Duration, show_intro=True, stop_event=StopEvent)
+    )
 
 
 def LaunchLEDtv(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import LEDtv as TV
-    # Stream-safe brightness (same as other games / GIFs under Twitch)
-    StreamBrightness = 80
-    MaxBrightness = 100
     # Default: 5 min channel surf — title drop → static → flashes → video
     # Only switches to YouTube/local play when a non-empty URL is provided.
     Duration = Command.get("duration", 5)
@@ -1634,24 +1665,21 @@ def LaunchLEDtv(Command, StopEvent):
         Effect = "channels"
     print(
         "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r} brightness={}".format(
-            Duration, Effect, YoutubeUrl, StreamBrightness,
+            Duration, Effect, YoutubeUrl, STREAM_GAME_BRIGHTNESS,
         )
     )
     try:
-        LED.TheMatrix.brightness = StreamBrightness
-        TV.LaunchLEDtv(
-            duration=Duration,
-            show_intro=True,
-            stop_event=StopEvent,
-            effect=Effect,
-            youtube_url=YoutubeUrl,
-            channel=Channel,
+        _run_game_dimmed(
+            lambda: TV.LaunchLEDtv(
+                duration=Duration,
+                show_intro=True,
+                stop_event=StopEvent,
+                effect=Effect,
+                youtube_url=YoutubeUrl,
+                channel=Channel,
+            )
         )
     finally:
-        try:
-            LED.TheMatrix.brightness = MaxBrightness
-        except Exception:
-            pass
         try:
             LED.SweepClean()
         except Exception:
@@ -1664,7 +1692,9 @@ def LaunchBlasteroids(Command, StopEvent):
     import Blasteroids as BL
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchBlasteroids] Launching...")
-    BL.LaunchBlasteroids(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: BL.LaunchBlasteroids(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchStockTicker(Command, StopEvent):
@@ -1685,7 +1715,9 @@ def LaunchMazeCar(Command, StopEvent):
     import MazeCar as MC
     Duration = Command.get("duration", 10)
     print(f"[LEDcommander][LaunchMazeCar] Launching for {Duration} minutes...")
-    MC.LaunchMazeCar(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: MC.LaunchMazeCar(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchSpaceExplorer(Command, StopEvent):
@@ -1694,16 +1726,15 @@ def LaunchSpaceExplorer(Command, StopEvent):
     import SpaceExplorer as SE
     Duration = Command.get("duration", 10)
     print(f"[LEDcommander][LaunchSpaceExplorer] Launching for {Duration} minutes...")
-    SE.LaunchSpaceExplorer(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: SE.LaunchSpaceExplorer(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+    )
 
 
 def LaunchSkyfall(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import Skyfall as SF
-    # Stream-safe brightness (same as other games under Twitch)
-    StreamBrightness = 80
-    MaxBrightness = 100
     Duration = Command.get("duration", 10)
     try:
         Duration = float(Duration) if Duration not in (None, "") else 10.0
@@ -1711,17 +1742,14 @@ def LaunchSkyfall(Command, StopEvent):
         Duration = 10.0
     print(
         f"[LEDcommander][LaunchSkyfall] Launching for {Duration} minutes "
-        f"(StopEvent wired, brightness={StreamBrightness})..."
+        f"(StopEvent wired, brightness={STREAM_GAME_BRIGHTNESS})..."
     )
     try:
-        LED.TheMatrix.brightness = StreamBrightness
-        SF.LaunchSkyfall(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+        _run_game_dimmed(
+            lambda: SF.LaunchSkyfall(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+        )
     finally:
         print("[LEDcommander][LaunchSkyfall] Process exit")
-        try:
-            LED.TheMatrix.brightness = MaxBrightness
-        except Exception:
-            pass
         try:
             LED.ClearBigLED()
             LED.ClearBuffers()
@@ -1735,7 +1763,9 @@ def LaunchFallingSand(Command, StopEvent):
     import FallingSand as FS
     Duration         = Command.get("duration",10)
     print("[LEDcommander][LaunchFallingSand] Launching...")
-    FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: FS.LaunchFallingSand(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
 
 
 def LaunchParticles(Command, StopEvent):
@@ -1744,7 +1774,9 @@ def LaunchParticles(Command, StopEvent):
     import particles as PT
     Duration = Command.get("duration", 10)
     print(f"[LEDcommander][LaunchParticles] Launching for {Duration} minutes...")
-    PT.LaunchParticles(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+    _run_game_dimmed(
+        lambda: PT.LaunchParticles(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+    )
 
 
 
@@ -1753,9 +1785,13 @@ def ShowAnalogClock(Command, StopEvent):
     LED.Initialize()
     import AnalogClock as AC
     Duration         = Command.get("duration",10)
-    print("[LEDcommander][ShowAnalogClock] Launching...")
+    print(f"[LEDcommander][ShowAnalogClock] Launching... brightness={STREAM_CLOCK_BRIGHTNESS}")
 
-    AC.RunClock(Duration=Duration, StopEvent=StopEvent)
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        AC.RunClock(Duration=Duration, StopEvent=StopEvent)
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
 
 
 

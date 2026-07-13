@@ -673,59 +673,37 @@ class Bot(commands.Bot ):
     # Rotate Clock Displays               --
     #---------------------------------------
     async def RotateClockDisplays(self, RotateClockDelay: int = 5):
-
-        CommandQueue.put({"Action": "launch_skyfall", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-        #Blasteroids clock (style=5)
-        CommandQueue.put({ "Action": "showclock",   "Style": 5,  "Zoom": 1,   "duration": 10, "Delay": 10  })
-        await asyncio.sleep(RotateClockDelay * 60)
-
-
-        CommandQueue.put({"Action": "retrodigital", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-
-        #StarryNight clock display (style=3)
-        CommandQueue.put({ "Action": "showclock",   "Style": 3,  "Zoom": 2,   "duration": 10, "Delay": 10  })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-
-        CommandQueue.put({"Action": "launch_defender2", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-
-        CommandQueue.put({"Action": "launch_dotinvaders", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-
-        CommandQueue.put({"Action": "launch_gravitysim", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-
-        CommandQueue.put({"Action": "launch_tron", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-        CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-        CommandQueue.put({"Action": "launch_spacedot", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-        CommandQueue.put({"Action": "launch_spaceexplorer", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
-
-        CommandQueue.put({"Action": "launch_fallingsand", "duration": 10 })
-        await asyncio.sleep(RotateClockDelay * 60)
-        self.DisplayDigitalClock(ClockDuration)
+        # Ordered idle rotation. Each entry: commander command + optional clock after.
+        # Start at a random index so every stream doesn't open on Skyfall.
+        steps = [
+            {"cmd": {"Action": "launch_skyfall", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10}, "clock_after": False},
+            {"cmd": {"Action": "retrodigital", "duration": 10}, "clock_after": False},
+            {"cmd": {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_defender2", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_dotinvaders", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_gravitysim", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_tron", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_outbreak", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_spacedot", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_spaceexplorer", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_fallingsand", "duration": 10}, "clock_after": True},
+        ]
+        n = len(steps)
+        start = random.randint(0, n - 1)
+        print(
+            f"[Twitch] RotateClockDisplays: starting at index {start}/{n} "
+            f"({steps[start]['cmd'].get('Action')})",
+            flush=True,
+        )
+        for offset in range(n):
+            step = steps[(start + offset) % n]
+            cmd = step["cmd"]
+            print(f"[Twitch] Rotation step: {cmd.get('Action')}", flush=True)
+            CommandQueue.put(cmd)
+            await asyncio.sleep(RotateClockDelay * 60)
+            if step.get("clock_after"):
+                self.DisplayDigitalClock(ClockDuration)
 
 
 
