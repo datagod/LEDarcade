@@ -28,6 +28,7 @@ import copy
 import glob
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -1731,6 +1732,56 @@ def list_videos(folder=None):
     return list_source_videos()
 
 
+# Chunked downloads: yt_*_60s_part01.mp4, …_part02, etc.
+_CHUNK_NAME_RE = re.compile(r"_part\d+", re.IGNORECASE)
+_CHUNK_PARSE_RE = re.compile(
+    r"^(?P<prefix>.+)_part(?P<num>\d+)\.[^.]+$",
+    re.IGNORECASE,
+)
+
+
+def is_chunk_video_name(path_or_name):
+    """True if basename looks like a numbered segment (…_part01, …_part12)."""
+    name = os.path.basename(str(path_or_name or ""))
+    return bool(_CHUNK_NAME_RE.search(name))
+
+
+def list_chunk_videos(folder=None, required_parts=None):
+    """
+    Clips that were split into numbered parts (…_partNN).
+
+    Sorted by name so part01, part02, … play in order within each source id.
+
+    If required_parts is set (e.g. 10), only series that include a complete
+    part01..part{N} set are returned (exactly those N parts per series).
+    """
+    paths = list_videos(folder) if folder is not None else list_videos()
+    chunks = [p for p in paths if is_chunk_video_name(p)]
+    if not required_parts:
+        return sorted(chunks, key=lambda p: os.path.basename(p).lower())
+
+    need = set(range(1, int(required_parts) + 1))
+    groups = {}
+    for p in chunks:
+        m = _CHUNK_PARSE_RE.match(os.path.basename(p))
+        if not m:
+            continue
+        prefix = m.group("prefix")
+        num = int(m.group("num"))
+        groups.setdefault(prefix, []).append((num, p))
+
+    out = []
+    for prefix in sorted(groups.keys(), key=lambda s: s.lower()):
+        items = groups[prefix]
+        nums = {n for n, _ in items}
+        if not need.issubset(nums):
+            continue
+        # Keep only parts 1..required_parts, in order
+        by_num = {n: p for n, p in items}
+        for n in range(1, int(required_parts) + 1):
+            out.append(by_num[n])
+    return out
+
 def panel_bake_path(source_path):
     """Destination path for a baked panel file (same basename, .mp4)."""
     base = os.path.splitext(os.path.basename(str(source_path)))[0] + ".mp4"
@@ -2927,6 +2978,106 @@ def PlayLEDtv(
         )
 
 
+def _scroll_clip_name_banner(name, stop_event=None, rgb=None, scroll_sleep=0.03):
+    """Scroll the clip filename across the panel (identify what just played)."""
+    if rgb is None:
+        rgb = (0, 220, 40)
+    msg = os.path.basename(str(name or "?"))
+    # Drop extension for cleaner banner
+    if "." in msg:
+        msg = msg.rsplit(".", 1)[0]
+    print("[LEDtv] Banner: {}".format(msg), flush=True)
+    try:
+        LED.ClearBigLED()
+        LED.ClearBuffers()
+    except Exception:
+        pass
+    try:
+        # ShowScrollingBanner2(message, rgb, ScrollSpeed, v=)
+        LED.ShowScrollingBanner2(msg, rgb, scroll_sleep, v=max(0, (HEIGHT // 2) - 2))
+    except Exception as exc:
+        print("[LEDtv] Banner scroll failed: {}".format(exc), flush=True)
+        try:
+            LED.ShowScrollingBanner(msg, rgb[0], rgb[1], rgb[2], scroll_sleep)
+        except Exception as exc2:
+            print("[LEDtv] Banner fallback failed: {}".format(exc2), flush=True)
+
+
+def play_chunk_catalog_test(stop_event=None, show_intro=False, required_parts=10):
+    """
+    Test mode: play only multi-part chunk series in name order.
+    Default required_parts=10 → series that have part01..part10 only.
+    After each clip, scroll a banner with that clip's filename so you can
+    identify which segment to remove.
+    """
+    chunks = list_chunk_videos(required_parts=required_parts)
+    if not chunks:
+        print(
+            "[LEDtv] Chunk catalog: no complete part01..part{:02d} series found".format(
+                int(required_parts or 0),
+            ),
+            flush=True,
+        )
+        return
+
+    print(
+        "[LEDtv] Chunk catalog test  {} clips  "
+        "(only {}-part series  part01..part{:02d} + name banner)".format(
+            len(chunks), int(required_parts), int(required_parts),
+        ),
+        flush=True,
+    )
+    for i, path in enumerate(chunks, 1):
+        print("  [{:02d}/{:02d}] {}".format(i, len(chunks), os.path.basename(path)))
+
+    if show_intro:
+        play_title_drop(stop_event=stop_event)
+        if stop_event is not None and stop_event.is_set():
+            return
+
+    canvas = LED.TheMatrix.CreateFrameCanvas()
+    canvas_holder = [canvas]
+    matrix = LED.TheMatrix
+    session_start = time.time()
+    # Long session so max_seconds / duration don't cut the catalog short
+    duration_minutes = STANDALONE_DURATION_MIN
+
+    for i, path in enumerate(chunks, 1):
+        if stop_event is not None and stop_event.is_set():
+            print("[LEDtv] Chunk catalog stopped", flush=True)
+            break
+        name = os.path.basename(path)
+        print(
+            "[LEDtv] Chunk [{}/{}] PLAY  {}".format(i, len(chunks), name),
+            flush=True,
+        )
+        label = "T{:02d}".format(i)
+        label_x, label_y = channel_position(label)
+        # Full clip from start (no random seek)
+        _play_video_once(
+            path, canvas_holder, matrix, label, label_x, label_y,
+            session_start, duration_minutes, stop_event,
+            realtime=True,
+            max_seconds=None,
+            show_channel_sec=2.0,
+            random_seek=False,
+            start_sec=0.0,
+        )
+        if stop_event is not None and stop_event.is_set():
+            break
+        print(
+            "[LEDtv] Chunk [{}/{}] NAME  {}".format(i, len(chunks), name),
+            flush=True,
+        )
+        _scroll_clip_name_banner(name, stop_event=stop_event)
+
+    print("[LEDtv] Chunk catalog test complete", flush=True)
+    try:
+        LED.ClearBigLED()
+    except Exception:
+        pass
+
+
 def LaunchLEDtv(
     duration=DEFAULT_DURATION_MIN,
     show_intro=True,
@@ -2986,6 +3137,7 @@ def LaunchLEDtv(
 def _parse_args(argv):
     """Minimal CLI: --youtube URL|path [--duration MIN] [--channel N] [--effect NAME] [--no-intro]
        --bake [--force]  bake all videos/ into videos/panel/ (does not play)
+       --chunk-test      play only *_partNN clips in order + name banner after each
 
     Standalone default: no time limit (STANDALONE_DURATION_MIN).
     Commander/Twitch still default to DEFAULT_DURATION_MIN (5).
@@ -2997,6 +3149,7 @@ def _parse_args(argv):
     show_intro = True
     bake = False
     bake_force = False
+    chunk_test = False
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -3022,6 +3175,9 @@ def _parse_args(argv):
         elif a in ("--force", "--bake-force"):
             bake_force = True
             i += 1
+        elif a in ("--chunk-test", "--chunks", "--catalog-test"):
+            chunk_test = True
+            i += 1
         elif a.startswith("http://") or a.startswith("https://"):
             url = a
             effect = "youtube"
@@ -3032,15 +3188,22 @@ def _parse_args(argv):
             i += 1
         else:
             i += 1
-    return effect, url, duration, channel, show_intro, bake, bake_force
+    return effect, url, duration, channel, show_intro, bake, bake_force, chunk_test
 
 
 if __name__ == "__main__":
     LED.LoadConfigData()
-    effect, url, duration, channel, show_intro, bake, bake_force = _parse_args(sys.argv[1:])
+    effect, url, duration, channel, show_intro, bake, bake_force, chunk_test = _parse_args(
+        sys.argv[1:]
+    )
     if bake:
         # Bake only — no matrix required for encoding, but LoadConfigData is fine
         bake_all_panel_videos(force=bake_force)
+        sys.exit(0)
+    if chunk_test:
+        print("[LEDtv] Chunk catalog test mode", flush=True)
+        # LED already Initialize()'d at import
+        play_chunk_catalog_test(stop_event=None, show_intro=show_intro)
         sys.exit(0)
     print("[LEDtv] Standalone  duration={} min{}".format(
         duration,
