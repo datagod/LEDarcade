@@ -2217,16 +2217,9 @@ def play_channel_rotation(
         CH5  clock | CH13 weather | CH14–15 GIFs | else random video
       when time is up: color bars → fade to black
     """
-    # Always begin the dial at CH2 unless a valid start channel was requested
-    if start_channel is None or str(start_channel).strip() == "":
-        channel = CH_START
-    else:
-        try:
-            channel = int(start_channel)
-        except (TypeError, ValueError):
-            channel = CH_START
-    if channel < CH_START or channel > CH_MAX:
-        channel = CH_START
+    # Channel surf always opens on CH2 (ignore stale/wrong start_channel from
+    # commander/panel — users expect dial to begin at the low end every session).
+    channel = CH_START
     start = time.time()
 
     # List media and kick off duration warm ASAP (background) so boot static
@@ -2274,12 +2267,20 @@ def play_channel_rotation(
 
     if boot_intro:
         # White noise runs free while duration warm continues in the background
+        # Always label boot static as CH2
         play_boot_intro(
-            stop_event=stop_event, seconds=STATIC_BOOT_SEC, channel=channel,
+            stop_event=stop_event, seconds=STATIC_BOOT_SEC, channel=CH_START,
         )
         if stop_event is not None and stop_event.is_set():
             LED.ClearBigLED()
             return
+
+    # Re-pin after boot so the first full dwell is always CH2 (never CH5 clock, etc.)
+    channel = CH_START
+    print(
+        "[LEDtv] First land {} (forced start)".format(channel_label(channel)),
+        flush=True,
+    )
 
     canvas_holder = [LED.Canvas]
     matrix = LED.TheMatrix
@@ -2290,31 +2291,36 @@ def play_channel_rotation(
     while not _time_up(start, duration_minutes, stop_event):
         # --- sequential channel surf (always on; previews optional) ---
         if CHANNEL_PREVIEWS_ENABLED:
+            # Previews only between lands — never before the first CH2 dwell
             if first_cycle:
-                n_flashes = random.randint(CHANNEL_FLASH_MIN, CHANNEL_FLASH_MAX)
+                channel = CH_START
             else:
                 n_flashes = 1
-            print("[LEDtv] Channel surf x{} (sequential up)".format(n_flashes))
-            for i in range(n_flashes):
-                if _time_up(start, duration_minutes, stop_event):
-                    break
-                if not (first_cycle and i == 0):
+                print("[LEDtv] Channel surf x{} (sequential up)".format(n_flashes))
+                for i in range(n_flashes):
+                    if _time_up(start, duration_minutes, stop_event):
+                        break
                     channel = next_channel(channel)
-                ok, last_path = _play_momentary_channel_video(
-                    items, channel, canvas_holder, matrix,
-                    start, duration_minutes, stop_event,
-                    last_path=last_path,
-                    seconds=CHANNEL_FLASH_SEC,
-                )
-                if not ok:
-                    break
+                    ok, last_path = _play_momentary_channel_video(
+                        items, channel, canvas_holder, matrix,
+                        start, duration_minutes, stop_event,
+                        last_path=last_path,
+                        seconds=CHANNEL_FLASH_SEC,
+                    )
+                    if not ok:
+                        break
         else:
             if not first_cycle:
                 channel = next_channel(channel)
+            else:
+                channel = CH_START
 
         dwell = channel_dwell_sec()  # 10s after title/static warmup
         print(
-            "[LEDtv] Channel {}  dwell={:.0f}s".format(channel_label(channel), dwell),
+            "[LEDtv] Channel {}  dwell={:.0f}s{}".format(
+                channel_label(channel), dwell,
+                "  [session start]" if first_cycle else "",
+            ),
             flush=True,
         )
 
@@ -2990,17 +2996,15 @@ def PlayLEDtv(
         "channels", "rotation", "random_gif", "gif", "gifs",
         "channel_gif", "media", "default", "tv",
     ):
-        # Default dial always starts at CH2 (CH_START)
-        if channel is None:
-            channel = CH_START
+        # Full channel surf always begins at CH2 (ignore passed channel)
         print(
             "[LEDtv] Channel-surf mode (no URL)  start={}".format(
-                channel_label(channel),
+                channel_label(CH_START),
             ),
             flush=True,
         )
         play_channel_rotation(
-            duration_minutes, stop_event=stop_event, start_channel=channel,
+            duration_minutes, stop_event=stop_event, start_channel=CH_START,
             boot_intro=True,
         )
     elif effect in ("youtube", "yt", "video"):

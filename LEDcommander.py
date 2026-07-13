@@ -1663,9 +1663,11 @@ def LaunchLEDtv(Command, StopEvent):
         Effect = (Command.get("effect") or "youtube")
     else:
         Effect = "channels"
+        # Full surf always starts at CH2 — do not pass a stuck channel number
+        Channel = None
     print(
-        "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r} brightness={}".format(
-            Duration, Effect, YoutubeUrl, STREAM_GAME_BRIGHTNESS,
+        "[LEDcommander][LaunchLEDtv] duration={} effect={!r} url={!r} channel={!r} brightness={}".format(
+            Duration, Effect, YoutubeUrl, Channel, STREAM_GAME_BRIGHTNESS,
         )
     )
     try:
