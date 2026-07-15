@@ -117,6 +117,7 @@ LAUNCHERS=(
     gravitysim.py
     Tron.py
     SpaceDot.py
+    PacDot.py
     MazeCar.py
     SpaceExplorer.py
     Skyfall.py

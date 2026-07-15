@@ -687,6 +687,7 @@ class Bot(commands.Bot ):
             {"cmd": {"Action": "launch_tron", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_outbreak", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_spacedot", "duration": 10}, "clock_after": True},
+            {"cmd": {"Action": "launch_pacdot", "duration": 5}, "clock_after": True},
             {"cmd": {"Action": "launch_spaceexplorer", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_fallingsand", "duration": 10}, "clock_after": True},
         ]
@@ -1745,7 +1746,7 @@ class Bot(commands.Bot ):
         time.sleep(4)
         await ctx.send(
             'Available games: ?astrosmash ?blasteroids ?defender ?fallingsand '
-            '?gravity ?invaders ?outbreak ?outbreak2 ?outbreak3 ?particles '
+            '?gravity ?invaders ?outbreak ?outbreak2 ?outbreak3 ?pacdot ?particles '
             '?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8)'
         )
         #time.sleep(4)
@@ -2269,6 +2270,18 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_spacedot", "duration": 10 })
 
+
+    #----------------------------------------
+    # PACDOT                               --
+    #----------------------------------------
+
+    @commands.command()
+    async def pacdot(self, ctx: commands.Context):
+      #Play game PacDot (32x32 playfield, 5 min default)
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Chomp chomp! Launching PacDot..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_pacdot", "duration": 5 })
 
 
     #----------------------------------------

@@ -956,6 +956,8 @@ SpaceDotHighScore      = 0
 SpaceDotGamesPlayed    = 0
 DefenderGamesPlayed    = 0
 DefenderHighScore      = 0
+PacDotHighScore        = 0
+PacDotGamesPlayed      = 0
 
 
 
@@ -1331,39 +1333,20 @@ def LoadConfigData():
   global SpaceDotGamesPlayed
   global DefenderHighScore
   global DefenderGamesPlayed
+  global PacDotHighScore
+  global PacDotGamesPlayed
   global HatHeight
   global HatWidth
   
   PID = get_process_id()
-  #print (f"{PID} --Load Config Data--")
-  #print ("PacDotHighScore Before Load: ",PacDotHighScore)
     
   if (os.path.exists(ConfigFileName)):
-    #print (f"{PID}Config file (",ConfigFileName,"): already exists")
     ConfigFile = SafeConfigParser()
     ConfigFile.read(ConfigFileName)
-
-    #Get and set time    
-    #TheTime = ConfigFile.get("main","currenttime")
-    #print ("Setting time: ",TheTime)
-    #CMD = "sudo date --set " + TheTime
-    #os.system(CMD)
-   
-    #Get pacdot data
-    #PacDotHighScore   = ConfigFile.get("pacdot","PacdotHighScore")
-    #PacDotGamesPlayed = int(ConfigFile.get("pacdot","PacdotGamesPlayed"))
-    #print ("PacDotHighScore: ",  PacDotHighScore)
-    #print ("PacDotGamesPlayed: ",PacDotGamesPlayed)
-
-    #Get CryptoBalance
-    #CryptoBalance = ConfigFile.get("crypto","balance")
-    #print ("CryptoBalance:   ",CryptoBalance)
 
     #Get DotInvadersHighScore
     DotInvadersHighScore   = int(ConfigFile.get("scores","DotInvadersHighScore"))
     DotInvadersGamesPlayed = int(ConfigFile.get("scores","DotInvadersGamesPlayed"))
-    #print (f"{PID} DotInvadersHighScore:   ",DotInvadersHighScore)
-    #print (f"{PID} DotInvadersGamesPlayed: ",DotInvadersGamesPlayed)
 
 
     try:
@@ -1372,34 +1355,28 @@ def LoadConfigData():
     except:
       print(f"{PID} No override for HatHeight/HatWidth.  Going with defaults.")
       
-    
-    
-    #print(f"{PID} HatWidth:               ",HatWidth)
-    #print(f"{PID} HatHeight               ",HatHeight)
-      
-
-
-
 
     #Get Outbreak data
     OutbreakHighScore   = int(ConfigFile.get("scores","OutbreakHighScore"))
     OutbreakGamesPlayed = int(ConfigFile.get("scores","OutbreakGamesPlayed"))
-    #print (f"{PID} OutbreakHighScore:      ",OutbreakHighScore)
-    #print (f"{PID} OutbreakGamesPlayed:    ",OutbreakGamesPlayed)
 
 
     #Get SpaceDot data
     SpaceDotHighScore   = int(ConfigFile.get("scores","SpaceDotHighScore"))
     SpaceDotGamesPlayed = int(ConfigFile.get("scores","SpaceDotGamesPlayed"))
-    #print (f"{PID} SpaceDotHighScore:      ",SpaceDotHighScore)
-    #print (f"{PID} SpaceDotGamesPlayed:    ",SpaceDotGamesPlayed)
 
 
     #Get Defender data
     DefenderHighScore   = int(ConfigFile.get("scores","DefenderHighScore"))
     DefenderGamesPlayed = int(ConfigFile.get("scores","DefenderGamesPlayed"))
-    #print (f"{PID} DefenderHighScore:      ",DefenderHighScore)
-    #print (f"{PID} DefenderGamesPlayed:    ",DefenderGamesPlayed)
+
+    #Get PacDot data
+    try:
+      PacDotHighScore   = int(ConfigFile.get("scores","PacDotHighScore"))
+      PacDotGamesPlayed = int(ConfigFile.get("scores","PacDotGamesPlayed"))
+    except Exception:
+      PacDotHighScore   = 0
+      PacDotGamesPlayed = 0
 
 
   else:
@@ -12363,6 +12340,8 @@ def SaveConfigData():
   ConfigFile.set('scores',   'SpaceDotGamesPlayed', str(SpaceDotGamesPlayed))
   ConfigFile.set('scores',   'DefenderHighScore',   str(DefenderHighScore))
   ConfigFile.set('scores',   'DefenderGamesPlayed', str(DefenderGamesPlayed))
+  ConfigFile.set('scores',   'PacDotHighScore',     str(PacDotHighScore))
+  ConfigFile.set('scores',   'PacDotGamesPlayed',   str(PacDotGamesPlayed))
 
 
   print ("Writing configuration file")

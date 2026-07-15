@@ -128,6 +128,7 @@ VALID_WEB_ACTIONS = {
     "launch_outbreak4": ["duration"],
     "launch_ledtv": ["duration", "effect", "youtube_url", "channel"],
     "launch_spacedot": ["duration"],
+    "launch_pacdot": ["duration"],
     "launch_blasteroids": ["duration"],
     "launch_stockticker": ["duration", "symbols"],
     "launch_fallingsand": ["duration"],
@@ -353,6 +354,8 @@ def fallback_action_generator():
         {"Action": "launch_outbreak", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_spacedot", "duration": 10},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_pacdot", "duration": 5},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_spaceexplorer", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
@@ -645,6 +648,15 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "spacedot"
                 DisplayProcess = Process(target=LaunchSpaceDot, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_pacdot":
+                print("[LEDcommander][Run] Launching PacDot")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "pacdot"
+                DisplayProcess = Process(target=LaunchPacDot, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1594,6 +1606,27 @@ def LaunchSpaceDot(Command, StopEvent):
     _run_game_dimmed(
         lambda: SD.LaunchSpaceDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     )
+
+
+def LaunchPacDot(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import PacDot as PD
+    Duration = Command.get("duration", 5)
+    if Duration == "" or Duration is None:
+        Duration = 5
+    try:
+        Duration = int(Duration)
+    except (TypeError, ValueError):
+        Duration = 5
+    print(f"[LEDcommander][LaunchPacDot] Launching PacDot for {Duration} minutes...")
+    try:
+        _run_game_dimmed(
+            lambda: PD.LaunchPacDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+        )
+    finally:
+        LED.SweepClean()
+    print("[LEDcommander][LaunchPacDot] PacDot finished — returning to rotation")
 
 
 

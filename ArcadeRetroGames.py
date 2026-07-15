@@ -1688,8 +1688,10 @@ def ProcessKeypress(Key):
     ActivateBigClock()
 
 
-  elif (Key == "1"): 
-    PlayPacDot(30)
+  elif (Key == "1"):
+    # Thin shim to standalone PacDot (32x32 playfield on 64x32)
+    import PacDot as _PacDot
+    _PacDot.PlayPacDot(Duration=30, StopEvent=None)
   elif (Key == "2"):
     PlaySuperWorms()
   elif (Key == "3"):
