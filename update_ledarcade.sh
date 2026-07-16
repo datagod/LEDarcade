@@ -1,5 +1,8 @@
 #!/bin/bash
 # Safely stop LEDarcade, pull latest code, and relaunch.
+# Usage:
+#   update_ledarcade.sh              # stop, git pull, restart
+#   update_ledarcade.sh --restart-only  # stop + restart (code already pulled)
 
 set -u
 
@@ -7,6 +10,15 @@ LEDARCADE_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$LEDARCADE_DIR/localdata"
 LOG_FILE="$LOG_DIR/update.log"
 PORT=5055
+RESTART_ONLY=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --restart-only)
+            RESTART_ONLY=1
+            ;;
+    esac
+done
 
 mkdir -p "$LOG_DIR"
 
@@ -27,7 +39,11 @@ wait_for_panel() {
     return 1
 }
 
-log "=== LEDarcade update started ==="
+if [ "$RESTART_ONLY" = "1" ]; then
+    log "=== LEDarcade restart-only started (post boot update) ==="
+else
+    log "=== LEDarcade update started ==="
+fi
 
 sleep 2
 
@@ -38,18 +54,26 @@ sleep 2
 
 cd "$LEDARCADE_DIR" || exit 1
 
-log "Running git pull"
-if git pull >> "$LOG_FILE" 2>&1; then
-    log "git pull succeeded"
+if [ "$RESTART_ONLY" = "0" ]; then
+    log "Running git pull"
+    if git pull >> "$LOG_FILE" 2>&1; then
+        log "git pull succeeded"
+    else
+        log "git pull failed"
+        exit 1
+    fi
 else
-    log "git pull failed"
-    exit 1
+    log "Skipping git pull (--restart-only)"
 fi
 
 log "Auto-restarting LEDarcade"
 if bash "$LEDARCADE_DIR/start_ledarcade.sh" >> "$LOG_FILE" 2>&1; then
     wait_for_panel || true
-    log "=== LEDarcade update complete ==="
+    if [ "$RESTART_ONLY" = "1" ]; then
+        log "=== LEDarcade restart-only complete ==="
+    else
+        log "=== LEDarcade update complete ==="
+    fi
 else
     log "ERROR: Auto-restart failed. Check $LOG_FILE or run: sudo python3 twitch.py"
     exit 1

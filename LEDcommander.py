@@ -430,6 +430,14 @@ def Run(CommandQueue):
     print("")
     print("")
 
+    # On first start: check GitHub, show status on the panel, pull + restart if needed.
+    # (Runs in a child process so GPIO/matrix init stays off the commander process.)
+    try:
+        LEDupdate.run_boot_update_check()
+    except Exception as BootUpdateError:
+        print(f"[LEDcommander] Boot update check failed (continuing): {BootUpdateError}")
+        traceback.print_exc()
+
     while True:
         try:
             # Get command or handle empty
