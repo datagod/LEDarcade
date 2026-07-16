@@ -3,7 +3,7 @@ import LEDupdate
 from WeatherClock import DEFAULT_LOCATION
 from StockReport import LoadStockSymbols
 
-PANEL_VERSION = "1.3"
+PANEL_VERSION = "1.4"
 PANEL_TITLE = f"LED Commander Control Panel {PANEL_VERSION}"
 
 DEFAULT_GAME_DURATION = 10
