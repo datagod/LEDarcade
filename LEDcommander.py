@@ -123,9 +123,6 @@ VALID_WEB_ACTIONS = {
     "launch_defender2": ["duration"],
     "launch_tron": ["duration"],
     "launch_outbreak": ["duration"],
-    "launch_outbreak2": ["duration"],
-    "launch_outbreak3": ["duration"],
-    "launch_outbreak4": ["duration"],
     "launch_ledtv": ["duration", "effect", "youtube_url", "channel"],
     "launch_spacedot": ["duration"],
     "launch_pacdot": ["duration"],
@@ -615,31 +612,13 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=LaunchTron, args=(Command, StopEvent))
                 DisplayProcess.start()
 
-            elif Action in ("launch_outbreak", "launch_outbreak2", "launch_outbreak3", "launch_outbreak4"):
-                outbreak_labels = {
-                    "launch_outbreak": "Outbreak",
-                    "launch_outbreak2": "Outbreak2",
-                    "launch_outbreak3": "Outbreak3",
-                    "launch_outbreak4": "Outbreak4",
-                }
-                outbreak_modes = {
-                    "launch_outbreak": "outbreak",
-                    "launch_outbreak2": "outbreak2",
-                    "launch_outbreak3": "outbreak3",
-                    "launch_outbreak4": "outbreak4",
-                }
-                outbreak_launchers = {
-                    "launch_outbreak": LaunchOutbreak,
-                    "launch_outbreak2": LaunchOutbreak2,
-                    "launch_outbreak3": LaunchOutbreak3,
-                    "launch_outbreak4": LaunchOutbreak4,
-                }
-                print(f"[LEDcommander][Run] Launching {outbreak_labels[Action]}")
+            elif Action == "launch_outbreak":
+                print("[LEDcommander][Run] Launching Outbreak")
                 stop_current_display(Action)
 
                 StopEvent.clear()
-                CurrentDisplayMode = outbreak_modes[Action]
-                DisplayProcess = Process(target=outbreak_launchers[Action], args=(Command, StopEvent))
+                CurrentDisplayMode = "outbreak"
+                DisplayProcess = Process(target=LaunchOutbreak, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1679,39 +1658,6 @@ def LaunchOutbreak(Command, StopEvent):
     print("[LEDcommander][LaunchOutbreak] Launching...")
     _run_game_dimmed(
         lambda: OB.LaunchOutbreak(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
-    )
-
-
-def LaunchOutbreak2(Command, StopEvent):
-    import LEDarcade as LED
-    LED.Initialize()
-    import Outbreak2 as OB2
-    Duration         = Command.get("duration",10)
-    print("[LEDcommander][LaunchOutbreak2] Launching...")
-    _run_game_dimmed(
-        lambda: OB2.LaunchOutbreak2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
-    )
-
-
-def LaunchOutbreak3(Command, StopEvent):
-    import LEDarcade as LED
-    LED.Initialize()
-    import Outbreak3 as OB3
-    Duration         = Command.get("duration",10)
-    print("[LEDcommander][LaunchOutbreak3] Launching...")
-    _run_game_dimmed(
-        lambda: OB3.LaunchOutbreak3(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
-    )
-
-
-def LaunchOutbreak4(Command, StopEvent):
-    import LEDarcade as LED
-    LED.Initialize()
-    import Outbreak4 as OB4
-    Duration = Command.get("duration", 10)
-    print("[LEDcommander][LaunchOutbreak4] Launching...")
-    _run_game_dimmed(
-        lambda: OB4.LaunchOutbreak4(duration=Duration, show_intro=True, stop_event=StopEvent)
     )
 
 

@@ -1748,7 +1748,7 @@ class Bot(commands.Bot ):
         time.sleep(4)
         await ctx.send(
             'Available games: ?astrosmash ?blasteroids ?defender ?fallingsand '
-            '?gravity ?invaders ?outbreak ?outbreak2 ?outbreak3 ?pacdot ?particles '
+            '?gravity ?invaders ?outbreak ?pacdot ?particles '
             '?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8) ?zerk'
         )
         #time.sleep(4)
@@ -2243,22 +2243,6 @@ class Bot(commands.Bot ):
         message = "An infection is spreading..."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
-
-
-    @commands.command()
-    async def outbreak2(self, ctx: commands.Context):
-      if(SHOW_CHATBOT_MESSAGES == True):
-        message = "A new strain is spreading..."
-        await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_outbreak2", "duration": 10 })
-
-
-    @commands.command()
-    async def outbreak3(self, ctx: commands.Context):
-      if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Single cells. Join, fight, or flee."
-        await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_outbreak3", "duration": 10 })
 
 
     #----------------------------------------
