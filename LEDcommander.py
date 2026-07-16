@@ -129,6 +129,7 @@ VALID_WEB_ACTIONS = {
     "launch_ledtv": ["duration", "effect", "youtube_url", "channel"],
     "launch_spacedot": ["duration"],
     "launch_pacdot": ["duration"],
+    "launch_dotzerk": ["duration"],
     "launch_blasteroids": ["duration"],
     "launch_stockticker": ["duration", "symbols"],
     "launch_fallingsand": ["duration"],
@@ -356,6 +357,8 @@ def fallback_action_generator():
         {"Action": "launch_spacedot", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_pacdot", "duration": 5},
+        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_dotzerk", "duration": 5},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_spaceexplorer", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
@@ -657,6 +660,15 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "pacdot"
                 DisplayProcess = Process(target=LaunchPacDot, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_dotzerk":
+                print("[LEDcommander][Run] Launching DotZerk")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "dotzerk"
+                DisplayProcess = Process(target=LaunchDotZerk, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1629,6 +1641,25 @@ def LaunchPacDot(Command, StopEvent):
     print("[LEDcommander][LaunchPacDot] PacDot finished — returning to rotation")
 
 
+def LaunchDotZerk(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import DotZerk as DZ
+    Duration = Command.get("duration", 5)
+    if Duration == "" or Duration is None:
+        Duration = 5
+    try:
+        Duration = int(Duration)
+    except (TypeError, ValueError):
+        Duration = 5
+    print(f"[LEDcommander][LaunchDotZerk] Launching DotZerk for {Duration} minutes...")
+    try:
+        _run_game_dimmed(
+            lambda: DZ.LaunchDotZerk(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+        )
+    finally:
+        LED.SweepClean()
+    print("[LEDcommander][LaunchDotZerk] DotZerk finished — returning to rotation")
 
 
 def LaunchOutbreak(Command, StopEvent):

@@ -958,6 +958,8 @@ DefenderGamesPlayed    = 0
 DefenderHighScore      = 0
 PacDotHighScore        = 0
 PacDotGamesPlayed      = 0
+DotZerkHighScore       = 0
+DotZerkGamesPlayed     = 0
 
 
 
@@ -1335,6 +1337,8 @@ def LoadConfigData():
   global DefenderGamesPlayed
   global PacDotHighScore
   global PacDotGamesPlayed
+  global DotZerkHighScore
+  global DotZerkGamesPlayed
   global HatHeight
   global HatWidth
   
@@ -1377,6 +1381,14 @@ def LoadConfigData():
     except Exception:
       PacDotHighScore   = 0
       PacDotGamesPlayed = 0
+
+    #Get DotZerk data
+    try:
+      DotZerkHighScore   = int(ConfigFile.get("scores","DotZerkHighScore"))
+      DotZerkGamesPlayed = int(ConfigFile.get("scores","DotZerkGamesPlayed"))
+    except Exception:
+      DotZerkHighScore   = 0
+      DotZerkGamesPlayed = 0
 
 
   else:
@@ -12342,6 +12354,8 @@ def SaveConfigData():
   ConfigFile.set('scores',   'DefenderGamesPlayed', str(DefenderGamesPlayed))
   ConfigFile.set('scores',   'PacDotHighScore',     str(PacDotHighScore))
   ConfigFile.set('scores',   'PacDotGamesPlayed',   str(PacDotGamesPlayed))
+  ConfigFile.set('scores',   'DotZerkHighScore',    str(DotZerkHighScore))
+  ConfigFile.set('scores',   'DotZerkGamesPlayed',  str(DotZerkGamesPlayed))
 
 
   print ("Writing configuration file")

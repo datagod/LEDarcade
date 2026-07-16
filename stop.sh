@@ -118,6 +118,7 @@ LAUNCHERS=(
     Tron.py
     SpaceDot.py
     PacDot.py
+    DotZerk.py
     MazeCar.py
     SpaceExplorer.py
     Skyfall.py
