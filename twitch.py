@@ -2286,12 +2286,12 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
-    # DOTZERK                              --
+    # DOTZERK  (?zerk)                     --
     #----------------------------------------
 
-    @commands.command()
-    async def dotzerk(self, ctx: commands.Context):
-      #Play game DotZerk (32x32 rooms, 5 min default)
+    @commands.command(name="zerk", aliases=["dotzerk"])
+    async def zerk(self, ctx: commands.Context):
+      # Play DotZerk (Berzerk-style 32x32 rooms, 5 min default)
       if(SHOW_CHATBOT_MESSAGES == True):
         message = "Intruder alert! Launching DotZerk..."
         await self.Channel.send(message)
