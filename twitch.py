@@ -681,14 +681,15 @@ class Bot(commands.Bot ):
             {"cmd": {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10}, "clock_after": False},
             {"cmd": {"Action": "retrodigital", "duration": 10}, "clock_after": False},
             {"cmd": {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10}, "clock_after": True},
+            # PacDot / DotZerk right after Skyfall + clock spacing
+            {"cmd": {"Action": "launch_pacdot", "duration": 5}, "clock_after": True},
+            {"cmd": {"Action": "launch_dotzerk", "duration": 5}, "clock_after": True},
             {"cmd": {"Action": "launch_defender2", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_dotinvaders", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_gravitysim", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_tron", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_outbreak", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_spacedot", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_pacdot", "duration": 5}, "clock_after": True},
-            {"cmd": {"Action": "launch_dotzerk", "duration": 5}, "clock_after": True},
             {"cmd": {"Action": "launch_spaceexplorer", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_fallingsand", "duration": 10}, "clock_after": True},
         ]
