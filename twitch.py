@@ -1746,9 +1746,9 @@ class Bot(commands.Bot ):
         )
         time.sleep(4)
         await ctx.send(
-            'Available games: ?astrosmash ?blasteroids ?defender ?dotzerk ?fallingsand '
+            'Available games: ?astrosmash ?blasteroids ?defender ?fallingsand '
             '?gravity ?invaders ?outbreak ?outbreak2 ?outbreak3 ?pacdot ?particles '
-            '?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8)'
+            '?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8) ?zerk'
         )
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
