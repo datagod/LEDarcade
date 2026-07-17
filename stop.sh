@@ -117,6 +117,7 @@ LAUNCHERS=(
     PacDot.py
     DotZerk.py
     MazeCar.py
+    RallyDot.py
     SpaceExplorer.py
     Skyfall.py
     StockTicker.py

@@ -692,6 +692,8 @@ class Bot(commands.Bot ):
             {"cmd": {"Action": "launch_spacedot", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_spaceexplorer", "duration": 10}, "clock_after": True},
             {"cmd": {"Action": "launch_fallingsand", "duration": 10}, "clock_after": True},
+            # Rally Dot last in rotation — plays until game over (3 lives)
+            {"cmd": {"Action": "launch_rallydot"}, "clock_after": True},
         ]
         n = len(steps)
         start = random.randint(0, n - 1)
@@ -1748,7 +1750,7 @@ class Bot(commands.Bot ):
         time.sleep(4)
         await ctx.send(
             'Available games: ?astrosmash ?blasteroids ?defender ?fallingsand '
-            '?gravity ?invaders ?outbreak ?pacdot ?particles '
+            '?gravity ?invaders ?outbreak ?pacdot ?particles ?rally '
             '?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8) ?zerk'
         )
         #time.sleep(4)
@@ -2243,6 +2245,15 @@ class Bot(commands.Bot ):
         message = "An infection is spreading..."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
+
+
+    @commands.command(name="rally", aliases=["rallydot"])
+    async def rally(self, ctx: commands.Context):
+      # Rally Dot — default plays until game over (3 lives)
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Start your engines! Rally Dot (until game over)..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_rallydot"})
 
 
     #----------------------------------------

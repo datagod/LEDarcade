@@ -133,6 +133,7 @@ VALID_WEB_ACTIONS = {
     "launch_particles": ["duration"],
     "launch_gravitysim": ["duration"],
     "launch_mazecar": ["duration"],
+    "launch_rallydot": ["duration"],
     "launch_spaceexplorer": ["duration"],
     "launch_skyfall": ["duration"],
     "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
@@ -363,6 +364,8 @@ def fallback_action_generator():
         {"Action": "launch_fallingsand", "duration": 10},
         {"Action": "launch_particles", "duration": 10},
         {"Action": "launch_mazecar", "duration": 10},
+        # Rally Dot last: plays until game over (3 lives) unless duration set
+        {"Action": "launch_rallydot"},
     ]
     for action in itertools.cycle(actions):
         yield action
@@ -719,6 +722,15 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "mazecar"
                 DisplayProcess = Process(target=LaunchMazeCar, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_rallydot":
+                print("[LEDcommander][Run] Launching RallyDot")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "rallydot"
+                DisplayProcess = Process(target=LaunchRallyDot, args=(Command, StopEvent))
                 DisplayProcess.start()
 
             elif Action == "launch_spaceexplorer":
@@ -1757,6 +1769,43 @@ def LaunchMazeCar(Command, StopEvent):
     _run_game_dimmed(
         lambda: MC.LaunchMazeCar(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     )
+
+
+def LaunchRallyDot(Command, StopEvent):
+    """Launch Rally Dot. Default duration empty/0 = play until game over (3 lives)."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import RallyDot as RD
+    raw = Command.get("duration", None)
+    # Default / 0 / blank → run until stock lives exhausted (not a wall-clock cut)
+    until_game_over = raw in (None, "", 0, "0")
+    if until_game_over:
+        Duration = 100000
+        print("[LEDcommander][LaunchRallyDot] Launching until game over...")
+    else:
+        try:
+            Duration = int(raw)
+        except (TypeError, ValueError):
+            Duration = 100000
+            until_game_over = True
+            print("[LEDcommander][LaunchRallyDot] bad duration; until game over")
+        else:
+            if Duration <= 0:
+                Duration = 100000
+                until_game_over = True
+                print("[LEDcommander][LaunchRallyDot] Launching until game over...")
+            else:
+                print(f"[LEDcommander][LaunchRallyDot] Launching for {Duration} minutes...")
+    try:
+        _run_game_dimmed(
+            lambda: RD.LaunchRallyDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+        )
+    finally:
+        try:
+            LED.SweepClean()
+        except Exception:
+            pass
+    print("[LEDcommander][LaunchRallyDot] finished — returning to rotation")
 
 
 def LaunchSpaceExplorer(Command, StopEvent):

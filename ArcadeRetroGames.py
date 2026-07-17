@@ -6845,8 +6845,8 @@ def PlayDotInvaders():
 
   
 def PlayRallyDot():
-  import MazeCar as MC
-  MC.LaunchMazeCar(Duration=100000, ShowIntro=True, StopEvent=None)
+  import RallyDot as RD
+  RD.LaunchRallyDot(Duration=100000, ShowIntro=True, StopEvent=None)
 
 
 #--------------------------------------

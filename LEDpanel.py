@@ -3,10 +3,14 @@ import LEDupdate
 from WeatherClock import DEFAULT_LOCATION
 from StockReport import LoadStockSymbols
 
-PANEL_VERSION = "1.4"
+PANEL_VERSION = "1.5"
 PANEL_TITLE = f"LED Commander Control Panel {PANEL_VERSION}"
 
 DEFAULT_GAME_DURATION = 10
+# Games that default to play-until-game-over (duration 0)
+UNTIL_GAME_OVER_LAUNCHERS = {
+    "launch_rallydot",
+}
 
 GAME_LAUNCHERS = [
     ("launch_dotinvaders", "Dot Invaders"),
@@ -25,6 +29,7 @@ GAME_LAUNCHERS = [
     ("launch_mazecar", "Maze Car"),
     ("launch_spaceexplorer", "Space Explorer"),
     ("launch_skyfall", "Skyfall"),
+    ("launch_rallydot", "Rally Dot"),  # last — also last in idle rotation
 ]
 
 ACTION_LABELS = {
@@ -39,6 +44,7 @@ ACTION_LABELS = {
     "launch_ledtv": "LED TV",
     "launch_pacdot": "PacDot",
     "launch_dotzerk": "DotZerk",
+    "launch_rallydot": "Rally Dot",
     "twitchtimer_on": "Twitch Timer On",
     "twitchtimer_off": "Twitch Timer Off",
     "terminalmode_on": "Terminal Mode On",
@@ -187,6 +193,12 @@ input[type="submit"]:hover {
     gap: 20px;
     margin-top: 12px;
 }
+.game-note {
+    font-size: 0.85em;
+    color: #0a0;
+    margin: 0.25em 0 0.5em 0;
+    opacity: 0.9;
+}
 .game-card h3 {
     margin: 0 0 10px 0;
     color: #0f0;
@@ -314,18 +326,27 @@ def render_games_section(valid_actions):
             continue
         fields = valid_actions[action]
         field_html = ""
+        until_go = action in UNTIL_GAME_OVER_LAUNCHERS
         for field in fields:
             if field == "duration":
-                value = DEFAULT_GAME_DURATION
+                # 0 = until game over (Rally Dot default)
+                value = 0 if until_go else DEFAULT_GAME_DURATION
             else:
                 value = ""
             field_html += (
                 f'<label>{field}'
                 f'<input type="text" name="{field}" value="{value}"></label>'
             )
+        note = ""
+        if until_go:
+            note = (
+                '<p class="game-note">Default duration 0 = play until game over '
+                '(3 lives). Set minutes to cap the run.</p>'
+            )
         cards.append(f"""
             <div class="command-section game-card">
                 <h3>{title}</h3>
+                {note}
                 <form class="command-form" action="/command" method="post">
                     <input type="hidden" name="Action" value="{action}">
                     {field_html}
@@ -337,7 +358,8 @@ def render_games_section(valid_actions):
     return f"""
         <div class="command-section games-section">
             <h2>Games &amp; Simulations</h2>
-            <p>Duration is in minutes. Games here are part of the idle rotation.</p>
+            <p>Duration is in minutes (0 = until game over where supported).
+               Games here are part of the idle rotation.</p>
             <div class="games-grid">
                 {"".join(cards)}
             </div>
