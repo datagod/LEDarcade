@@ -39,9 +39,9 @@ CPU_MODIFIER = 1
 SCROLL_SLEEP = getattr(LED, "ScrollSleep", 0.03)
 FLASH_SLEEP = getattr(LED, "FlashSleep", 0.01)
 
-# Tick slowdown: cars/AI act when (moves % (period * TICK_SCALE)) == 0.
-# Higher = slower. TICK_SCALE=4 → ~25% of HD original (half of prior TICK_SCALE=2).
-TICK_SCALE = 4
+# Tick slowdown: cars/AI act when (moves % round(period * TICK_SCALE)) == 0.
+# Higher = slower. Was 4; 3.2 = +25% object speed (player, enemies, AI).
+TICK_SCALE = 3.2
 # Extra slowdown for red enemy dots only (2 = half as fast as player-relative enemy pace)
 ENEMY_SPEED_SCALE = 2
 
@@ -52,7 +52,7 @@ DISPLAY_GAMMA = 2.55   # scale palette toward full LED output (clamped at 255)
 
 def on_tick(moves_count, period):
   """True when this global move counter is an action tick for `period`."""
-  p = max(1, int(period) * TICK_SCALE)
+  p = max(1, int(round(float(period) * TICK_SCALE)))
   return (moves_count % p) == 0
 
 
