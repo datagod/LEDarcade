@@ -2561,15 +2561,29 @@ def _enemy_sprite_to_particles(ship):
 
 
 def destroy_enemies_as_particles(hit_enemies, enemy_ships):
-    """Shatter rammed UFOs into Defender-style sprite particles."""
+    """Shatter rammed UFOs into Defender-style sprite particles.
+    Each killed UFO drops exactly one yellow crystal at its center.
+    Returns (particles, crystals).
+    """
     particles = []
+    drop_crystals = []
     for ship in hit_enemies:
         if not _enemy_alive(ship):
             continue
+        wh = _wrap_world_coord(ship.h + ship.width / 2, LAYER_WIDTH)
+        wv = _wrap_world_coord(ship.v + ship.height / 2, LAYER_HEIGHT)
+        # One crystal per UFO, slight scatter so it doesn't sit under debris forever
+        ang = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(0.06, 0.14)
+        drop_crystals.append(Crystal(
+            wh, wv,
+            dx=math.cos(ang) * speed,
+            dy=math.sin(ang) * speed,
+        ))
         _release_chain_children(ship, enemy_ships)
         ship.alive = False
         particles.extend(_enemy_sprite_to_particles(ship))
-    return particles
+    return particles, drop_crystals
 
 
 def destroy_enemies(hit_enemies):
@@ -3690,9 +3704,11 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                 foreground_asteroids, enemy_ships, fh, fy,
             )
             if asteroid_hit_enemies:
-                enemy_particles.extend(
-                    destroy_enemies_as_particles(asteroid_hit_enemies, enemy_ships),
+                boom_parts, ufo_crystals = destroy_enemies_as_particles(
+                    asteroid_hit_enemies, enemy_ships,
                 )
+                enemy_particles.extend(boom_parts)
+                crystals.extend(ufo_crystals)
             collect_crystals_for_enemies(crystals, enemy_ships, fh, fy)
             prune_dead_crystals(crystals)
 
