@@ -225,6 +225,22 @@ CRYSTAL_MIN_SPEED = 0.05
 CRYSTAL_MAX_SPEED = 0.16
 CRYSTAL_PIXELS = ((0, 0, (255, 255, 0)),)
 
+# Large mother UFO — metallic sphere; hunted with crystal missiles after 10 loot
+MOTHER_RADIUS = 6                 # ~13×13 sprite
+MOTHER_HIT_POINTS = 20
+MOTHER_CRYSTAL_HUNT_MIN = 10      # banked crystals to start the hunt
+MOTHER_FLOAT_SPEED = 0.11
+MOTHER_TURN_WANDER = 0.035
+MOTHER_RESPAWN_SEC = 45.0
+CRYSTAL_MISSILE_SPEED = 2.4
+CRYSTAL_MISSILE_TURN = 0.22
+CRYSTAL_MISSILE_HIT_R = 7.5
+CRYSTAL_MISSILE_FIRE_INTERVAL = 0.32
+CRYSTAL_MISSILE_TRAIL = 3
+MOTHER_EXPLOSION_SPARKS = 48
+MOTHER_EXPLOSION_PARTICLES = 90
+MOTHER_LIGHT_BLINK_HZ = 2.4
+
 SHIP_HITBOX = (
     (0, 0), (0, -1), (0, 1), (-1, 0), (1, 0),
     (-1, -1), (1, -1), (-1, 1), (1, 1),
@@ -471,6 +487,320 @@ class Crystal:
         for px, py, rgb in self.screen_pixels(fh, fy):
             if 0 <= px < WIDTH and 0 <= py < HEIGHT:
                 canvas.SetPixel(px, py, *rgb)
+
+
+#------------------------------------------------------------------------------
+# Mother UFO — large metallic sphere with blinking nav lights
+#------------------------------------------------------------------------------
+
+def _build_mother_sphere_frame(light_phase):
+    """
+    Procedural shaded metal sphere (center = 0,0).
+    light_phase 0/1 toggles red↔green nav lights around the equator.
+    """
+    pixels = []
+    R = MOTHER_RADIUS
+    R2 = R * R
+    # Nav light seats on the equator (left/right/top-ish)
+    light_seats = (
+        (-R + 1, 0),
+        (R - 1, 0),
+        (0, -R + 2),
+        (0, R - 2),
+        (-R + 2, -R + 3),
+        (R - 2, R - 3),
+    )
+    for dy in range(-R, R + 1):
+        for dx in range(-R, R + 1):
+            d2 = dx * dx + dy * dy
+            if d2 > R2:
+                continue
+            # Sphere normal
+            nz = math.sqrt(max(0.0, R2 - d2)) / float(R)
+            nx = dx / float(R)
+            ny = dy / float(R)
+            # Key light from upper-left
+            ndotl = max(0.0, nx * (-0.45) + ny * (-0.55) + nz * 0.78)
+            # Cool metallic base
+            metal = 38 + int(165 * ndotl)
+            rim = (1.0 - nz) * 0.55
+            r = min(255, int(metal * 0.92 + rim * 50))
+            g = min(255, int(metal * 0.95 + rim * 55))
+            b = min(255, int(metal * 1.08 + rim * 70))
+            # Specular glint
+            if ndotl > 0.88 and nz > 0.55:
+                glint = int((ndotl - 0.88) * 900)
+                r = min(255, r + glint)
+                g = min(255, g + glint)
+                b = min(255, b + glint)
+            # Equator belt slightly darker (panel seam)
+            if abs(dy) <= 1 and d2 < (R - 1) * (R - 1):
+                r = max(20, int(r * 0.78))
+                g = max(20, int(g * 0.80))
+                b = max(30, int(b * 0.88))
+            pixels.append((dx, dy, (r, g, b)))
+
+    # Blinking red / green nav lights
+    for i, (lx, ly) in enumerate(light_seats):
+        # Alternate colors; swap every phase
+        if ((i + light_phase) % 2) == 0:
+            rgb = (255, 30, 25)   # red
+        else:
+            rgb = (30, 255, 50)   # green
+        # Bright core + dim halo
+        for hx, hy, scale in (
+            (0, 0, 1.0),
+            (1, 0, 0.45), (-1, 0, 0.45),
+            (0, 1, 0.45), (0, -1, 0.45),
+        ):
+            px, py = lx + hx, ly + hy
+            if px * px + py * py > R2 + 2:
+                continue
+            pixels.append((
+                px, py,
+                (
+                    min(255, int(rgb[0] * scale)),
+                    min(255, int(rgb[1] * scale)),
+                    min(255, int(rgb[2] * scale)),
+                ),
+            ))
+    return pixels
+
+
+# Cache two animation frames (light phase 0 / 1)
+_MOTHER_FRAMES = None
+
+
+def _mother_frames():
+    global _MOTHER_FRAMES
+    if _MOTHER_FRAMES is None:
+        _MOTHER_FRAMES = (
+            _build_mother_sphere_frame(0),
+            _build_mother_sphere_frame(1),
+        )
+    return _MOTHER_FRAMES
+
+
+class MotherShip(object):
+    """Large floating metallic sphere UFO — minds its own business until hunted."""
+
+    def __init__(self, h=None, v=None):
+        if h is None or v is None:
+            h = random.uniform(0, LAYER_WIDTH)
+            v = random.uniform(0, LAYER_HEIGHT)
+        self.h = float(h)
+        self.v = float(v)
+        angle = random.uniform(0, 2 * math.pi)
+        self.vel_h = math.cos(angle) * MOTHER_FLOAT_SPEED
+        self.vel_v = math.sin(angle) * MOTHER_FLOAT_SPEED
+        self.heading = angle
+        self.alive = True
+        self.hits = 0
+        self.radius = float(MOTHER_RADIUS)
+        self.respawn_at = 0.0
+        # Aliases for hunt intercept math (same fields as asteroids)
+        self.dx = self.vel_h
+        self.dy = self.vel_v
+
+    def update(self, dt):
+        if not self.alive:
+            return
+        # Gentle wander — slow heading drift, constant float speed
+        self.heading += random.uniform(-MOTHER_TURN_WANDER, MOTHER_TURN_WANDER) * (
+            dt * PHYSICS_FPS
+        )
+        speed = MOTHER_FLOAT_SPEED
+        target_vh = math.cos(self.heading) * speed
+        target_vv = math.sin(self.heading) * speed
+        blend = min(1.0, 0.04 * dt * PHYSICS_FPS)
+        self.vel_h += (target_vh - self.vel_h) * blend
+        self.vel_v += (target_vv - self.vel_v) * blend
+        self.dx = self.vel_h
+        self.dy = self.vel_v
+        self.h = (self.h + self.vel_h * dt * PHYSICS_FPS) % LAYER_WIDTH
+        self.v = (self.v + self.vel_v * dt * PHYSICS_FPS) % LAYER_HEIGHT
+
+    def frame_pixels(self, now):
+        phase = int(now * MOTHER_LIGHT_BLINK_HZ) % 2
+        return _mother_frames()[phase]
+
+    def draw(self, canvas, fh, fy, now):
+        if not self.alive:
+            return
+        sh, sv = world_to_screen(self.h, self.v, fh, fy)
+        cx = int(round(sh))
+        cy = int(round(sv))
+        # Off-screen cull with margin
+        if (
+            cx + self.radius < -2
+            or cy + self.radius < -2
+            or cx - self.radius > WIDTH + 2
+            or cy - self.radius > HEIGHT + 2
+        ):
+            return
+        for dx, dy, rgb in self.frame_pixels(now):
+            px, py = cx + dx, cy + dy
+            if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                canvas.SetPixel(px, py, *rgb)
+
+    def contains_world_point(self, wh, wv):
+        dh = _toroidal_delta(self.h, wh, LAYER_WIDTH)
+        dv = _toroidal_delta(self.v, wv, LAYER_HEIGHT)
+        return math.hypot(dh, dv) <= self.radius + 0.8
+
+    def take_hit(self):
+        if not self.alive:
+            return False
+        self.hits += 1
+        return self.hits >= MOTHER_HIT_POINTS
+
+
+class CrystalMissile(object):
+    """Homed crystal fired from the ship when hunting the mother UFO."""
+
+    def __init__(self, h, v, angle):
+        self.h = float(h)
+        self.v = float(v)
+        self.angle = float(angle)
+        self.speed = CRYSTAL_MISSILE_SPEED
+        self.alive = True
+        self.age = 0.0
+
+    def update(self, dt, target):
+        if not self.alive:
+            return
+        self.age += dt
+        if self.age > 8.0:
+            self.alive = False
+            return
+        if target is not None and target.alive:
+            dh = _toroidal_delta(self.h, target.h, LAYER_WIDTH)
+            dv = _toroidal_delta(self.v, target.v, LAYER_HEIGHT)
+            desired = math.atan2(dv, dh)
+            # Shortest turn toward target
+            err = (desired - self.angle + math.pi) % (2 * math.pi) - math.pi
+            max_turn = CRYSTAL_MISSILE_TURN * dt * PHYSICS_FPS
+            if err > max_turn:
+                err = max_turn
+            elif err < -max_turn:
+                err = -max_turn
+            self.angle += err
+        step = self.speed * dt * PHYSICS_FPS
+        self.h = (self.h + math.cos(self.angle) * step) % LAYER_WIDTH
+        self.v = (self.v + math.sin(self.angle) * step) % LAYER_HEIGHT
+        if target is not None and target.alive:
+            if target.contains_world_point(self.h, self.v):
+                self.alive = False
+                return "hit"
+        return None
+
+    def draw(self, canvas, fh, fy):
+        if not self.alive:
+            return
+        for i in range(CRYSTAL_MISSILE_TRAIL):
+            wh = (self.h - math.cos(self.angle) * i * 0.9) % LAYER_WIDTH
+            wv = (self.v - math.sin(self.angle) * i * 0.9) % LAYER_HEIGHT
+            sh, sv = world_to_screen(wh, wv, fh, fy)
+            px, py = int(round(sh)), int(round(sv))
+            if not (0 <= px < WIDTH and 0 <= py < HEIGHT):
+                continue
+            fade = max(0.25, 1.0 - i * 0.28)
+            canvas.SetPixel(
+                px, py,
+                min(255, int(255 * fade)),
+                min(255, int(255 * fade)),
+                min(255, int(40 * fade)),
+            )
+
+
+def create_mother_ship(fh=0, fy=0):
+    """Spawn mother UFO well away from the player."""
+    player_wh, player_wv = player_world_position(fh, fy)
+    for _ in range(40):
+        h = random.uniform(0, LAYER_WIDTH)
+        v = random.uniform(0, LAYER_HEIGHT)
+        dh = min((h - player_wh) % LAYER_WIDTH, (player_wh - h) % LAYER_WIDTH)
+        dv = min((v - player_wv) % LAYER_HEIGHT, (player_wv - v) % LAYER_HEIGHT)
+        if math.hypot(dh, dv) > 120:
+            return MotherShip(h, v)
+    return MotherShip()
+
+
+def mother_fantastic_explosion(mother):
+    """Huge multi-color debris + spark bloom when the mother UFO is destroyed."""
+    particles = []
+    sparks = []
+    # Shatter every metal sphere pixel into debris
+    for dx, dy, rgb in _mother_frames()[0]:
+        if random.random() > 0.55 and (dx * dx + dy * dy) > 4:
+            continue
+        wh = _wrap_world_coord(mother.h + dx, LAYER_WIDTH)
+        wv = _wrap_world_coord(mother.v + dy, LAYER_HEIGHT)
+        ang = math.atan2(dy, dx) if (dx or dy) else random.uniform(0, 2 * math.pi)
+        speed = random.uniform(0.6, 2.8)
+        particles.append(EnemyParticle(
+            wh, wv, rgb[0], rgb[1], rgb[2],
+            math.cos(ang) * speed + random.uniform(-0.3, 0.3),
+            math.sin(ang) * speed + random.uniform(-0.3, 0.3),
+        ))
+        particles[-1].lifespan = int(ENEMY_PARTICLE_LIFESPAN * random.uniform(1.4, 2.4))
+
+    # Extra white/hot core burst
+    for _ in range(MOTHER_EXPLOSION_PARTICLES):
+        ang = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(0.4, 3.2)
+        tone = random.choice((
+            (255, 255, 255), (255, 220, 80), (255, 120, 30),
+            (80, 200, 255), (255, 40, 40), (40, 255, 80),
+        ))
+        p = EnemyParticle(
+            mother.h, mother.v, *tone,
+            math.cos(ang) * speed, math.sin(ang) * speed,
+        )
+        p.lifespan = int(ENEMY_PARTICLE_LIFESPAN * random.uniform(1.6, 2.8))
+        particles.append(p)
+
+    for _ in range(MOTHER_EXPLOSION_SPARKS):
+        ang = random.uniform(0, 2 * math.pi)
+        sparks.append(Spark(
+            mother.h, mother.v, ang,
+            speed=random.uniform(1.2, 3.5),
+            length=random.randint(4, 8),
+        ))
+    return particles, sparks
+
+
+def update_crystal_missiles(missiles, mother, dt):
+    """Home missiles toward mother. Returns number of new hits this frame."""
+    hits = 0
+    if mother is None:
+        for m in missiles:
+            if m.alive:
+                m.update(dt, None)
+        missiles[:] = [m for m in missiles if m.alive]
+        return 0
+    for m in missiles:
+        if not m.alive:
+            continue
+        result = m.update(dt, mother)
+        if result == "hit":
+            hits += 1
+    missiles[:] = [m for m in missiles if m.alive]
+    return hits
+
+
+def fire_crystal_missile(missiles, fh, fy, ship_angle, mother):
+    """Launch one homing crystal from the ship toward the mother UFO."""
+    player_wh, player_wv = player_world_position(fh, fy)
+    # Lead slightly along ship nose
+    nose_h = player_wh + math.cos(ship_angle) * 2.5
+    nose_v = player_wv + math.sin(ship_angle) * 2.5
+    angle = ship_angle
+    if mother is not None and mother.alive:
+        dh = _toroidal_delta(nose_h, mother.h, LAYER_WIDTH)
+        dv = _toroidal_delta(nose_v, mother.v, LAYER_HEIGHT)
+        angle = math.atan2(dv, dh)
+    missiles.append(CrystalMissile(nose_h, nose_v, angle))
 
 
 class Spark:
@@ -987,7 +1317,7 @@ def _star_rgb(brightness, purple=False):
     )
 
 
-def _add_far_stars(layer, starchance=184):
+def _add_far_stars(layer, starchance=184, progress_cb=None):
     """Sparse blue stars on FarBackground only — varying brightness."""
     lw = layer.width
     lh = layer.height
@@ -1002,6 +1332,11 @@ def _add_far_stars(layer, starchance=184):
             brightness = random.randint(25, 150)
             layer.map[y][x] = _star_rgb(brightness)
             star_positions.append((x, y, brightness))
+        if progress_cb is not None and (y & 31) == 0:
+            try:
+                progress_cb()
+            except Exception:
+                pass
 
     for x, y, brightness in random.sample(
         star_positions, min(2, len(star_positions)),
@@ -1009,7 +1344,7 @@ def _add_far_stars(layer, starchance=184):
         layer.map[y][x] = _star_rgb(brightness, purple=True)
 
 
-def _add_background_stars(layer, starchance=99):
+def _add_background_stars(layer, starchance=99, progress_cb=None):
     """Extra stars on Background — denser than far field, up to 30% brighter."""
     max_brightness = min(255, int(150 * 1.3))
     for y in range(layer.height):
@@ -1020,24 +1355,45 @@ def _add_background_stars(layer, starchance=99):
                 continue
             brightness = random.randint(25, max_brightness)
             layer.map[y][x] = _star_rgb(brightness)
+        if progress_cb is not None and (y & 31) == 0:
+            try:
+                progress_cb()
+            except Exception:
+                pass
 
 
-def create_star_layers():
-    """Build four oversized parallax layers."""
+def create_star_layers(progress_cb=None):
+    """Build four oversized parallax layers.
+    progress_cb() is optional — called between heavy steps so the intro
+    starfield can keep animating during load.
+    """
+    def _tick():
+        if progress_cb is not None:
+            try:
+                progress_cb()
+            except Exception:
+                pass
+
     far_background = LED.Layer(name="space_far", width=LAYER_WIDTH, height=LAYER_HEIGHT, h=0, v=0)
     background = LED.Layer(name="space_bg", width=LAYER_WIDTH, height=LAYER_HEIGHT, h=0, v=0)
     middleground = LED.Layer(name="space_mid", width=LAYER_WIDTH, height=LAYER_HEIGHT, h=0, v=0)
     foreground = LED.Layer(name="space_fg", width=LAYER_WIDTH, height=LAYER_HEIGHT, h=0, v=0)
+    _tick()
 
     # FarBackground: blue stars only (25–150 brightness).
-    _add_far_stars(far_background)
+    _add_far_stars(far_background, progress_cb=progress_cb)
+    _tick()
 
     # Background: nebula, gas giants, asteroid + metal ship clocks, then brighter stars in gaps.
     _add_nebula_patches(background, count=8)
+    _tick()
     gas_giants = _add_gas_giants(background)
+    _tick()
     clock_stations = _add_clock_stations(background)
     clock_stations.extend(_gas_giant_clock_stations(gas_giants))
-    _add_background_stars(background)
+    _tick()
+    _add_background_stars(background, progress_cb=progress_cb)
+    _tick()
     # Middleground: asteroids only.
 
     # Foreground parallax: small decorative rocks; breakable rocks are free objects on top.
@@ -1051,6 +1407,7 @@ def create_star_layers():
             layer_map[layer_name], count, size_range, dim_factor,
             layer_name=layer_name,
         )
+        _tick()
 
     return far_background, background, middleground, foreground, clock_stations, gas_giants
 
@@ -2963,21 +3320,85 @@ def scroll_offsets_momentum(
     )
 
 
-def PlaySpaceExplorer(Duration=10000, StopEvent=None):
-    """Main flight loop — ship centered, world scrolls in sixteen directions."""
-    far_background, background, middleground, foreground, clock_stations, gas_giants = create_star_layers()
+def _pump_load_starfield(canvas, starfield, panel_w, panel_h, state, StopEvent=None):
+    """Keep the intro starfield scrolling during heavy world generation."""
+    if starfield is None or canvas is None:
+        return canvas
+    if StopEvent is not None:
+        try:
+            if StopEvent.is_set():
+                return canvas
+        except Exception:
+            pass
+    now = time.time()
+    last = state.get("last", now)
+    dt = max(0.001, min(0.05, now - last))
+    state["last"] = now
+    state["t"] = state.get("t", 0.0) + dt
+    try:
+        starfield.update(dt)
+        canvas.Fill(0, 0, 0)
+        starfield.draw(canvas, state["t"], fade=1.0)
+        canvas = LED.TheMatrix.SwapOnVSync(canvas)
+    except Exception:
+        pass
+    return canvas
+
+
+def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_canvas=None):
+    """Main flight loop — ship centered, world scrolls in sixteen directions.
+    If load_starfield/load_canvas are provided (from the title intro), the
+    starfield keeps animating while layers and entities are built so there is
+    no black freeze between title and gameplay.
+    """
+    panel_w = int(getattr(LED, "HatWidth", WIDTH) or WIDTH)
+    panel_h = int(getattr(LED, "HatHeight", HEIGHT) or HEIGHT)
+    canvas = load_canvas
+    if canvas is None:
+        try:
+            canvas = LED.TheMatrix.CreateFrameCanvas()
+        except Exception:
+            canvas = LED.Canvas
+    starfield = load_starfield
+    if starfield is None and load_starfield is not False:
+        # No intro: still show a short loading starfield during world gen
+        starfield = SeIntroStarField(panel_w, panel_h, seed=91)
+    pump_state = {"last": time.time(), "t": 0.0}
+
+    def _progress():
+        nonlocal canvas
+        canvas = _pump_load_starfield(
+            canvas, starfield, panel_w, panel_h, pump_state, StopEvent=StopEvent,
+        )
+
+    # Pump once so the matrix never sits on a frozen/black frame
+    _progress()
+    far_background, background, middleground, foreground, clock_stations, gas_giants = (
+        create_star_layers(progress_cb=_progress)
+    )
+    _progress()
     clock_minute = int(time.time()) // 60
     display_time = time.strftime("%H:%M", time.localtime())
     update_clock_times_on_layer(background, clock_stations, display_time)
+    _progress()
     foreground_asteroids = create_all_foreground_asteroids(fh=0, fy=0)
+    _progress()
     enemy_ships = create_enemy_ships(fh=0, fy=0)
+    _progress()
+    mother_ship = create_mother_ship(fh=0, fy=0)
+    _progress()
     sparks = []
     enemy_particles = []
     crystals = []
+    crystal_missiles = []
     crystal_score = 0
+    last_crystal_fire_time = 0.0
+    mother_respawn_at = 0.0
 
-    canvas = LED.TheMatrix.CreateFrameCanvas()
-    canvas.Fill(0, 0, 0)
+    try:
+        canvas.Fill(0, 0, 0)
+    except Exception:
+        pass
 
     far_h = far_v = bh = by = mh = my = fh = fy = 0
     carry_far_h = carry_far_v = 0.0
@@ -3046,9 +3467,18 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None):
             tractor_locked = tractor_target is not None and not ufo_chain_active
             crystal_target, crystal_dist = find_nearest_crystal(crystals, fh, fy)
             crystal_hunt = not recoiling and not chain_escape and crystal_target is not None
+            # With a crystal bank of 10+, hunt the mother UFO and fire crystals as missiles
+            mother_hunt = (
+                not recoiling
+                and not chain_escape
+                and mother_ship is not None
+                and mother_ship.alive
+                and crystal_score >= MOTHER_CRYSTAL_HUNT_MIN
+            )
             cruise_mode = (
                 not recoiling
                 and not chain_escape
+                and not mother_hunt
                 and not crystal_hunt
                 and not tractor_locked
                 and gas_giants
@@ -3078,6 +3508,32 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None):
                     now, turbo_active_until, turbo_cooldown_until,
                 )
                 orbit_stall_frames = 0
+            elif mother_hunt:
+                desired_angle = hunt_intercept_angle(
+                    fh, fy, mother_ship, ship_vel_h, ship_vel_v,
+                    max_speed=SHIP_TURBO_MAX_SPEED,
+                )
+                turbo_boost = True
+                orbit_stall_frames = 0
+                # Spend crystals as homing missiles only while the mother UFO is on screen
+                mother_on_screen = False
+                if mother_ship is not None and mother_ship.alive:
+                    msh, msv = world_to_screen(mother_ship.h, mother_ship.v, fh, fy)
+                    margin = mother_ship.radius + 1
+                    mother_on_screen = (
+                        -margin <= msh < WIDTH + margin
+                        and -margin <= msv < HEIGHT + margin
+                    )
+                if (
+                    mother_on_screen
+                    and crystal_score > 0
+                    and (now - last_crystal_fire_time) >= CRYSTAL_MISSILE_FIRE_INTERVAL
+                ):
+                    fire_crystal_missile(
+                        crystal_missiles, fh, fy, ship_angle, mother_ship,
+                    )
+                    crystal_score -= 1
+                    last_crystal_fire_time = now
             elif crystal_hunt:
                 desired_angle = hunt_intercept_angle(
                     fh, fy, crystal_target, ship_vel_h, ship_vel_v, max_speed=MAX_SHIP_SPEED,
@@ -3123,14 +3579,15 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None):
             ship_angle, ship_vel_h, ship_vel_v, thrusting = update_ship_inertia(
                 ship_angle, ship_vel_h, ship_vel_v, desired_angle, recoiling,
                 turbo_boost, cruise_mode and not chain_escape,
-                crystal=crystal_hunt,
+                crystal=crystal_hunt and not mother_hunt,
                 hunt=(
                     not recoiling
                     and not cruise_mode
                     and not crystal_hunt
+                    and not mother_hunt
                     and (chain_asteroid_bait or not chain_escape)
                 ),
-                tractor=tractor_locked and not chain_escape,
+                tractor=tractor_locked and not chain_escape and not mother_hunt,
                 hunt_dist=hunt_dist,
                 hunt_closing=hunt_closing,
                 dt=dt,
@@ -3180,6 +3637,42 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None):
                 orbit_stall_frames = 0
             update_crystals(crystals)
             crystal_score += collect_crystals_for_ship(crystals, fh, fy)
+
+            # Mother UFO float + crystal-missile combat
+            if mother_ship is not None and mother_ship.alive:
+                mother_ship.update(dt)
+            elif mother_ship is not None and not mother_ship.alive:
+                if mother_respawn_at <= 0:
+                    mother_respawn_at = now + MOTHER_RESPAWN_SEC
+                elif now >= mother_respawn_at:
+                    mother_ship = create_mother_ship(fh, fy)
+                    mother_respawn_at = 0.0
+                    print("[SpaceExplorer] Mother UFO re-entered the system")
+
+            missile_hits = update_crystal_missiles(crystal_missiles, mother_ship, dt)
+            if missile_hits and mother_ship is not None and mother_ship.alive:
+                for _ in range(missile_hits):
+                    if mother_ship.take_hit():
+                        print(
+                            "[SpaceExplorer] Mother UFO destroyed after {} hits!".format(
+                                mother_ship.hits,
+                            )
+                        )
+                        boom_p, boom_s = mother_fantastic_explosion(mother_ship)
+                        enemy_particles.extend(boom_p)
+                        sparks.extend(boom_s)
+                        mother_ship.alive = False
+                        mother_respawn_at = now + MOTHER_RESPAWN_SEC
+                        break
+                    else:
+                        # Small hit spark on impact
+                        sparks.append(Spark(
+                            mother_ship.h, mother_ship.v,
+                            random.uniform(0, 2 * math.pi),
+                            speed=random.uniform(0.8, 1.8),
+                            length=random.randint(3, 5),
+                        ))
+
             update_enemy_ships(
                 enemy_ships, fh, fy, dt, crystals,
                 ship_angle, ship_vel_h, ship_vel_v,
@@ -3223,6 +3716,10 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None):
             if tractor_target is not None and not ufo_chain_active:
                 draw_tractor_beam(canvas, ship_angle, tractor_target, fh, fy)
             draw_enemy_ships(canvas, enemy_ships, fh, fy)
+            if mother_ship is not None and mother_ship.alive:
+                mother_ship.draw(canvas, fh, fy, now)
+            for m in crystal_missiles:
+                m.draw(canvas, fh, fy)
             draw_sparks(canvas, sparks, fh, fy)
             draw_enemy_particles(canvas, enemy_particles, fh, fy)
             draw_tiny_ship(
@@ -3244,50 +3741,458 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None):
         pass
 
 
-def LaunchSpaceExplorer(Duration=10000, ShowIntro=False, StopEvent=None):
+#------------------------------------------------------------------------------
+# Title intro — "SPACE EXPLORER" swirls in blue, then slams into place
+#------------------------------------------------------------------------------
+SE_TITLE_LINE1 = "SPACE"
+SE_TITLE_LINE2 = "EXPLORER"
+SE_TITLE_ZOOM = 1
+SE_TITLE_GAP = 1
+SE_TITLE_LINE_GAP = 2
+# Shades of blue (dark → bright) cycled across letters
+SE_BLUE_SHADES = (
+    (15, 35, 100),
+    (20, 55, 140),
+    (30, 80, 180),
+    (40, 110, 210),
+    (55, 140, 235),
+    (80, 170, 255),
+    (110, 195, 255),
+    (150, 220, 255),
+    (40, 90, 200),
+    (25, 60, 160),
+    (60, 130, 240),
+    (90, 160, 250),
+    (35, 100, 220),
+)
+SE_SHADOW_SCALE = 0.28
+SE_ORBIT_COUNT = 2.5           # full revolutions before slam
+SE_ORBIT_OMEGA = 0.55          # base rad/s (was 2.55 — much slower swirl)
+SE_ORBIT_RADIUS = 11.0         # base orbit radius (px)
+SE_SLAM_SPEED = 11.0
+SE_SLAM_EPS = 1.0
+SE_SLAM_STAGGER = 0.045
+SE_FADE_SECONDS = 0.55         # fade title+stars to black, then game starts immediately
+SE_INTRO_MAX_SECONDS = 45.0    # room for slower orbits
+
+
+def _se_stop(StopEvent):
+    try:
+        return StopEvent is not None and StopEvent.is_set()
+    except Exception:
+        return False
+
+
+def _se_letter_sprite(char):
+    ch = char.upper()
+    if not ("A" <= ch <= "Z"):
+        return None
+    idx = ord(ch) - ord("A")
+    try:
+        return LED.TrimSprite(copy.deepcopy(LED.AlphaSpriteList[idx]))
+    except Exception:
+        return None
+
+
+def _se_sprite_pixels(sprite, zoom, rgb, shadow_rgb):
+    pixels = []
+    shadow_pixels = []
+    sw, sh = sprite.width, sprite.height
+    for count in range(sw * sh):
+        if sprite.grid[count] == 0:
+            continue
+        y, x = divmod(count, sw)
+        for zv in range(zoom):
+            for zh in range(zoom):
+                pixels.append((x * zoom + zh, y * zoom + zv, rgb))
+                shadow_pixels.append(
+                    (x * zoom + zh + 1, y * zoom + zv + 1, shadow_rgb)
+                )
+    return pixels, shadow_pixels, sw * zoom, sh * zoom
+
+
+def _se_blue_for_index(i):
+    return SE_BLUE_SHADES[i % len(SE_BLUE_SHADES)]
+
+
+def _se_shadow_for_rgb(rgb):
+    return tuple(max(0, int(c * SE_SHADOW_SCALE)) for c in rgb)
+
+
+class SeTitleLetter(object):
+    """Letter that orbits the screen center, then slams to its rest seat."""
+
+    def __init__(
+        self, char, pixels, shadow_pixels, width, height,
+        rest_x, rest_y, orbit_phase, orbit_radius, orbit_omega,
+    ):
+        self.char = char
+        self.pixels = pixels
+        self.shadow_pixels = shadow_pixels
+        self.width = width
+        self.height = height
+        self.rest_x = float(rest_x)
+        self.rest_y = float(rest_y)
+        self.orbit_phase = float(orbit_phase)
+        self.orbit_radius = float(orbit_radius)
+        self.orbit_omega = float(orbit_omega)
+        self.angle = float(orbit_phase)
+        self.x = float(rest_x)
+        self.y = float(rest_y)
+        self.visible = True
+        self.settled = False
+        self.slam_delay = 0.0
+        self.slam_started = False
+
+    def update_orbit(self, step, cx, cy, aspect):
+        self.angle += self.orbit_omega * step
+        # Elliptical path so the swirl fills 64×32 nicely
+        self.x = cx - self.width * 0.5 + math.cos(self.angle) * self.orbit_radius
+        self.y = cy - self.height * 0.5 + math.sin(self.angle) * self.orbit_radius * aspect
+
+    def prepare_slam(self, index):
+        self.slam_delay = index * SE_SLAM_STAGGER
+        self.slam_started = False
+        self.settled = False
+        self.visible = True
+
+    def update_slam(self, step, elapsed):
+        if self.settled:
+            self.x = self.rest_x
+            self.y = self.rest_y
+            return
+        if elapsed < self.slam_delay:
+            return
+        self.slam_started = True
+        dx = self.rest_x - self.x
+        dy = self.rest_y - self.y
+        dist = math.sqrt(dx * dx + dy * dy)
+        if dist <= SE_SLAM_EPS:
+            self.x = self.rest_x
+            self.y = self.rest_y
+            self.settled = True
+            return
+        speed = SE_SLAM_SPEED
+        self.x += (dx / dist) * speed * step
+        self.y += (dy / dist) * speed * step
+        # Snap if we crossed rest
+        if abs(self.x - self.rest_x) < SE_SLAM_EPS and abs(self.y - self.rest_y) < SE_SLAM_EPS:
+            self.x = self.rest_x
+            self.y = self.rest_y
+            self.settled = True
+
+    def force_settle(self):
+        self.x = self.rest_x
+        self.y = self.rest_y
+        self.settled = True
+        self.visible = True
+
+    def draw(self, canvas, panel_w, panel_h, fade=1.0):
+        if not self.visible:
+            return
+        fade = max(0.0, min(1.0, float(fade)))
+        if fade <= 0.001:
+            return
+        sx = int(round(self.x))
+        sy = int(round(self.y))
+        set_px = canvas.SetPixel
+        for dx, dy, rgb in self.shadow_pixels:
+            px, py = sx + dx, sy + dy
+            if 0 <= px < panel_w and 0 <= py < panel_h:
+                set_px(
+                    px, py,
+                    int(rgb[0] * fade), int(rgb[1] * fade), int(rgb[2] * fade),
+                )
+        for dx, dy, rgb in self.pixels:
+            px, py = sx + dx, sy + dy
+            if 0 <= px < panel_w and 0 <= py < panel_h:
+                set_px(
+                    px, py,
+                    int(rgb[0] * fade), int(rgb[1] * fade), int(rgb[2] * fade),
+                )
+
+
+def _build_se_title_letters(panel_w, panel_h):
+    lines = [SE_TITLE_LINE1, SE_TITLE_LINE2]
+    line_specs = []
+    max_h = 0
+    shade_i = 0
+    for line in lines:
+        specs = []
+        for char in line:
+            if char == " ":
+                continue
+            sprite = _se_letter_sprite(char)
+            if sprite is None:
+                continue
+            rgb = _se_blue_for_index(shade_i)
+            shade_i += 1
+            shadow = _se_shadow_for_rgb(rgb)
+            pixels, shadow_pixels, lw, lh = _se_sprite_pixels(
+                sprite, SE_TITLE_ZOOM, rgb, shadow,
+            )
+            specs.append((char, pixels, shadow_pixels, lw, lh))
+            if lh > max_h:
+                max_h = lh
+        line_specs.append(specs)
+
+    if not any(line_specs):
+        return []
+
+    total_h = max_h * len(line_specs) + SE_TITLE_LINE_GAP * max(0, len(line_specs) - 1)
+    top_y = max(0, (panel_h - total_h) // 2)
+
+    letters = []
+    letter_index = 0
+    total_letters = sum(len(s) for s in line_specs)
+    for line_i, specs in enumerate(line_specs):
+        if not specs:
+            continue
+        total_w = sum(s[3] for s in specs) + SE_TITLE_GAP * max(0, len(specs) - 1)
+        x_cursor = max(0, (panel_w - total_w) // 2)
+        rest_y = top_y + line_i * (max_h + SE_TITLE_LINE_GAP)
+        for char, pixels, shadow_pixels, lw, lh in specs:
+            # Spread on a ring with slight radius / speed variation
+            phase = (letter_index / max(1, total_letters)) * 2.0 * math.pi
+            radius = SE_ORBIT_RADIUS + (letter_index % 4) * 1.8 + (line_i * 1.2)
+            omega = SE_ORBIT_OMEGA * (0.88 + 0.06 * (letter_index % 5))
+            # Outer letters orbit slightly opposite for a swirl feel
+            if letter_index % 2 == 1:
+                omega = -omega * 0.92
+            letters.append(SeTitleLetter(
+                char, pixels, shadow_pixels, lw, lh,
+                x_cursor, rest_y + (max_h - lh),
+                orbit_phase=phase,
+                orbit_radius=radius,
+                orbit_omega=omega,
+            ))
+            x_cursor += lw + SE_TITLE_GAP
+            letter_index += 1
+    return letters
+
+
+class SeIntroStarField(object):
+    """
+    Fixed multi-layer star positions scrolled with continuous float offsets
+    (same idea as SpaceExplorer parallax — no per-frame re-roll, no jitter).
+    """
+
+    def __init__(self, panel_w, panel_h, seed=42):
+        self.panel_w = int(panel_w)
+        self.panel_h = int(panel_h)
+        rng = random.Random(seed)
+        # Far / mid / near — staggered drift like FAR/BRATE/MRATE (px/sec)
+        # (count, base_bright_range, speed_h, speed_v, blue_boost)
+        specs = (
+            (30, (18, 55),  1.8, 0.28, 18),   # far — slow
+            (24, (30, 95),  3.6, 0.55, 28),   # mid
+            (16, (50, 135), 6.0, 0.95, 40),   # near — a bit faster
+        )
+        self.layers = []
+        for count, (b0, b1), sh, sv, blue in specs:
+            stars = []
+            for _ in range(count):
+                # Fixed home positions on the panel; scroll wraps smoothly
+                x = rng.uniform(0, self.panel_w)
+                y = rng.uniform(0, self.panel_h)
+                bright = rng.randint(b0, b1)
+                phase = rng.uniform(0, 2.0 * math.pi)
+                pulse = rng.uniform(0.25, 0.55)  # gentle sine pulse rad/s
+                stars.append((x, y, bright, phase, pulse, blue))
+            self.layers.append({
+                "stars": stars,
+                "off_h": 0.0,
+                "off_v": 0.0,
+                "speed_h": sh,
+                "speed_v": sv,
+            })
+
+    def update(self, dt):
+        """Advance scroll offsets smoothly (dt in seconds)."""
+        dt = max(0.0, min(0.05, float(dt)))
+        pw = float(self.panel_w)
+        ph = float(self.panel_h)
+        for layer in self.layers:
+            layer["off_h"] = (layer["off_h"] + layer["speed_h"] * dt) % pw
+            layer["off_v"] = (layer["off_v"] + layer["speed_v"] * dt) % ph
+
+    def draw(self, canvas, t_sec, fade=1.0):
+        """Paint blue-tinted stars with smooth brightness pulse."""
+        fade = max(0.0, min(1.0, float(fade)))
+        if fade <= 0.001:
+            return
+        set_px = canvas.SetPixel
+        pw = self.panel_w
+        ph = self.panel_h
+        for layer in self.layers:
+            oh = layer["off_h"]
+            ov = layer["off_v"]
+            for x, y, bright, phase, pulse, blue in layer["stars"]:
+                # Continuous wrap; quantize only when addressing pixels
+                sx = (x + oh) % pw
+                sy = (y + ov) % ph
+                px = int(sx) % pw
+                py = int(sy) % ph
+                # Smooth pulse 0.85–1.0 of base (never hard on/off flicker)
+                pulse_amt = 0.85 + 0.15 * (0.5 + 0.5 * math.sin(t_sec * pulse + phase))
+                b = max(8, min(180, int(bright * pulse_amt * fade)))
+                r = max(0, b * 2 // 5)
+                g = max(0, b * 3 // 5)
+                bb = max(0, min(255, b + int((blue // 3) * fade)))
+                set_px(px, py, r, g, bb)
+
+
+def _draw_se_title_frame(canvas, letters, panel_w, panel_h, starfield=None, t_sec=0.0, fade=1.0):
+    canvas.Fill(0, 0, 0)
+    if starfield is not None:
+        starfield.draw(canvas, t_sec, fade=fade)
+    for letter in letters:
+        letter.draw(canvas, panel_w, panel_h, fade=fade)
+    return LED.TheMatrix.SwapOnVSync(canvas)
+
+
+def PlaySpaceExplorerTitleIntro(StopEvent=None):
+    """
+    SPACE / EXPLORER in blue shades: swirl around screen center for a few
+    orbits, then slam into a centered two-line title (RallyDot-style motion).
+    Starfield behind letters scrolls smoothly (parallax-style), no jitter.
+    """
+    panel_w = int(getattr(LED, "HatWidth", WIDTH) or WIDTH)
+    panel_h = int(getattr(LED, "HatHeight", HEIGHT) or HEIGHT)
+    letters = _build_se_title_letters(panel_w, panel_h)
+    try:
+        canvas = LED.TheMatrix.CreateFrameCanvas()
+    except Exception:
+        canvas = LED.Canvas
+    starfield = SeIntroStarField(panel_w, panel_h, seed=77)
+
+    if not letters:
+        print("[SpaceExplorer] Title intro skipped (no letter sprites)")
+        return starfield, canvas
+
+    if _se_stop(StopEvent):
+        print("[SpaceExplorer] Title intro skipped (StopEvent)")
+        return starfield, canvas
+
+    print("[SpaceExplorer] Title intro — blue swirl then slam")
+
+    cx = panel_w * 0.5
+    cy = panel_h * 0.5
+    # Flatten orbit vertically for the wide panel
+    aspect = max(0.45, min(0.75, (panel_h / float(panel_w)) * 1.6))
+
+    start = time.time()
+    last = start
+    phase = "orbit"  # → slam → fade → game
+    slam_start = None
+    fade_start = None
+    fade = 1.0
+    # Track orbit progress via |omega| * time on first letter
+    orbit_progress = 0.0
+
+    try:
+        while True:
+            if _se_stop(StopEvent):
+                break
+            now = time.time()
+            elapsed = now - start
+            if elapsed >= SE_INTRO_MAX_SECONDS and phase != "fade":
+                for L in letters:
+                    L.force_settle()
+                # Fade letters quickly if we hit the cap mid-title
+                phase = "fade"
+                fade_start = now
+
+            dt = max(0.001, now - last)
+            last = now
+            step = min(3.0, dt * 30.0)
+            # Real-time seconds for smooth star scroll (not tick-scaled step)
+            starfield.update(dt)
+
+            if phase == "orbit":
+                for L in letters:
+                    L.update_orbit(step, cx, cy, aspect)
+                # Average absolute angular advance
+                avg_omega = sum(abs(L.orbit_omega) for L in letters) / max(1, len(letters))
+                orbit_progress += avg_omega * step
+                if orbit_progress >= SE_ORBIT_COUNT * 2.0 * math.pi:
+                    phase = "slam"
+                    slam_start = now
+                    for i, L in enumerate(letters):
+                        L.prepare_slam(i)
+                    print("[SpaceExplorer] Title intro — slam")
+
+            elif phase == "slam":
+                slam_elapsed = now - slam_start
+                for L in letters:
+                    L.update_slam(step, slam_elapsed)
+                if all(L.settled for L in letters):
+                    # Fade letters only; starfield stays full for seamless load cover
+                    phase = "fade"
+                    fade_start = now
+                    print("[SpaceExplorer] Title intro — fade letters (stars continue)")
+
+            elif phase == "fade":
+                for L in letters:
+                    L.force_settle()
+                t_fade = (now - fade_start) / max(0.05, SE_FADE_SECONDS)
+                letter_fade = max(0.0, 1.0 - t_fade)
+                fade = letter_fade  # used for letters in draw path below
+                if letter_fade <= 0.0:
+                    # Leave starfield running — world gen will keep pumping it
+                    break
+
+            try:
+                # During letter fade: stars stay at full brightness (fade only letters)
+                if phase == "fade":
+                    canvas.Fill(0, 0, 0)
+                    starfield.draw(canvas, elapsed, fade=1.0)
+                    for letter in letters:
+                        letter.draw(canvas, panel_w, panel_h, fade=fade)
+                    canvas = LED.TheMatrix.SwapOnVSync(canvas)
+                else:
+                    canvas = _draw_se_title_frame(
+                        canvas, letters, panel_w, panel_h,
+                        starfield=starfield, t_sec=elapsed, fade=1.0,
+                    )
+            except Exception:
+                try:
+                    LED.ClearBigLED()
+                    for L in letters:
+                        L.draw(LED.Canvas, panel_w, panel_h, fade=fade)
+                    LED.TheMatrix.SwapOnVSync(LED.Canvas)
+                except Exception:
+                    pass
+
+    except KeyboardInterrupt:
+        pass
+
+    # Hand starfield + canvas to gameplay so load stays animated (no black gap)
+    return starfield, canvas
+
+
+def LaunchSpaceExplorer(Duration=10000, ShowIntro=True, StopEvent=None):
+    load_starfield = None
+    load_canvas = None
     if ShowIntro:
-        LED.LoadConfigData()
-        LED.ShowTitleScreen(
-            BigText="SPACE",
-            BigTextRGB=LED.HighBlue,
-            BigTextShadowRGB=(0, 0, 40),
-            LittleText="EXPLORER",
-            LittleTextRGB=LED.MedGreen,
-            LittleTextShadowRGB=(0, 10, 0),
-            ScrollText="Sixteen directions. Stars in the deep field. One tiny ship.",
-            ScrollTextRGB=LED.MedYellow,
-            ScrollSleep=ScrollSleep,
-            DisplayTime=1,
-            ExitEffect=0,
-        )
+        try:
+            load_starfield, load_canvas = PlaySpaceExplorerTitleIntro(StopEvent=StopEvent)
+        except Exception as e:
+            import traceback
+            print("[SpaceExplorer] title intro failed:", e)
+            traceback.print_exc()
+            load_starfield, load_canvas = None, None
 
-        LED.ClearBigLED()
-        LED.ClearBuffers()
-        CursorH = 0
-        CursorV = 0
-        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-            LED.ScreenArray,
-            "CALIBRATING PARALLAX ARRAYS",
-            CursorH=CursorH,
-            CursorV=CursorV,
-            MessageRGB=(120, 160, 255),
-            CursorRGB=CursorRGB,
-            CursorDarkRGB=CursorDarkRGB,
-            StartingLineFeed=1,
-            TypeSpeed=TerminalTypeSpeed,
-            ScrollSpeed=TerminalScrollSpeed,
-        )
-        LED.BlinkCursor(
-            CursorH=CursorH, CursorV=CursorV,
-            CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB,
-            BlinkSpeed=0.4, BlinkCount=2,
-        )
-
-    PlaySpaceExplorer(Duration=Duration, StopEvent=StopEvent)
+    PlaySpaceExplorer(
+        Duration=Duration,
+        StopEvent=StopEvent,
+        load_starfield=load_starfield,
+        load_canvas=load_canvas,
+    )
 
 
 if __name__ == "__main__":
     try:
-        LaunchSpaceExplorer(Duration=100000, ShowIntro=False, StopEvent=None)
+        LaunchSpaceExplorer(Duration=100000, ShowIntro=True, StopEvent=None)
     except KeyboardInterrupt:
         print("Exiting SpaceExplorer.")

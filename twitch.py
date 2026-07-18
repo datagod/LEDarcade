@@ -4017,11 +4017,14 @@ def start_led_commander():
     global CommandQueue, CommandProcess, WebProcess
 
     from multiprocessing import Queue, Process
+    import os
+    # Dim games/clocks for the stream camera (must be set before LEDcommander loads)
+    os.environ["LEDARCADE_STREAM_MODE"] = "1"
     import LEDcommander
     import LEDupdate
 
     LEDupdate.save_launcher("twitch.py")
-    print("Initializing LEDcommander")
+    print("Initializing LEDcommander (stream mode: dimmed brightness)")
 
     command_queue = Queue()
     commander = Process(target=LEDcommander.Run, args=(command_queue,))

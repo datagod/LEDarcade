@@ -307,10 +307,48 @@ CurrentDisplayMode   = None
 TerminalQueue        = Queue()
 ClockFallbackEnabled = True
 
-# Twitch / stream matrix brightness (0–100)
-STREAM_GAME_BRIGHTNESS = 70
-STREAM_CLOCK_BRIGHTNESS = 80
+# Matrix brightness (0–100).
+# Standalone LEDcommander: always full blast (100).
+# Twitch stream mode: dim games/clocks for camera (set via LEDARCADE_STREAM_MODE).
 STREAM_MAX_BRIGHTNESS = 100
+
+
+def _detect_stream_mode():
+    """True when LEDcommander is driven by Twitch (dim for stream)."""
+    env = os.environ.get("LEDARCADE_STREAM_MODE", "").strip().lower()
+    if env in ("1", "true", "yes", "on"):
+        return True
+    if env in ("0", "false", "no", "off"):
+        return False
+    # Fallback: parent process is twitch.py
+    try:
+        ppid = os.getppid()
+        with open("/proc/{}/cmdline".format(ppid), "rb") as f:
+            cmd = f.read().replace(b"\0", b" ").decode(errors="replace")
+        if "twitch.py" in cmd:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _refresh_stream_brightness():
+    """Resolve game/clock brightness from current stream mode (call live, not once)."""
+    global STREAM_MODE, STREAM_GAME_BRIGHTNESS, STREAM_CLOCK_BRIGHTNESS
+    STREAM_MODE = _detect_stream_mode()
+    if STREAM_MODE:
+        STREAM_GAME_BRIGHTNESS = 70
+        STREAM_CLOCK_BRIGHTNESS = 80
+    else:
+        STREAM_GAME_BRIGHTNESS = STREAM_MAX_BRIGHTNESS
+        STREAM_CLOCK_BRIGHTNESS = STREAM_MAX_BRIGHTNESS
+    return STREAM_MODE, STREAM_GAME_BRIGHTNESS, STREAM_CLOCK_BRIGHTNESS
+
+
+STREAM_MODE = False
+STREAM_GAME_BRIGHTNESS = STREAM_MAX_BRIGHTNESS
+STREAM_CLOCK_BRIGHTNESS = STREAM_MAX_BRIGHTNESS
+_refresh_stream_brightness()
 
 
 def _apply_matrix_brightness(level):
@@ -322,7 +360,10 @@ def _apply_matrix_brightness(level):
 
 
 def _run_game_dimmed(launch_fn):
-    """Run a game at stream game brightness, restore full brightness after."""
+    """Run a game at stream/game brightness; full brightness after.
+    Standalone LEDcommander: 100. Twitch stream mode: dimmed (70).
+    """
+    _refresh_stream_brightness()
     _apply_matrix_brightness(STREAM_GAME_BRIGHTNESS)
     try:
         return launch_fn()
@@ -411,6 +452,17 @@ def stop_current_display(preempted_by, join_timeout=5):
 
 
 def Run(CommandQueue):
+    # Log brightness mode once at dispatcher start
+    _refresh_stream_brightness()
+    print(
+        "[LEDcommander] brightness mode: {} "
+        "(game={}, clock={}, max={})".format(
+            "STREAM/Twitch" if STREAM_MODE else "STANDALONE full",
+            STREAM_GAME_BRIGHTNESS,
+            STREAM_CLOCK_BRIGHTNESS,
+            STREAM_MAX_BRIGHTNESS,
+        )
+    )
     global StopEvent, DisplayProcess, CurrentDisplayMode, TerminalQueue
     global IsOnAirActive, IsStockTickerPinned, FallbackGenerator
     print("\n" + "=" * 65)
@@ -1815,7 +1867,7 @@ def LaunchSpaceExplorer(Command, StopEvent):
     Duration = Command.get("duration", 10)
     print(f"[LEDcommander][LaunchSpaceExplorer] Launching for {Duration} minutes...")
     _run_game_dimmed(
-        lambda: SE.LaunchSpaceExplorer(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+        lambda: SE.LaunchSpaceExplorer(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     )
 
 
@@ -1915,6 +1967,12 @@ FallbackGenerator = fallback_action_generator()
 
 if __name__ == "__main__":
     LEDupdate.save_launcher("LEDcommander.py")
+    # Standalone commander: full brightness (do not inherit a stale stream flag)
+    os.environ["LEDARCADE_STREAM_MODE"] = "0"
+    # Re-resolve after env change (module may have been imported already)
+    globals()["STREAM_MODE"] = False
+    globals()["STREAM_GAME_BRIGHTNESS"] = STREAM_MAX_BRIGHTNESS
+    globals()["STREAM_CLOCK_BRIGHTNESS"] = STREAM_MAX_BRIGHTNESS
 
     CommandQueue = Queue()
     commander_process = Process(target=Run, args=(CommandQueue,))
@@ -1924,7 +1982,10 @@ if __name__ == "__main__":
     webserver_process.start()
 
     print("")
-    print("[LEDcommander][main] Processes started")
+    print(
+        "[LEDcommander][main] Processes started "
+        "(standalone: game/clock brightness=100)"
+    )
     
     # Remove joins for now
     # commander_process.join()
