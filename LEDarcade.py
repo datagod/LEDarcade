@@ -1359,6 +1359,34 @@ def _darken_image(im, factor):
     return im.point(lambda p: int(p * factor))
 
 
+def _fade_flip_image(image, fade_in=True, duration=2.0, fps=20):
+    """
+    Fade a flip-clock face in (black → full) or out (full → black) over
+    `duration` seconds. Used only for enter/exit — digit changes still flip.
+    """
+    duration = max(0.05, float(duration))
+    fps = max(5, int(fps))
+    steps = max(1, int(round(duration * fps)))
+    delay = duration / float(steps)
+    rgb = image.convert("RGB")
+
+    # Start from black for fade-in
+    if fade_in:
+        black = Image.new("RGB", rgb.size, (0, 0, 0))
+        _present_flip_image(black)
+
+    for i in range(1, steps + 1):
+        t = i / float(steps)
+        factor = t if fade_in else (1.0 - t)
+        _present_flip_image(_darken_image(rgb, factor))
+        time.sleep(delay)
+
+    if fade_in:
+        _present_flip_image(rgb)
+    else:
+        _present_flip_image(Image.new("RGB", rgb.size, (0, 0, 0)))
+
+
 def _resize_card_half(half, width, new_height):
     """Nearest-neighbor vertical squash/stretch of a card half (keeps LED look)."""
     new_height = max(1, int(new_height))
@@ -1556,13 +1584,15 @@ def _flip_clock_transition(old_image, new_image, old_layout, new_layout,
 def DisplayFlipClock(StopEvent=None, RunMinutes=5):
     """
     1970s flip-card digital clock: white numerals on black cards with a
-    horizontal flip seam. When a digit changes it mechanically flips
-    (split-flap squash), never dissolves.
+    horizontal flip seam. Fades in over 2s on start, fades out over 2s on exit.
+    When a digit changes it mechanically flips (split-flap), never dissolves.
     ClockStyle 6 entry point.
     """
+    FADE_SECONDS = 2.0
     print(
         f"[LEDarcade][DisplayFlipClock] PID {os.getpid()} — "
-        f"70s flip clock, white on black, mechanical flip, {RunMinutes} min"
+        f"70s flip clock, white on black, mechanical flip, "
+        f"fade {FADE_SECONDS}s in/out, {RunMinutes} min"
     )
     ClearBigLED()
     ClearBuffers()
@@ -1570,7 +1600,13 @@ def DisplayFlipClock(StopEvent=None, RunMinutes=5):
     image, layout = GenerateFlipClockImage(return_layout=True)
     prev_image = image
     prev_layout = layout
-    _present_flip_image(image)
+
+    # Enter: fade from black → full face (2 seconds)
+    try:
+        _fade_flip_image(image, fade_in=True, duration=FADE_SECONDS)
+    except Exception as e:
+        print(f"[LEDarcade][DisplayFlipClock] fade-in error: {e}")
+        _present_flip_image(image)
 
     last_minute = layout.get("time")
     start_time = time.time()
@@ -1608,7 +1644,7 @@ def DisplayFlipClock(StopEvent=None, RunMinutes=5):
                     except Exception as e:
                         print(f"[LEDarcade][DisplayFlipClock] flip error: {e}")
                         traceback.print_exc()
-                        # Hard cut only — never dissolve
+                        # Hard cut only — never dissolve on digit change
                         _present_flip_image(image)
                         prev_image = image
                 else:
@@ -1623,10 +1659,17 @@ def DisplayFlipClock(StopEvent=None, RunMinutes=5):
             time.sleep(0.2)
 
     except KeyboardInterrupt:
+        pass
+    finally:
+        # Exit: fade full face → black (2 seconds)
         try:
-            TheMatrix.Clear()
-        except Exception:
-            pass
+            _fade_flip_image(prev_image, fade_in=False, duration=FADE_SECONDS)
+        except Exception as e:
+            print(f"[LEDarcade][DisplayFlipClock] fade-out error: {e}")
+            try:
+                TheMatrix.Clear()
+            except Exception:
+                pass
 
 
 

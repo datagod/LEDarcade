@@ -119,6 +119,7 @@ VALID_WEB_ACTIONS = {
     "analogclock": [],
     "retrodigital": [],
     "flipclock": ["duration"],
+    "ledarcade_intro": [],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
     "launch_dotinvaders": ["duration"],
     "launch_defender": ["duration"],
@@ -375,43 +376,72 @@ def _run_game_dimmed(launch_fn):
 
 
 def fallback_action_generator():
-    # Your sequence from __main__ in the documents; customize durations/styles
-    actions = [
-        {"Action": "launch_skyfall", "duration": 10},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10},
-        {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10},
-        {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 10, "Delay": 30},
-        # PacDot / DotZerk right after Skyfall + clock spacing
-        {"Action": "launch_pacdot", "duration": 5},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "launch_dotzerk", "duration": 5},
-        {"Action": "launch_spaceexplorer", "duration": 10},
-        {"Action": "launch_defender", "duration": 10},
-        {"Action": "analogclock", "duration": 10 },
-        {"Action": "flipclock", "duration": 10 },
-        {"Action": "weatherterminal"},
+    """
+    Idle rotation for LEDcommander / LEDsim:
 
-        {"Action": "launch_dotinvaders", "duration": 10},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "launch_gravitysim", "duration": 10},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "launch_tron", "duration": 10},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "launch_outbreak", "duration": 10},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "launch_spacedot", "duration": 10},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "launch_spaceexplorer", "duration": 10},
-        {"Action": "retrodigital", "duration": 10},
-        {"Action": "launch_fallingsand", "duration": 10},
-        {"Action": "launch_particles", "duration": 10},
-        {"Action": "launch_mazecar", "duration": 10},
-        # Rally Dot last: plays until game over (3 lives) unless duration set
-        {"Action": "launch_rallydot"},
+      1) Spectacular LED ARCADE intro (once per process start)
+      2) Forever: shuffle content each lap; between items use a shuffled
+         clock-cycle order (repeat that clock cycle for separators).
+         Pattern: clock → content → clock → content → …
+
+    Timed content runs 5 minutes. Weather ends when the scroll finishes.
+    Rally Dot runs until game over.
+    """
+    # Boot title — once
+    yield {"Action": "ledarcade_intro"}
+
+    content_pool = [
+        {"Action": "launch_skyfall", "duration": 5},
+        {"Action": "launch_pacdot", "duration": 5},
+        {"Action": "launch_dotzerk", "duration": 5},
+        {"Action": "launch_spaceexplorer", "duration": 5},
+        {"Action": "launch_defender2", "duration": 5},
+        {"Action": "weatherterminal"},  # natural scroll end
+        {"Action": "launch_dotinvaders", "duration": 5},
+        {"Action": "launch_gravitysim", "duration": 5},
+        {"Action": "launch_tron", "duration": 5},
+        {"Action": "launch_outbreak", "duration": 5},
+        {"Action": "launch_spacedot", "duration": 5},
+        {"Action": "launch_fallingsand", "duration": 5},
+        {"Action": "launch_particles", "duration": 5},
+        {"Action": "launch_rallydot"},  # until game over
     ]
-    for action in itertools.cycle(actions):
-        yield action
+
+    clock_pool = [
+        {"Action": "retrodigital", "duration": 5},
+        {"Action": "flipclock", "duration": 5},
+        {"Action": "analogclock", "duration": 5},
+        {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 5, "Delay": 20},
+        {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 5, "Delay": 10},
+        {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 5, "Delay": 10},
+    ]
+
+    lap = 0
+    while True:
+        content = list(content_pool)
+        random.shuffle(content)
+        # One random clock order for this lap; cycle that order for separators
+        clocks = list(clock_pool)
+        random.shuffle(clocks)
+        lap += 1
+        print(
+            "[LEDcommander] Fallback lap {} — {} content slots, "
+            "clock cycle: {}".format(
+                lap,
+                len(content),
+                " → ".join(
+                    c.get("Action")
+                    + (f" s{c['Style']}" if "Style" in c else "")
+                    for c in clocks
+                ),
+            )
+        )
+        clock_i = 0
+        for item in content:
+            # Start with clock, then content
+            yield clocks[clock_i % len(clocks)]
+            clock_i += 1
+            yield item
 
  
 
@@ -646,6 +676,13 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=ShowFlipClock, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+            elif Action == "ledarcade_intro":
+                stop_current_display(Action)
+                StopEvent.clear()
+                CurrentDisplayMode = "intro"
+                DisplayProcess = Process(target=ShowLEDArcadeIntro, args=(Command, StopEvent))
+                DisplayProcess.start()
+
 
             #----------------------------------
             #-- STARRY NIGHT VARIATIONS
@@ -679,7 +716,8 @@ def Run(CommandQueue):
 
 
             elif Action in ("launch_defender", "launch_defender2"):
-                print("[LEDcommander][Run] Launching Defender")
+                # Always Defender2 (superior rewrite); launch_defender is an alias
+                print("[LEDcommander][Run] Launching Defender2")
                 stop_current_display(Action)
 
                 StopEvent.clear()
@@ -1160,6 +1198,25 @@ def ShowFlipClock(Command, StopEvent):
             RunMinutes=RunMinutes,
             StopEvent=StopEvent,
         )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
+
+def ShowLEDArcadeIntro(Command, StopEvent):
+    """Spectacular multi-layer star + letter-circle boot title."""
+    import LEDarcade as LED
+    LED.Initialize()
+    try:
+        LED.TheMatrix.brightness = STREAM_MAX_BRIGHTNESS
+    except Exception:
+        pass
+    print("[LEDcommander] LED ARCADE intro")
+    try:
+        import LEDArcadeIntro as INTRO
+        INTRO.PlayLEDArcadeIntro(StopEvent=StopEvent)
+    except Exception as e:
+        print(f"[LEDcommander] Intro failed: {e}")
+        traceback.print_exc()
     finally:
         _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
 

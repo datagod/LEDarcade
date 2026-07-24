@@ -63,6 +63,7 @@ python LEDsim.py --no-web
 |-----|--------|
 | **N** | **Next** program (stop current, advance LEDcommander playlist) |
 | **T** | Launch **LEDtv** (channel-surf / local video) |
+| **R** | **Restart** LEDsim (full process reload — intro + playlist) |
 | **1** | Native 1:1 (64×32) |
 | **S** | Default scaled size (×15) |
 | **+** / **=** | Zoom in |

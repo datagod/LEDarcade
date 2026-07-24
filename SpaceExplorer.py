@@ -50,11 +50,12 @@ HUNT_MIN_PURSUIT_SPEED = 0.85
 HUNT_TARGET_REACQUIRE_RATIO = 0.55
 HUNT_ORBIT_CLOSE_DIST = 70
 TRACTOR_BEAM_RGB = (40, 255, 70)
-TRACTOR_MAX_WORLD_DIST = 90
-TRACTOR_MOMENTUM_DAMP = 0.035
-TRACTOR_PULL_RATE = 0.016
-TRACTOR_SHIP_MATCH_RATE = 0.07
-TRACTOR_SHIP_CLOSE_RATE = 0.85
+TRACTOR_MAX_WORLD_DIST = 100
+# Stronger beam: faster rock damp/pull, firmer ship close + velocity match
+TRACTOR_MOMENTUM_DAMP = 0.06
+TRACTOR_PULL_RATE = 0.028
+TRACTOR_SHIP_MATCH_RATE = 0.12
+TRACTOR_SHIP_CLOSE_RATE = 1.25
 TRACTOR_COOLDOWN_SEC = 2.0
 TRACTOR_MAX_SHIP_SPEED = 5.34375
 SHIP_TURBO_THRUST = 0.144
@@ -73,7 +74,8 @@ CRUISE_TURN_RATE = 0.08
 GAS_GIANT_COUNT = 4
 GAS_GIANT_ARRIVAL_PAD = 30
 BOUNCE_DAMPING = 0.88
-SHIP_BOUNCE_DAMPING = 0.44
+# Ship rebound after ramming a rock (was 0.44; cut 50% so bounces are softer)
+SHIP_BOUNCE_DAMPING = 0.22
 BOUNCE_COOLDOWN_FRAMES = 12
 ENEMY_BOUNCE_COOLDOWN_FRAMES = 10
 LOOKAHEAD = 18
@@ -225,21 +227,69 @@ CRYSTAL_MIN_SPEED = 0.05
 CRYSTAL_MAX_SPEED = 0.16
 CRYSTAL_PIXELS = ((0, 0, (255, 255, 0)),)
 
-# Large mother UFO — metallic sphere; hunted with crystal missiles after 10 loot
+# Large mother UFOs — metallic spheres; hunted with crystal missiles after 5 loot
 MOTHER_RADIUS = 6                 # ~13×13 sprite
-MOTHER_HIT_POINTS = 20
-MOTHER_CRYSTAL_HUNT_MIN = 10      # banked crystals to start the hunt
+MOTHER_HIT_POINTS = 10
+MOTHER_CRYSTAL_HUNT_MIN = 5       # banked crystals to start the hunt
+MOTHER_COUNT = 3                  # blue / green / yellow nav-light mothers
 MOTHER_FLOAT_SPEED = 0.11
 MOTHER_TURN_WANDER = 0.035
 MOTHER_RESPAWN_SEC = 45.0
+# SUPER mother — arrives when the whole fleet is wiped; only its death restores the three
+SUPER_MOTHER_RADIUS = 12          # ~25×25 sprite
+SUPER_MOTHER_HIT_POINTS = 25
+SUPER_MOTHER_FLOAT_SPEED = 0.055  # slower than the regular three
+SUPER_MOTHER_ATTACK_SPEED = 0.14  # still slow when aggro
+# When any mother is hit / targeted, the whole fleet charges the player
+MOTHER_ATTACK_SPEED = 0.32
+MOTHER_ATTACK_TURN = 0.09
 CRYSTAL_MISSILE_SPEED = 2.4
 CRYSTAL_MISSILE_TURN = 0.22
 CRYSTAL_MISSILE_HIT_R = 7.5
 CRYSTAL_MISSILE_FIRE_INTERVAL = 0.32
-CRYSTAL_MISSILE_TRAIL = 3
-MOTHER_EXPLOSION_SPARKS = 48
-MOTHER_EXPLOSION_PARTICLES = 90
+CRYSTAL_MISSILE_TRAIL = 6          # head + fading white tail length
+# Big, long death bloom
+MOTHER_EXPLOSION_SPARKS = 140
+MOTHER_EXPLOSION_PARTICLES = 260
+MOTHER_EXPLOSION_RING_PARTICLES = 80
+MOTHER_EXPLOSION_LIFE_SCALE = 3.2      # particle lifespan multiplier
+MOTHER_EXPLOSION_SPARK_LIFE = 28       # spark frames (default trail sparks are ~5)
+MOTHER_EXPLOSION_KEEP_PIXEL_CHANCE = 0.92  # keep more hull shards
+# SUPER death: fill the entire panel with fire + sparks
+SUPER_MOTHER_SCREEN_FIRE = 900
+SUPER_MOTHER_SCREEN_SPARKS = 320
+SUPER_MOTHER_CORE_PARTICLES = 400
+SUPER_MOTHER_EXPLOSION_LIFE = 4.5
 MOTHER_LIGHT_BLINK_HZ = 2.4
+# Primary + alternate blink colors for each of the three mother ships
+MOTHER_NAV_PALETTES = (
+    ("blue",   (40, 140, 255), (20, 60, 140)),    # bright blue / deep blue
+    ("green",  (30, 255, 50),  (15, 120, 30)),    # bright green / deep green
+    ("yellow", (255, 230, 40), (160, 120, 15)),   # bright yellow / amber
+)
+# SUPER mothership multi-color nav lights (includes purple)
+SUPER_MOTHER_LIGHT_COLORS = (
+    (40, 140, 255),   # blue
+    (30, 255, 50),    # green
+    (255, 230, 40),   # yellow
+    (200, 60, 255),   # purple
+    (255, 40, 200),   # magenta
+    (255, 80, 30),    # orange
+    (255, 255, 255),  # white
+    (80, 255, 255),   # cyan
+    (255, 40, 40),    # red
+    (160, 80, 255),   # violet
+    (255, 180, 40),   # gold
+    (120, 255, 120),  # mint
+)
+# Approach speeds — slow down near a mother so she stays on the 64×32 panel
+MOTHER_APPROACH_MAX_SPEED = 2.0     # far intercept (well below turbo)
+MOTHER_HOLD_MAX_SPEED = 0.72        # close hold — gentle scroll, mother stays framed
+MOTHER_SLOW_DIST = 42               # start braking within this world distance
+MOTHER_HOLD_DIST = 20               # full slow at/inside this distance
+MOTHER_APPROACH_THRUST = 0.038
+MOTHER_HOLD_THRUST = 0.016
+MOTHER_APPROACH_TURN_RATE = 0.16
 
 SHIP_HITBOX = (
     (0, 0), (0, -1), (0, 1), (-1, 0), (1, 0),
@@ -493,23 +543,45 @@ class Crystal:
 # Mother UFO — large metallic sphere with blinking nav lights
 #------------------------------------------------------------------------------
 
-def _build_mother_sphere_frame(light_phase):
+def _build_mother_sphere_frame(
+    light_phase,
+    light_primary=(30, 255, 50),
+    light_alt=(15, 120, 30),
+    radius=None,
+    multi_lights=None,
+):
     """
     Procedural shaded metal sphere (center = 0,0).
-    light_phase 0/1 toggles red↔green nav lights around the equator.
+    light_phase 0/1 animates nav lights. multi_lights: many colors (SUPER).
     """
     pixels = []
-    R = MOTHER_RADIUS
+    R = int(radius if radius is not None else MOTHER_RADIUS)
     R2 = R * R
     # Nav light seats on the equator (left/right/top-ish)
-    light_seats = (
-        (-R + 1, 0),
-        (R - 1, 0),
-        (0, -R + 2),
-        (0, R - 2),
-        (-R + 2, -R + 3),
-        (R - 2, R - 3),
-    )
+    if multi_lights:
+        # Dense ring of lights for SUPER mother
+        light_seats = []
+        n = max(12, len(multi_lights) * 2)
+        for i in range(n):
+            ang = (2 * math.pi * i) / float(n)
+            lx = int(round((R - 1) * math.cos(ang)))
+            ly = int(round((R - 1) * math.sin(ang)))
+            light_seats.append((lx, ly))
+        # Inner ring
+        for i in range(n // 2):
+            ang = (2 * math.pi * i) / float(n // 2) + 0.3
+            lx = int(round((R * 0.55) * math.cos(ang)))
+            ly = int(round((R * 0.55) * math.sin(ang)))
+            light_seats.append((lx, ly))
+    else:
+        light_seats = (
+            (-R + 1, 0),
+            (R - 1, 0),
+            (0, -R + 2),
+            (0, R - 2),
+            (-R + 2, -R + 3),
+            (R - 2, R - 3),
+        )
     for dy in range(-R, R + 1):
         for dx in range(-R, R + 1):
             d2 = dx * dx + dy * dy
@@ -540,21 +612,26 @@ def _build_mother_sphere_frame(light_phase):
                 b = max(30, int(b * 0.88))
             pixels.append((dx, dy, (r, g, b)))
 
-    # Blinking red / green nav lights
+    # Nav lights
     for i, (lx, ly) in enumerate(light_seats):
-        # Alternate colors; swap every phase
-        if ((i + light_phase) % 2) == 0:
-            rgb = (255, 30, 25)   # red
+        if multi_lights:
+            # Cycle many colors; phase shifts which seats are bright
+            rgb = multi_lights[(i + light_phase * 3) % len(multi_lights)]
+            # Dim alternate seats for blink
+            if ((i + light_phase) % 2) == 1:
+                rgb = tuple(max(20, int(c * 0.35)) for c in rgb)
         else:
-            rgb = (30, 255, 50)   # green
-        # Bright core + dim halo
+            if ((i + light_phase) % 2) == 0:
+                rgb = light_primary
+            else:
+                rgb = light_alt
         for hx, hy, scale in (
             (0, 0, 1.0),
             (1, 0, 0.45), (-1, 0, 0.45),
             (0, 1, 0.45), (0, -1, 0.45),
         ):
             px, py = lx + hx, ly + hy
-            if px * px + py * py > R2 + 2:
+            if px * px + py * py > R2 + 4:
                 continue
             pixels.append((
                 px, py,
@@ -567,52 +644,111 @@ def _build_mother_sphere_frame(light_phase):
     return pixels
 
 
-# Cache two animation frames (light phase 0 / 1)
-_MOTHER_FRAMES = None
+# Cache frames: key -> (phase0, phase1)
+_MOTHER_FRAMES_BY_COLOR = {}
 
 
-def _mother_frames():
-    global _MOTHER_FRAMES
-    if _MOTHER_FRAMES is None:
-        _MOTHER_FRAMES = (
-            _build_mother_sphere_frame(0),
-            _build_mother_sphere_frame(1),
+def _mother_frames(
+    light_name,
+    light_primary=(30, 255, 50),
+    light_alt=(15, 120, 30),
+    radius=None,
+    multi_lights=None,
+):
+    key = (light_name, int(radius or MOTHER_RADIUS), bool(multi_lights))
+    if key not in _MOTHER_FRAMES_BY_COLOR:
+        _MOTHER_FRAMES_BY_COLOR[key] = (
+            _build_mother_sphere_frame(
+                0, light_primary, light_alt, radius=radius, multi_lights=multi_lights,
+            ),
+            _build_mother_sphere_frame(
+                1, light_primary, light_alt, radius=radius, multi_lights=multi_lights,
+            ),
         )
-    return _MOTHER_FRAMES
+    return _MOTHER_FRAMES_BY_COLOR[key]
 
 
 class MotherShip(object):
     """Large floating metallic sphere UFO — minds its own business until hunted."""
 
-    def __init__(self, h=None, v=None):
+    def __init__(
+        self,
+        h=None,
+        v=None,
+        light_name="green",
+        light_primary=(30, 255, 50),
+        light_alt=(15, 120, 30),
+        radius=None,
+        max_hits=None,
+        float_speed=None,
+        attack_speed=None,
+        multi_lights=None,
+        is_super=False,
+    ):
         if h is None or v is None:
             h = random.uniform(0, LAYER_WIDTH)
             v = random.uniform(0, LAYER_HEIGHT)
         self.h = float(h)
         self.v = float(v)
+        self.is_super = bool(is_super)
+        self.radius = float(
+            radius if radius is not None
+            else (SUPER_MOTHER_RADIUS if self.is_super else MOTHER_RADIUS)
+        )
+        self.max_hits = int(
+            max_hits if max_hits is not None
+            else (SUPER_MOTHER_HIT_POINTS if self.is_super else MOTHER_HIT_POINTS)
+        )
+        self.float_speed = float(
+            float_speed if float_speed is not None
+            else (SUPER_MOTHER_FLOAT_SPEED if self.is_super else MOTHER_FLOAT_SPEED)
+        )
+        self.attack_speed = float(
+            attack_speed if attack_speed is not None
+            else (SUPER_MOTHER_ATTACK_SPEED if self.is_super else MOTHER_ATTACK_SPEED)
+        )
         angle = random.uniform(0, 2 * math.pi)
-        self.vel_h = math.cos(angle) * MOTHER_FLOAT_SPEED
-        self.vel_v = math.sin(angle) * MOTHER_FLOAT_SPEED
+        self.vel_h = math.cos(angle) * self.float_speed
+        self.vel_v = math.sin(angle) * self.float_speed
         self.heading = angle
         self.alive = True
         self.hits = 0
-        self.radius = float(MOTHER_RADIUS)
         self.respawn_at = 0.0
+        self.light_name = light_name
+        self.light_primary = light_primary
+        self.light_alt = light_alt
+        self.multi_lights = multi_lights
         # Aliases for hunt intercept math (same fields as asteroids)
         self.dx = self.vel_h
         self.dy = self.vel_v
 
-    def update(self, dt):
+    def update(self, dt, fh=None, fy=None, pursue_player=False):
         if not self.alive:
             return
-        # Gentle wander — slow heading drift, constant float speed
-        self.heading += random.uniform(-MOTHER_TURN_WANDER, MOTHER_TURN_WANDER) * (
-            dt * PHYSICS_FPS
-        )
-        speed = MOTHER_FLOAT_SPEED
+        if pursue_player and fh is not None and fy is not None:
+            # Under attack — turn and drive toward the player
+            player_wh, player_wv = player_world_position(fh, fy)
+            dh = _toroidal_delta(self.h, player_wh, LAYER_WIDTH)
+            dv = _toroidal_delta(self.v, player_wv, LAYER_HEIGHT)
+            desired = math.atan2(dv, dh)
+            err = (desired - self.heading + math.pi) % (2 * math.pi) - math.pi
+            max_turn = MOTHER_ATTACK_TURN * dt * PHYSICS_FPS
+            if err > max_turn:
+                err = max_turn
+            elif err < -max_turn:
+                err = -max_turn
+            self.heading += err
+            speed = self.attack_speed
+            blend = min(1.0, 0.12 * dt * PHYSICS_FPS)
+        else:
+            # Gentle wander — slow heading drift, constant float speed
+            self.heading += random.uniform(-MOTHER_TURN_WANDER, MOTHER_TURN_WANDER) * (
+                dt * PHYSICS_FPS
+            )
+            speed = self.float_speed
+            blend = min(1.0, 0.04 * dt * PHYSICS_FPS)
         target_vh = math.cos(self.heading) * speed
         target_vv = math.sin(self.heading) * speed
-        blend = min(1.0, 0.04 * dt * PHYSICS_FPS)
         self.vel_h += (target_vh - self.vel_h) * blend
         self.vel_v += (target_vv - self.vel_v) * blend
         self.dx = self.vel_h
@@ -622,7 +758,13 @@ class MotherShip(object):
 
     def frame_pixels(self, now):
         phase = int(now * MOTHER_LIGHT_BLINK_HZ) % 2
-        return _mother_frames()[phase]
+        return _mother_frames(
+            self.light_name,
+            self.light_primary,
+            self.light_alt,
+            radius=int(self.radius),
+            multi_lights=self.multi_lights,
+        )[phase]
 
     def draw(self, canvas, fh, fy, now):
         if not self.alive:
@@ -652,30 +794,51 @@ class MotherShip(object):
         if not self.alive:
             return False
         self.hits += 1
-        return self.hits >= MOTHER_HIT_POINTS
+        return self.hits >= self.max_hits
+
+    def revive_at(self, h, v):
+        """Respawn this mother (same light color) at a new position."""
+        self.h = float(h)
+        self.v = float(v)
+        angle = random.uniform(0, 2 * math.pi)
+        self.vel_h = math.cos(angle) * self.float_speed
+        self.vel_v = math.sin(angle) * self.float_speed
+        self.heading = angle
+        self.dx = self.vel_h
+        self.dy = self.vel_v
+        self.alive = True
+        self.hits = 0
+        self.respawn_at = 0.0
 
 
 class CrystalMissile(object):
-    """Homed crystal fired from the ship when hunting the mother UFO."""
+    """Homed crystal fired from the ship when hunting a mother UFO."""
 
-    def __init__(self, h, v, angle):
+    def __init__(self, h, v, angle, target=None):
         self.h = float(h)
         self.v = float(v)
         self.angle = float(angle)
         self.speed = CRYSTAL_MISSILE_SPEED
         self.alive = True
         self.age = 0.0
+        self.target = target
 
-    def update(self, dt, target):
+    def update(self, dt, target=None):
         if not self.alive:
             return
+        if target is not None:
+            self.target = target
         self.age += dt
         if self.age > 8.0:
             self.alive = False
             return
-        if target is not None and target.alive:
-            dh = _toroidal_delta(self.h, target.h, LAYER_WIDTH)
-            dv = _toroidal_delta(self.v, target.v, LAYER_HEIGHT)
+        tgt = self.target
+        if tgt is not None and not getattr(tgt, "alive", False):
+            tgt = None
+            self.target = None
+        if tgt is not None:
+            dh = _toroidal_delta(self.h, tgt.h, LAYER_WIDTH)
+            dv = _toroidal_delta(self.v, tgt.v, LAYER_HEIGHT)
             desired = math.atan2(dv, dh)
             # Shortest turn toward target
             err = (desired - self.angle + math.pi) % (2 * math.pi) - math.pi
@@ -688,109 +851,373 @@ class CrystalMissile(object):
         step = self.speed * dt * PHYSICS_FPS
         self.h = (self.h + math.cos(self.angle) * step) % LAYER_WIDTH
         self.v = (self.v + math.sin(self.angle) * step) % LAYER_HEIGHT
-        if target is not None and target.alive:
-            if target.contains_world_point(self.h, self.v):
+        if tgt is not None and tgt.alive:
+            if tgt.contains_world_point(self.h, self.v):
                 self.alive = False
-                return "hit"
+                return ("hit", tgt)
         return None
 
     def draw(self, canvas, fh, fy):
+        """Bright white projectile with a fading white tail."""
         if not self.alive:
             return
-        for i in range(CRYSTAL_MISSILE_TRAIL):
-            wh = (self.h - math.cos(self.angle) * i * 0.9) % LAYER_WIDTH
-            wv = (self.v - math.sin(self.angle) * i * 0.9) % LAYER_HEIGHT
+        trail = CRYSTAL_MISSILE_TRAIL
+        for i in range(trail):
+            # Step back along velocity for the tail
+            wh = (self.h - math.cos(self.angle) * i * 0.85) % LAYER_WIDTH
+            wv = (self.v - math.sin(self.angle) * i * 0.85) % LAYER_HEIGHT
             sh, sv = world_to_screen(wh, wv, fh, fy)
             px, py = int(round(sh)), int(round(sv))
             if not (0 <= px < WIDTH and 0 <= py < HEIGHT):
                 continue
-            fade = max(0.25, 1.0 - i * 0.28)
-            canvas.SetPixel(
-                px, py,
-                min(255, int(255 * fade)),
-                min(255, int(255 * fade)),
-                min(255, int(40 * fade)),
-            )
+            # Head = full white; tail fades smoothly to dim white/grey
+            if i == 0:
+                canvas.SetPixel(px, py, 255, 255, 255)
+                # 1px halo for a brighter head on coarse panels
+                for hx, hy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = px + hx, py + hy
+                    if 0 <= nx < WIDTH and 0 <= ny < HEIGHT:
+                        canvas.SetPixel(nx, ny, 220, 220, 220)
+            else:
+                # Linear fade: step 1 ≈ 0.75 white → last step nearly black
+                fade = max(0.08, 1.0 - (i / float(max(1, trail - 1))) * 0.92)
+                c = min(255, int(255 * fade))
+                canvas.SetPixel(px, py, c, c, c)
 
 
-def create_mother_ship(fh=0, fy=0):
-    """Spawn mother UFO well away from the player."""
+def _spawn_mother_position(fh=0, fy=0, avoid=None, min_dist=120, min_peer=80):
+    """Pick a world position away from the player and optional peer mothers."""
     player_wh, player_wv = player_world_position(fh, fy)
-    for _ in range(40):
+    avoid = avoid or []
+    for _ in range(50):
         h = random.uniform(0, LAYER_WIDTH)
         v = random.uniform(0, LAYER_HEIGHT)
         dh = min((h - player_wh) % LAYER_WIDTH, (player_wh - h) % LAYER_WIDTH)
         dv = min((v - player_wv) % LAYER_HEIGHT, (player_wv - v) % LAYER_HEIGHT)
-        if math.hypot(dh, dv) > 120:
-            return MotherShip(h, v)
-    return MotherShip()
+        if math.hypot(dh, dv) < min_dist:
+            continue
+        ok = True
+        for peer in avoid:
+            ph = peer.h if hasattr(peer, "h") else peer[0]
+            pv = peer.v if hasattr(peer, "v") else peer[1]
+            pdh = min((h - ph) % LAYER_WIDTH, (ph - h) % LAYER_WIDTH)
+            pdv = min((v - pv) % LAYER_HEIGHT, (pv - v) % LAYER_HEIGHT)
+            if math.hypot(pdh, pdv) < min_peer:
+                ok = False
+                break
+        if ok:
+            return h, v
+    return random.uniform(0, LAYER_WIDTH), random.uniform(0, LAYER_HEIGHT)
+
+
+def create_mother_ship(fh=0, fy=0, light_name="green",
+                       light_primary=(30, 255, 50), light_alt=(15, 120, 30),
+                       avoid=None):
+    """Spawn one mother UFO well away from the player (and peers if given)."""
+    h, v = _spawn_mother_position(fh, fy, avoid=avoid)
+    return MotherShip(
+        h, v,
+        light_name=light_name,
+        light_primary=light_primary,
+        light_alt=light_alt,
+    )
+
+
+def create_mother_fleet(fh=0, fy=0):
+    """Spawn three mother UFOs: blue, green, and yellow nav lights."""
+    fleet = []
+    for light_name, primary, alt in MOTHER_NAV_PALETTES:
+        m = create_mother_ship(
+            fh, fy,
+            light_name=light_name,
+            light_primary=primary,
+            light_alt=alt,
+            avoid=fleet,
+        )
+        fleet.append(m)
+    print(
+        "[SpaceExplorer] Mother fleet deployed: {}".format(
+            ", ".join(m.light_name for m in fleet)
+        )
+    )
+    return fleet
+
+
+def create_super_mother(fh=0, fy=0):
+    """Spawn the SUPER mother after the regular fleet is wiped out."""
+    h, v = _spawn_mother_position(fh, fy, min_dist=100, min_peer=0)
+    mother = MotherShip(
+        h, v,
+        light_name="super",
+        light_primary=(200, 60, 255),
+        light_alt=(120, 40, 180),
+        radius=SUPER_MOTHER_RADIUS,
+        max_hits=SUPER_MOTHER_HIT_POINTS,
+        float_speed=SUPER_MOTHER_FLOAT_SPEED,
+        attack_speed=SUPER_MOTHER_ATTACK_SPEED,
+        multi_lights=SUPER_MOTHER_LIGHT_COLORS,
+        is_super=True,
+    )
+    print(
+        "[SpaceExplorer] SUPER mother arrived "
+        "(r={}, hp={})".format(SUPER_MOTHER_RADIUS, SUPER_MOTHER_HIT_POINTS)
+    )
+    return mother
+
+
+def any_mother_alive(mothers):
+    return any(m is not None and m.alive for m in (mothers or ()))
+
+
+def active_mother_targets(mother_ships, super_mother):
+    """
+    Combat / AI targets: SUPER alone while she lives; otherwise the three-ship fleet.
+    """
+    if super_mother is not None and super_mother.alive:
+        return [super_mother]
+    return [m for m in (mother_ships or ()) if m is not None and m.alive]
+
+
+def nearest_alive_mother(mothers, fh, fy):
+    """Closest living mother to the player, or None."""
+    best = None
+    best_d = float("inf")
+    for m in mothers or ():
+        if m is None or not m.alive:
+            continue
+        d = distance_to_world_point(fh, fy, m.h, m.v)
+        if d < best_d:
+            best_d = d
+            best = m
+    return best
+
+
+def mother_on_screen(mother, fh, fy):
+    if mother is None or not mother.alive:
+        return False
+    msh, msv = world_to_screen(mother.h, mother.v, fh, fy)
+    margin = mother.radius + 1
+    return (
+        -margin <= msh < WIDTH + margin
+        and -margin <= msv < HEIGHT + margin
+    )
+
+
+def mother_fleet_under_attack(mothers, missiles=None):
+    """True if any mother has been hit or a crystal missile is locking one."""
+    for m in mothers or ():
+        if m is not None and m.alive and m.hits > 0:
+            return True
+    for mis in missiles or ():
+        if (
+            mis is not None
+            and mis.alive
+            and mis.target is not None
+            and getattr(mis.target, "alive", False)
+        ):
+            return True
+    return False
+
+
+def super_mother_screen_explosion(mother, fh, fy):
+    """
+    SUPER death: fill the entire visible panel with fire + sparks, plus a
+    massive core bloom at the mother. Returns (particles, sparks).
+    """
+    particles = []
+    sparks = []
+    life = SUPER_MOTHER_EXPLOSION_LIFE
+    fire_tones = (
+        (255, 255, 255), (255, 240, 120), (255, 180, 40),
+        (255, 100, 20), (255, 50, 10), (200, 30, 0),
+        (255, 60, 200), (180, 40, 255), (80, 200, 255),
+    )
+
+    # Hull shatter at super radius
+    frames = _mother_frames(
+        mother.light_name,
+        mother.light_primary,
+        mother.light_alt,
+        radius=int(mother.radius),
+        multi_lights=mother.multi_lights,
+    )
+    for dx, dy, rgb in frames[0]:
+        if random.random() > 0.85 and (dx * dx + dy * dy) > 8:
+            continue
+        wh = _wrap_world_coord(mother.h + dx * 1.6, LAYER_WIDTH)
+        wv = _wrap_world_coord(mother.v + dy * 1.6, LAYER_HEIGHT)
+        ang = math.atan2(dy, dx) if (dx or dy) else random.uniform(0, 2 * math.pi)
+        speed = random.uniform(1.2, 6.0)
+        p = EnemyParticle(
+            wh, wv, rgb[0], rgb[1], rgb[2],
+            math.cos(ang) * speed + random.uniform(-0.8, 0.8),
+            math.sin(ang) * speed + random.uniform(-0.8, 0.8),
+        )
+        p.lifespan = int(ENEMY_PARTICLE_LIFESPAN * random.uniform(2.5, 4.0) * life)
+        particles.append(p)
+
+    # Core bloom
+    for _ in range(SUPER_MOTHER_CORE_PARTICLES):
+        ang = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(0.6, 6.5)
+        tone = random.choice(fire_tones)
+        p = EnemyParticle(
+            mother.h, mother.v, *tone,
+            math.cos(ang) * speed, math.sin(ang) * speed,
+        )
+        p.lifespan = int(ENEMY_PARTICLE_LIFESPAN * random.uniform(2.8, 4.5) * life)
+        particles.append(p)
+
+    # Fill the entire visible panel with fire (map screen → world)
+    player_wh, player_wv = player_world_position(fh, fy)
+    for sy in range(HEIGHT):
+        for sx in range(WIDTH):
+            if random.random() > 0.62 and ((sx + sy) % 2):
+                continue
+            wh = (player_wh + (sx - SHIP_H)) % LAYER_WIDTH
+            wv = (player_wv + (sy - SHIP_V)) % LAYER_HEIGHT
+            # Shockwave bias away from mother
+            dh = _toroidal_delta(mother.h, wh, LAYER_WIDTH)
+            dv = _toroidal_delta(mother.v, wv, LAYER_HEIGHT)
+            dist = math.hypot(dh, dv) + 0.01
+            ang = math.atan2(dv, dh) + random.uniform(-0.4, 0.4)
+            speed = random.uniform(0.3, 2.8) + min(3.0, dist * 0.02)
+            tone = random.choice(fire_tones)
+            p = EnemyParticle(
+                wh, wv, *tone,
+                math.cos(ang) * speed + random.uniform(-0.4, 0.4),
+                math.sin(ang) * speed + random.uniform(-0.4, 0.4),
+            )
+            p.lifespan = int(ENEMY_PARTICLE_LIFESPAN * random.uniform(2.2, 4.0) * life)
+            particles.append(p)
+
+    # Screen-filling sparks
+    for _ in range(SUPER_MOTHER_SCREEN_SPARKS):
+        sx = random.randint(0, WIDTH - 1)
+        sy = random.randint(0, HEIGHT - 1)
+        wh = (player_wh + (sx - SHIP_H)) % LAYER_WIDTH
+        wv = (player_wv + (sy - SHIP_V)) % LAYER_HEIGHT
+        ang = random.uniform(0, 2 * math.pi)
+        sp = Spark(
+            wh, wv, ang,
+            speed=random.uniform(1.5, 6.0),
+            length=random.randint(8, 16),
+        )
+        sp.lifespan = 40 + random.randint(0, 30)
+        sparks.append(sp)
+
+    return particles, sparks
 
 
 def mother_fantastic_explosion(mother):
-    """Huge multi-color debris + spark bloom when the mother UFO is destroyed."""
+    """Huge, long multi-color debris + spark bloom when a mother UFO is destroyed."""
     particles = []
     sparks = []
-    # Shatter every metal sphere pixel into debris
-    for dx, dy, rgb in _mother_frames()[0]:
-        if random.random() > 0.55 and (dx * dx + dy * dy) > 4:
+    life = MOTHER_EXPLOSION_LIFE_SCALE
+    # Shatter metal sphere pixels into debris (use this mother's palette frame)
+    frames = _mother_frames(
+        mother.light_name,
+        mother.light_primary,
+        mother.light_alt,
+        radius=int(mother.radius),
+        multi_lights=mother.multi_lights,
+    )
+    for dx, dy, rgb in frames[0]:
+        if random.random() > MOTHER_EXPLOSION_KEEP_PIXEL_CHANCE and (dx * dx + dy * dy) > 2:
             continue
-        wh = _wrap_world_coord(mother.h + dx, LAYER_WIDTH)
-        wv = _wrap_world_coord(mother.v + dy, LAYER_HEIGHT)
+        wh = _wrap_world_coord(mother.h + dx * 1.4, LAYER_WIDTH)
+        wv = _wrap_world_coord(mother.v + dy * 1.4, LAYER_HEIGHT)
         ang = math.atan2(dy, dx) if (dx or dy) else random.uniform(0, 2 * math.pi)
-        speed = random.uniform(0.6, 2.8)
+        speed = random.uniform(0.9, 4.2)
         particles.append(EnemyParticle(
             wh, wv, rgb[0], rgb[1], rgb[2],
-            math.cos(ang) * speed + random.uniform(-0.3, 0.3),
-            math.sin(ang) * speed + random.uniform(-0.3, 0.3),
+            math.cos(ang) * speed + random.uniform(-0.5, 0.5),
+            math.sin(ang) * speed + random.uniform(-0.5, 0.5),
         ))
-        particles[-1].lifespan = int(ENEMY_PARTICLE_LIFESPAN * random.uniform(1.4, 2.4))
+        particles[-1].lifespan = int(
+            ENEMY_PARTICLE_LIFESPAN * random.uniform(1.8, 2.8) * life
+        )
 
-    # Extra white/hot core burst
+    # Extra white/hot core burst — wide radial spray
     for _ in range(MOTHER_EXPLOSION_PARTICLES):
         ang = random.uniform(0, 2 * math.pi)
-        speed = random.uniform(0.4, 3.2)
+        speed = random.uniform(0.5, 5.0)
         tone = random.choice((
             (255, 255, 255), (255, 220, 80), (255, 120, 30),
             (80, 200, 255), (255, 40, 40), (40, 255, 80),
+            mother.light_primary, mother.light_alt,
         ))
         p = EnemyParticle(
             mother.h, mother.v, *tone,
             math.cos(ang) * speed, math.sin(ang) * speed,
         )
-        p.lifespan = int(ENEMY_PARTICLE_LIFESPAN * random.uniform(1.6, 2.8))
+        p.lifespan = int(
+            ENEMY_PARTICLE_LIFESPAN * random.uniform(2.0, 3.4) * life
+        )
+        particles.append(p)
+
+    # Secondary expanding ring (delayed feel via lower start speed, longer life)
+    for i in range(MOTHER_EXPLOSION_RING_PARTICLES):
+        ang = (2 * math.pi * i) / float(MOTHER_EXPLOSION_RING_PARTICLES)
+        ang += random.uniform(-0.08, 0.08)
+        speed = random.uniform(1.8, 3.6)
+        tone = random.choice((
+            (255, 255, 200), (255, 180, 60), mother.light_primary,
+            (200, 200, 255),
+        ))
+        p = EnemyParticle(
+            mother.h, mother.v, *tone,
+            math.cos(ang) * speed, math.sin(ang) * speed,
+        )
+        p.lifespan = int(
+            ENEMY_PARTICLE_LIFESPAN * random.uniform(2.4, 3.8) * life
+        )
         particles.append(p)
 
     for _ in range(MOTHER_EXPLOSION_SPARKS):
         ang = random.uniform(0, 2 * math.pi)
-        sparks.append(Spark(
+        sp = Spark(
             mother.h, mother.v, ang,
-            speed=random.uniform(1.2, 3.5),
-            length=random.randint(4, 8),
-        ))
+            speed=random.uniform(1.6, 5.0),
+            length=random.randint(6, 12),
+        )
+        sp.lifespan = MOTHER_EXPLOSION_SPARK_LIFE + random.randint(0, 12)
+        sparks.append(sp)
     return particles, sparks
 
 
-def update_crystal_missiles(missiles, mother, dt):
-    """Home missiles toward mother. Returns number of new hits this frame."""
-    hits = 0
-    if mother is None:
-        for m in missiles:
-            if m.alive:
-                m.update(dt, None)
-        missiles[:] = [m for m in missiles if m.alive]
-        return 0
+def update_crystal_missiles(missiles, mothers, dt):
+    """
+    Home each missile at its assigned mother (or nearest alive).
+    Returns list of mother ships that received a hit this frame.
+    """
+    hit_mothers = []
+    alive = [m for m in (mothers or ()) if m is not None and m.alive]
     for m in missiles:
         if not m.alive:
             continue
-        result = m.update(dt, mother)
-        if result == "hit":
-            hits += 1
+        tgt = m.target if (m.target is not None and m.target.alive) else None
+        if tgt is None and alive:
+            # Retarget nearest living mother to this missile's position
+            best, best_d = None, float("inf")
+            for mother in alive:
+                d = math.hypot(
+                    _toroidal_delta(m.h, mother.h, LAYER_WIDTH),
+                    _toroidal_delta(m.v, mother.v, LAYER_HEIGHT),
+                )
+                if d < best_d:
+                    best_d = d
+                    best = mother
+            tgt = best
+        result = m.update(dt, tgt)
+        if result and result[0] == "hit":
+            hit_mothers.append(result[1])
     missiles[:] = [m for m in missiles if m.alive]
-    return hits
+    return hit_mothers
 
 
 def fire_crystal_missile(missiles, fh, fy, ship_angle, mother):
-    """Launch one homing crystal from the ship toward the mother UFO."""
+    """Launch one homing crystal from the ship toward a mother UFO."""
     player_wh, player_wv = player_world_position(fh, fy)
     # Lead slightly along ship nose
     nose_h = player_wh + math.cos(ship_angle) * 2.5
@@ -800,8 +1227,7 @@ def fire_crystal_missile(missiles, fh, fy, ship_angle, mother):
         dh = _toroidal_delta(nose_h, mother.h, LAYER_WIDTH)
         dv = _toroidal_delta(nose_v, mother.v, LAYER_HEIGHT)
         angle = math.atan2(dv, dh)
-    missiles.append(CrystalMissile(nose_h, nose_v, angle))
-
+    missiles.append(CrystalMissile(nose_h, nose_v, angle, target=mother))
 
 class Spark:
     """Short-lived explosion streak in world coordinates."""
@@ -811,7 +1237,7 @@ class Spark:
         self.wv = wv
         self.angle = angle
         self.speed = speed
-        self.length = max(1, min(length, 8))
+        self.length = max(1, min(int(length), 16))
         self.lifespan = SPARK_TRAIL_LENGTH
 
     def move(self, layer_width, layer_height):
@@ -3121,17 +3547,49 @@ def cancel_turbo_burst(now, turbo_active_until, turbo_cooldown_until):
     return 0.0, turbo_cooldown_until
 
 
+def mother_approach_speed_cap(mother_dist):
+    """
+    World-distance → max ship speed while hunting a mother.
+    Far: moderate intercept. Close: slow hold so she stays on screen.
+    """
+    if mother_dist == float("inf"):
+        return MOTHER_APPROACH_MAX_SPEED
+    if mother_dist <= MOTHER_HOLD_DIST:
+        return MOTHER_HOLD_MAX_SPEED
+    if mother_dist >= MOTHER_SLOW_DIST:
+        return MOTHER_APPROACH_MAX_SPEED
+    # Linear brake between SLOW_DIST and HOLD_DIST
+    t = (mother_dist - MOTHER_HOLD_DIST) / float(
+        max(1e-6, MOTHER_SLOW_DIST - MOTHER_HOLD_DIST)
+    )
+    return MOTHER_HOLD_MAX_SPEED + t * (
+        MOTHER_APPROACH_MAX_SPEED - MOTHER_HOLD_MAX_SPEED
+    )
+
+
 def update_ship_inertia(
     ship_angle, ship_vel_h, ship_vel_v, desired_angle, recoiling,
     turbo=False, cruise=False, crystal=False, hunt=False, tractor=False,
+    mother=False, mother_dist=float("inf"),
     hunt_dist=float("inf"), hunt_closing=0.0,
     dt=1 / 60,
 ):
     """
     Blasteroids-style flight — constant turn rate, thrust only when nose is aligned,
     otherwise coast on existing momentum (no drag in vacuum).
+    Mother hunt: distance-based speed cap so the target stays framed on the panel.
     """
-    if cruise and not turbo:
+    if mother:
+        # Dedicated mother approach — never turbo; brake as we close
+        base_turn = MOTHER_APPROACH_TURN_RATE
+        max_speed = mother_approach_speed_cap(mother_dist)
+        if mother_dist <= MOTHER_HOLD_DIST:
+            base_thrust = MOTHER_HOLD_THRUST
+            align_limit = SHIP_HUNT_CLOSE_ALIGN_RAD
+        else:
+            base_thrust = MOTHER_APPROACH_THRUST
+            align_limit = SHIP_HUNT_ALIGN_RAD
+    elif cruise and not turbo:
         base_turn = CRUISE_TURN_RATE
         base_thrust = CRUISE_THRUST
         align_limit = SHIP_THRUST_ALIGN_RAD * 1.15
@@ -3175,6 +3633,9 @@ def update_ship_inertia(
             thrust = _physics_scale(base_thrust, dt)
             if hunt and hunt_dist <= SHIP_HUNT_CLOSE_DIST and angle_err > SHIP_THRUST_ALIGN_RAD:
                 thrust *= max(0.45, 1.0 - (angle_err - SHIP_THRUST_ALIGN_RAD))
+            # Soften thrust further when already inside the mother hold zone
+            if mother and mother_dist <= MOTHER_HOLD_DIST:
+                thrust *= 0.55
             ship_vel_h += math.cos(ship_angle) * thrust
             ship_vel_v += math.sin(ship_angle) * thrust
     speed = math.hypot(ship_vel_h, ship_vel_v)
@@ -3399,7 +3860,8 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
     _progress()
     enemy_ships = create_enemy_ships(fh=0, fy=0)
     _progress()
-    mother_ship = create_mother_ship(fh=0, fy=0)
+    mother_ships = create_mother_fleet(fh=0, fy=0)
+    super_mother = None
     _progress()
     sparks = []
     enemy_particles = []
@@ -3407,7 +3869,6 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
     crystal_missiles = []
     crystal_score = 0
     last_crystal_fire_time = 0.0
-    mother_respawn_at = 0.0
 
     try:
         canvas.Fill(0, 0, 0)
@@ -3481,12 +3942,13 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
             tractor_locked = tractor_target is not None and not ufo_chain_active
             crystal_target, crystal_dist = find_nearest_crystal(crystals, fh, fy)
             crystal_hunt = not recoiling and not chain_escape and crystal_target is not None
-            # With a crystal bank of 10+, hunt the mother UFO and fire crystals as missiles
+            # With a crystal bank of 5+, hunt nearest mother (fleet or SUPER)
+            combat_mothers = active_mother_targets(mother_ships, super_mother)
+            hunt_mother = nearest_alive_mother(combat_mothers, fh, fy)
             mother_hunt = (
                 not recoiling
                 and not chain_escape
-                and mother_ship is not None
-                and mother_ship.alive
+                and hunt_mother is not None
                 and crystal_score >= MOTHER_CRYSTAL_HUNT_MIN
             )
             cruise_mode = (
@@ -3523,28 +3985,28 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                 )
                 orbit_stall_frames = 0
             elif mother_hunt:
-                desired_angle = hunt_intercept_angle(
-                    fh, fy, mother_ship, ship_vel_h, ship_vel_v,
-                    max_speed=SHIP_TURBO_MAX_SPEED,
+                mother_dist = distance_to_world_point(
+                    fh, fy, hunt_mother.h, hunt_mother.v,
                 )
-                turbo_boost = True
+                # Intercept at approach speed (not turbo) so we can brake in
+                desired_angle = hunt_intercept_angle(
+                    fh, fy, hunt_mother, ship_vel_h, ship_vel_v,
+                    max_speed=mother_approach_speed_cap(mother_dist),
+                )
+                # No turbo while hunting mothers — keeps them on screen
+                turbo_boost = False
+                turbo_active_until, turbo_cooldown_until = cancel_turbo_burst(
+                    now, turbo_active_until, turbo_cooldown_until,
+                )
                 orbit_stall_frames = 0
-                # Spend crystals as homing missiles only while the mother UFO is on screen
-                mother_on_screen = False
-                if mother_ship is not None and mother_ship.alive:
-                    msh, msv = world_to_screen(mother_ship.h, mother_ship.v, fh, fy)
-                    margin = mother_ship.radius + 1
-                    mother_on_screen = (
-                        -margin <= msh < WIDTH + margin
-                        and -margin <= msv < HEIGHT + margin
-                    )
+                # Spend crystals as homing missiles only while a mother is on screen
                 if (
-                    mother_on_screen
+                    mother_on_screen(hunt_mother, fh, fy)
                     and crystal_score > 0
                     and (now - last_crystal_fire_time) >= CRYSTAL_MISSILE_FIRE_INTERVAL
                 ):
                     fire_crystal_missile(
-                        crystal_missiles, fh, fy, ship_angle, mother_ship,
+                        crystal_missiles, fh, fy, ship_angle, hunt_mother,
                     )
                     crystal_score -= 1
                     last_crystal_fire_time = now
@@ -3590,6 +4052,12 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
 
             chain_asteroid_bait = chain_escape and chain_bait_target is not None
 
+            mother_dist_for_flight = float("inf")
+            if mother_hunt and hunt_mother is not None:
+                mother_dist_for_flight = distance_to_world_point(
+                    fh, fy, hunt_mother.h, hunt_mother.v,
+                )
+
             ship_angle, ship_vel_h, ship_vel_v, thrusting = update_ship_inertia(
                 ship_angle, ship_vel_h, ship_vel_v, desired_angle, recoiling,
                 turbo_boost, cruise_mode and not chain_escape,
@@ -3602,6 +4070,8 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                     and (chain_asteroid_bait or not chain_escape)
                 ),
                 tractor=tractor_locked and not chain_escape and not mother_hunt,
+                mother=mother_hunt,
+                mother_dist=mother_dist_for_flight,
                 hunt_dist=hunt_dist,
                 hunt_closing=hunt_closing,
                 dt=dt,
@@ -3652,40 +4122,63 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
             update_crystals(crystals)
             crystal_score += collect_crystals_for_ship(crystals, fh, fy)
 
-            # Mother UFO float + crystal-missile combat
-            if mother_ship is not None and mother_ship.alive:
-                mother_ship.update(dt)
-            elif mother_ship is not None and not mother_ship.alive:
-                if mother_respawn_at <= 0:
-                    mother_respawn_at = now + MOTHER_RESPAWN_SEC
-                elif now >= mother_respawn_at:
-                    mother_ship = create_mother_ship(fh, fy)
-                    mother_respawn_at = 0.0
-                    print("[SpaceExplorer] Mother UFO re-entered the system")
+            # Mother cycle:
+            #   3 fleet → all die → SUPER arrives → SUPER dies (screen fire) → 3 fleet again
+            combat_mothers = active_mother_targets(mother_ships, super_mother)
+            fleet_attack = mother_fleet_under_attack(combat_mothers, crystal_missiles)
 
-            missile_hits = update_crystal_missiles(crystal_missiles, mother_ship, dt)
-            if missile_hits and mother_ship is not None and mother_ship.alive:
-                for _ in range(missile_hits):
-                    if mother_ship.take_hit():
-                        print(
-                            "[SpaceExplorer] Mother UFO destroyed after {} hits!".format(
-                                mother_ship.hits,
-                            )
+            if super_mother is not None and super_mother.alive:
+                super_mother.update(
+                    dt, fh=fh, fy=fy, pursue_player=fleet_attack,
+                )
+            else:
+                for mother in mother_ships:
+                    if mother.alive:
+                        mother.update(
+                            dt, fh=fh, fy=fy, pursue_player=fleet_attack,
                         )
-                        boom_p, boom_s = mother_fantastic_explosion(mother_ship)
+                # No individual fleet respawn — wipe triggers SUPER instead
+                if (
+                    super_mother is None
+                    and not any_mother_alive(mother_ships)
+                ):
+                    super_mother = create_super_mother(fh, fy)
+
+            hit_mothers = update_crystal_missiles(
+                crystal_missiles, combat_mothers, dt,
+            )
+            for hit_mother in hit_mothers:
+                if hit_mother is None or not hit_mother.alive:
+                    continue
+                if hit_mother.take_hit():
+                    print(
+                        "[SpaceExplorer] Mother UFO ({}) destroyed after {} hits!".format(
+                            hit_mother.light_name, hit_mother.hits,
+                        )
+                    )
+                    if getattr(hit_mother, "is_super", False):
+                        boom_p, boom_s = super_mother_screen_explosion(
+                            hit_mother, fh, fy,
+                        )
                         enemy_particles.extend(boom_p)
                         sparks.extend(boom_s)
-                        mother_ship.alive = False
-                        mother_respawn_at = now + MOTHER_RESPAWN_SEC
-                        break
+                        hit_mother.alive = False
+                        super_mother = None
+                        # Only now do the three return — cycle continues
+                        mother_ships = create_mother_fleet(fh, fy)
                     else:
-                        # Small hit spark on impact
-                        sparks.append(Spark(
-                            mother_ship.h, mother_ship.v,
-                            random.uniform(0, 2 * math.pi),
-                            speed=random.uniform(0.8, 1.8),
-                            length=random.randint(3, 5),
-                        ))
+                        boom_p, boom_s = mother_fantastic_explosion(hit_mother)
+                        enemy_particles.extend(boom_p)
+                        sparks.extend(boom_s)
+                        hit_mother.alive = False
+                else:
+                    # Brief hit spark (small); death uses the big bloom above
+                    sparks.append(Spark(
+                        hit_mother.h, hit_mother.v,
+                        random.uniform(0, 2 * math.pi),
+                        speed=random.uniform(0.8, 1.8),
+                        length=random.randint(3, 5),
+                    ))
 
             update_enemy_ships(
                 enemy_ships, fh, fy, dt, crystals,
@@ -3732,8 +4225,12 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
             if tractor_target is not None and not ufo_chain_active:
                 draw_tractor_beam(canvas, ship_angle, tractor_target, fh, fy)
             draw_enemy_ships(canvas, enemy_ships, fh, fy)
-            if mother_ship is not None and mother_ship.alive:
-                mother_ship.draw(canvas, fh, fy, now)
+            if super_mother is not None and super_mother.alive:
+                super_mother.draw(canvas, fh, fy, now)
+            else:
+                for mother in mother_ships:
+                    if mother.alive:
+                        mother.draw(canvas, fh, fy, now)
             for m in crystal_missiles:
                 m.draw(canvas, fh, fy)
             draw_sparks(canvas, sparks, fh, fy)

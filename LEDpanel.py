@@ -25,8 +25,7 @@ UNTIL_GAME_OVER_LAUNCHERS = {
 
 GAME_LAUNCHERS = [
     ("launch_dotinvaders", "Dot Invaders"),
-    ("launch_defender", "Defender"),
-    ("launch_defender2", "Defender 2"),
+    ("launch_defender2", "Defender"),
     ("launch_tron", "Tron"),
     ("launch_outbreak", "Outbreak"),
     ("launch_ledtv", "LED TV"),
@@ -52,9 +51,12 @@ ACTION_LABELS = {
     "analogclock": "Analog Clock",
     "retrodigital": "Retro Digital",
     "flipclock": "Flip Clock (70s)",
+    "ledarcade_intro": "LED Arcade Intro",
     "starrynightdisplaytext": "Starry Night Text",
     "launch_stockticker": "Stock Ticker",
     "launch_ledtv": "LED TV",
+    "launch_defender": "Defender",
+    "launch_defender2": "Defender",
     "launch_pacdot": "PacDot",
     "launch_dotzerk": "DotZerk",
     "launch_rallydot": "Rally Dot",

@@ -20,7 +20,8 @@ Usage:
   python LEDsim.py --port 5055
 
 In the viewer window:
-  N = next program,  T = LEDtv,  1 = native 1:1,  S = default scale,  +/- = zoom,  Esc = quit
+  N = next,  T = LEDtv,  R = restart sim,  1 = native,  S = scale,
+  +/- = zoom,  F = frame,  Esc = quit
 
 Environment:
   LEDARCADE_DISPLAY=sim          (set automatically)
@@ -73,7 +74,8 @@ def _parse_args():
             "  python LEDsim.py --scale 1         same as --native\n"
             "  python LEDsim.py --bordered        normal title-bar window\n"
             "\n"
-            "while focused: N=next  T=LEDtv  1=native  S=scaled  +/-=zoom  F=frame  Esc=quit\n"
+            "while focused: N=next  T=LEDtv  R=restart  1=native  S=scaled  "
+            "+/-=zoom  F=frame  Esc=quit\n"
             "borderless: left-drag moves the window"
         ),
     )
@@ -239,7 +241,10 @@ def main():
     print(f"  Panel:  {width}x{height}  mode={mode}  frame={frame}")
     print(f"  Window: {width * scale}x{height * scale}")
     print(f"  Web:    http://127.0.0.1:{args.port}/" + (" (disabled)" if args.no_web else ""))
-    print("  Keys:   N=next  T=LEDtv  1=native  S=scaled  +/-=zoom  F=frame  Esc=quit")
+    print(
+        "  Keys:   N=next  T=LEDtv  R=restart  1=native  S=scaled  "
+        "+/-=zoom  F=frame  Esc=quit"
+    )
     print("  Mouse:  left-click and drag moves the window")
     print("=" * 60)
     print("")
@@ -275,8 +280,9 @@ def main():
             print(f"[LEDsim] Control panel: http://127.0.0.1:{args.port}/")
 
     # Viewer runs in the MAIN process (most reliable on Windows with pygame/SDL)
+    exit_reason = "quit"
     try:
-        run_viewer(
+        exit_reason = run_viewer(
             stop_event,
             width=width,
             height=height,
@@ -285,16 +291,30 @@ def main():
             default_scaled=DEFAULT_SCALE,
             command_queue=command_queue,
             borderless=borderless,
-        )
+        ) or "quit"
     except KeyboardInterrupt:
         print("\n[LEDsim] Keyboard interrupt")
         stop_event.set()
+        exit_reason = "quit"
     except Exception as exc:
         print(f"[LEDsim] Viewer error: {exc}")
         traceback.print_exc()
         stop_event.set()
+        exit_reason = "quit"
 
     cleanup()
+
+    if exit_reason == "restart":
+        print("[LEDsim] Restarting…")
+        try:
+            atexit.unregister(cleanup)
+        except Exception:
+            pass
+        script = os.path.join(REPO_DIR, "LEDsim.py")
+        argv = [sys.executable, script] + sys.argv[1:]
+        os.chdir(REPO_DIR)
+        os.execv(sys.executable, argv)
+
     print("[LEDsim] Goodbye.")
     return 0
 

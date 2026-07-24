@@ -14,6 +14,7 @@ Window chrome:
 Hotkeys while running:
   N        — next program (skip current LEDcommander item)
   T        — launch LEDtv
+  R        — restart LEDsim (full process restart)
   1        — native (scale 1)
   S        — restore default scaled size
   + / =    — increase scale
@@ -238,9 +239,13 @@ def run_viewer(
     default_scaled: Optional[int] = None,
     command_queue: Optional[Any] = None,
     borderless: Optional[bool] = None,
-) -> None:
+) -> str:
     """
     Blocking viewer loop (main process).
+
+    Returns:
+      "quit"     — Esc / window close / stop_event
+      "restart"  — R key (caller should restart the sim process)
 
     scale:
       1  = native 64x32 (or panel size) window
@@ -269,7 +274,7 @@ def run_viewer(
     except ImportError:
         print("[LEDsim] pygame is required for the viewer. Install with: pip install pygame")
         stop_event.set()
-        return
+        return "quit"
 
     shared.get_config()
 
@@ -280,7 +285,7 @@ def run_viewer(
     except pygame.error as exc:
         print(f"[LEDsim] Could not open display window: {exc}")
         stop_event.set()
-        return
+        return "quit"
 
     clock = pygame.time.Clock()
     panel = pygame.Surface((width, height))
@@ -292,9 +297,13 @@ def run_viewer(
     last_counter = -1
     frame_label = "borderless" if borderless else "windowed"
     print(f"[LEDsim] Viewer started — {_mode_label(width, height, scale)} [{frame_label}]")
-    print("[LEDsim] Keys: N=next  T=LEDtv  1=native  S=scaled  +/- zoom  F=frame  Esc=quit")
+    print(
+        "[LEDsim] Keys: N=next  T=LEDtv  R=restart  1=native  S=scaled  "
+        "+/- zoom  F=frame  Esc=quit"
+    )
     print("[LEDsim] Mouse: left-click and drag to move the window")
 
+    exit_reason = "quit"
     try:
         while not stop_event.is_set():
             try:
@@ -305,6 +314,7 @@ def run_viewer(
             for event in events:
                 if event.type == pygame.QUIT:
                     stop_event.set()
+                    exit_reason = "quit"
                     break
 
                 # --- mouse: click-and-drag moves the window ---
@@ -335,6 +345,14 @@ def run_viewer(
 
                 if event.key == pygame.K_ESCAPE:
                     stop_event.set()
+                    exit_reason = "quit"
+                    break
+
+                # Full LEDsim process restart (reload code + intro + playlist)
+                if event.key == pygame.K_r:
+                    print("[LEDsim] Restart requested (R)")
+                    stop_event.set()
+                    exit_reason = "restart"
                     break
 
                 # Toggle frame / borderless
@@ -448,3 +466,5 @@ def run_viewer(
             pass
         print("[LEDsim] Viewer closed")
         stop_event.set()
+
+    return exit_reason

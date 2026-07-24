@@ -526,22 +526,28 @@ class Bot(commands.Bot ):
                         self.ClockRunning   = False  # Reset clock flag when terminal closes
 
                 if(self.ChatTerminalOn == False and self.ClockRunning == False):
-                    #print("[Twitch] Creating multiprocess DisplayDigitalClock()")
-                    #self.DisplayDigitalClock()
+                    # Shared idle playlist: LEDcommander.fallback_action_generator
+                    # (do not push a Twitch-local rotation onto CommandQueue)
                     self.ClockRunning = True
-                    await self.RotateClockDisplays(RotateClockDelay)
+                    print(
+                        "[Twitch] Idle displays → LEDcommander fallback "
+                        "(chat still injects via CommandQueue)",
+                        flush=True,
+                    )
 
 
 
 
             #-------------------------------------------------------------------------
-            #-- If stream is not active, run a series of displays for X minutes each
+            #-- Stream offline: same LEDcommander fallback (no second playlist)
             #-------------------------------------------------------------------------
             
-            if (StreamActive == False):
-                print("[Twitch] StreamActive == False")
-                                
-                await self.RotateClockDisplays(RotateClockDelay)
+            if (StreamActive == False and self.ClockRunning == False):
+                print(
+                    "[Twitch] StreamActive == False — LEDcommander fallback owns rotation",
+                    flush=True,
+                )
+                self.ClockRunning = True
                 
                 
                 
@@ -671,48 +677,28 @@ class Bot(commands.Bot ):
 
         
     #---------------------------------------
-    # Rotate Clock Displays               --
+    # Idle display rotation               --
     #---------------------------------------
     async def RotateClockDisplays(self, RotateClockDelay: int = 5):
-        # Ordered idle rotation. Each entry: commander command + optional clock after.
-        # Start at a random index so every stream doesn't open on Skyfall.
-        steps = [
-            {"cmd": {"Action": "launch_skyfall", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 10, "Delay": 10}, "clock_after": False},
-            {"cmd": {"Action": "retrodigital", "duration": 10}, "clock_after": False},
-            {"cmd": {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 10, "Delay": 10}, "clock_after": True},
-            # PacDot / DotZerk right after Skyfall + clock spacing
-            {"cmd": {"Action": "launch_pacdot", "duration": 5}, "clock_after": True},
-            {"cmd": {"Action": "launch_dotzerk", "duration": 5}, "clock_after": True},
-            {"cmd": {"Action": "launch_defender2", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_dotinvaders", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_gravitysim", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_tron", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_outbreak", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_spacedot", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_spaceexplorer", "duration": 10}, "clock_after": True},
-            {"cmd": {"Action": "launch_fallingsand", "duration": 10}, "clock_after": True},
-            # Rally Dot last in rotation — plays until game over (3 lives)
-            {"cmd": {"Action": "launch_rallydot"}, "clock_after": True},
-        ]
-        n = len(steps)
-        start = random.randint(0, n - 1)
+        """
+        Idle playlist is owned by LEDcommander.fallback_action_generator().
+
+        Twitch only injects chat / webhook / timer commands into CommandQueue.
+        When the queue is empty, LEDcommander.Run() advances the shared fallback
+        (LED Arcade intro, 5‑min slots, shuffled content, clock separators).
+
+        This coroutine parks so PerformTimeBasedActions does not re-enter a
+        private Twitch-only playlist (the old steps list is retired).
+        """
         print(
-            f"[Twitch] RotateClockDisplays: starting at index {start}/{n} "
-            f"({steps[start]['cmd'].get('Action')})",
+            "[Twitch] Display rotation delegated to LEDcommander "
+            "(fallback_action_generator). Chat commands still use CommandQueue.",
             flush=True,
         )
-        for offset in range(n):
-            step = steps[(start + offset) % n]
-            cmd = step["cmd"]
-            print(f"[Twitch] Rotation step: {cmd.get('Action')}", flush=True)
-            CommandQueue.put(cmd)
-            await asyncio.sleep(RotateClockDelay * 60)
-            if step.get("clock_after"):
-                self.DisplayDigitalClock(ClockDuration)
-
-
-
+        # Keep this task alive so StreamActive==False does not spam re-entry.
+        # Commander keeps playing via its own idle fallback when the queue is empty.
+        while True:
+            await asyncio.sleep(3600)
 
 
     #---------------------------------------
