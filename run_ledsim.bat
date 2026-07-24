@@ -5,12 +5,17 @@ REM   run_ledsim.bat --scale 10   custom zoom
 cd /d "%~dp0"
 set LEDARCADE_DISPLAY=sim
 set LEDARCADE_STREAM_MODE=0
+set LEDARCADE_GAMMA=1.0
 set LEDARCADE_SKIP_BOOT_UPDATE=1
 set PYTHONUNBUFFERED=1
-python LEDsim.py %*
+if exist "%~dp0.venv\Scripts\python.exe" (
+  "%~dp0.venv\Scripts\python.exe" LEDsim.py %*
+) else (
+  python LEDsim.py %*
+)
 if errorlevel 1 (
   echo.
   echo LEDsim exited with an error. Ensure Python deps are installed:
-  echo   pip install pygame pillow numpy flask requests numba
+  echo   .venv\Scripts\pip install pygame pillow numpy flask requests numba
   pause
 )

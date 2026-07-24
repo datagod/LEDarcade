@@ -47,6 +47,8 @@ if REPO_DIR not in sys.path:
 
 os.environ["LEDARCADE_DISPLAY"] = "sim"
 os.environ["LEDARCADE_STREAM_MODE"] = "0"
+# Full color/output on desktop (gamma 100% = multiplier 1.0; matrix brightness 100)
+os.environ["LEDARCADE_GAMMA"] = "1.0"
 # Boot git/panel update check is Pi-oriented; skip on desktop by default
 os.environ.setdefault("LEDARCADE_SKIP_BOOT_UPDATE", "1")
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
@@ -149,12 +151,17 @@ def _run_commander(command_queue):
     # Ensure children see sim mode (spawn does not inherit all parent state on all platforms)
     os.environ["LEDARCADE_DISPLAY"] = "sim"
     os.environ["LEDARCADE_STREAM_MODE"] = "0"
+    os.environ["LEDARCADE_GAMMA"] = "1.0"
     os.environ.setdefault("LEDARCADE_SKIP_BOOT_UPDATE", "1")
+    import LEDarcade as LED
+    # Gamma 100% (1.0) before any game loads palette-dependent code
+    LED.Gamma = 1.0
     import LEDcommander
-    # Standalone brightness
+    # Standalone brightness — always full blast on LEDsim
     LEDcommander.STREAM_MODE = False
-    LEDcommander.STREAM_GAME_BRIGHTNESS = LEDcommander.STREAM_MAX_BRIGHTNESS
-    LEDcommander.STREAM_CLOCK_BRIGHTNESS = LEDcommander.STREAM_MAX_BRIGHTNESS
+    LEDcommander.STREAM_MAX_BRIGHTNESS = 100
+    LEDcommander.STREAM_GAME_BRIGHTNESS = 100
+    LEDcommander.STREAM_CLOCK_BRIGHTNESS = 100
     LEDcommander.Run(command_queue)
 
 

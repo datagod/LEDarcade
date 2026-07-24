@@ -1214,9 +1214,419 @@ def DisplayCustomFontClock(StopEvent=None, RunMinutes=5):
 
 
 
+# ---------------------------------------------------------------------------
+# Style 6 — 1970s flip-card clock (white digits on black "tiles")
+# ---------------------------------------------------------------------------
 
 
+def GenerateFlipClockImage(
+    Text=None,
+    FontPath=None,
+    FontSize=None,
+    TextColor=(255, 255, 255),
+    BackgroundColor=(0, 0, 0),
+    CardColor=(0, 0, 0),
+    SeamColor=(96, 96, 96),
+    FrameColor=(40, 40, 40),
+    return_layout=False,
+):
+    """
+    Build a 70s split-flap / flip-clock face: white digits on black cards with a
+    horizontal mid-seam (the classic flip hinge). Sized to HatWidth x HatHeight.
 
+    If return_layout=True, returns (image, layout) where layout is a dict:
+      {
+        "time": "HH:MM",
+        "cards": [  # one entry per digit (not colon), left→right
+            {"ch": "2", "x":.., "y":.., "w":.., "h":..},
+            ...
+        ],
+      }
+    """
+    width = HatWidth
+    height = HatHeight
+    time_str = Text if Text is not None else datetime.now().strftime("%H:%M")
+
+    font_name = FontPath or "BebasNeue-Regular.ttf"
+    if FontSize is None:
+        FontSize = 22 if height <= 32 else max(22, height - 10)
+
+    try:
+        font = ImageFont.truetype(ResolveFontPath(font_name), FontSize)
+    except Exception:
+        font = ImageFont.truetype(ResolveFontPath("Anton-Regular.ttf"), FontSize)
+
+    image = Image.new("RGB", (width, height), BackgroundColor)
+    draw = ImageDraw.Draw(image)
+
+    sample = "0"
+    bbox = draw.textbbox((0, 0), sample, font=font)
+    digit_w = max(1, bbox[2] - bbox[0])
+    digit_h = max(1, bbox[3] - bbox[1])
+
+    gap = 1
+    card_pad_x = 1
+    card_pad_y = 1
+    card_w = digit_w + card_pad_x * 2
+    card_h = min(height - 2, digit_h + card_pad_y * 2 + 2)
+    colon_w = max(3, card_w // 3)
+
+    total_w = card_w * 4 + colon_w + gap * 4
+    if total_w > width - 2:
+        scale = (width - 2 - colon_w - gap * 4) / float(card_w * 4)
+        card_w = max(6, int(card_w * scale))
+        total_w = card_w * 4 + colon_w + gap * 4
+
+    origin_x = max(0, (width - total_w) // 2)
+    origin_y = max(0, (height - card_h) // 2)
+
+    cards = []
+
+    def draw_card(x, y, ch):
+        draw.rectangle(
+            [x, y, x + card_w - 1, y + card_h - 1],
+            fill=CardColor,
+            outline=FrameColor,
+        )
+        mid_y = y + card_h // 2
+        draw.line([(x + 1, mid_y), (x + card_w - 2, mid_y)], fill=SeamColor)
+        lower = (8, 8, 8)
+        for yy in range(mid_y + 1, y + card_h - 1):
+            for xx in range(x + 1, x + card_w - 1):
+                if image.getpixel((xx, yy)) == CardColor:
+                    image.putpixel((xx, yy), lower)
+
+        cb = draw.textbbox((0, 0), ch, font=font)
+        cw = cb[2] - cb[0]
+        chh = cb[3] - cb[1]
+        tx = x + (card_w - cw) // 2 - cb[0]
+        ty = y + (card_h - chh) // 2 - cb[1]
+        draw.text((tx, ty), ch, font=font, fill=TextColor)
+        draw.line([(x + 1, mid_y), (x + card_w - 2, mid_y)], fill=SeamColor)
+        cards.append({"ch": ch, "x": x, "y": y, "w": card_w, "h": card_h})
+
+    def draw_colon(x, y):
+        cx = x + max(1, colon_w // 2)
+        r = 1
+        upper = y + max(2, card_h // 3)
+        lower = y + max(4, (2 * card_h) // 3)
+        for cy in (upper, lower):
+            draw.rectangle([cx - r, cy - r, cx + r, cy + r], fill=TextColor)
+            if cx + r + 1 < x + colon_w:
+                draw.point((cx + r + 1, cy), fill=(180, 180, 180))
+
+    x = origin_x
+    for ch in time_str:
+        if ch == ":":
+            draw_colon(x, origin_y)
+            x += colon_w + gap
+        else:
+            draw_card(x, origin_y, ch)
+            x += card_w + gap
+
+    if return_layout:
+        return image, {"time": time_str, "cards": cards}
+    return image
+
+
+def _present_flip_image(image):
+    """Push a PIL RGB image to ScreenArray and the matrix (sim or hardware)."""
+    global Canvas, ScreenArray
+    rgb = image.convert("RGB")
+    ScreenArray = CopyImageToScreenArray(rgb, 0, 0)
+    try:
+        TheMatrix.SetImage(rgb, 0, 0)
+        return
+    except Exception:
+        pass
+    try:
+        for vv in range(min(HatHeight, len(ScreenArray))):
+            row = ScreenArray[vv]
+            for hh in range(min(HatWidth, len(row))):
+                r, g, b = row[hh]
+                setpixel(hh, vv, r, g, b)
+        Canvas = TheMatrix.SwapOnVSync(Canvas)
+    except Exception:
+        pass
+
+
+def _darken_image(im, factor):
+    """Darken a PIL image by factor (0..1) for edge-on flap shading."""
+    factor = max(0.0, min(1.0, float(factor)))
+    if factor >= 0.99:
+        return im
+    # point() is fast enough for tiny card tiles
+    return im.point(lambda p: int(p * factor))
+
+
+def _resize_card_half(half, width, new_height):
+    """Nearest-neighbor vertical squash/stretch of a card half (keeps LED look)."""
+    new_height = max(1, int(new_height))
+    if half.size[1] == new_height and half.size[0] == width:
+        return half
+    return half.resize((width, new_height), Image.NEAREST)
+
+
+def _compose_digit_flip_frame(
+    base_face,
+    old_card,
+    new_card,
+    card_x,
+    card_y,
+    phase,
+    t,
+    seam_color=(96, 96, 96),
+    frame_color=(40, 40, 40),
+):
+    """
+    Compose one frame of a mechanical split-flap flip for a single card.
+
+    phase 1 (top flap falling):
+      - bottom half stays OLD
+      - top half is OLD top, vertically squashed toward the hinge (height → 0)
+      - flap darkens as it goes edge-on
+
+    phase 2 (bottom flap settling):
+      - top half is NEW top (settled)
+      - bottom half is NEW bottom, expanding downward from the hinge
+      - flap starts dark (edge-on) and brightens as it opens
+    """
+    w, h = old_card.size
+    mid = h // 2
+    bot_h = h - mid
+    frame = base_face.copy()
+
+    old_top = old_card.crop((0, 0, w, mid))
+    old_bot = old_card.crop((0, mid, w, h))
+    new_top = new_card.crop((0, 0, w, mid))
+    new_bot = new_card.crop((0, mid, w, h))
+
+    # Card background / bezel under the flaps
+    draw = ImageDraw.Draw(frame)
+    draw.rectangle(
+        [card_x, card_y, card_x + w - 1, card_y + h - 1],
+        fill=(0, 0, 0),
+        outline=frame_color,
+    )
+    # Darker lower well
+    draw.rectangle(
+        [card_x + 1, card_y + mid + 1, card_x + w - 2, card_y + h - 2],
+        fill=(8, 8, 8),
+    )
+
+    t = max(0.0, min(1.0, float(t)))
+
+    if phase == 1:
+        # OLD bottom fixed
+        frame.paste(old_bot, (card_x, card_y + mid))
+        # OLD top folds down toward hinge: height shrinks, sits on hinge
+        fold_h = max(1, int(round(mid * (1.0 - t))))
+        # Brightness: full at start → dark when flat (edge-on)
+        shade = 1.0 - 0.75 * t
+        flap = _darken_image(_resize_card_half(old_top, w, fold_h), shade)
+        frame.paste(flap, (card_x, card_y + mid - fold_h))
+        # Hinge line
+        draw.line(
+            [(card_x + 1, card_y + mid), (card_x + w - 2, card_y + mid)],
+            fill=seam_color,
+        )
+        # Thin "edge" of the falling card (white/gray line just above hinge when mid-flip)
+        if 0.15 < t < 0.95:
+            edge_y = card_y + mid - fold_h
+            draw.line(
+                [(card_x + 1, edge_y), (card_x + w - 2, edge_y)],
+                fill=(160, 160, 160),
+            )
+    else:
+        # NEW top settled
+        frame.paste(new_top, (card_x, card_y))
+        # NEW bottom unfolds from hinge downward
+        fold_h = max(1, int(round(bot_h * t)))
+        shade = 0.25 + 0.75 * t  # dark at start → full at end
+        flap = _darken_image(_resize_card_half(new_bot, w, fold_h), shade)
+        frame.paste(flap, (card_x, card_y + mid))
+        draw.line(
+            [(card_x + 1, card_y + mid), (card_x + w - 2, card_y + mid)],
+            fill=seam_color,
+        )
+        if 0.05 < t < 0.9:
+            edge_y = card_y + mid + fold_h - 1
+            draw.line(
+                [(card_x + 1, edge_y), (card_x + w - 2, edge_y)],
+                fill=(140, 140, 140),
+            )
+
+    return frame
+
+
+def _flip_single_digit(base_face, old_face, new_face, card, steps_per_phase=8, delay=0.03):
+    """
+    Animate one digit card with a true split-flap flip (not a dissolve).
+    base_face is the current full panel (digits already updated stay as-is).
+    """
+    x, y, w, h = card["x"], card["y"], card["w"], card["h"]
+    old_card = old_face.crop((x, y, x + w, y + h))
+    new_card = new_face.crop((x, y, x + w, y + h))
+
+    # Phase 1 — top half of old digit falls
+    for i in range(1, steps_per_phase + 1):
+        t = i / float(steps_per_phase)
+        frame = _compose_digit_flip_frame(
+            base_face, old_card, new_card, x, y, phase=1, t=t
+        )
+        _present_flip_image(frame)
+        time.sleep(delay)
+
+    # Mid hold: top is blank/dark at hinge, bottom still old — then snap top to NEW
+    mid_face = base_face.copy()
+    mid = h // 2
+    # clear card
+    d = ImageDraw.Draw(mid_face)
+    d.rectangle([x, y, x + w - 1, y + h - 1], fill=(0, 0, 0), outline=(40, 40, 40))
+    mid_face.paste(new_card.crop((0, 0, w, mid)), (x, y))
+    mid_face.paste(old_card.crop((0, mid, w, h)), (x, y + mid))
+    d.line([(x + 1, y + mid), (x + w - 2, y + mid)], fill=(96, 96, 96))
+    _present_flip_image(mid_face)
+    time.sleep(delay * 0.6)
+
+    # Phase 2 — bottom half of new digit drops into place
+    # base for phase 2: top already new, bottom still old until flap covers it
+    base2 = mid_face
+    for i in range(1, steps_per_phase + 1):
+        t = i / float(steps_per_phase)
+        frame = _compose_digit_flip_frame(
+            base2, old_card, new_card, x, y, phase=2, t=t
+        )
+        _present_flip_image(frame)
+        time.sleep(delay)
+
+    # Settle: full new digit on this card, return updated full face
+    settled = base_face.copy()
+    settled.paste(new_card, (x, y))
+    _present_flip_image(settled)
+    return settled
+
+
+def _flip_clock_transition(old_image, new_image, old_layout, new_layout,
+                           steps_per_phase=8, delay=0.028):
+    """
+    Flip only digits that changed, left→right, each with a mechanical split-flap.
+    Never uses dissolve/fade transitions.
+    """
+    old_cards = old_layout.get("cards") or []
+    new_cards = new_layout.get("cards") or []
+    n = min(len(old_cards), len(new_cards))
+    if n == 0:
+        _present_flip_image(new_image)
+        return new_image
+
+    # Working face starts as the old full panel
+    face = old_image.copy()
+    flipped_any = False
+
+    for i in range(n):
+        oc = old_cards[i]
+        nc = new_cards[i]
+        if oc.get("ch") == nc.get("ch"):
+            continue
+        # Prefer geometry from new layout (same positions expected)
+        card = {
+            "ch": nc["ch"],
+            "x": nc["x"],
+            "y": nc["y"],
+            "w": nc["w"],
+            "h": nc["h"],
+        }
+        flipped_any = True
+        face = _flip_single_digit(
+            face, old_image, new_image, card,
+            steps_per_phase=steps_per_phase,
+            delay=delay,
+        )
+
+    if not flipped_any:
+        # Nothing changed (shouldn't happen) — hard cut, still no dissolve
+        _present_flip_image(new_image)
+        return new_image
+
+    _present_flip_image(new_image)
+    return new_image
+
+
+def DisplayFlipClock(StopEvent=None, RunMinutes=5):
+    """
+    1970s flip-card digital clock: white numerals on black cards with a
+    horizontal flip seam. When a digit changes it mechanically flips
+    (split-flap squash), never dissolves.
+    ClockStyle 6 entry point.
+    """
+    print(
+        f"[LEDarcade][DisplayFlipClock] PID {os.getpid()} — "
+        f"70s flip clock, white on black, mechanical flip, {RunMinutes} min"
+    )
+    ClearBigLED()
+    ClearBuffers()
+
+    image, layout = GenerateFlipClockImage(return_layout=True)
+    prev_image = image
+    prev_layout = layout
+    _present_flip_image(image)
+
+    last_minute = layout.get("time")
+    start_time = time.time()
+
+    try:
+        Done = False
+        while not Done:
+            if StopEvent and StopEvent.is_set():
+                print("[LEDarcade][DisplayFlipClock] Stop requested — exiting.")
+                Done = True
+                break
+
+            elapsed_minutes = (time.time() - start_time) / 60.0
+            if elapsed_minutes >= float(RunMinutes):
+                print(
+                    f"[LEDarcade][DisplayFlipClock] Duration reached "
+                    f"({RunMinutes} min) — exiting."
+                )
+                Done = True
+                break
+
+            now = datetime.now()
+            current_minute = now.strftime("%H:%M")
+            if current_minute != last_minute:
+                image, layout = GenerateFlipClockImage(
+                    Text=current_minute, return_layout=True
+                )
+                if last_minute is not None:
+                    try:
+                        prev_image = _flip_clock_transition(
+                            prev_image, image, prev_layout, layout,
+                            steps_per_phase=8,
+                            delay=0.028,
+                        )
+                    except Exception as e:
+                        print(f"[LEDarcade][DisplayFlipClock] flip error: {e}")
+                        traceback.print_exc()
+                        # Hard cut only — never dissolve
+                        _present_flip_image(image)
+                        prev_image = image
+                else:
+                    _present_flip_image(image)
+                    prev_image = image
+                prev_layout = layout
+                last_minute = current_minute
+            else:
+                _present_flip_image(prev_image)
+
+            # Poll often enough to catch the minute boundary quickly
+            time.sleep(0.2)
+
+    except KeyboardInterrupt:
+        try:
+            TheMatrix.Clear()
+        except Exception:
+            pass
 
 
 
@@ -18310,6 +18720,11 @@ def DisplayDigitalClock(
       BL.LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=StopEvent)        
       Done = True
 
+    # 1970s flip-card clock (white on black)
+    elif (ClockStyle == 6):
+      DisplayFlipClock(StopEvent, RunMinutes=RunMinutes)
+      Done = True
+
 
 
 
@@ -21063,6 +21478,8 @@ def ActivateRGBMatrix():
             options.rows = sim_h
         except ValueError:
             pass
+        # Desktop sim: always full output (gamma 100% / brightness 100)
+        options.brightness = 100
 
     HatWidth  = options.cols
     HatHeight = options.rows
@@ -21073,8 +21490,16 @@ def ActivateRGBMatrix():
     Canvas.Fill(0, 0, 0)
     ScreenArray = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
 
+    if DISPLAY_BACKEND == "sim":
+        try:
+            TheMatrix.brightness = 100
+        except Exception:
+            pass
+
     print(f"LED Matrix Brightness: {options.brightness}")
     print(f"LED Display backend: {DISPLAY_BACKEND} ({HatWidth}x{HatHeight})")
+    if DISPLAY_BACKEND == "sim":
+        print(f"LED Gamma: 100% (Gamma={Gamma})")
 
     print("LEDarcade initialized.")
 
@@ -21096,26 +21521,22 @@ def Initialize():
     print("🚀 LEDarcade Initialized")
     print("=" * 45)
 
-    #print("A retro-inspired LED matrix graphics engine.")
-    #print("Created by William McEvoy (@datagod) for Raspberry Pi systems.")
-    #print("Features:")
-    #print(" - Real-time graphics and animations")
-    #print(" - Flight tracking, gaming, and Twitch integrations")
-    #print(" - Supports 32x32, 32x64, 32x128 LED panel arrays")
-    #print(" - Easily extensible with sprite and animation APIs")
-    #print("-------------------------------------------------------------")
-    #print("Explore the pixel universe with LEDarcade!")
-    #print("=" * 65 + "\n")
-    #print("")
-    #print("")
-
-
-
-
+    # LEDsim / desktop: force gamma to 100% (multiplier 1.0). Palette colors use
+    # ApplyGamma(channel, Gamma); 1.0 leaves authored values unchanged.
+    if DISPLAY_BACKEND == "sim":
+        Gamma = 1.0
+        os.environ.setdefault("LEDARCADE_GAMMA", "1.0")
 
     ActivateRGBMatrix()
     if TheMatrix is None:
         raise RuntimeError("ERROR: TheMatrix failed to initialize. Check RGBMatrixOptions or matrix hardware connection.")
+
+    if DISPLAY_BACKEND == "sim":
+        Gamma = 1.0
+        try:
+            TheMatrix.brightness = 100
+        except Exception:
+            pass
 
 
 

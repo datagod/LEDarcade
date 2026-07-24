@@ -3,10 +3,21 @@ import LEDupdate
 from WeatherClock import DEFAULT_LOCATION
 from StockReport import LoadStockSymbols
 
-PANEL_VERSION = "1.5"
+PANEL_VERSION = "1.6"
 PANEL_TITLE = f"LED Commander Control Panel {PANEL_VERSION}"
 
 DEFAULT_GAME_DURATION = 10
+DEFAULT_CLOCK_DURATION = 10
+
+# Clock modes shown in a dedicated top-of-page section (easy to find)
+CLOCK_LAUNCHERS = [
+    ("showclock", "Digital Clock", []),
+    ("retrodigital", "Retro Digital", []),
+    ("analogclock", "Analog Clock", ["duration"]),
+    ("flipclock", "Flip Clock (70s)", ["duration"]),
+    ("stopclock", "Stop Clock", []),
+]
+
 # Games that default to play-until-game-over (duration 0)
 UNTIL_GAME_OVER_LAUNCHERS = {
     "launch_rallydot",
@@ -40,6 +51,7 @@ ACTION_LABELS = {
     "showtitlescreen": "Title Screen",
     "analogclock": "Analog Clock",
     "retrodigital": "Retro Digital",
+    "flipclock": "Flip Clock (70s)",
     "starrynightdisplaytext": "Starry Night Text",
     "launch_stockticker": "Stock Ticker",
     "launch_ledtv": "LED TV",
@@ -194,6 +206,20 @@ input[type="submit"]:hover {
     gap: 20px;
     margin-top: 12px;
 }
+.clocks-section {
+    grid-column: 1 / -1;
+}
+.clock-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-top: 12px;
+}
+.clock-card h3 {
+    margin-top: 0;
+    color: #0f0;
+    font-size: 0.95rem;
+}
 .game-note {
     font-size: 0.85em;
     color: #0a0;
@@ -280,6 +306,51 @@ def render_weather_section(default_location=DEFAULT_LOCATION):
                 </div>
                 <input type="submit" value="Weather Report">
             </form>
+        </div>
+    """
+
+
+def render_clocks_section(valid_actions):
+    """Dedicated clock controls near the top of the panel (includes Flip Clock)."""
+    cards = []
+    for action, title, default_fields in CLOCK_LAUNCHERS:
+        if action not in valid_actions:
+            continue
+        # Prefer field list from VALID_WEB_ACTIONS; fall back to defaults above
+        fields = list(valid_actions.get(action) or default_fields)
+        field_html = ""
+        for field in fields:
+            if field == "duration":
+                field_html += (
+                    f'<label>duration (min)'
+                    f'<input type="text" name="duration" value="{DEFAULT_CLOCK_DURATION}"></label>'
+                )
+            else:
+                field_html += (
+                    f'<label>{field}'
+                    f'<input type="text" name="{field}" value=""></label>'
+                )
+        cards.append(f"""
+            <div class="command-section clock-card">
+                <h3>{title}</h3>
+                <form class="command-form" action="/command" method="post">
+                    <input type="hidden" name="Action" value="{action}">
+                    {field_html}
+                    <input type="submit" value="Launch {title}">
+                </form>
+            </div>
+        """)
+
+    if not cards:
+        return ""
+
+    return f"""
+        <div class="command-section clocks-section">
+            <h2>Clocks</h2>
+            <p>Wall-clock modes for the panel. Flip Clock is the 1970s white-on-black split-flap style.</p>
+            <div class="clock-grid">
+                {"".join(cards)}
+            </div>
         </div>
     """
 
@@ -391,6 +462,7 @@ def render_homepage(valid_actions):
         <div class="commands-container">
     """
 
+    html += render_clocks_section(valid_actions)
     html += render_weather_section()
     html += render_stock_section()
     if "launch_ledtv" in valid_actions:
@@ -398,8 +470,13 @@ def render_homepage(valid_actions):
     html += render_games_section(valid_actions)
 
     game_actions = {action for action, _ in GAME_LAUNCHERS}
+    clock_actions = {action for action, _, _ in CLOCK_LAUNCHERS}
     for action, fields in valid_actions.items():
-        if action in ("weatherterminal", "stockterminal", "launch_ledtv") or action in game_actions:
+        if (
+            action in ("weatherterminal", "stockterminal", "launch_ledtv")
+            or action in game_actions
+            or action in clock_actions
+        ):
             continue
         label = _action_label(action)
         html += f'<div class="command-section"><h2>{label}</h2>'

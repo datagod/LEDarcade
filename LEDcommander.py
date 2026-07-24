@@ -118,6 +118,7 @@ VALID_WEB_ACTIONS = {
     ],
     "analogclock": [],
     "retrodigital": [],
+    "flipclock": ["duration"],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
     "launch_dotinvaders": ["duration"],
     "launch_defender": ["duration"],
@@ -388,6 +389,7 @@ def fallback_action_generator():
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_defender", "duration": 10},
         {"Action": "analogclock", "duration": 10 },
+        {"Action": "flipclock", "duration": 10 },
         {"Action": "weatherterminal"},
         {"Action": "stockterminal"},
 
@@ -635,6 +637,14 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "clock"
                 DisplayProcess = Process(target=ShowRetroDigital, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "flipclock":
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(target=ShowFlipClock, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1120,6 +1130,36 @@ def ShowRetroDigital(Command,StopEvent):
             AnimationDelay = AnimationDelay,
             RunMinutes     = RunMinutes,
             StopEvent      = StopEvent
+        )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
+
+def ShowFlipClock(Command, StopEvent):
+    """1970s flip-card clock — white digits on black (ClockStyle 6)."""
+    import LEDarcade as LED
+    LED.Initialize()
+
+    RunMinutes = Command.get("duration", 10)
+    try:
+        RunMinutes = float(RunMinutes)
+    except (TypeError, ValueError):
+        RunMinutes = 10
+
+    print(
+        f"[LEDcommander] Showing flip clock: Style=6, "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
+
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        LED.DisplayDigitalClock(
+            ClockStyle=6,
+            CenterHoriz=True,
+            v=1,
+            hh=24,
+            RunMinutes=RunMinutes,
+            StopEvent=StopEvent,
         )
     finally:
         _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)

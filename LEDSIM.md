@@ -84,8 +84,17 @@ Closing the window also stops LEDsim.
 | `LEDARCADE_SIM_SCALE` | Pixel scale (`1` = native; default `15`) |
 | `LEDARCADE_SIM_BORDERLESS` | `1` / `0` — borderless window (default `1`) |
 | `LEDARCADE_SIM_WIDTH` / `HEIGHT` | Panel size (must match launcher) |
-| `LEDARCADE_STREAM_MODE=0` | Full brightness (standalone) |
+| `LEDARCADE_STREAM_MODE=0` | Full matrix brightness (standalone) |
+| `LEDARCADE_GAMMA=1.0` | Color gamma **100%** (multiplier 1.0; set by LEDsim) |
 | `LEDARCADE_SKIP_BOOT_UPDATE=1` | Skip git boot update (set by LEDsim) |
+
+### Brightness / gamma on LEDsim
+
+LEDsim always runs at **full output**:
+
+- **Gamma** = `1.0` (100%) — no palette dimming via `ApplyGamma`
+- **Matrix brightness** = `100` (100%)
+- **Stream dimming** off (`LEDARCADE_STREAM_MODE=0`)
 
 ## Pi / hardware unchanged
 
