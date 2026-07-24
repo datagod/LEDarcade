@@ -8,6 +8,7 @@
 
 import copy
 import math
+import os
 import random
 import time
 
@@ -167,7 +168,8 @@ PLANET_MIN_RADIUS = 5
 PLANET_MAX_RADIUS = 15
 PLANET_APPEAR_INTERVAL = 20.0
 STAR_DIM_FACTOR = 0.7
-CLOCK_FONT_PATH = "/home/pi/LEDarcade/fonts/CHECKBK0.TTF"
+# Resolved via LEDarcade.ResolveFontPath when used; keep a portable default name
+CLOCK_FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "CHECKBK0.TTF")
 CLOCK_DIGIT_RGB = (48, 200, 140)
 CLOCK_SIZE_FACTOR = 0.7425
 CLOCK_RESPAWN_DELAY = 10.0
