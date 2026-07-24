@@ -1745,7 +1745,7 @@ class Bot(commands.Bot ):
     async def clock(self, ctx: commands.Context):
         await ctx.send(
             'Available commands: ?demotivate ?hello ?hug ?intro ?onair ?profile ?me '
-            '?retro ?starrynight ?taco ?time ?tv ?tv2-15 ?uptime ?viewers ?views ?who'
+            '?flip ?retro ?starrynight ?taco ?time ?tv ?tv2-15 ?uptime ?viewers ?views ?who'
         )
         time.sleep(4)
         await ctx.send(
@@ -1783,7 +1783,15 @@ class Bot(commands.Bot ):
         await self.Channel.send(message)
         CommandQueue.put({"Action": "retrodigital", "duration": 30 })
 
-    
+    #----------------------------------------
+    # FlipClock (1970s split-flap)          --
+    #----------------------------------------
+    @commands.command()
+    async def flip(self, ctx: commands.Context):
+        if SHOW_CHATBOT_MESSAGES == True:
+            await self.Channel.send("Flipping to the 1970s — split-flap clock for 5 minutes")
+        CommandQueue.put({"Action": "flipclock", "duration": 5})
+
     #----------------------------------------
     # Hug                                  --
     #----------------------------------------

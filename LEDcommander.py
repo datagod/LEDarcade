@@ -386,12 +386,11 @@ def fallback_action_generator():
         {"Action": "launch_pacdot", "duration": 5},
         {"Action": "retrodigital", "duration": 10},
         {"Action": "launch_dotzerk", "duration": 5},
-        {"Action": "retrodigital", "duration": 10},
+        {"Action": "launch_spaceexplorer", "duration": 10},
         {"Action": "launch_defender", "duration": 10},
         {"Action": "analogclock", "duration": 10 },
         {"Action": "flipclock", "duration": 10 },
         {"Action": "weatherterminal"},
-        {"Action": "stockterminal"},
 
         {"Action": "launch_dotinvaders", "duration": 10},
         {"Action": "retrodigital", "duration": 10},
