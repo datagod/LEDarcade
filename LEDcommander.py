@@ -111,6 +111,7 @@ VALID_WEB_ACTIONS = {
     "showclock": [],
     "stopclock": [],
     "stop": [],
+    "next": [],
     "showtitlescreen": [
         "BigText", "LittleText", "LittleTextRGB", "ScrollText", "ScrollTextRGB",
         "ScrollSleep", "DisplayTime", "ExitEffect", "LittleTextZoom",
@@ -551,8 +552,28 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "stopped"
                 continue
 
+            # Skip to next rotation item (idle fallback queue / playlist)
+            if Action == "next":
+                print(
+                    f"[LEDcommander] Next — ending '{CurrentDisplayMode}' "
+                    "and advancing playlist"
+                )
+                IsOnAirActive = False
+                IsStockTickerPinned = False
+                stop_current_display("next")
+                CurrentDisplayMode = None
+                try:
+                    nxt = next(FallbackGenerator)
+                    print(f"[LEDcommander] Next program: {nxt.get('Action', nxt)}")
+                    CommandQueue.put(nxt)
+                except Exception as NextErr:
+                    print(f"[LEDcommander] Next failed to pull fallback: {NextErr}")
+                continue
+
             # While On Air, hold the display until manual off or duration expiry.
-            if IsOnAirActive and Action not in ("showonair", "showonair_off", "stop", "stopclock", "quit"):
+            if IsOnAirActive and Action not in (
+                "showonair", "showonair_off", "stop", "stopclock", "next", "quit",
+            ):
                 print(f"[LEDcommander] OnAir active—ignoring command: {Action}")
                 continue
 
@@ -560,7 +581,7 @@ def Run(CommandQueue):
             if (IsStockTickerPinned
                     and Action not in (
                         "launch_stockticker", "showonair", "showonair_off",
-                        "quit", "stop", "stopclock",
+                        "quit", "stop", "stopclock", "next",
                     )):
                 print(f"[LEDcommander] Stock ticker pinned—ignoring command: {Action}")
                 continue

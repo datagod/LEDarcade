@@ -149,16 +149,84 @@ import gc
 import random
 import os
 
-from configparser import SafeConfigParser
+try:
+    from configparser import SafeConfigParser  # Python < 3.12
+except ImportError:
+    from configparser import ConfigParser as SafeConfigParser  # Python 3.12+
 import sys
 
 #to help with debugging
 import inspect
 
+# Repo root (directory containing this file) — portable fonts/images on Pi and Windows
+_LEDARCADE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-#RGB Matrix and graphics
-from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+def ResolveAssetPath(*parts):
+    """Join path parts under the LEDarcade install directory."""
+    return os.path.join(_LEDARCADE_DIR, *parts)
+
+
+def ResolveFontPath(filename_or_path):
+    """
+    Resolve a font file for Pi and Windows.
+    Accepts a bare filename, a path under fonts/, or a legacy absolute Pi path.
+    Falls back to other known locations if the preferred file is missing.
+    """
+    if not filename_or_path:
+        filename_or_path = "CHECKBK0.TTF"
+    # Strip legacy absolute prefixes
+    legacy_prefixes = (
+        "/home/pi/LEDarcade/fonts/",
+        "/home/pi/LEDarcade/",
+    )
+    path = filename_or_path.replace("\\", "/")
+    for prefix in legacy_prefixes:
+        if path.startswith(prefix):
+            path = path[len(prefix):]
+            break
+    # If still absolute and exists, use it
+    if os.path.isabs(filename_or_path) and os.path.isfile(filename_or_path):
+        return filename_or_path
+    # Basename under fonts/
+    base = os.path.basename(path)
+    candidates = [
+        ResolveAssetPath("fonts", base),
+        ResolveAssetPath(path) if not os.path.isabs(path) else path,
+        filename_or_path,
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    # Last resort: any CHECKBK0 / Anton in fonts/
+    for fallback in ("CHECKBK0.TTF", "Anton-Regular.ttf", "BebasNeue-Regular.ttf"):
+        fb = ResolveAssetPath("fonts", fallback)
+        if os.path.isfile(fb):
+            return fb
+    return candidates[0]
+
+
+# ---------------------------------------------------------------------------
+# RGB Matrix backend: hardware (Pi) or software sim (Windows / LEDsim)
+# ---------------------------------------------------------------------------
+# LEDARCADE_DISPLAY=sim  → ledsim.rgbmatrix_compat (desktop window via LEDsim)
+# LEDARCADE_DISPLAY=hardware or unset → real rpi-rgb-led-matrix bindings
+#
+# When sim is active we also register sys.modules["rgbmatrix"] so games that
+# do `from rgbmatrix import graphics` keep working without code changes.
+# ---------------------------------------------------------------------------
+_DISPLAY_MODE = os.environ.get("LEDARCADE_DISPLAY", "hardware").strip().lower()
+if _DISPLAY_MODE in ("sim", "simulate", "simulator", "software", "window"):
+    from ledsim import rgbmatrix_compat as _rgbmatrix_backend
+    sys.modules.setdefault("rgbmatrix", _rgbmatrix_backend)
+    RGBMatrix = _rgbmatrix_backend.RGBMatrix
+    RGBMatrixOptions = _rgbmatrix_backend.RGBMatrixOptions
+    graphics = _rgbmatrix_backend.graphics
+    DISPLAY_BACKEND = "sim"
+else:
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+    DISPLAY_BACKEND = "hardware"
+
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
 
 
@@ -187,8 +255,11 @@ import subprocess
 import traceback
 #import unicornhathd as unicorn
 
-#For capturing keypresses
-import curses
+#For capturing keypresses (optional — not available on all Windows installs)
+try:
+    import curses
+except ImportError:
+    curses = None
 
 #Crypto
 #from pycoingecko import CoinGeckoAPI
@@ -1021,7 +1092,7 @@ def ShowOnAir(StopEvent=None,duration=60):
         draw = ImageDraw.Draw(image)
 
         #draw shadow
-        font = ImageFont.truetype("/home/pi/LEDarcade/fonts/Anton-Regular.ttf", 21)
+        font = ImageFont.truetype(ResolveFontPath("Anton-Regular.ttf"), 21)
         bbox = draw.textbbox((0, 0), msg, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
@@ -1031,7 +1102,7 @@ def ShowOnAir(StopEvent=None,duration=60):
 
 
         #draw text
-        font = ImageFont.truetype("/home/pi/LEDarcade/fonts/Anton-Regular.ttf", 20)
+        font = ImageFont.truetype(ResolveFontPath("Anton-Regular.ttf"), 20)
         # Measure text size and center it
         bbox = draw.textbbox((0, 0), msg, font=font)
         text_width = bbox[2] - bbox[0]
@@ -1094,7 +1165,7 @@ def DisplayCustomFontClock(StopEvent=None, RunMinutes=5):
         draw.text((x, y), current_minute, font=font, fill=(0, 200, 0))  # Red
         return image
         
-    font = ImageFont.truetype("/home/pi/LEDarcade/fonts/CHECKBK0.TTF", 22)
+    font = ImageFont.truetype(ResolveFontPath("CHECKBK0.TTF"), 22)
 
     # Display image using LEDarcade canvas
     image = MakeTimeImage()
@@ -1149,7 +1220,7 @@ def DisplayCustomFontClock(StopEvent=None, RunMinutes=5):
 
 
 
-def GenerateClockImage(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF", FontSize=12, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0)):
+def GenerateClockImage(FontPath=None, FontSize=12, TextColor=(0, 200, 0), BackgroundColor=(0, 0, 0)):
     """
     Generates a PIL image of the current time in HH:MM format using the given font and size.
 
@@ -1165,8 +1236,8 @@ def GenerateClockImage(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF", FontSiz
     now = datetime.now()
     time_str = now.strftime("%H:%M")
 
-    # Load font
-    font = ImageFont.truetype(FontPath, FontSize)
+    # Load font (portable Pi / Windows path)
+    font = ImageFont.truetype(ResolveFontPath(FontPath), FontSize)
 
     # Create temporary image to calculate text size
     temp_img = Image.new("RGB", (1, 1))
@@ -1190,7 +1261,7 @@ def GenerateClockImage(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF", FontSiz
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 
-def GenerateClockImageWithFixedTiles(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0.TTF",
+def GenerateClockImageWithFixedTiles(FontPath=None,
                                      FontSize=12,
                                      TextColor=(0, 200, 0),
                                      BackgroundColor=(0, 0, 0),
@@ -1201,7 +1272,7 @@ def GenerateClockImageWithFixedTiles(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0
     padded into fixed-size tiles. The colon ':' uses a half-width tile.
 
     Parameters:
-        FontPath (str): Path to .ttf font file.
+        FontPath (str): Path to .ttf font file (or bare name under fonts/).
         FontSize (int): Font size.
         TextColor (tuple): RGB color for the text.
         BackgroundColor (tuple): RGB color for padding.
@@ -1215,13 +1286,14 @@ def GenerateClockImageWithFixedTiles(FontPath="/home/pi/LEDarcade/fonts/CHECKBK0
     # Step 1: Determine time string
     time_str = Text if Text else datetime.now().strftime("%H:%M")
 
-    # Step 2: Load font
-    font_key = (FontPath, FontSize)
+    # Step 2: Load font (portable Pi / Windows path)
+    resolved_font = ResolveFontPath(FontPath)
+    font_key = (resolved_font, FontSize)
     if not hasattr(GenerateClockImageWithFixedTiles, "_font_cache"):
         GenerateClockImageWithFixedTiles._font_cache = {}
 
     if font_key not in GenerateClockImageWithFixedTiles._font_cache:
-        GenerateClockImageWithFixedTiles._font_cache[font_key] = ImageFont.truetype(FontPath, FontSize)
+        GenerateClockImageWithFixedTiles._font_cache[font_key] = ImageFont.truetype(resolved_font, FontSize)
 
     font = GenerateClockImageWithFixedTiles._font_cache[font_key]
 
@@ -12319,7 +12391,8 @@ def SaveConfigData():
   #we save the time to file as 5 minutes in future, which allows us to unplug the device temporarily
   #the time might be off, but it might be good enough
   
-  AdjustedTime = (datetime.now() + timedelta(minutes=5)).strftime('%k:%M:%S')
+  # %H is portable (Windows has no %k space-padded hour from glibc)
+  AdjustedTime = (datetime.now() + timedelta(minutes=5)).strftime('%H:%M:%S')
 
   
   if (os.path.exists(ConfigFileName)):
@@ -13204,6 +13277,26 @@ def CreateShortWordSprite(ShortWord):
   
  
   
+# Unicode → ASCII for the 5x5 banner font (no fancy dashes/quotes in the sprite set).
+# Without this, messages with em dashes etc. print "Character not found" and show '?'.
+_BANNER_CHAR_FOLD = str.maketrans({
+  "\u2014": "-",   # em dash —
+  "\u2013": "-",   # en dash –
+  "\u2012": "-",   # figure dash
+  "\u2010": "-",   # hyphen
+  "\u2011": "-",   # non-breaking hyphen
+  "\u2212": "-",   # minus sign
+  "\u2026": ".",   # ellipsis …
+  "\u00B7": ".",   # middle dot
+  "\u2018": "'",   # ‘
+  "\u2019": "'",   # ’
+  "\u201C": '"',   # “
+  "\u201D": '"',   # ”
+  "\u00A0": " ",   # nbsp
+  "\u2022": "*",   # bullet
+})
+
+
 def CreateBannerSprite(TheMessage):
   #We need to dissect the message and build our banner sprite one letter at a time
   #We need to initialize the banner sprite object first, so we pick the first letter
@@ -13213,7 +13306,7 @@ def CreateBannerSprite(TheMessage):
         TheMessage = "UNKNOWN"
     
 
-  TheMessage = TheMessage.upper()
+  TheMessage = str(TheMessage).translate(_BANNER_CHAR_FOLD).upper()
   
   if (len(TheMessage) == 1):
     BannerSprite = Sprite(0,5,0,0,0,[0,0,0,0,0])
@@ -13795,6 +13888,8 @@ def GetKey(stdscr):
 
 def PollKeyboard():
   Key = ""
+  if curses is None:
+    return Key
   curses.filter()
   stdscr = curses.initscr()
   curses.noecho()
@@ -13830,6 +13925,8 @@ def GetKeyInt(stdscr):
   
 def PollKeyboardInt():
   Key = -1
+  if curses is None:
+    return Key
   stdscr = curses.initscr()
   curses.noecho()
   Key = curses.wrapper(GetKeyInt)
@@ -20949,6 +21046,24 @@ def ActivateRGBMatrix():
     options.disable_hardware_pulsing = False
     options.drop_privileges = False                 # Avoid permission issues
 
+    # Optional: honor ClockConfig.ini [MATRIX] size if LoadConfigData set them
+    # (sim and hardware both benefit from a single size source of truth)
+    if HatWidth and HatHeight and HatWidth >= 16 and HatHeight >= 16:
+        # LoadConfigData may have left defaults (32) or overrides; hardware
+        # historically forced 64x32 via options — keep that default when still
+        # at the module default of 32x32 unless env overrides for sim.
+        pass
+
+    # LEDsim can override panel size via env (must match shared buffer)
+    if DISPLAY_BACKEND == "sim":
+        try:
+            sim_w = int(os.environ.get("LEDARCADE_SIM_WIDTH", options.cols))
+            sim_h = int(os.environ.get("LEDARCADE_SIM_HEIGHT", options.rows))
+            options.cols = sim_w
+            options.rows = sim_h
+        except ValueError:
+            pass
+
     HatWidth  = options.cols
     HatHeight = options.rows
 
@@ -20959,6 +21074,7 @@ def ActivateRGBMatrix():
     ScreenArray = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
 
     print(f"LED Matrix Brightness: {options.brightness}")
+    print(f"LED Display backend: {DISPLAY_BACKEND} ({HatWidth}x{HatHeight})")
 
     print("LEDarcade initialized.")
 

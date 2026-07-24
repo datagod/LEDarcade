@@ -36,6 +36,7 @@ ACTION_LABELS = {
     "showclock": "Digital Clock",
     "stopclock": "Stop Clock",
     "stop": "Stop Display",
+    "next": "Next Program",
     "showtitlescreen": "Title Screen",
     "analogclock": "Analog Clock",
     "retrodigital": "Retro Digital",
