@@ -64,12 +64,19 @@ from numba import njit, prange
 
 
 import sys
-import select
-import tty
-import termios
 
-
-
+# Terminal raw keyboard is Unix-only (termios). On Windows / LEDsim spawn
+# children there is no termios — skip and treat keyboard as unavailable.
+try:
+    import select
+    import tty
+    import termios
+    _HAS_TERMIOS = True
+except ImportError:
+    select = None  # type: ignore
+    tty = None  # type: ignore
+    termios = None  # type: ignore
+    _HAS_TERMIOS = False
 
 
 # Configuration
@@ -136,18 +143,28 @@ def RunSimulation(Duration=5,StopEvent=None):
 
 
     def get_keypress():
-        dr, _, _ = select.select([sys.stdin], [], [], 0)
-        if dr:
-            return sys.stdin.read(1)
+        # LEDsim / Windows: no termios; keyboard zoom keys disabled
+        if not _HAS_TERMIOS or select is None:
+            return None
+        try:
+            if not sys.stdin.isatty():
+                return None
+            dr, _, _ = select.select([sys.stdin], [], [], 0)
+            if dr:
+                return sys.stdin.read(1)
+        except Exception:
+            return None
         return None
 
-    # Set terminal to raw mode to capture single keypresses
-    # but only if running from an actual terminal, and not called from a process such as LEDcommander
-    if sys.stdin.isatty():
-        old_settings = termios.tcgetattr(sys.stdin)
-        tty.setcbreak(sys.stdin.fileno())
-    else:
-        old_settings = None
+    # Set terminal to raw mode only on a real Unix TTY (not LEDcommander / Windows)
+    old_settings = None
+    if _HAS_TERMIOS and termios is not None and tty is not None:
+        try:
+            if sys.stdin.isatty():
+                old_settings = termios.tcgetattr(sys.stdin)
+                tty.setcbreak(sys.stdin.fileno())
+        except Exception:
+            old_settings = None
 
 
 
@@ -349,7 +366,13 @@ def RunSimulation(Duration=5,StopEvent=None):
 
 
 
-    def draw_sun():
+    def _put_pixel(x, y, r, g, b, canvas):
+        """Trail buffer + canvas (LEDsim needs canvas for SwapOnVSync)."""
+        if 0 <= x < HatWidth and 0 <= y < HatHeight:
+            LED.ScreenArray[y][x] = (int(r), int(g), int(b))
+            canvas.SetPixel(int(x), int(y), int(r), int(g), int(b))
+
+    def draw_sun(canvas):
         global SunMass, SunX, SunY, zoom
         radius = compute_sun_radius(SunMass)
         offset_x = SunX - (HatWidth / 2) * zoom
@@ -358,14 +381,16 @@ def RunSimulation(Duration=5,StopEvent=None):
         cx = int((SunX - offset_x) / zoom)
         cy = int((SunY - offset_y) / zoom)
         screen_radius = max(1, int(radius / zoom))
+        # Guaranteed visible core on LEDsim even when zoom is huge
+        screen_radius = max(screen_radius, 1)
 
+        sr, sg, sb = SunRGB
         for dx in range(-screen_radius, screen_radius + 1):
             for dy in range(-screen_radius, screen_radius + 1):
                 if dx * dx + dy * dy <= screen_radius * screen_radius:
                     x = cx + dx
                     y = cy + dy
-                    if 0 <= x < HatWidth and 0 <= y < HatHeight:
-                        LED.setpixel(x, y, *SunRGB)
+                    _put_pixel(x, y, sr, sg, sb, canvas)
 
 
 
@@ -492,17 +517,19 @@ def RunSimulation(Duration=5,StopEvent=None):
             print("Spawn kick applied")  # Optional debug
 
 
-    def draw_particles():
+    def draw_particles(canvas):
         offset_x = SunX - (HatWidth / 2) * zoom
         offset_y = SunY - (HatHeight / 2) * zoom
         for i in range(particles.shape[0]):
             if not active_mask[i]:
                 continue
-            x = int(round((particles[i,0] - offset_x) / zoom))
-            y = int(round((particles[i,1] - offset_y) / zoom))
-            r, g, b = (255,255,255) if particles[i,8] > 0 else tuple(map(int, particles[i,5:8]))
-
-            LED.setpixel(x, y, r, g, b)
+            x = int(round((particles[i, 0] - offset_x) / zoom))
+            y = int(round((particles[i, 1] - offset_y) / zoom))
+            if particles[i, 8] > 0:
+                r, g, b = 255, 255, 255
+            else:
+                r, g, b = int(particles[i, 5]), int(particles[i, 6]), int(particles[i, 7])
+            _put_pixel(x, y, r, g, b, canvas)
 
 
 
@@ -597,17 +624,35 @@ def RunSimulation(Duration=5,StopEvent=None):
 
 
 
+    print("[GravitySim] Warming physics (Numba JIT first run can take a while)…", flush=True)
+    t_jit = time.time()
     for _ in range(NumParticles):
         spawn_particle()
+    # Touch update once so compile cost is paid before the frame loop
+    try:
+        _sr = compute_sun_radius(SunMass)
+        update_particles(
+            particles, active_mask, G, SunMass, SunX, SunY, TimeStep,
+            MaxSpeed, SimWidth, SimHeight, OffscreenLimit, _sr * _sr,
+            InterParticleForceEnabled,
+        )
+    except Exception as exc:
+        print(f"[GravitySim] JIT warm note: {exc}", flush=True)
+    print(f"[GravitySim] Physics ready ({time.time() - t_jit:.1f}s).", flush=True)
 
     frame = 0
     last_time = time.time()
     fps_counter = 0
 
     Done = False
-    
-    
+
     start_time = time.time()
+    print(
+        f"[GravitySim] Running Duration={Duration} min "
+        f"panel={HatWidth}x{HatHeight} StopEvent="
+        f"{'yes' if StopEvent is not None else 'no'}",
+        flush=True,
+    )
     try:
         while Done == False:
         
@@ -635,31 +680,32 @@ def RunSimulation(Duration=5,StopEvent=None):
                     manual_zoom_level = min(MaxZoom, 2 ** (level - 1))  # 1→1, 2→2, 3→4, ..., 9→256
                     manual_zoom_active = True
 
+            # Canvas path required on LEDsim: setpixel+SwapOnVSync(Canvas) blanks the panel
+            canvas = LED.Canvas
+            if canvas is None:
+                canvas = LED.TheMatrix.CreateFrameCanvas()
+                LED.Canvas = canvas
 
             for v in range(HatHeight):
                 for h in range(HatWidth):
-                    r,g,b = LED.ScreenArray[v][h]
-                    LED.setpixel(h, v, max(0,r-TrailFade), max(0,g-TrailFade), max(0,b-TrailFade))
-
-            offset_x = SunX - (HatWidth / 2) * zoom
-            offset_y = SunY - (HatHeight / 2) * zoom
-            draw_sun()
+                    r, g, b = LED.ScreenArray[v][h]
+                    nr = max(0, int(r) - TrailFade)
+                    ng = max(0, int(g) - TrailFade)
+                    nb = max(0, int(b) - TrailFade)
+                    LED.ScreenArray[v][h] = (nr, ng, nb)
+                    canvas.SetPixel(h, v, nr, ng, nb)
 
             if frame % SpawnInterval == 0:
                 spawn_particle()
 
-            
-            # Replace update_particles(...) with two calls:
             sun_radius = compute_sun_radius(SunMass)
             sun_radius_sq = sun_radius * sun_radius
-
 
             mass_gain = update_particles(
                 particles, active_mask, G, SunMass, SunX, SunY, TimeStep,
                 MaxSpeed, SimWidth, SimHeight, OffscreenLimit, sun_radius_sq,
-                InterParticleForceEnabled  )
-
-
+                InterParticleForceEnabled,
+            )
 
             min_x = -SimWidth * OffscreenLimit
             max_x = SimWidth * (1 + OffscreenLimit)
@@ -671,16 +717,15 @@ def RunSimulation(Duration=5,StopEvent=None):
                 particles, active_mask, SunX, SunY,
                 SimWidth, SimHeight, OffscreenLimit,
                 sun_radius_sq,
-                min_x, max_x, min_y, max_y, max_radius_sq
+                min_x, max_x, min_y, max_y, max_radius_sq,
             )
             SunMass += mass_gain
 
-
-
             merge_particles_grid(particles, active_mask, MergeDistance, SimWidth, SimHeight)
 
-            draw_particles()
-            LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+            draw_sun(canvas)
+            draw_particles(canvas)
+            LED.Canvas = LED.TheMatrix.SwapOnVSync(canvas)
 
             max_distance = compute_max_distance(particles, active_mask, SunX, SunY)
             target_radius = max(HatWidth, HatHeight) * 0.45
@@ -703,8 +748,16 @@ def RunSimulation(Duration=5,StopEvent=None):
 
 
     finally:
-        if old_settings and sys.stdin.isatty():
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+        if (
+            _HAS_TERMIOS
+            and termios is not None
+            and old_settings is not None
+        ):
+            try:
+                if sys.stdin.isatty():
+                    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            except Exception:
+                pass
 
 
 

@@ -1810,13 +1810,14 @@ def create_star_layers(progress_cb=None):
     _add_far_stars(far_background, progress_cb=progress_cb)
     _tick()
 
-    # Background: nebula, gas giants, asteroid + metal ship clocks, then brighter stars in gaps.
+    # Background: nebula, gas giants (with fixed clocks), stars.
+    # Asteroid + metal-ship clocks float as free objects (not stamped here).
     _add_nebula_patches(background, count=8)
     _tick()
     gas_giants = _add_gas_giants(background)
     _tick()
-    clock_stations = _add_clock_stations(background)
-    clock_stations.extend(_gas_giant_clock_stations(gas_giants))
+    clock_stations = _gas_giant_clock_stations(gas_giants)
+    floating_clocks = create_floating_clocks()
     _tick()
     _add_background_stars(background, progress_cb=progress_cb)
     _tick()
@@ -1835,7 +1836,10 @@ def create_star_layers(progress_cb=None):
         )
         _tick()
 
-    return far_background, background, middleground, foreground, clock_stations, gas_giants
+    return (
+        far_background, background, middleground, foreground,
+        clock_stations, gas_giants, floating_clocks,
+    )
 
 
 def _nebula_blob_extent(blobs):
@@ -1998,6 +2002,12 @@ ASTEROID_CLOCK_COUNT = 8
 METAL_SHIP_CLOCK_COUNT = 5  # map center + 4 outposts
 ASTEROID_CLOCK_SIZE = 16
 ASTEROID_CLOCK_COLOR = (142, 132, 118)
+# Floating clock rocks (not breakable) — slow drift; ship visits to show the time
+CLOCK_ROCK_MIN_SPEED = 0.03
+CLOCK_ROCK_MAX_SPEED = 0.09
+CLOCK_VISIT_INTERVAL_SEC = 28.0   # how often to go check a clock
+CLOCK_VISIT_TIMEOUT_SEC = 22.0    # give up if we cannot reach it
+CLOCK_VISIT_APPROACH_DIST = 40    # slow down so HH:MM is readable
 METAL_HIGHLIGHT = (168, 172, 182)
 METAL_FACE = (96, 100, 112)
 METAL_SHADOW = (42, 45, 54)
@@ -2106,23 +2116,183 @@ def _paint_metal_ship_clock(layer, cx, cy):
             layer.map[y][x] = rgb
 
 
-def _add_clock_stations(layer):
-    """Paint asteroid clocks and metal spaceship clocks on the background layer."""
-    stations = []
-    lumps = _clock_asteroid_lumps()
-    for cx, cy in _asteroid_clock_spawn_sites(layer.width, layer.height):
-        _paint_asteroid_to_layer(
-            layer, cx, cy, ASTEROID_CLOCK_SIZE, ASTEROID_CLOCK_COLOR, lumps,
-            dim_factor=1.0,
-        )
-        stations.append({
-            "cx": cx, "cy": cy, "kind": "asteroid", "size": ASTEROID_CLOCK_SIZE,
-        })
+def _metal_ship_sprite_pixels():
+    """Precomputed metal hull pixels relative to center (for floating ships)."""
+    pixels = []
+    for dy in range(-13, 12):
+        for dx in range(-10, 11):
+            rgb = _metal_ship_clock_rgb(dx, dy)
+            if rgb is not None:
+                pixels.append((dx, dy, rgb))
+    return pixels
 
-    for cx, cy in _metal_ship_clock_spawn_sites(layer.width, layer.height):
-        _paint_metal_ship_clock(layer, cx, cy)
-        stations.append({"cx": cx, "cy": cy, "kind": "metal_ship"})
-    return stations
+
+_METAL_SHIP_SPRITE = None
+
+
+def _get_metal_ship_sprite():
+    global _METAL_SHIP_SPRITE
+    if _METAL_SHIP_SPRITE is None:
+        _METAL_SHIP_SPRITE = _metal_ship_sprite_pixels()
+    return _METAL_SHIP_SPRITE
+
+
+class FloatingClock:
+    """
+    Free-floating clock rock or metal ship — drifts on the world map.
+
+    Not breakable / not tractor targets. Ship AI steers around them.
+    """
+
+    def __init__(self, h, v, kind="asteroid"):
+        self.h = float(h)
+        self.v = float(v)
+        self.kind = kind
+        self.alive = True
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(CLOCK_ROCK_MIN_SPEED, CLOCK_ROCK_MAX_SPEED)
+        self.dx = math.cos(angle) * speed
+        self.dy = math.sin(angle) * speed
+        if kind == "asteroid":
+            self.size = ASTEROID_CLOCK_SIZE
+            self.radius = float(ASTEROID_CLOCK_SIZE) * 0.85
+            self.hull_pixels = _build_asteroid_sprite_pixels(
+                self.size, ASTEROID_CLOCK_COLOR, _clock_asteroid_lumps(), 1.0,
+            )
+            self.label_rgb = TIME_LABEL_RGB
+            self.back_rgb = TIME_BACK_RGB
+        else:
+            self.size = 12
+            self.radius = 11.0
+            self.hull_pixels = list(_get_metal_ship_sprite())
+            self.label_rgb = TIME_LABEL_RGB
+            self.back_rgb = TIME_BACK_RGB
+        self.hhmm = None
+        self.time_pixels = []  # (dx, dy, rgb) relative to center
+        self.last_visited_time = 0.0  # wall time of last ship bump (for visit rotation)
+
+    def move(self):
+        self.h = (self.h + self.dx) % LAYER_WIDTH
+        self.v = (self.v + self.dy) % LAYER_HEIGHT
+
+    def set_time(self, hhmm):
+        if hhmm == self.hhmm:
+            return
+        self.hhmm = hhmm
+        self.time_pixels = _build_time_overlay_pixels(
+            hhmm, self.label_rgb, self.back_rgb,
+        )
+
+    def draw(self, canvas, fh, fy):
+        sh, sv = world_to_screen(self.h, self.v, fh, fy)
+        ch = int(round(sh))
+        cv = int(round(sv))
+        for i, j, rgb in self.hull_pixels:
+            px, py = ch + i, cv + j
+            if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                canvas.SetPixel(px, py, *rgb)
+        for i, j, rgb in self.time_pixels:
+            px, py = ch + i, cv + j
+            if 0 <= px < WIDTH and 0 <= py < HEIGHT:
+                canvas.SetPixel(px, py, *rgb)
+
+    def touches_ship_pixels(self, fh, fy, ship_pixels):
+        sh, sv = world_to_screen(self.h, self.v, fh, fy)
+        ch = int(round(sh))
+        cv = int(round(sv))
+        for i, j, _ in self.hull_pixels:
+            if (ch + i, cv + j) in ship_pixels:
+                return True
+        return False
+
+
+def _build_time_overlay_pixels(hhmm, label_rgb=None, back_rgb=None):
+    """Relative (dx,dy,rgb) pixels for HH:MM centered on a floating clock."""
+    digits_rgb = label_rgb or TIME_LABEL_RGB
+    bg_rgb = back_rgb or TIME_BACK_RGB
+    time_sprite = _build_hhmm_sprite(hhmm)
+    tw, th = time_sprite.width, time_sprite.height
+    sh = int(round(-tw / 2))
+    sv = int(round(-th / 2))
+    pixels = []
+    pad_h, pad_v = TIME_BACK_PAD_H, TIME_BACK_PAD_V
+    for py in range(sv - pad_v, sv + th + pad_v):
+        for px in range(sh - pad_h, sh + tw + pad_h):
+            pixels.append((px, py, bg_rgb))
+    grid = _sprite_pixel_grid(time_sprite)
+    for count in range(tw * th):
+        if not grid[count]:
+            continue
+        y, x = divmod(count, tw)
+        pixels.append((sh + x, sv + y, digits_rgb))
+    return pixels
+
+
+def create_floating_clocks():
+    """8 asteroid clocks + 5 metal ship clocks as free-drifting objects."""
+    clocks = []
+    for cx, cy in _asteroid_clock_spawn_sites(LAYER_WIDTH, LAYER_HEIGHT):
+        clocks.append(FloatingClock(cx, cy, kind="asteroid"))
+    for cx, cy in _metal_ship_clock_spawn_sites(LAYER_WIDTH, LAYER_HEIGHT):
+        clocks.append(FloatingClock(cx, cy, kind="metal_ship"))
+    return clocks
+
+
+def update_floating_clocks(floating_clocks, hhmm=None):
+    for clock in floating_clocks:
+        clock.move()
+        if hhmm is not None:
+            clock.set_time(hhmm)
+
+
+def draw_floating_clocks(canvas, floating_clocks, fh, fy):
+    for clock in floating_clocks:
+        clock.draw(canvas, fh, fy)
+    return canvas
+
+
+def nearest_floating_clock(floating_clocks, fh, fy):
+    """Closest floating clock rock/ship to the player."""
+    best = None
+    best_dist = float("inf")
+    for clock in floating_clocks:
+        dist = distance_to_world_point(fh, fy, clock.h, clock.v)
+        if dist < best_dist:
+            best_dist = dist
+            best = clock
+    return best, best_dist
+
+
+def pick_clock_visit_target(floating_clocks, fh, fy):
+    """
+    Prefer the least-recently-visited clock; break ties by distance.
+    Ensures the ship cycles through clocks so viewers can read the time.
+    """
+    if not floating_clocks:
+        return None
+    return min(
+        floating_clocks,
+        key=lambda c: (
+            getattr(c, "last_visited_time", 0.0),
+            distance_to_world_point(fh, fy, c.h, c.v),
+        ),
+    )
+
+
+def floating_clocks_touching_ship(floating_clocks, fh, fy):
+    touching = []
+    for clock in floating_clocks:
+        if clock.touches_ship_pixels(fh, fy, _SHIP_PIXELS):
+            touching.append(clock)
+    return touching
+
+
+def bounce_away_from_point(ship_angle, ship_vel_h, ship_vel_v, fh, fy, wh, wv):
+    """Soft bounce away from a world point after a clock visit bump."""
+    away = angle_toward_world_point(fh, fy, wh, wv) + math.pi
+    speed = max(0.35, math.hypot(ship_vel_h, ship_vel_v) * SHIP_BOUNCE_DAMPING)
+    speed = min(MAX_SHIP_SPEED, speed + 0.4)
+    return away % (2 * math.pi), math.cos(away) * speed, math.sin(away) * speed
 
 
 def _build_hhmm_sprite(hhmm):
@@ -3863,13 +4033,24 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
 
     # Pump once so the matrix never sits on a frozen/black frame
     _progress()
-    far_background, background, middleground, foreground, clock_stations, gas_giants = (
-        create_star_layers(progress_cb=_progress)
-    )
+    (
+        far_background, background, middleground, foreground,
+        clock_stations, gas_giants, floating_clocks,
+    ) = create_star_layers(progress_cb=_progress)
     _progress()
     clock_minute = int(time.time()) // 60
     display_time = time.strftime("%H:%M", time.localtime())
+    # Gas-giant clocks stay on the background layer; rocks/ships float free
     update_clock_times_on_layer(background, clock_stations, display_time)
+    for _fc in floating_clocks:
+        _fc.set_time(display_time)
+    print(
+        f"[SpaceExplorer] Floating clocks: "
+        f"{sum(1 for c in floating_clocks if c.kind == 'asteroid')} rocks + "
+        f"{sum(1 for c in floating_clocks if c.kind == 'metal_ship')} ships "
+        f"(ship visits/bumps to show the time)",
+        flush=True,
+    )
     _progress()
     foreground_asteroids = create_all_foreground_asteroids(fh=0, fy=0)
     _progress()
@@ -3910,6 +4091,10 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
     ufo_chain_engaged = False
     thrusting = False
     cruise_index = nearest_gas_giant_index(0, 0, gas_giants) if gas_giants else 0
+    # Clock visit: approach → bump (readable HH:MM) → bounce off → resume hunt
+    clock_visit_target = None
+    clock_visit_started_at = 0.0
+    clock_visit_done_at = 0.0
     start_time = time.time()
     last_physics_time = start_time
 
@@ -3977,12 +4162,37 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                 and hunt_mother is not None
                 and crystal_score >= MOTHER_CRYSTAL_HUNT_MIN
             )
+
+            # Time-check runs: go near a floating clock, bump it, then move on
+            clock_visit = False
+            if (
+                not recoiling
+                and not chain_escape
+                and not tractor_locked
+                and floating_clocks
+            ):
+                if clock_visit_target is not None:
+                    clock_visit = True
+                elif (now - clock_visit_done_at) >= CLOCK_VISIT_INTERVAL_SEC:
+                    clock_visit_target = pick_clock_visit_target(
+                        floating_clocks, fh, fy,
+                    )
+                    if clock_visit_target is not None:
+                        clock_visit = True
+                        clock_visit_started_at = now
+                        print(
+                            f"[SpaceExplorer] Visiting {clock_visit_target.kind} "
+                            f"clock for time check…",
+                            flush=True,
+                        )
+
             cruise_mode = (
                 not recoiling
                 and not chain_escape
                 and not mother_hunt
                 and not crystal_hunt
                 and not tractor_locked
+                and not clock_visit
                 and gas_giants
                 and not rocks_nearby(fh, fy, hunt_target)
             )
@@ -4025,6 +4235,27 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                 turbo_boost, turbo_active_until, turbo_cooldown_until = apply_turbo_timing(
                     wants_turbo, now, turbo_active_until, turbo_cooldown_until,
                 )
+            elif clock_visit and clock_visit_target is not None:
+                # Approach clock so HH:MM is on-screen, bump, then move on
+                hunt_dist = distance_to_world_point(
+                    fh, fy, clock_visit_target.h, clock_visit_target.v,
+                )
+                desired_angle = angle_toward_world_point(
+                    fh, fy, clock_visit_target.h, clock_visit_target.v,
+                )
+                # No turbo near the clock — give the viewer a clear look
+                turbo_boost = False
+                turbo_active_until, turbo_cooldown_until = cancel_turbo_burst(
+                    now, turbo_active_until, turbo_cooldown_until,
+                )
+                orbit_stall_frames = 0
+                if (now - clock_visit_started_at) >= CLOCK_VISIT_TIMEOUT_SEC:
+                    print(
+                        "[SpaceExplorer] Clock visit timed out — resuming hunt",
+                        flush=True,
+                    )
+                    clock_visit_target = None
+                    clock_visit_done_at = now
             elif mother_hunt:
                 mother_dist = distance_to_world_point(
                     fh, fy, hunt_mother.h, hunt_mother.v,
@@ -4093,13 +4324,14 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
             ship_angle, ship_vel_h, ship_vel_v, thrusting = update_ship_inertia(
                 ship_angle, ship_vel_h, ship_vel_v, desired_angle, recoiling,
                 turbo_boost,
-                cruise_mode and not chain_escape and not tractor_locked,
-                crystal=crystal_hunt and not mother_hunt and not tractor_locked,
+                cruise_mode and not chain_escape and not tractor_locked and not clock_visit,
+                crystal=crystal_hunt and not mother_hunt and not tractor_locked and not clock_visit,
                 hunt=(
                     not recoiling
                     and not cruise_mode
                     and (
                         tractor_locked
+                        or clock_visit
                         or chain_asteroid_bait
                         or (
                             not crystal_hunt
@@ -4109,7 +4341,7 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                     )
                 ),
                 tractor=tractor_locked and not chain_escape,
-                mother=mother_hunt and not tractor_locked,
+                mother=mother_hunt and not tractor_locked and not clock_visit,
                 mother_dist=mother_dist_for_flight,
                 hunt_dist=hunt_dist,
                 hunt_closing=hunt_closing,
@@ -4135,6 +4367,32 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
             )
 
             update_foreground_asteroids(foreground_asteroids, now)
+            update_floating_clocks(floating_clocks)
+
+            # Bump floating clocks: show the time, then bounce off and move on
+            clock_hits = floating_clocks_touching_ship(floating_clocks, fh, fy)
+            if clock_hits and bounce_cooldown <= 0:
+                nearest_clk = min(
+                    clock_hits,
+                    key=lambda c: distance_to_world_point(fh, fy, c.h, c.v),
+                )
+                nearest_clk.last_visited_time = now
+                if clock_visit_target is nearest_clk or clock_visit_target is not None:
+                    hhmm = nearest_clk.hhmm or time.strftime("%H:%M", time.localtime())
+                    print(
+                        f"[SpaceExplorer] Clock bump — time is {hhmm} "
+                        f"({nearest_clk.kind}); moving on",
+                        flush=True,
+                    )
+                    clock_visit_target = None
+                    clock_visit_done_at = now
+                ship_angle, ship_vel_h, ship_vel_v = bounce_away_from_point(
+                    ship_angle, ship_vel_h, ship_vel_v, fh, fy,
+                    nearest_clk.h, nearest_clk.v,
+                )
+                bounce_cooldown = BOUNCE_COOLDOWN_FRAMES
+                last_hunt_dist = float("inf")
+                orbit_stall_frames = 0
 
             hit_asteroids = asteroids_touching_ship(foreground_asteroids, fh, fy)
             if hit_asteroids:
@@ -4265,11 +4523,15 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                 clock_minute = minute_epoch
                 display_time = time.strftime("%H:%M", time.localtime())
                 update_clock_times_on_layer(background, clock_stations, display_time)
+                for _fc in floating_clocks:
+                    _fc.set_time(display_time)
 
             canvas = paint_parallax_canvas(
                 canvas, far_background, background, middleground, foreground,
                 far_h, far_v, bh, by, mh, my, fh, fy,
             )
+            # Floating clocks above parallax, under free rocks/ship
+            draw_floating_clocks(canvas, floating_clocks, fh, fy)
             draw_foreground_asteroids(canvas, foreground_asteroids, fh, fy)
             draw_crystals(canvas, crystals, fh, fy)
             if tractor_target is not None and not ufo_chain_active:

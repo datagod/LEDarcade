@@ -45,6 +45,9 @@ Why use JIT here:
 - Numba supports `prange`, `List`, and common math operations, making it 
   ideal for simulations like this.
 
+On LEDsim / Windows the *first* call can take tens of seconds (looks like a hang).
+We print a clear message during that warm-up.
+
 -------------------------------------------------------------------------------
 PARTICLE STRUCTURE
 -------------------------------------------------------------------------------
@@ -53,51 +56,34 @@ Each particle is represented as a row in a NumPy array with 14 float values:
 [x, y, vx, vy, r, g, b, lifetime, absorb_count, cooldown, exploded_flag, 
  explosion_r, explosion_g, explosion_b]
 
-Meaning:
-- Position: (x, y)
-- Velocity: (vx, vy)
-- Color: (r, g, b)
-- Lifetime: how many frames before expiration
-- Absorb count: number of collisions endured
-- Cooldown: frames before it can be absorbed again
-- Explosion flag and color: used to change color during an explosion
-
 -------------------------------------------------------------------------------
 RENDERING
 -------------------------------------------------------------------------------
 
-Particles are simulated on a virtual canvas 2x the screen resolution for
-better dynamics and scaled/cropped to the LED matrix view window.
-
-Each frame:
-- Screen is faded by subtracting a trail fade constant from each RGB channel.
-- Active particles are rendered to the display if within view boundaries.
-- Particle states are updated in-place using the JIT-compiled function.
-
-
+Draw into the frame canvas, then SwapOnVSync once per frame. Do not mix
+TheMatrix.SetPixel with SwapOnVSync(Canvas) — on LEDsim that presents an empty
+canvas and looks like a black hang.
 ===============================================================================
 """
-
 
 # FALLING SAND - BLAZING FAST VERSION
 
 import LEDarcade as LED
-LED.Initialize()
 
 import time
 import random
 import numpy as np
-from numba import njit, prange, types
+from numba import njit, types
 from numba.typed import List
-import threading
 
 # Configuration
 PARTICLE_COLOR = (150, 150, 0)
 SPAWN_RATE = 60
 MAX_PARTICLES = 50
 MAX_LIFETIME = 1000
-WIDTH = LED.HatWidth
-HEIGHT = LED.HatHeight
+# Panel size is fixed after LED.Initialize() (commander does that before import).
+WIDTH = getattr(LED, "HatWidth", 64) or 64
+HEIGHT = getattr(LED, "HatHeight", 32) or 32
 SIM_WIDTH = WIDTH
 SIM_HEIGHT = HEIGHT * 2
 GRAVITY = 0.075
@@ -112,14 +98,17 @@ COOLDOWN_FRAMES = 10
 particles = np.zeros((MAX_PARTICLES, 14), dtype=np.float32)
 active_mask = np.zeros(MAX_PARTICLES, dtype=np.bool_)
 next_spawn_index = 0
+_numba_warmed = False
+
 
 @njit
 def random_explosion_color():
     return (
         float(random.randint(100, 255)),
         float(random.randint(0, 200)),
-        float(random.randint(0, 200))
+        float(random.randint(0, 200)),
     )
+
 
 @njit
 def spawn_particle_fast(particles, active_mask, i):
@@ -130,6 +119,7 @@ def spawn_particle_fast(particles, active_mask, i):
     r, g, b = PARTICLE_COLOR
     particles[i, 0:14] = [x, y, vx, vy, r, g, b, MAX_LIFETIME, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     active_mask[i] = True
+
 
 @njit
 def spawn_explosion_particle(particles, active_mask, i, x, y):
@@ -142,6 +132,7 @@ def spawn_explosion_particle(particles, active_mask, i, x, y):
     b = float(random.randint(0, 200))
     particles[i, 0:14] = [x, y, vx, vy, r, g, b, MAX_LIFETIME, 0.0, COOLDOWN_FRAMES, 1.0, r, g, b]
     active_mask[i] = True
+
 
 @njit
 def update_particles(particles, active_mask, exploded_xs, exploded_ys):
@@ -202,13 +193,44 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
         if exploded:
             continue
 
-        particles[i, 0:14] = [x_new, y_new, vx, vy, r, g, b, lifetime, absorb_count, cooldown, exploded_flag, explosion_r, explosion_g, explosion_b]
+        particles[i, 0:14] = [
+            x_new, y_new, vx, vy, r, g, b, lifetime, absorb_count, cooldown,
+            exploded_flag, explosion_r, explosion_g, explosion_b,
+        ]
+
+
+def _warm_numba(StopEvent=None):
+    """
+    First Numba call compiles update_particles to machine code — can take
+    10-60+ seconds on Windows/LEDsim and looks like a hang if silent.
+    """
+    global _numba_warmed
+    if _numba_warmed:
+        return
+    if StopEvent is not None and StopEvent.is_set():
+        return
+    print("[FallingSand] Compiling particle engine (Numba JIT, first run only)...", flush=True)
+    t0 = time.time()
+    dummy_xs = List.empty_list(types.float32)
+    dummy_ys = List.empty_list(types.float32)
+    update_particles(particles, active_mask, dummy_xs, dummy_ys)
+    _numba_warmed = True
+    print(
+        f"[FallingSand] Particle engine ready ({time.time() - t0:.1f}s).",
+        flush=True,
+    )
 
 
 def LaunchFallingSand(Duration=10, ShowIntro=True, StopEvent=None):
-    global next_spawn_index
+    global next_spawn_index, WIDTH, HEIGHT, SIM_WIDTH, SIM_HEIGHT
 
-    if ShowIntro:
+    # Sync sim size in case Initialize ran after this module was first imported
+    WIDTH = int(getattr(LED, "HatWidth", WIDTH) or WIDTH)
+    HEIGHT = int(getattr(LED, "HatHeight", HEIGHT) or HEIGHT)
+    SIM_WIDTH = WIDTH
+    SIM_HEIGHT = HEIGHT * 2
+
+    if ShowIntro and not (StopEvent and StopEvent.is_set()):
         LED.ShowTitleScreen(
             BigText="Falling",
             BigTextRGB=LED.HighYellow,
@@ -222,41 +244,55 @@ def LaunchFallingSand(Duration=10, ShowIntro=True, StopEvent=None):
             ScrollTextRGB=LED.MedGreen,
             ScrollSleep=0.02,
             DisplayTime=1,
-            ExitEffect=5
+            # ExitEffect 5 re-enters fallingsand-style FX and felt like a hang on LEDsim
+            ExitEffect=0,
         )
-    LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-        LED.ScreenArray,
-        Message="Loading particles...",
-        CursorH=0,
-        CursorV=0,
-        MessageRGB=LED.MedYellow,
-        CursorRGB=LED.MedGreen,
-        CursorDarkRGB=LED.DarkGreen,
-        StartingLineFeed=1,
-        TypeSpeed=0.01,
-        ScrollSpeed=0.01
-    )
-    #LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.03)
+    if StopEvent and StopEvent.is_set():
+        print("[FallingSand] StopEvent before start — exiting.")
+        return
 
+    try:
+        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
+            LED.ScreenArray,
+            Message="Loading particles...",
+            CursorH=0,
+            CursorV=0,
+            MessageRGB=LED.MedYellow,
+            CursorRGB=LED.MedGreen,
+            CursorDarkRGB=LED.DarkGreen,
+            StartingLineFeed=1,
+            TypeSpeed=0.01,
+            ScrollSpeed=0.01,
+        )
+    except Exception as exc:
+        print(f"[FallingSand] Loading banner skipped: {exc}")
 
+    _warm_numba(StopEvent)
+    if StopEvent and StopEvent.is_set():
+        print("[FallingSand] StopEvent after JIT — exiting.")
+        return
 
-
-
-    dummy_xs = List.empty_list(types.float32)
-    dummy_ys = List.empty_list(types.float32)
-    update_particles(particles, active_mask, dummy_xs, dummy_ys)
+    try:
+        LED.ClearBuffers()
+    except Exception:
+        pass
 
     start_time = time.time()
     frame = 0
+    print(
+        f"[FallingSand] Running for {Duration} min "
+        f"(StopEvent={'yes' if StopEvent is not None else 'no'})",
+        flush=True,
+    )
 
     try:
         while True:
             if StopEvent and StopEvent.is_set():
-                print("[INFO] StopEvent received, exiting simulation loop.")
+                print("[FallingSand] StopEvent received — exiting.")
                 break
 
-            if Duration and (time.time() - start_time > (Duration * 60)):
-                print("[INFO] Duration limit reached, exiting simulation loop.")
+            if Duration and (time.time() - start_time > (float(Duration) * 60)):
+                print("[FallingSand] Duration limit reached — exiting.")
                 break
 
             if frame % SPAWN_RATE == 0:
@@ -285,10 +321,22 @@ def LaunchFallingSand(Duration=10, ShowIntro=True, StopEvent=None):
             CAMERA_X = (SIM_WIDTH - WIDTH) // 2
             CAMERA_Y = SIM_HEIGHT - HEIGHT
 
+            # Draw into Canvas only, then one SwapOnVSync.
+            # Old path: TheMatrix.SetPixel for every pixel, then SwapOnVSync(Canvas)
+            # which on LEDsim published an empty canvas → black "hang".
+            canvas = LED.Canvas
+            if canvas is None:
+                canvas = LED.TheMatrix.CreateFrameCanvas()
+                LED.Canvas = canvas
+
             for v in range(HEIGHT):
                 for h in range(WIDTH):
                     r, g, b = LED.ScreenArray[v][h]
-                    LED.setpixel(h, v, max(0, r - TRAIL_FADE), max(0, g - TRAIL_FADE), max(0, b - TRAIL_FADE))
+                    nr = max(0, int(r) - TRAIL_FADE)
+                    ng = max(0, int(g) - TRAIL_FADE)
+                    nb = max(0, int(b) - TRAIL_FADE)
+                    LED.ScreenArray[v][h] = (nr, ng, nb)
+                    canvas.SetPixel(h, v, nr, ng, nb)
 
             for i in range(MAX_PARTICLES):
                 if not active_mask[i]:
@@ -297,12 +345,18 @@ def LaunchFallingSand(Duration=10, ShowIntro=True, StopEvent=None):
                 h = int(x) - CAMERA_X
                 v = int(y) - CAMERA_Y
                 if 0 <= h < WIDTH and 0 <= v < HEIGHT:
-                    LED.setpixel(h, v, int(r), int(g), int(b))
+                    ir, ig, ib = int(r), int(g), int(b)
+                    LED.ScreenArray[v][h] = (ir, ig, ib)
+                    canvas.SetPixel(h, v, ir, ig, ib)
 
-            LED.Canvas = LED.TheMatrix.SwapOnVSync(LED.Canvas)
+            LED.Canvas = LED.TheMatrix.SwapOnVSync(canvas)
             frame += 1
+            if frame % 30 == 0:
+                time.sleep(0.001)
     except KeyboardInterrupt:
-        print("[INFO] Simulation interrupted by user.")
+        print("[FallingSand] Simulation interrupted by user.")
+
 
 if __name__ == "__main__":
+    LED.Initialize()
     LaunchFallingSand(Duration=1000, ShowIntro=True, StopEvent=None)

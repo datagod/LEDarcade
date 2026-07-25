@@ -380,9 +380,9 @@ def fallback_action_generator():
     Idle rotation for LEDcommander / LEDsim:
 
       1) Spectacular LED ARCADE intro (once per process start)
-      2) Forever: shuffle content each lap; between items use a shuffled
-         clock-cycle order (repeat that clock cycle for separators).
-         Pattern: clock → content → clock → content → …
+      2) Forever: shuffle content each lap; clocks sit *between* games.
+         Pattern: content → clock → content → clock → …
+         So after the intro the first item is always a game, never a clock.
 
     Timed content runs 5 minutes. Weather ends when the scroll finishes.
     Rally Dot runs until game over.
@@ -425,7 +425,7 @@ def fallback_action_generator():
         random.shuffle(clocks)
         lap += 1
         print(
-            "[LEDcommander] Fallback lap {} — {} content slots, "
+            "[LEDcommander] Fallback lap {} — {} content slots (game first), "
             "clock cycle: {}".format(
                 lap,
                 len(content),
@@ -438,10 +438,11 @@ def fallback_action_generator():
         )
         clock_i = 0
         for item in content:
-            # Start with clock, then content
+            # Game first, then a clock before the next game
+            yield item
             yield clocks[clock_i % len(clocks)]
             clock_i += 1
-            yield item
+
 
  
 
