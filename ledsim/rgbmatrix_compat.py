@@ -10,9 +10,15 @@ shared LEDsim frame (see ledsim.shared).
 from __future__ import annotations
 
 import copy
+import time
 from typing import Any, Optional, Tuple, Union
 
 from . import shared
+
+# Immediate SetPixel path (no SwapOnVSync) is used by many games. Publishing
+# every single pixel through IPC was a major crash/contention source on Windows.
+# Cap immediate publishes to ~30 fps; SwapOnVSync / Clear / Fill always publish.
+_IMMEDIATE_PUBLISH_HZ = 30.0
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +163,8 @@ class RGBMatrix:
         # Front buffer (what the viewer shows); canvas is the back buffer
         self._front = _empty_buffer(self.width, self.height)
         self._canvas = FrameCanvas(self.width, self.height, matrix=self)
+        self._last_immediate_publish = 0.0
+        self._dirty = False
         # Ensure shared config dimensions match if parent set env
         name, sw, sh = shared.get_config()
         if name and (sw != self.width or sh != self.height):
@@ -180,25 +188,39 @@ class RGBMatrix:
         return self._canvas
 
     def SetPixel(self, x: int, y: int, *color_args) -> None:
-        """Immediate pixel write to the front buffer + shared memory."""
+        """
+        Immediate pixel write to the front buffer.
+
+        Updates local front always; publishes a full frame at most
+        ~30 Hz (not per-pixel). Prefer SwapOnVSync for animation loops.
+        """
         x = int(x)
         y = int(y)
         if x < 0 or y < 0 or x >= self.width or y >= self.height:
             return
         r, g, b = _parse_color_args(color_args)
         self._front[y][x] = (r, g, b)
-        # Scale for shared publish of single pixel
-        scale = self._brightness / 100.0
-        shared.publish_pixel(
-            x, y,
-            int(r * scale), int(g * scale), int(b * scale),
-        )
+        self._dirty = True
+        self._maybe_publish_immediate()
+
+    def _maybe_publish_immediate(self) -> None:
+        """Throttle full-frame publishes from the SetPixel path."""
+        if not self._dirty:
+            return
+        now = time.monotonic()
+        min_dt = 1.0 / _IMMEDIATE_PUBLISH_HZ
+        if (now - self._last_immediate_publish) < min_dt:
+            return
+        self._publish_front()
+        self._last_immediate_publish = now
 
     def Clear(self) -> None:
         self._front = _empty_buffer(self.width, self.height)
         if self._canvas is not None:
             self._canvas.Clear()
+        self._dirty = False
         shared.clear_shared()
+        self._last_immediate_publish = time.monotonic()
 
     def Fill(self, r: int, g: int, b: int) -> None:
         rgb = _clamp_rgb(r, g, b)
@@ -248,6 +270,8 @@ class RGBMatrix:
             self._front, self.width, self.height, self._brightness
         )
         shared.publish_frame(rgb)
+        self._dirty = False
+        self._last_immediate_publish = time.monotonic()
 
 
 # ---------------------------------------------------------------------------

@@ -35,6 +35,7 @@ import argparse
 import atexit
 import os
 import signal
+import subprocess
 import sys
 import time
 import traceback
@@ -55,6 +56,45 @@ os.environ.setdefault("LEDARCADE_SKIP_BOOT_UPDATE", "1")
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
 
 from multiprocessing import Event, Process, Queue, freeze_support
+
+# Fault log lives under the repo (not %TEMP%)
+FAULT_LOG_PATH = os.path.join(REPO_DIR, "localdata", "ledsim_fault.log")
+_LEDSIM_FAULT_FILE = None
+
+
+def _setup_faulthandler() -> None:
+    """
+    Enable faulthandler in the *main* LEDsim process only.
+
+    Must NOT run at module import time: Windows spawn children re-import this
+    file and would truncate localdata/ledsim_fault.log with open(..., "w"),
+    wiping breadcrumbs from the real viewer process.
+    """
+    global _LEDSIM_FAULT_FILE
+    # Children set this so they never steal/truncate the main log
+    if os.environ.get("LEDARCADE_SIM_CHILD") == "1":
+        return
+    try:
+        import faulthandler
+
+        os.makedirs(os.path.dirname(FAULT_LOG_PATH), exist_ok=True)
+        # line-buffered so stacks/breadcrumbs hit disk before an AV
+        _fh_file = open(
+            FAULT_LOG_PATH, "w", encoding="utf-8", errors="replace", buffering=1
+        )
+        _fh_file.write(f"LEDsim faulthandler started pid={os.getpid()}\n")
+        _fh_file.write(f"python={sys.executable}\n")
+        _fh_file.write(f"cwd={os.getcwd()}\n")
+        _fh_file.write(
+            "Note: pure native SDL AVs may leave no Python stack — "
+            "look for breadcrumb lines (last action before death).\n"
+        )
+        _fh_file.flush()
+        faulthandler.enable(file=_fh_file, all_threads=True)
+        _LEDSIM_FAULT_FILE = _fh_file
+        print(f"[LEDsim] faulthandler → {FAULT_LOG_PATH}")
+    except Exception as exc:
+        print(f"[LEDsim] faulthandler setup failed: {exc}")
 
 DEFAULT_WIDTH = 64
 DEFAULT_HEIGHT = 32
@@ -101,12 +141,12 @@ def _parse_args():
         "--borderless",
         action="store_true",
         default=None,
-        help="No title bar / window frame (default)",
+        help="No title bar / window frame (unstable on some Windows/SDL builds)",
     )
     frame.add_argument(
         "--bordered",
         action="store_true",
-        help="Normal window with title bar and system icon",
+        help="Normal window with title bar (default on Windows)",
     )
     p.add_argument("--port", type=int, default=DEFAULT_PORT, help="Web control panel port")
     p.add_argument(
@@ -123,7 +163,11 @@ def _parse_args():
 
 
 def _resolve_borderless(args) -> bool:
-    """Default borderless; --bordered forces frame; env LEDARCADE_SIM_BORDERLESS overrides default."""
+    """
+    Window chrome: --bordered / --borderless, else env, else borderless.
+
+    Default is no frame (panel look). Use --bordered for a title bar.
+    """
     if getattr(args, "bordered", False):
         return False
     if getattr(args, "borderless", None):
@@ -131,7 +175,7 @@ def _resolve_borderless(args) -> bool:
     env = os.environ.get("LEDARCADE_SIM_BORDERLESS")
     if env is not None and str(env).strip() != "":
         return str(env).strip().lower() in ("1", "true", "yes", "on")
-    return True  # default: borderless (no pygame logo chrome)
+    return True  # borderless panel by default
 
 
 def _resolve_scale(args) -> int:
@@ -150,6 +194,8 @@ def _resolve_scale(args) -> int:
 
 
 def _run_commander(command_queue):
+    # Mark spawn child so module re-import never steals the main fault log
+    os.environ["LEDARCADE_SIM_CHILD"] = "1"
     # Ensure children see sim mode (spawn does not inherit all parent state on all platforms)
     os.environ["LEDARCADE_DISPLAY"] = "sim"
     os.environ["LEDARCADE_STREAM_MODE"] = "0"
@@ -168,6 +214,7 @@ def _run_commander(command_queue):
 
 
 def _run_web(command_queue, port):
+    os.environ["LEDARCADE_SIM_CHILD"] = "1"
     os.environ["LEDARCADE_DISPLAY"] = "sim"
     import LEDcommander
     LEDcommander.serve_web_control(command_queue, port=port)
@@ -175,6 +222,9 @@ def _run_web(command_queue, port):
 
 def main():
     freeze_support()
+    # Main process only — before any Process() spawn
+    os.environ.pop("LEDARCADE_SIM_CHILD", None)
+    _setup_faulthandler()
     args = _parse_args()
 
     width = max(8, args.width)
@@ -201,30 +251,106 @@ def main():
     shm = None
     stop_event = Event()
     processes = []
+    command_queue_holder = {"q": None}
+    _cleanup_done = {"v": False}
+
+    def _kill_tree(pid: int) -> None:
+        """Kill a process and all descendants (Windows grandchildren included)."""
+        if not pid:
+            return
+        try:
+            if sys.platform == "win32":
+                # /T = tree, /F = force — covers LEDcommander display children
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+            else:
+                import os as _os
+                try:
+                    _os.kill(pid, signal.SIGTERM)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def cleanup():
+        if _cleanup_done["v"]:
+            return
+        _cleanup_done["v"] = True
+        print("[LEDsim] Shutting down child processes…")
         stop_event.set()
-        for proc in processes:
-            if proc is not None and proc.is_alive():
-                proc.terminate()
-                proc.join(timeout=2)
+
+        # Ask commander to quit cleanly first (stops current display)
+        q = command_queue_holder.get("q")
+        if q is not None:
+            try:
+                q.put({"Action": "quit"})
+            except Exception:
+                pass
+            try:
+                q.put({"Action": "stop"})
+            except Exception:
+                pass
+
+        # Brief chance for a graceful stop
+        time.sleep(0.3)
+
+        for proc in list(processes):
+            if proc is None:
+                continue
+            try:
+                pid = proc.pid
+            except Exception:
+                pid = None
+            if pid:
+                _kill_tree(pid)
+            try:
                 if proc.is_alive():
-                    try:
-                        proc.kill()
-                    except Exception:
-                        pass
+                    proc.terminate()
+                proc.join(timeout=1.5)
+            except Exception:
+                pass
+            try:
+                if proc.is_alive():
+                    proc.kill()
+                    proc.join(timeout=1)
+            except Exception:
+                pass
+
         if shm is not None:
             try:
                 shm.close()
+            except Exception:
+                pass
+            try:
                 shm.unlink()
             except Exception:
                 pass
+            try:
+                from ledsim import shared as _shared
+                _shared.close(unlink=True)
+            except Exception:
+                pass
+        print("[LEDsim] Children stopped.")
 
     atexit.register(cleanup)
 
     def _handle_signal(signum, frame):
-        print(f"\n[LEDsim] Signal {signum} — shutting down")
+        print(f"\n[LEDsim] Signal {signum} (Ctrl+C) — shutting down")
         stop_event.set()
+        # Do not call cleanup() here if still inside pygame — set flag and
+        # let main path clean up; also kill trees immediately so logs stop.
+        for proc in list(processes):
+            try:
+                if proc is not None and proc.pid:
+                    _kill_tree(proc.pid)
+            except Exception:
+                pass
+        # Raise KeyboardInterrupt so run_viewer / main unwind
+        raise KeyboardInterrupt
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         try:
@@ -251,7 +377,7 @@ def main():
 
     try:
         shm, shm_name, width, height = shared.create_shared_buffer(width, height)
-        print(f"[LEDsim] Shared frame buffer: {shm_name}")
+        print(f"[LEDsim] Shared frame buffer (file): {shm_name}")
     except Exception as exc:
         print(f"[LEDsim] Failed to create shared buffer: {exc}")
         traceback.print_exc()
@@ -260,10 +386,12 @@ def main():
     command_queue = None
     if not args.no_commander:
         command_queue = Queue()
+        command_queue_holder["q"] = command_queue
         commander = Process(
             target=_run_commander,
             args=(command_queue,),
             name="LEDcommander",
+            daemon=False,  # we kill the tree explicitly on exit
         )
         commander.start()
         processes.append(commander)
@@ -274,6 +402,7 @@ def main():
                 target=_run_web,
                 args=(command_queue, args.port),
                 name="LEDweb",
+                daemon=False,
             )
             web.start()
             processes.append(web)
@@ -293,7 +422,7 @@ def main():
             borderless=borderless,
         ) or "quit"
     except KeyboardInterrupt:
-        print("\n[LEDsim] Keyboard interrupt")
+        print("\n[LEDsim] Keyboard interrupt — cleaning up")
         stop_event.set()
         exit_reason = "quit"
     except Exception as exc:
@@ -303,13 +432,14 @@ def main():
         exit_reason = "quit"
 
     cleanup()
+    try:
+        atexit.unregister(cleanup)
+    except Exception:
+        pass
 
     if exit_reason == "restart":
         print("[LEDsim] Restarting…")
-        try:
-            atexit.unregister(cleanup)
-        except Exception:
-            pass
+        _cleanup_done["v"] = False  # allow cleanup on next life if exec fails
         script = os.path.join(REPO_DIR, "LEDsim.py")
         argv = [sys.executable, script] + sys.argv[1:]
         os.chdir(REPO_DIR)

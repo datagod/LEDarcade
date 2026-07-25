@@ -2041,8 +2041,15 @@ def ShowAnalogClock(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
     import AnalogClock as AC
-    Duration         = Command.get("duration",10)
-    print(f"[LEDcommander][ShowAnalogClock] Launching... brightness={STREAM_CLOCK_BRIGHTNESS}")
+    Duration = Command.get("duration", 10)
+    try:
+        Duration = float(Duration)
+    except (TypeError, ValueError):
+        Duration = 10.0
+    print(
+        f"[LEDcommander][ShowAnalogClock] Launching... "
+        f"duration={Duration:g} min, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
 
     try:
         LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS

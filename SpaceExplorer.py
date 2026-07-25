@@ -1994,8 +1994,8 @@ def _gas_giant_clock_stations(gas_giants):
     return stations
 
 
-ASTEROID_CLOCK_COUNT = 4
-METAL_SHIP_CLOCK_COUNT = 1
+ASTEROID_CLOCK_COUNT = 8
+METAL_SHIP_CLOCK_COUNT = 5  # map center + 4 outposts
 ASTEROID_CLOCK_SIZE = 16
 ASTEROID_CLOCK_COLOR = (142, 132, 118)
 METAL_HIGHLIGHT = (168, 172, 182)
@@ -2028,21 +2028,32 @@ def _clock_asteroid_lumps():
 
 
 def _asteroid_clock_spawn_sites(layer_width, layer_height, count=ASTEROID_CLOCK_COUNT):
-    """Spread asteroid clocks evenly across the map quadrants."""
-    margin_h = layer_width // 8
-    margin_v = layer_height // 8
-    sites = (
-        (margin_h * 2, margin_v * 2),
-        (layer_width - margin_h * 2, margin_v * 2),
-        (margin_h * 2, layer_height - margin_v * 2),
-        (layer_width - margin_h * 2, layer_height - margin_v * 2),
-    )
+    """Spread asteroid clocks on a 2×4 grid across the map."""
+    margin_h = layer_width // 10
+    margin_v = layer_height // 10
+    # Two rows × four columns (8 stations)
+    cols = (margin_h * 2, margin_h * 4, layer_width - margin_h * 4, layer_width - margin_h * 2)
+    rows = (margin_v * 2, layer_height - margin_v * 2)
+    sites = [(cx, cy) for cy in rows for cx in cols]
     return [(cx % layer_width, cy % layer_height) for cx, cy in sites[:count]]
 
 
-def _metal_ship_clock_spawn_site(layer_width, layer_height):
-    """Place the metal ship clock at the map center."""
-    return layer_width // 2, layer_height // 2
+def _metal_ship_clock_spawn_sites(layer_width, layer_height, count=METAL_SHIP_CLOCK_COUNT):
+    """
+    Place metal ship clocks: one at map center, then four at mid-edge outposts.
+    """
+    cx0 = layer_width // 2
+    cy0 = layer_height // 2
+    margin_h = layer_width // 5
+    margin_v = layer_height // 5
+    sites = [
+        (cx0, cy0),  # center
+        (margin_h, cy0),  # west
+        (layer_width - margin_h, cy0),  # east
+        (cx0, margin_v),  # north
+        (cx0, layer_height - margin_v),  # south
+    ]
+    return [(cx % layer_width, cy % layer_height) for cx, cy in sites[:count]]
 
 
 def _metal_ship_clock_solid(dx, dy):
@@ -2096,7 +2107,7 @@ def _paint_metal_ship_clock(layer, cx, cy):
 
 
 def _add_clock_stations(layer):
-    """Paint asteroid clocks and one large metal spaceship clock on the background layer."""
+    """Paint asteroid clocks and metal spaceship clocks on the background layer."""
     stations = []
     lumps = _clock_asteroid_lumps()
     for cx, cy in _asteroid_clock_spawn_sites(layer.width, layer.height):
@@ -2108,8 +2119,7 @@ def _add_clock_stations(layer):
             "cx": cx, "cy": cy, "kind": "asteroid", "size": ASTEROID_CLOCK_SIZE,
         })
 
-    for _ in range(METAL_SHIP_CLOCK_COUNT):
-        cx, cy = _metal_ship_clock_spawn_site(layer.width, layer.height)
+    for cx, cy in _metal_ship_clock_spawn_sites(layer.width, layer.height):
         _paint_metal_ship_clock(layer, cx, cy)
         stations.append({"cx": cx, "cy": cy, "kind": "metal_ship"})
     return stations
@@ -3150,7 +3160,12 @@ def update_tractor_lock(
     fh, fy, hunt_target, tractor_target, now, tractor_cooldown_until,
     ufo_chain_blocks=False,
 ):
-    """Keep an active lock while valid; attach to the hunt target when it becomes visible."""
+    """
+    Keep an active lock while valid; attach to the hunt target when it becomes visible.
+
+    Once locked, stick to that rock until it dies, leaves range, or is severed —
+    do not hop to a nearer rock mid-break.
+    """
     if ufo_chain_blocks or tractor_on_cooldown(now, tractor_cooldown_until):
         return None
     if tractor_target is not None and tractor_target.alive and can_tractor_attach(fh, fy, tractor_target):
@@ -3940,14 +3955,25 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                 )
 
             tractor_locked = tractor_target is not None and not ufo_chain_active
+            # While the beam is locked, that rock is the only hunt focus
+            if tractor_locked:
+                hunt_target = tractor_target
+
             crystal_target, crystal_dist = find_nearest_crystal(crystals, fh, fy)
-            crystal_hunt = not recoiling and not chain_escape and crystal_target is not None
+            # Crystals / mothers wait until the tractor rock is finished
+            crystal_hunt = (
+                not recoiling
+                and not chain_escape
+                and not tractor_locked
+                and crystal_target is not None
+            )
             # With a crystal bank of 5+, hunt nearest mother (fleet or SUPER)
             combat_mothers = active_mother_targets(mother_ships, super_mother)
             hunt_mother = nearest_alive_mother(combat_mothers, fh, fy)
             mother_hunt = (
                 not recoiling
                 and not chain_escape
+                and not tractor_locked
                 and hunt_mother is not None
                 and crystal_score >= MOTHER_CRYSTAL_HUNT_MIN
             )
@@ -3984,6 +4010,21 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                     now, turbo_active_until, turbo_cooldown_until,
                 )
                 orbit_stall_frames = 0
+            elif tractor_locked:
+                # Highest combat priority: intercept + turbo-ram the beamed rock
+                hunt_closing, hunt_dist = hunt_closing_rate(
+                    fh, fy, tractor_target, ship_vel_h, ship_vel_v,
+                )
+                desired_angle = hunt_angle_for_target(
+                    fh, fy, tractor_target, ship_vel_h, ship_vel_v,
+                )
+                wants_turbo, last_hunt_dist, orbit_stall_frames = update_turbo_state(
+                    fh, fy, tractor_target, ship_vel_h, ship_vel_v,
+                    last_hunt_dist, orbit_stall_frames, hunt_closing,
+                )
+                turbo_boost, turbo_active_until, turbo_cooldown_until = apply_turbo_timing(
+                    wants_turbo, now, turbo_active_until, turbo_cooldown_until,
+                )
             elif mother_hunt:
                 mother_dist = distance_to_world_point(
                     fh, fy, hunt_mother.h, hunt_mother.v,
@@ -4013,15 +4054,6 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
             elif crystal_hunt:
                 desired_angle = hunt_intercept_angle(
                     fh, fy, crystal_target, ship_vel_h, ship_vel_v, max_speed=MAX_SHIP_SPEED,
-                )
-                turbo_boost = False
-                orbit_stall_frames = 0
-            elif tractor_locked:
-                hunt_closing, hunt_dist = hunt_closing_rate(
-                    fh, fy, tractor_target, ship_vel_h, ship_vel_v,
-                )
-                desired_angle = angle_toward_world_point(
-                    fh, fy, tractor_target.h, tractor_target.v,
                 )
                 turbo_boost = False
                 orbit_stall_frames = 0
@@ -4060,17 +4092,24 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
 
             ship_angle, ship_vel_h, ship_vel_v, thrusting = update_ship_inertia(
                 ship_angle, ship_vel_h, ship_vel_v, desired_angle, recoiling,
-                turbo_boost, cruise_mode and not chain_escape,
-                crystal=crystal_hunt and not mother_hunt,
+                turbo_boost,
+                cruise_mode and not chain_escape and not tractor_locked,
+                crystal=crystal_hunt and not mother_hunt and not tractor_locked,
                 hunt=(
                     not recoiling
                     and not cruise_mode
-                    and not crystal_hunt
-                    and not mother_hunt
-                    and (chain_asteroid_bait or not chain_escape)
+                    and (
+                        tractor_locked
+                        or chain_asteroid_bait
+                        or (
+                            not crystal_hunt
+                            and not mother_hunt
+                            and not chain_escape
+                        )
+                    )
                 ),
-                tractor=tractor_locked and not chain_escape and not mother_hunt,
-                mother=mother_hunt,
+                tractor=tractor_locked and not chain_escape,
+                mother=mother_hunt and not tractor_locked,
                 mother_dist=mother_dist_for_flight,
                 hunt_dist=hunt_dist,
                 hunt_closing=hunt_closing,
@@ -4103,6 +4142,15 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                     far_h, far_v, bh, by, mh, my, fh, fy,
                     carry_far_h, carry_far_v, carry_bh, carry_by, carry_mh, carry_my, carry_fh, carry_fy,
                 ) = scroll_before
+                # Tractor lock: only spend the ram on the beamed rock if it is
+                # among the contacts (ignore incidental scrap until it is done)
+                if (
+                    tractor_locked
+                    and tractor_target is not None
+                    and tractor_target.alive
+                    and tractor_target in hit_asteroids
+                ):
+                    hit_asteroids = [tractor_target]
                 broken_asteroids = apply_ship_hits_to_asteroids(hit_asteroids)
                 if broken_asteroids:
                     new_sparks, new_crystals = split_asteroids(
@@ -4112,6 +4160,8 @@ def PlaySpaceExplorer(Duration=10000, StopEvent=None, load_starfield=None, load_
                     crystals.extend(new_crystals)
                     replenish_foreground_asteroids_if_empty(foreground_asteroids, fh, fy)
                     hunt_target = refresh_hunt_target(foreground_asteroids, fh, fy, None)
+                # Drop the beam after a ram (cooldown); re-lock on the same
+                # rock only if it survived, once cooldown ends
                 tractor_target, tractor_cooldown_until = sever_tractor_beam(now)
                 ship_angle, ship_vel_h, ship_vel_v = bounce_ship_momentum(
                     ship_angle, ship_vel_h, ship_vel_v,

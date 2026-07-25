@@ -1,4 +1,4 @@
-"""Quick shared-memory smoke test: python -m ledsim._test_shared"""
+"""Quick shared-frame smoke test: python -m ledsim._test_shared"""
 import os
 import sys
 
@@ -31,8 +31,8 @@ def main():
 
     from ledsim import shared
 
-    shm, name, w, h = shared.create_shared_buffer(64, 32)
-    print("shm", name, "env", os.environ.get("LEDARCADE_SIM_SHM"))
+    handle, name, w, h = shared.create_shared_buffer(64, 32)
+    print("frame", name, "env", os.environ.get("LEDARCADE_SIM_FRAME"))
     p = Process(target=publish_test)
     p.start()
     p.join(10)
@@ -40,8 +40,8 @@ def main():
     counter, data = shared.read_frame()
     i = (16 * 64 + 32) * 3
     print("counter", counter, "pixel", data[i], data[i + 1], data[i + 2])
-    shm.close()
-    shm.unlink()
+    handle.close()
+    handle.unlink()
     assert p.exitcode == 0, "child failed"
     assert counter > 0, "no frame published"
     assert data[i] == 255 and data[i + 1] == 128, "pixel color mismatch"

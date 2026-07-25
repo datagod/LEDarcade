@@ -18723,30 +18723,14 @@ def DisplayDigitalClock(
       
 
         Canvas = TheMatrix.SwapOnVSync(Canvas)
-        
 
-        
-        if(random.randint(0,1000) == 1):
-          #This will end the while loop
-          elapsed_time = time.time() - StartTime
-          elapsed_hours, rem = divmod(elapsed_time, 3600)
-          elapsed_minutes, elapsed_seconds = divmod(rem, 60)
-
-          #print ("StartTime:    ",StartTime, " Now:",time.time())
-          print("ElapsedMinutes: ",elapsed_minutes)
-          if elapsed_minutes >= RunMinutes:
-            Done = True
-
-        #if(random.randint(0,100) == 1):
-          #Check EventQueue (webhook data from twitch and patreon)
-          #print("Checking the EventQueue for any incoming requests")
-          #QueueCount = EventQueue.qsize()
-          #print("QueueCount: ",QueueCount)
-          #if (QueueCount > 0):
-          #  print ("Queue is not empty.  Setting Done = True")
-          #  Done = True
-
-
+        # Always honor duration (old code only sampled ~1/1000 frames and could
+        # run far past RunMinutes, leaving LEDsim children stuck).
+        elapsed_minutes = (time.time() - StartTime) / 60.0
+        if elapsed_minutes >= float(RunMinutes):
+          print(f"ElapsedMinutes: {elapsed_minutes:.2f} (limit {RunMinutes}) — done")
+          Done = True
+          break
 
         #time.sleep(ScrollSleep)
         time.sleep(ScrollSleep)

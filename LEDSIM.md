@@ -69,7 +69,11 @@ python LEDsim.py --no-web
 | **+** / **=** | Zoom in |
 | **-** | Zoom out (down to native) |
 | **F** | Toggle **borderless** / framed window |
+| **A** | Toggle **always-on-top** (default **on**) |
 | **Esc** | Quit |
+
+Always-on-top is enabled by default so the panel stays above other windows.  
+Set `LEDARCADE_SIM_TOPMOST=0` before launch to start without it.
 
 **Borderless** is the default (no title bar, no pygame logo chrome). **Left-click and drag** anywhere on the panel to move the window (works borderless or framed). Use `python LEDsim.py --bordered` for a normal title bar.
 
