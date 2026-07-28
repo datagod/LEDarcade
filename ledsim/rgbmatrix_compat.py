@@ -10,6 +10,7 @@ shared LEDsim frame (see ledsim.shared).
 from __future__ import annotations
 
 import copy
+import threading
 import time
 from typing import Any, Optional, Tuple, Union
 
@@ -18,7 +19,14 @@ from . import shared
 # Immediate SetPixel path (no SwapOnVSync) is used by many games. Publishing
 # every single pixel through IPC was a major crash/contention source on Windows.
 # Cap immediate publishes to ~30 fps; SwapOnVSync / Clear / Fill always publish.
+#
+# Important: bulk title-screen draws (ShowGlowingText / CopySpriteToPixelsZoom)
+# finish with SetPixel calls that often land *inside* the throttle window. If we
+# never flush after the last write, the viewer keeps a partial/stale frame
+# (missing text, mid-glow junk) until the next Clear or SwapOnVSync. A short
+# deferred flush publishes the final dirty front buffer once drawing pauses.
 _IMMEDIATE_PUBLISH_HZ = 30.0
+_IMMEDIATE_PUBLISH_DT = 1.0 / _IMMEDIATE_PUBLISH_HZ
 
 
 # ---------------------------------------------------------------------------
@@ -165,6 +173,8 @@ class RGBMatrix:
         self._canvas = FrameCanvas(self.width, self.height, matrix=self)
         self._last_immediate_publish = 0.0
         self._dirty = False
+        self._flush_lock = threading.Lock()
+        self._flush_timer: Optional[threading.Timer] = None
         # Ensure shared config dimensions match if parent set env
         name, sw, sh = shared.get_config()
         if name and (sw != self.width or sh != self.height):
@@ -193,6 +203,9 @@ class RGBMatrix:
 
         Updates local front always; publishes a full frame at most
         ~30 Hz (not per-pixel). Prefer SwapOnVSync for animation loops.
+
+        When publishes are throttled, a deferred flush ensures the final
+        pixel batch reaches the LEDsim viewer after drawing pauses.
         """
         x = int(x)
         y = int(y)
@@ -203,18 +216,68 @@ class RGBMatrix:
         self._dirty = True
         self._maybe_publish_immediate()
 
+    def _cancel_flush_timer(self) -> None:
+        with self._flush_lock:
+            t = self._flush_timer
+            self._flush_timer = None
+        if t is not None:
+            try:
+                t.cancel()
+            except Exception:
+                pass
+
+    def _ensure_flush_timer(self) -> None:
+        """
+        One deferred publish while SetPixel is throttled.
+
+        Important: do NOT cancel/recreate a Timer on every pixel — that was
+        extremely slow on Windows during title screens (thousands of pixels).
+        A single pending timer is enough; if more pixels land after it fires,
+        the next throttled SetPixel arms another one.
+        """
+        with self._flush_lock:
+            if self._flush_timer is not None:
+                return
+
+            def _fire() -> None:
+                with self._flush_lock:
+                    self._flush_timer = None
+                if self._dirty:
+                    self._publish_front()
+
+            # Slightly longer than one throttle slot so a burst can finish,
+            # then one present covers the final front buffer.
+            t = threading.Timer(_IMMEDIATE_PUBLISH_DT, _fire)
+            t.daemon = True
+            self._flush_timer = t
+            t.start()
+
+    def flush(self) -> None:
+        """
+        Force-publish the front buffer if dirty.
+
+        Call sparingly after bulk SetPixel drawing (title stage boundaries),
+        not after every sprite blit.
+        """
+        self._cancel_flush_timer()
+        if self._dirty:
+            self._publish_front()
+
     def _maybe_publish_immediate(self) -> None:
         """Throttle full-frame publishes from the SetPixel path."""
         if not self._dirty:
             return
         now = time.monotonic()
-        min_dt = 1.0 / _IMMEDIATE_PUBLISH_HZ
-        if (now - self._last_immediate_publish) < min_dt:
+        elapsed = now - self._last_immediate_publish
+        if elapsed < _IMMEDIATE_PUBLISH_DT:
+            # One pending timer publishes the final frame after the burst.
+            self._ensure_flush_timer()
             return
+        self._cancel_flush_timer()
         self._publish_front()
-        self._last_immediate_publish = now
 
     def Clear(self) -> None:
+        self._cancel_flush_timer()
         self._front = _empty_buffer(self.width, self.height)
         if self._canvas is not None:
             self._canvas.Clear()
@@ -223,6 +286,7 @@ class RGBMatrix:
         self._last_immediate_publish = time.monotonic()
 
     def Fill(self, r: int, g: int, b: int) -> None:
+        self._cancel_flush_timer()
         rgb = _clamp_rgb(r, g, b)
         self._front = [[rgb for _ in range(self.width)] for _ in range(self.height)]
         self._publish_front()
@@ -254,6 +318,7 @@ class RGBMatrix:
         drawing. Matches double-buffer swap: the returned canvas is a new back
         buffer (contents are the frame just shown; most code fully redraws).
         """
+        self._cancel_flush_timer()
         if canvas is None:
             canvas = self._canvas
         # Promote back buffer → front (copy so later canvas edits don't mutate front)

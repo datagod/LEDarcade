@@ -2,16 +2,19 @@
 # PARTICLES - LED Sand Nozzle Simulation
 #
 # A classic particle physics / cellular automata sand simulator for RGB LED matrices.
-# Sand falls from a nozzle at the top, obeys gravity, stacks into piles using
-# realistic diagonal avalanching rules, and drains through a "plug" at the bottom
-# the entire floor opens on a timer so the pile periodically drains away.
+# Sand falls from dual nozzles on the panel border, obeys gravity, stacks into
+# piles using realistic diagonal avalanching rules, and drains through a "plug"
+# at the bottom — the entire floor opens on a timer so the pile periodically
+# drains away.
 #
 # Modes:
-#   clock (default) — nozzle loops the full screen border, no floor, sand sprays a
-#     digital clock into existence; clock pixels are visual-only (sand flows through).
-#   sandbox — partial border path, purple platforms, floor drops on a 120s timer.
+#   clock (default) — two nozzles loop the full screen border, no floor, sand
+#     sprays a digital clock into existence; clock pixels are visual-only.
+#   sandbox — dual nozzles on a partial border path, purple platforms, floor
+#     drops on a 120s timer.
 #
 # Key behaviors:
+#   - Two independent nozzles travel the border and shoot sand streams.
 #   - Nozzle pressure (speed, flow rate, spread) breathes smoothly over time.
 #   - Shot grains arc through the air (velocity + gravity), bounce a few times,
 #     then settle into the pile as grid cells.
@@ -41,6 +44,7 @@
 import LEDarcade as LED
 LED.Initialize()
 
+import copy
 import math
 import time
 import random
@@ -65,6 +69,7 @@ MODE_SANDBOX = "sandbox"
 DEFAULT_MODE = MODE_CLOCK
 
 # Nozzle path (clock = full border; sandbox = left/top/right partial loop)
+NOZZLE_COUNT = 2            # dual streams on the border
 NOZZLE_WIDTH = 3
 NOZZLE_MARGIN = 1           # inset from the outer edge along the border path
 PATH_SPEED = 0.0062         # base segment progress per frame (slightly faster)
@@ -81,8 +86,9 @@ SPREAD_WIDE_SCALE = 1.25    # spread multiplier at low pressure (wider fan)
 
 # Nozzle pressure breathes smoothly over time (speed + flow rate + spread)
 PRESSURE_PHASE_SPEED = 0.011
-SPAWN_RATE_MIN = 0.018      # grains/frame equivalent at lowest pressure
-SPAWN_RATE_MAX = 0.95       # grains/frame equivalent at highest pressure
+# Per-nozzle rates are slightly lower so dual streams don't flood the panel
+SPAWN_RATE_MIN = 0.014      # grains/frame equivalent at lowest pressure
+SPAWN_RATE_MAX = 0.72       # grains/frame equivalent at highest pressure
 SIDE_PRESSURE_BOOST = 0.38  # extra pressure while nozzle is on left/right walls
 SIDE_SPAWN_MULT = 1.55      # flow multiplier on side walls
 SIDE_SPEED_MULT = 1.30      # launch speed multiplier on side walls
@@ -163,18 +169,8 @@ CursorDarkRGB = (0, 50, 0)
 # grid[y][x] = None (empty) or (r, g, b)
 grid = [[None for _ in range(WIDTH)] for _ in range(HEIGHT)]
 frame_counter = 0
-nozzle_x = 1
-nozzle_y = SIDE_DEPTH
-nozzle_side = "left"
-path_distance = 0.0         # continuous 0..3 around left->top->right perimeter
-path_direction = 1
-path_speed_mult = 1.0
-path_pause_until = 0
-mood_cooldown = 0
 color_phase = 0.0
 pressure_phase = 0.0
-nozzle_pressure = 0.5       # smoothed 0..1 — low = gentle trickle, high = hard blast
-spawn_accumulator = 0.0
 floor_removed_until = 0     # frame when the bottom floor returns (0 = floor intact)
 next_floor_drop_frame = 0   # frame when the next floor drop begins
 flying_particles = []
@@ -188,6 +184,48 @@ clock_spray_boost_start_frame = 0  # frame when post-rollover spray boost began 
 clock_seek_targets = []         # border path distances above changing digits
 clock_seek_index = 0
 sim_mode = DEFAULT_MODE
+nozzles = []                # list of independent nozzle state dicts
+
+
+def _make_nozzle(path_distance=0.0, path_direction=1, pressure_offset=0.0, color_offset=0.0):
+    """Create one nozzle state dict (position filled on first update)."""
+    return {
+        "x": 1,
+        "y": SIDE_DEPTH,
+        "side": "left",
+        "path_distance": float(path_distance),
+        "path_direction": int(path_direction),
+        "path_speed_mult": 1.0,
+        "path_pause_until": 0,
+        "mood_cooldown": 0,
+        "spawn_accumulator": 0.0,
+        "pressure_offset": float(pressure_offset),
+        "color_offset": float(color_offset),
+        "pressure": 0.5,
+    }
+
+
+def _init_nozzles():
+    """Two nozzles start on opposite sides of the border path, heading toward each other."""
+    global nozzles
+    path_len = _path_length()
+    nozzles = [
+        _make_nozzle(
+            path_distance=0.0,
+            path_direction=1,
+            pressure_offset=0.0,
+            color_offset=0.0,
+        ),
+        _make_nozzle(
+            path_distance=path_len * 0.5,
+            path_direction=-1,
+            pressure_offset=math.pi * 0.85,
+            color_offset=0.55,
+        ),
+    ]
+    for nz in nozzles:
+        x, y, side = _position_from_distance(nz["path_distance"])
+        nz["x"], nz["y"], nz["side"] = x, y, side
 
 
 def clock_mode_active():
@@ -371,7 +409,7 @@ def _start_clock_digit_seek(prev_hhmm, curr_hhmm):
 
     clock_seek_index = 0
     if clock_seek_targets:
-        print(f"[particles] Nozzle seeking {len(clock_seek_targets)} changed digit(s)")
+        print(f"[particles] Dual nozzles seeking {len(clock_seek_targets)} changed digit(s)")
 
 
 def _active_clock_seek_target():
@@ -386,34 +424,33 @@ def _active_clock_seek_target():
     return clock_seek_targets[0]
 
 
-def _apply_clock_digit_seek():
-    """Ease the nozzle toward the changing digit during post-rollover spray."""
-    global path_distance, path_direction, path_pause_until
-
+def _apply_clock_digit_seek(nozzle, target=None):
+    """Ease one nozzle toward a changing digit during post-rollover spray."""
     if not clock_mode_active() or not clock_seek_targets or _clock_spray_boost() <= 0:
         return False
 
-    target = _active_clock_seek_target()
+    if target is None:
+        target = _active_clock_seek_target()
     if target is None:
         return False
 
-    path_pause_until = 0
-    diff = target - path_distance
+    nozzle["path_pause_until"] = 0
+    diff = target - nozzle["path_distance"]
 
     if abs(diff) <= CLOCK_SEEK_ARRIVE_DIST:
         orbit = math.sin(frame_counter * CLOCK_SEEK_ORBIT_SPEED) * CLOCK_SEEK_ORBIT_SPAN
-        path_distance = max(1.02, min(1.98, target + orbit))
-        path_direction = 1 if orbit >= 0 else -1
+        nozzle["path_distance"] = max(1.02, min(1.98, target + orbit))
+        nozzle["path_direction"] = 1 if orbit >= 0 else -1
     else:
-        seek_cap = PATH_SPEED * path_speed_mult * CLOCK_SEEK_SPEED_MULT
+        seek_cap = PATH_SPEED * nozzle["path_speed_mult"] * CLOCK_SEEK_SPEED_MULT
         seek_step = min(seek_cap, max(PATH_SPEED * 0.45, abs(diff) * CLOCK_SEEK_EASE))
-        path_direction = 1 if diff > 0 else -1
-        path_distance += path_direction * seek_step
-        path_distance = max(0.0, min(PATH_LENGTH_CLOCK, path_distance))
-        if path_distance <= 0.0:
-            path_direction = 1
-        elif path_distance >= PATH_LENGTH_CLOCK:
-            path_direction = -1
+        nozzle["path_direction"] = 1 if diff > 0 else -1
+        nozzle["path_distance"] += nozzle["path_direction"] * seek_step
+        nozzle["path_distance"] = max(0.0, min(PATH_LENGTH_CLOCK, nozzle["path_distance"]))
+        if nozzle["path_distance"] <= 0.0:
+            nozzle["path_direction"] = 1
+        elif nozzle["path_distance"] >= PATH_LENGTH_CLOCK:
+            nozzle["path_direction"] = -1
     return True
 
 
@@ -603,13 +640,16 @@ def _palette_color(t):
     )
 
 
-def get_sand_color():
-    """Return a sand color that slowly shifts along the palette."""
+def get_sand_color(nozzle=None):
+    """Return a sand color that slowly shifts along the palette (per-nozzle tint)."""
     global color_phase
 
     color_phase += COLOR_SPAWN_BUMP
-    base = _palette_color(color_phase)
-    path_tint = _palette_color(color_phase + path_distance * 0.18)
+    path_d = nozzle["path_distance"] if nozzle else 0.0
+    color_off = nozzle.get("color_offset", 0.0) if nozzle else 0.0
+    phase = color_phase + color_off
+    base = _palette_color(phase)
+    path_tint = _palette_color(phase + path_d * 0.18)
     r = (base[0] * 0.82 + path_tint[0] * 0.18) + random.randint(-COLOR_JITTER, COLOR_JITTER)
     g = (base[1] * 0.82 + path_tint[1] * 0.18) + random.randint(-COLOR_JITTER, COLOR_JITTER)
     b = (base[2] * 0.82 + path_tint[2] * 0.18) + random.randint(-COLOR_JITTER, COLOR_JITTER)
@@ -663,155 +703,174 @@ def floor_is_removed():
     return frame_counter < floor_removed_until
 
 
-def _tick_nozzle_mood():
-    """Occasionally pause, slow down, speed up, or reverse along the same path."""
-    global path_speed_mult, path_pause_until, mood_cooldown, path_direction
-
-    if mood_cooldown > 0:
-        mood_cooldown -= 1
-        if path_speed_mult < 1.0:
-            path_speed_mult = min(1.0, path_speed_mult + 0.025)
-        elif path_speed_mult > 1.0:
-            path_speed_mult = max(1.0, path_speed_mult - 0.03)
+def _tick_nozzle_mood(nozzle):
+    """Occasionally pause, slow down, speed up, or reverse one nozzle."""
+    if nozzle["mood_cooldown"] > 0:
+        nozzle["mood_cooldown"] -= 1
+        if nozzle["path_speed_mult"] < 1.0:
+            nozzle["path_speed_mult"] = min(1.0, nozzle["path_speed_mult"] + 0.025)
+        elif nozzle["path_speed_mult"] > 1.0:
+            nozzle["path_speed_mult"] = max(1.0, nozzle["path_speed_mult"] - 0.03)
         return
 
     roll = random.random()
     if roll < 0.007:
-        path_pause_until = frame_counter + random.randint(12, 40)
-        mood_cooldown = random.randint(50, 110)
+        nozzle["path_pause_until"] = frame_counter + random.randint(12, 40)
+        nozzle["mood_cooldown"] = random.randint(50, 110)
     elif roll < 0.022:
-        path_speed_mult = random.uniform(0.18, 0.5)
-        mood_cooldown = random.randint(35, 85)
+        nozzle["path_speed_mult"] = random.uniform(0.18, 0.5)
+        nozzle["mood_cooldown"] = random.randint(35, 85)
     elif roll < 0.034:
-        path_speed_mult = random.uniform(1.35, 2.1)
-        mood_cooldown = random.randint(20, 45)
+        nozzle["path_speed_mult"] = random.uniform(1.35, 2.1)
+        nozzle["mood_cooldown"] = random.randint(20, 45)
     elif roll < 0.048:
-        path_direction *= -1
-        mood_cooldown = random.randint(70, 140)
+        nozzle["path_direction"] *= -1
+        nozzle["mood_cooldown"] = random.randint(70, 140)
 
 
-def update_nozzle_pressure():
-    """Drift nozzle pressure smoothly using layered sine waves."""
-    global pressure_phase, nozzle_pressure
-
-    pressure_phase += PRESSURE_PHASE_SPEED
+def update_nozzle_pressure(nozzle):
+    """Drift one nozzle's pressure smoothly using layered sine waves."""
+    phase = pressure_phase + nozzle["pressure_offset"]
     wave = (
-        0.62 * math.sin(pressure_phase)
-        + 0.28 * math.sin(pressure_phase * 0.43 + 1.1)
-        + 0.10 * math.sin(pressure_phase * 0.17 + 2.4)
+        0.62 * math.sin(phase)
+        + 0.28 * math.sin(phase * 0.43 + 1.1)
+        + 0.10 * math.sin(phase * 0.17 + 2.4)
     )
-    nozzle_pressure = max(0.0, min(1.0, 0.5 + 0.5 * wave))
+    nozzle["pressure"] = max(0.0, min(1.0, 0.5 + 0.5 * wave))
 
 
-def _border_side_boost():
+def _border_side_boost(nozzle):
     """Sides that get extra pressure for arcing streams into the playfield."""
+    side = nozzle["side"]
     if clock_mode_active():
-        return nozzle_side in ("left", "right", "bottom")
-    return nozzle_side in ("left", "right")
+        return side in ("left", "right", "bottom")
+    return side in ("left", "right")
 
 
-def _effective_pressure():
+def _effective_pressure(nozzle):
     """Base pressure with a boost on border sides for stronger arcing streams."""
-    pressure = nozzle_pressure + _clock_spray_boost()
-    if _border_side_boost():
+    pressure = nozzle["pressure"] + _clock_spray_boost()
+    if _border_side_boost(nozzle):
         pressure = min(1.0, pressure + SIDE_PRESSURE_BOOST)
     return min(1.0, pressure)
 
 
-def _pressure_shoot_speed():
+def _pressure_shoot_speed(nozzle):
     """Map current pressure to a launch speed with slight per-grain variation."""
-    pressure = _effective_pressure()
+    pressure = _effective_pressure(nozzle)
     center = SHOOT_SPEED_MIN + pressure * (SHOOT_SPEED_MAX - SHOOT_SPEED_MIN)
-    if _border_side_boost():
+    if _border_side_boost(nozzle):
         center *= SIDE_SPEED_MULT
     spread = 0.06 + pressure * 0.10
     return random.uniform(center - spread, center + spread)
 
 
-def _pressure_spread_scale():
+def _pressure_spread_scale(nozzle):
     """Higher pressure tightens the stream; lower pressure widens it."""
-    pressure = _effective_pressure()
+    pressure = _effective_pressure(nozzle)
     return SPREAD_WIDE_SCALE + pressure * (SPREAD_TIGHT_SCALE - SPREAD_WIDE_SCALE)
 
 
-def _spawn_from_pressure():
-    """Emit grains according to the smoothly varying nozzle flow rate."""
-    global spawn_accumulator
-
-    pressure = _effective_pressure()
+def _spawn_from_pressure(nozzle):
+    """Emit grains from one nozzle according to its flow rate."""
+    pressure = _effective_pressure(nozzle)
     rate = SPAWN_RATE_MIN + pressure * (SPAWN_RATE_MAX - SPAWN_RATE_MIN)
-    if _border_side_boost():
+    if _border_side_boost(nozzle):
         rate *= SIDE_SPAWN_MULT
-    spawn_accumulator += rate
-    while spawn_accumulator >= 1.0:
-        spawn_from_nozzle()
-        spawn_accumulator -= 1.0
+    nozzle["spawn_accumulator"] += rate
+    while nozzle["spawn_accumulator"] >= 1.0:
+        spawn_from_nozzle(nozzle)
+        nozzle["spawn_accumulator"] -= 1.0
 
 
-def update_nozzle_position():
-    """Travel continuously around the border path, ping-pong forever."""
-    global nozzle_x, nozzle_y, nozzle_side, path_distance, path_direction, color_phase
+def update_nozzle_position(nozzle, seek_target=None):
+    """Travel one nozzle around the border path, ping-pong forever."""
+    update_nozzle_pressure(nozzle)
+    _tick_nozzle_mood(nozzle)
 
-    color_phase += COLOR_CYCLE_SPEED
-    update_nozzle_pressure()
-    _tick_nozzle_mood()
+    nozzle["x"], nozzle["y"], nozzle["side"] = _position_from_distance(nozzle["path_distance"])
 
-    nozzle_x, nozzle_y, nozzle_side = _position_from_distance(path_distance)
-
-    if _apply_clock_digit_seek():
-        nozzle_x, nozzle_y, nozzle_side = _position_from_distance(path_distance)
+    if _apply_clock_digit_seek(nozzle, target=seek_target):
+        nozzle["x"], nozzle["y"], nozzle["side"] = _position_from_distance(nozzle["path_distance"])
         return
 
-    if frame_counter < path_pause_until:
+    if frame_counter < nozzle["path_pause_until"]:
         return
 
-    step = PATH_SPEED * path_speed_mult * random.uniform(0.9, 1.1)
-    path_distance += step * path_direction
+    step = PATH_SPEED * nozzle["path_speed_mult"] * random.uniform(0.9, 1.1)
+    nozzle["path_distance"] += step * nozzle["path_direction"]
     path_len = _path_length()
 
-    if path_distance >= path_len:
-        path_distance = path_len
-        path_direction = -1
-    elif path_distance <= 0.0:
-        path_distance = 0.0
-        path_direction = 1
+    if nozzle["path_distance"] >= path_len:
+        nozzle["path_distance"] = path_len
+        nozzle["path_direction"] = -1
+    elif nozzle["path_distance"] <= 0.0:
+        nozzle["path_distance"] = 0.0
+        nozzle["path_direction"] = 1
 
-    nozzle_x, nozzle_y, nozzle_side = _position_from_distance(path_distance)
+    nozzle["x"], nozzle["y"], nozzle["side"] = _position_from_distance(nozzle["path_distance"])
 
 
-def _shoot_angle():
+def update_all_nozzles():
+    """Advance every nozzle and fire sand from each stream."""
+    global pressure_phase, color_phase
+
+    color_phase += COLOR_CYCLE_SPEED
+    pressure_phase += PRESSURE_PHASE_SPEED
+
+    # During clock digit seek, assign each nozzle a target (round-robin if more
+    # digits than nozzles so both streams help repaint).
+    seek_targets = []
+    if clock_mode_active() and clock_seek_targets and _clock_spray_boost() > 0:
+        for i, nz in enumerate(nozzles):
+            if len(clock_seek_targets) == 1:
+                seek_targets.append(clock_seek_targets[0])
+            else:
+                seek_targets.append(clock_seek_targets[i % len(clock_seek_targets)])
+    else:
+        seek_targets = [None] * len(nozzles)
+
+    for nz, seek in zip(nozzles, seek_targets):
+        update_nozzle_position(nz, seek_target=seek)
+        _spawn_from_pressure(nz)
+
+
+def _shoot_angle(nozzle):
     """Aim direction based on where the nozzle sits on the border."""
-    spread = SPREAD_ANGLE * _pressure_spread_scale()
-    if nozzle_side == "top":
-        center_bias = (nozzle_x - (WIDTH - 1) / 2.0) * 0.018
+    spread = SPREAD_ANGLE * _pressure_spread_scale(nozzle)
+    side = nozzle["side"]
+    nx, ny = nozzle["x"], nozzle["y"]
+    if side == "top":
+        center_bias = (nx - (WIDTH - 1) / 2.0) * 0.018
         return math.pi / 2 + center_bias + random.uniform(-spread, spread)
-    if nozzle_side == "bottom":
-        center_bias = (nozzle_x - (WIDTH - 1) / 2.0) * 0.018
+    if side == "bottom":
+        center_bias = (nx - (WIDTH - 1) / 2.0) * 0.018
         return -math.pi / 2 + center_bias + random.uniform(-spread, spread)
-    if nozzle_side == "left":
+    if side == "left":
         base = -SIDE_SHOOT_UP
         return base + random.uniform(-spread * 0.45, spread * 0.30)
     base = -math.pi + SIDE_SHOOT_UP
     return base + random.uniform(-spread * 0.30, spread * 0.45)
 
 
-def spawn_from_nozzle():
-    """Shoot a single sand grain from the nozzle with initial velocity."""
+def spawn_from_nozzle(nozzle):
+    """Shoot a single sand grain from one nozzle with initial velocity."""
     global flying_particles
 
-    if nozzle_x < 1 or nozzle_x >= WIDTH - 1:
+    nx, ny = nozzle["x"], nozzle["y"]
+    if nx < 1 or nx >= WIDTH - 1:
         return
-    if nozzle_y < 0 or nozzle_y >= HEIGHT:
+    if ny < 0 or ny >= HEIGHT:
         return
 
-    angle = _shoot_angle()
-    speed = _pressure_shoot_speed()
+    angle = _shoot_angle(nozzle)
+    speed = _pressure_shoot_speed(nozzle)
     flying_particles.append({
-        "x": float(nozzle_x),
-        "y": float(nozzle_y),
+        "x": float(nx),
+        "y": float(ny),
         "vx": speed * math.cos(angle),
         "vy": speed * math.sin(angle),
-        "color": get_sand_color(),
+        "color": get_sand_color(nozzle),
         "bounces": 0,
     })
 
@@ -1131,29 +1190,33 @@ def count_particles():
     return count
 
 
-def nozzle_blocked():
-    """Return True if sand has piled up against the nozzle opening."""
-    x = nozzle_x
-    y = nozzle_y
+def nozzle_blocked(nozzle):
+    """Return True if sand has piled up against one nozzle opening."""
+    x = nozzle["x"]
+    y = nozzle["y"]
+    side = nozzle["side"]
     if x < 1 or x >= WIDTH - 1 or y < 0 or y >= HEIGHT:
         return False
     if grid[y][x] is not None:
         return True
-    if nozzle_side == "top" and y + 1 < HEIGHT and grid[y + 1][x] is not None:
+    if side == "top" and y + 1 < HEIGHT and grid[y + 1][x] is not None:
         return True
-    if nozzle_side == "right" and x - 1 >= 0 and grid[y][x - 1] is not None:
+    if side == "right" and x - 1 >= 0 and grid[y][x - 1] is not None:
         return True
-    if nozzle_side == "left" and x + 1 < WIDTH and grid[y][x + 1] is not None:
+    if side == "left" and x + 1 < WIDTH and grid[y][x + 1] is not None:
         return True
-    if nozzle_side == "bottom" and y - 1 >= 0 and grid[y - 1][x] is not None:
+    if side == "bottom" and y - 1 >= 0 and grid[y - 1][x] is not None:
         return True
     return False
 
 
-def draw_nozzle():
-    """Draw the nozzle at its current position (top/bottom bar or side spout)."""
+def draw_one_nozzle(nozzle):
+    """Draw one nozzle at its current position (top/bottom bar or side spout)."""
     lip_color = (50, 50, 50)
     spout_color = (90, 70, 40)
+    nozzle_x = nozzle["x"]
+    nozzle_y = nozzle["y"]
+    nozzle_side = nozzle["side"]
 
     if nozzle_side in ("top", "bottom"):
         y = nozzle_y
@@ -1181,6 +1244,12 @@ def draw_nozzle():
             LED.setpixelCanvas(x - 1, nozzle_y, *spout_color)
         elif nozzle_side == "left" and x < WIDTH - 2:
             LED.setpixelCanvas(x + 1, nozzle_y, *spout_color)
+
+
+def draw_nozzle():
+    """Draw every active nozzle."""
+    for nz in nozzles:
+        draw_one_nozzle(nz)
 
 
 def draw_open_floor():
@@ -1287,11 +1356,10 @@ def PlayParticles(Duration=10000, StopEvent=None, Mode=None):
     Mode: MODE_CLOCK (default) or MODE_SANDBOX.
     """
     global grid, frame_counter, sim_mode
-    global nozzle_x, nozzle_y, nozzle_side, flying_particles
-    global path_distance, path_direction, path_speed_mult
-    global path_pause_until, mood_cooldown, color_phase
+    global flying_particles, nozzles
+    global color_phase
     global floor_removed_until, next_floor_drop_frame
-    global pressure_phase, nozzle_pressure, spawn_accumulator
+    global pressure_phase
     global platforms, platform_cells
     global clock_mask, clock_layer, clock_hhmm, clock_destructible
     global clock_spray_boost_start_frame, clock_seek_targets, clock_seek_index
@@ -1306,18 +1374,8 @@ def PlayParticles(Duration=10000, StopEvent=None, Mode=None):
     if sandbox_mode_active():
         generate_platforms()
     frame_counter = 0
-    nozzle_x = 1
-    nozzle_y = SIDE_DEPTH
-    nozzle_side = "left"
-    path_distance = 0.0
-    path_direction = 1
-    path_speed_mult = 1.0
-    path_pause_until = 0
-    mood_cooldown = 0
     color_phase = 0.0
     pressure_phase = random.uniform(0.0, math.pi * 2.0)
-    nozzle_pressure = 0.5
-    spawn_accumulator = 0.0
     floor_removed_until = 0
     next_floor_drop_frame = FLOOR_DROP_INTERVAL_FRAMES
     clock_mask = {}
@@ -1329,11 +1387,15 @@ def PlayParticles(Duration=10000, StopEvent=None, Mode=None):
     clock_seek_index = 0
     update_clock_mask()
     flying_particles = []
+    _init_nozzles()
 
     clock = pygame.time.Clock() if HAS_PYGAME else None
     start_time = time.time()
 
-    print(f"[particles] Starting {sim_mode} mode on {WIDTH}x{HEIGHT} (TARGET_FPS={TARGET_FPS})")
+    print(
+        f"[particles] Starting {sim_mode} mode on {WIDTH}x{HEIGHT} "
+        f"with {len(nozzles)} nozzles (TARGET_FPS={TARGET_FPS})"
+    )
     print(f"[particles] Using {'pygame.Clock' if HAS_PYGAME else 'time.sleep'} for framebuffer pacing")
 
     try:
@@ -1353,9 +1415,8 @@ def PlayParticles(Duration=10000, StopEvent=None, Mode=None):
             update_clock_mask()
             update_clock_destructible()
 
-            # --- Move nozzle and shoot sand ---
-            update_nozzle_position()
-            _spawn_from_pressure()
+            # --- Move both nozzles and shoot dual sand streams ---
+            update_all_nozzles()
 
             # --- Physics: airborne arcs/bounces, then settled pile rules ---
             update_flying_particles()
@@ -1405,6 +1466,424 @@ def PlayParticles(Duration=10000, StopEvent=None, Mode=None):
         pass
 
 
+# ===========================================================================
+# Title intro — SpaceExplorer-style letters: zoom in from far, lock, shatter
+# ===========================================================================
+PT_TITLE_LINE1 = "SAND"
+PT_TITLE_LINE2 = "PARTICLES"
+PT_TITLE_ZOOM = 1
+PT_TITLE_GAP = 1
+PT_TITLE_LINE_GAP = 2
+# Sand / amber palette (dark → bright), same role as SpaceExplorer blues
+PT_SAND_SHADES = (
+    (90, 55, 15),
+    (140, 90, 25),
+    (180, 120, 35),
+    (210, 150, 45),
+    (230, 175, 55),
+    (245, 195, 70),
+    (255, 210, 90),
+    (255, 230, 130),
+    (200, 110, 40),
+    (255, 160, 50),
+    (220, 140, 60),
+    (255, 190, 80),
+    (170, 100, 30),
+)
+PT_SHADOW_SCALE = 0.28
+# Zoom-in: letters start tiny (far) and grow into their seats
+PT_ZOOM_START = 0.12
+PT_ZOOM_END = 1.0
+PT_ZOOM_SECONDS = 1.35
+PT_ZOOM_STAGGER = 0.055       # per-letter delay (s) before zoom begins
+PT_HOLD_SECONDS = 0.55        # locked on-screen before shatter
+PT_SHATTER_UP = 1.15          # initial upward burst
+PT_SHATTER_SPREAD = 1.35      # horizontal kick
+PT_SHATTER_GRAVITY = 0.22
+PT_SHATTER_SECONDS = 2.4      # max fall time before cut to game
+PT_INTRO_MAX_SECONDS = 12.0
+PT_INTRO_FPS = 30
+
+
+def _pt_stop(StopEvent):
+    try:
+        return StopEvent is not None and StopEvent.is_set()
+    except Exception:
+        return False
+
+
+def _pt_letter_sprite(char):
+    ch = char.upper()
+    if not ("A" <= ch <= "Z"):
+        return None
+    idx = ord(ch) - ord("A")
+    try:
+        return LED.TrimSprite(copy.deepcopy(LED.AlphaSpriteList[idx]))
+    except Exception:
+        return None
+
+
+def _pt_sprite_pixels(sprite, zoom, rgb, shadow_rgb):
+    pixels = []
+    shadow_pixels = []
+    sw, sh = sprite.width, sprite.height
+    for count in range(sw * sh):
+        if sprite.grid[count] == 0:
+            continue
+        y, x = divmod(count, sw)
+        for zv in range(zoom):
+            for zh in range(zoom):
+                pixels.append((x * zoom + zh, y * zoom + zv, rgb))
+                shadow_pixels.append(
+                    (x * zoom + zh + 1, y * zoom + zv + 1, shadow_rgb)
+                )
+    return pixels, shadow_pixels, sw * zoom, sh * zoom
+
+
+def _pt_sand_for_index(i):
+    return PT_SAND_SHADES[i % len(PT_SAND_SHADES)]
+
+
+def _pt_shadow_for_rgb(rgb):
+    return tuple(max(0, int(c * PT_SHADOW_SCALE)) for c in rgb)
+
+
+class PtTitleLetter(object):
+    """Letter that zooms in from far away, locks, then shatters to pixels."""
+
+    def __init__(
+        self, char, pixels, shadow_pixels, width, height, rest_x, rest_y, zoom_delay,
+    ):
+        self.char = char
+        self.pixels = pixels
+        self.shadow_pixels = shadow_pixels
+        self.width = width
+        self.height = height
+        self.rest_x = float(rest_x)
+        self.rest_y = float(rest_y)
+        self.zoom_delay = float(zoom_delay)
+        self.scale = PT_ZOOM_START
+        self.settled = False
+        self.visible = True
+        self.shattered = False
+
+    def update_zoom(self, elapsed):
+        """Grow from far (tiny) to rest scale. elapsed is seconds since intro start."""
+        if self.settled:
+            self.scale = PT_ZOOM_END
+            return
+        t = elapsed - self.zoom_delay
+        if t <= 0:
+            self.scale = PT_ZOOM_START
+            return
+        # Ease-out cubic so they lock softly
+        u = min(1.0, t / PT_ZOOM_SECONDS)
+        ease = 1.0 - (1.0 - u) ** 3
+        self.scale = PT_ZOOM_START + (PT_ZOOM_END - PT_ZOOM_START) * ease
+        if u >= 1.0:
+            self.scale = PT_ZOOM_END
+            self.settled = True
+
+    def force_settle(self):
+        self.scale = PT_ZOOM_END
+        self.settled = True
+        self.visible = True
+
+    def _center(self):
+        return (
+            self.rest_x + self.width * 0.5,
+            self.rest_y + self.height * 0.5,
+        )
+
+    def draw(self, canvas, panel_w, panel_h, fade=1.0):
+        if not self.visible or self.shattered:
+            return
+        fade = max(0.0, min(1.0, float(fade)))
+        if fade <= 0.001:
+            return
+        scale = max(0.05, float(self.scale))
+        cx, cy = self._center()
+        set_px = canvas.SetPixel
+
+        def plot(dx, dy, rgb):
+            # Scale around letter center so zoom stays centered on the seat
+            ox = (dx - self.width * 0.5) * scale
+            oy = (dy - self.height * 0.5) * scale
+            px = int(round(cx + ox))
+            py = int(round(cy + oy))
+            if 0 <= px < panel_w and 0 <= py < panel_h:
+                set_px(
+                    px, py,
+                    int(rgb[0] * fade), int(rgb[1] * fade), int(rgb[2] * fade),
+                )
+
+        for dx, dy, rgb in self.shadow_pixels:
+            plot(dx, dy, rgb)
+        for dx, dy, rgb in self.pixels:
+            plot(dx, dy, rgb)
+
+    def shatter_particles(self):
+        """Turn every lit pixel into a falling grain (world coords at scale 1)."""
+        grains = []
+        if not self.visible:
+            return grains
+        self.shattered = True
+        self.visible = False
+        sx = int(round(self.rest_x))
+        sy = int(round(self.rest_y))
+        for dx, dy, rgb in self.pixels:
+            px = sx + dx
+            py = sy + dy
+            grains.append({
+                "x": float(px),
+                "y": float(py),
+                "vx": random.uniform(-PT_SHATTER_SPREAD, PT_SHATTER_SPREAD),
+                "vy": random.uniform(-PT_SHATTER_UP, -PT_SHATTER_UP * 0.25),
+                "color": rgb,
+                "life": random.uniform(0.7, 1.0),
+            })
+        return grains
+
+
+def _build_pt_title_letters(panel_w, panel_h):
+    lines = [PT_TITLE_LINE1, PT_TITLE_LINE2]
+    line_specs = []
+    max_h = 0
+    shade_i = 0
+    for line in lines:
+        specs = []
+        for char in line:
+            if char == " ":
+                continue
+            sprite = _pt_letter_sprite(char)
+            if sprite is None:
+                continue
+            rgb = _pt_sand_for_index(shade_i)
+            shade_i += 1
+            shadow = _pt_shadow_for_rgb(rgb)
+            pixels, shadow_pixels, lw, lh = _pt_sprite_pixels(
+                sprite, PT_TITLE_ZOOM, rgb, shadow,
+            )
+            specs.append((char, pixels, shadow_pixels, lw, lh))
+            if lh > max_h:
+                max_h = lh
+        line_specs.append(specs)
+
+    if not any(line_specs):
+        return []
+
+    total_h = max_h * len(line_specs) + PT_TITLE_LINE_GAP * max(0, len(line_specs) - 1)
+    top_y = max(0, (panel_h - total_h) // 2)
+
+    letters = []
+    letter_index = 0
+    for line_i, specs in enumerate(line_specs):
+        if not specs:
+            continue
+        total_w = sum(s[3] for s in specs) + PT_TITLE_GAP * max(0, len(specs) - 1)
+        x_cursor = max(0, (panel_w - total_w) // 2)
+        rest_y = top_y + line_i * (max_h + PT_TITLE_LINE_GAP)
+        for char, pixels, shadow_pixels, lw, lh in specs:
+            # Center-out stagger: middle letters arrive slightly first
+            delay = letter_index * PT_ZOOM_STAGGER
+            letters.append(PtTitleLetter(
+                char, pixels, shadow_pixels, lw, lh,
+                x_cursor, rest_y + (max_h - lh),
+                zoom_delay=delay,
+            ))
+            x_cursor += lw + PT_TITLE_GAP
+            letter_index += 1
+    return letters
+
+
+class PtIntroStarField(object):
+    """Warm amber starfield (SpaceExplorer parallax style, sand-tinted)."""
+
+    def __init__(self, panel_w, panel_h, seed=19):
+        self.panel_w = int(panel_w)
+        self.panel_h = int(panel_h)
+        rng = random.Random(seed)
+        specs = (
+            (28, (14, 40), 1.4, 0.22, 10),
+            (20, (28, 70), 2.8, 0.45, 18),
+            (12, (45, 100), 5.0, 0.80, 28),
+        )
+        self.layers = []
+        for count, (b0, b1), sh, sv, warm in specs:
+            stars = []
+            for _ in range(count):
+                stars.append((
+                    rng.uniform(0, self.panel_w),
+                    rng.uniform(0, self.panel_h),
+                    rng.randint(b0, b1),
+                    rng.uniform(0, 2.0 * math.pi),
+                    rng.uniform(0.25, 0.55),
+                    warm,
+                ))
+            self.layers.append({
+                "stars": stars,
+                "off_h": 0.0,
+                "off_v": 0.0,
+                "speed_h": sh,
+                "speed_v": sv,
+            })
+
+    def update(self, dt):
+        dt = max(0.0, min(0.05, float(dt)))
+        pw = float(self.panel_w)
+        ph = float(self.panel_h)
+        for layer in self.layers:
+            layer["off_h"] = (layer["off_h"] + layer["speed_h"] * dt) % pw
+            layer["off_v"] = (layer["off_v"] + layer["speed_v"] * dt) % ph
+
+    def draw(self, canvas, t_sec, fade=1.0):
+        fade = max(0.0, min(1.0, float(fade)))
+        if fade <= 0.001:
+            return
+        set_px = canvas.SetPixel
+        pw, ph = self.panel_w, self.panel_h
+        for layer in self.layers:
+            oh, ov = layer["off_h"], layer["off_v"]
+            for x, y, bright, phase, pulse, warm in layer["stars"]:
+                px = int((x + oh) % pw) % pw
+                py = int((y + ov) % ph) % ph
+                pulse_amt = 0.85 + 0.15 * (0.5 + 0.5 * math.sin(t_sec * pulse + phase))
+                b = max(6, min(160, int(bright * pulse_amt * fade)))
+                r = max(0, min(255, b + int((warm // 2) * fade)))
+                g = max(0, min(255, int(b * 0.75)))
+                bb = max(0, int(b * 0.35))
+                set_px(px, py, r, g, bb)
+
+
+def _draw_pt_title_frame(canvas, letters, panel_w, panel_h, starfield=None, t_sec=0.0,
+                         fade=1.0, grains=None):
+    canvas.Fill(0, 0, 0)
+    if starfield is not None:
+        starfield.draw(canvas, t_sec, fade=fade)
+    for letter in letters:
+        letter.draw(canvas, panel_w, panel_h, fade=fade)
+    if grains:
+        set_px = canvas.SetPixel
+        for g in grains:
+            px = int(round(g["x"]))
+            py = int(round(g["y"]))
+            if 0 <= px < panel_w and 0 <= py < panel_h:
+                life = max(0.0, min(1.0, g["life"]))
+                r, gch, b = g["color"]
+                set_px(px, py, int(r * life), int(gch * life), int(b * life))
+    return LED.TheMatrix.SwapOnVSync(canvas)
+
+
+def PlayParticlesTitleIntro(StopEvent=None):
+    """
+    SAND / PARTICLES in sand shades (SpaceExplorer-style letter sprites):
+      1) Zoom in from far (tiny → full size), lock into place
+      2) Hold briefly
+      3) Shatter into falling sand particles
+    """
+    panel_w = int(getattr(LED, "HatWidth", WIDTH) or WIDTH)
+    panel_h = int(getattr(LED, "HatHeight", HEIGHT) or HEIGHT)
+    letters = _build_pt_title_letters(panel_w, panel_h)
+    try:
+        canvas = LED.TheMatrix.CreateFrameCanvas()
+    except Exception:
+        canvas = LED.Canvas
+    starfield = PtIntroStarField(panel_w, panel_h, seed=23)
+
+    if not letters:
+        print("[particles] Title intro skipped (no letter sprites)")
+        return
+
+    if _pt_stop(StopEvent):
+        print("[particles] Title intro skipped (StopEvent)")
+        return
+
+    print("[particles] Title intro — zoom in, lock, shatter")
+
+    start = time.time()
+    last = start
+    phase = "zoom"  # → hold → shatter → done
+    hold_start = None
+    shatter_start = None
+    grains = []
+    clock = pygame.time.Clock() if HAS_PYGAME else None
+
+    try:
+        while True:
+            if _pt_stop(StopEvent):
+                break
+            now = time.time()
+            elapsed = now - start
+            if elapsed >= PT_INTRO_MAX_SECONDS:
+                break
+
+            dt = max(0.001, now - last)
+            last = now
+            starfield.update(dt)
+
+            if phase == "zoom":
+                for L in letters:
+                    L.update_zoom(elapsed)
+                if all(L.settled for L in letters):
+                    phase = "hold"
+                    hold_start = now
+                    print("[particles] Title intro — locked")
+
+            elif phase == "hold":
+                for L in letters:
+                    L.force_settle()
+                if (now - hold_start) >= PT_HOLD_SECONDS:
+                    phase = "shatter"
+                    shatter_start = now
+                    grains = []
+                    for L in letters:
+                        grains.extend(L.shatter_particles())
+                    print(f"[particles] Title intro — shatter ({len(grains)} grains)")
+
+            elif phase == "shatter":
+                remaining = []
+                for g in grains:
+                    g["vy"] += PT_SHATTER_GRAVITY
+                    g["x"] += g["vx"]
+                    g["y"] += g["vy"]
+                    g["vx"] *= 0.99
+                    g["life"] -= dt * 0.55
+                    if g["life"] > 0 and g["y"] < panel_h + 2:
+                        remaining.append(g)
+                grains = remaining
+                if not grains or (now - shatter_start) >= PT_SHATTER_SECONDS:
+                    break
+
+            try:
+                canvas = _draw_pt_title_frame(
+                    canvas, letters, panel_w, panel_h,
+                    starfield=starfield, t_sec=elapsed, fade=1.0, grains=grains,
+                )
+            except Exception:
+                try:
+                    LED.ClearBigLED()
+                    for L in letters:
+                        L.draw(LED.Canvas, panel_w, panel_h, fade=1.0)
+                    LED.TheMatrix.SwapOnVSync(LED.Canvas)
+                except Exception:
+                    pass
+
+            if clock:
+                clock.tick(PT_INTRO_FPS)
+            else:
+                time.sleep(1.0 / PT_INTRO_FPS)
+
+    except KeyboardInterrupt:
+        pass
+
+    try:
+        LED.ClearBuffers()
+        LED.TheMatrix.Clear()
+    except Exception:
+        pass
+    print("[particles] Title intro complete")
+
+
 # ---------------- Launcher (standard LEDarcade pattern) ----------------
 
 def LaunchParticles(Duration=10000, ShowIntro=False, StopEvent=None, Mode=None):
@@ -1412,67 +1891,12 @@ def LaunchParticles(Duration=10000, ShowIntro=False, StopEvent=None, Mode=None):
     mode = Mode or DEFAULT_MODE
     if ShowIntro:
         LED.LoadConfigData()
-
-        LED.ShowTitleScreen(
-            BigText="SAND",
-            BigTextRGB=LED.HighYellow,
-            BigTextShadowRGB=LED.ShadowYellow,
-            LittleText="PARTICLES",
-            LittleTextRGB=LED.MedOrange,
-            LittleTextShadowRGB=(60, 30, 0),
-            ScrollText="Clock mode: sand sprays time into life." if mode == MODE_CLOCK else "Sandbox mode: pile and drain.",
-            ScrollTextRGB=LED.MedGreen,
-            ScrollSleep=ScrollSleep,
-            DisplayTime=1,
-            ExitEffect=0,
-        )
-
-        LED.ClearBigLED()
-        LED.ClearBuffers()
-
-        CursorH = 0
-        CursorV = 0
-        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-            LED.ScreenArray,
-            "OPENING THE NOZZLE",
-            CursorH=CursorH,
-            CursorV=CursorV,
-            MessageRGB=(200, 170, 60),
-            CursorRGB=CursorRGB,
-            CursorDarkRGB=CursorDarkRGB,
-            StartingLineFeed=1,
-            TypeSpeed=TerminalTypeSpeed,
-            ScrollSpeed=TerminalScrollSpeed,
-        )
-        LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.4, BlinkCount=2)
-
-        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-            LED.ScreenArray,
-            "GRAVITY ENGAGED",
-            CursorH=CursorH,
-            CursorV=CursorV,
-            MessageRGB=(180, 140, 40),
-            CursorRGB=CursorRGB,
-            CursorDarkRGB=CursorDarkRGB,
-            StartingLineFeed=1,
-            TypeSpeed=TerminalTypeSpeed,
-            ScrollSpeed=TerminalScrollSpeed,
-        )
-        LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.4, BlinkCount=1)
-
-        LED.ScreenArray, CursorH, CursorV = LED.TerminalScroll(
-            LED.ScreenArray,
-            "CLOCK MODE: BORDER NOZZLE, NO FLOOR." if mode == MODE_CLOCK else "FLOOR DROPS EVERY 120 SECONDS.",
-            CursorH=CursorH,
-            CursorV=CursorV,
-            MessageRGB=(120, 90, 30),
-            CursorRGB=CursorRGB,
-            CursorDarkRGB=CursorDarkRGB,
-            StartingLineFeed=1,
-            TypeSpeed=0.008,
-            ScrollSpeed=ScrollSleep,
-        )
-        LED.BlinkCursor(CursorH=CursorH, CursorV=CursorV, CursorRGB=CursorRGB, CursorDarkRGB=CursorDarkRGB, BlinkSpeed=0.4, BlinkCount=2)
+        try:
+            PlayParticlesTitleIntro(StopEvent=StopEvent)
+        except Exception as exc:
+            import traceback
+            print(f"[particles] title intro failed: {exc}")
+            traceback.print_exc()
 
     PlayParticles(Duration=Duration, StopEvent=StopEvent, Mode=mode)
 

@@ -2032,8 +2032,9 @@ def LaunchParticles(Command, StopEvent):
     import particles as PT
     Duration = Command.get("duration", 10)
     print(f"[LEDcommander][LaunchParticles] Launching for {Duration} minutes...")
+    # ShowIntro=True so title / open screens match other games (and LEDsim flush path)
     _run_game_dimmed(
-        lambda: PT.LaunchParticles(Duration=Duration, ShowIntro=False, StopEvent=StopEvent)
+        lambda: PT.LaunchParticles(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     )
 
 

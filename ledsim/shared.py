@@ -270,10 +270,9 @@ def _write_payload(path: str, counter: int, rgb_bytes: bytes) -> None:
             with open(tmp, "wb") as f:
                 f.write(payload)
                 f.flush()
-                try:
-                    os.fsync(f.fileno())
-                except OSError:
-                    pass
+                # Skip fsync: this is a live frame buffer, not durable storage.
+                # fsync on every present (~30–60 Hz) made LEDsim feel very slow
+                # on Windows; os.replace of a fully-written tmp is enough.
             last_err = None
             for attempt in range(_REPLACE_RETRIES):
                 try:

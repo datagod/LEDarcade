@@ -2028,6 +2028,22 @@ def setpixel(x, y, r, g, b):
 
 
 
+def flushMatrix():
+  """
+  Present any pending immediate (SetPixel) frame on LEDsim.
+
+  Hardware rgbmatrix draws SetPixel immediately; the sim throttles publishes and
+  can leave the last bulk-draw incomplete until this flush (title screens,
+  TerminalScroll, glowing text). Safe no-op on Pi.
+  """
+  try:
+    if TheMatrix is not None and hasattr(TheMatrix, "flush"):
+      TheMatrix.flush()
+  except Exception:
+    pass
+
+
+
 def setpixelCanvas(x, y, r, g, b):
   global ScreenArray
   global Canvas
@@ -2878,18 +2894,31 @@ class Sprite(object):
   
 
   def Scroll(self, start_h=None, start_v=None, direction="right", moves=1, sleep=0.01):
-        #AI created this one, but it flickers
-        global Canvas, TheMatrix
+        # Scroll a sprite across the panel using the frame canvas.
+        #
+        # Title / intro text is drawn with SetPixel (front buffer + ScreenArray).
+        # Canvas is often empty. The old code SwapOnVSync'd that empty canvas
+        # once up front (blanking ALERT / title on LEDsim) then only swapped
+        # again at the end — so the scroll looked like a long black screen.
+        global Canvas, TheMatrix, ScreenArray
 
         if start_h is not None:
             self.h = start_h
         if start_v is not None:
             self.v = start_v
 
-        # Sync display and buffer once before scrolling
-        TempCanvas = TheMatrix.SwapOnVSync(Canvas)
-        Canvas = TheMatrix.SwapOnVSync(TempCanvas)
-        Canvas = TempCanvas
+        if Canvas is None and TheMatrix is not None:
+            Canvas = TheMatrix.CreateFrameCanvas()
+
+        # Seed canvas from ScreenArray so the title stays visible under the banner
+        try:
+            for vv in range(HatHeight):
+                row = ScreenArray[vv]
+                for hh in range(HatWidth):
+                    r, g, b = row[hh]
+                    Canvas.SetPixel(hh, vv, r, g, b)
+        except Exception:
+            pass
 
         if direction == "right":
             modifier = 1
@@ -2917,10 +2946,10 @@ class Sprite(object):
             else:
                 self.v = pos
             self.DisplayToCanvas(Canvas)
-            time.sleep(sleep)
-
-        # Swap once at the end of scroll
-        Canvas = TheMatrix.SwapOnVSync(Canvas)
+            # Present every step so LEDsim (and Pi) show motion, not a blank pause
+            Canvas = TheMatrix.SwapOnVSync(Canvas)
+            if sleep > 0:
+                time.sleep(sleep)
 
   def Erase(self, Canvas):
         for count in range(self.width * self.height):
@@ -15187,6 +15216,7 @@ def ShowGlowingText(
 
   #Draw text
   CopySpriteToPixelsZoom(TheBanner,h,v,(r,g,b),(0,0,0),ZoomFactor,Fill=False)
+  flushMatrix()
 
 
   #Fade away!
@@ -15203,6 +15233,7 @@ def ShowGlowingText(
     #erase remnants
     CopySpriteToPixelsZoom(TheBanner,h,v,(0,0,0),(0,0,0),ZoomFactor,Fill=False)
     CopySpriteToPixelsZoom(TheBanner,h-1,v+1,(0,0,0),(0,0,0),ZoomFactor,Fill=False)
+    flushMatrix()
 
 
   return   
@@ -15337,11 +15368,6 @@ def CopySpriteToPixelsZoom(TheSprite,h,v, ColorTuple=(-1,-1,-1),FillerTuple=(-1,
                 setpixel(H,V,fr,fg,fb)
               #else:
               #  setpixel(H,V,0,0,0)
-
-  #draw the contents of the buffer to the LED matrix
-  #Canvas = TheMatrix.SwapOnVSync(Canvas)
-  
- 
 
   return;
 
@@ -16031,6 +16057,12 @@ def ShowTitleScreen(
   #We want to capture what is on the screen before we start drawing, that way we can transition back to it nicely
   ScreenArrayBefore = copy.deepcopy(ScreenArray)
 
+  # LEDsim: heavy glow + falling-sand exit FX often look blank/stuttery (SetPixel
+  # IPC throttle + particle transition). Keep glow light; avoid type-2 exit.
+  _sim = (DISPLAY_BACKEND == "sim")
+  _little_glow = 8 if _sim else 100
+  _big2_glow = 12 if _sim else 50
+
   TheMatrix.Clear()
   ClearBuffers()
   
@@ -16052,6 +16084,7 @@ def ShowTitleScreen(
   TheMatrix.Clear()
   ClearBuffers() #We do this to erase our ScreenArray (which we draw to manually because we cannot read the matrix as a whole)
   ShowGlowingText(CenterHoriz=True, CenterVert=False, h=0, v=1, Text=BigText, RGB=BigTextRGB, ShadowRGB=BigTextShadowRGB,ZoomFactor= BigTextZoom,GlowLevels=0,DropShadow=True)
+  flushMatrix()
   
 
   time.sleep(0.5)
@@ -16061,16 +16094,18 @@ def ShowTitleScreen(
   if (BigText2 == ''):
     #Little Text
     v = BigTextZoom * 7 
-    ShowGlowingText(CenterHoriz=True,h=0,v=v,Text=LittleText,RGB=LittleTextRGB,ShadowRGB=LittleTextShadowRGB,ZoomFactor= LittleTextZoom,GlowLevels=100,DropShadow=True)
+    ShowGlowingText(CenterHoriz=True,h=0,v=v,Text=LittleText,RGB=LittleTextRGB,ShadowRGB=LittleTextShadowRGB,ZoomFactor= LittleTextZoom,GlowLevels=_little_glow,DropShadow=True)
   else:
     #BigText2
-    ShowGlowingText(CenterHoriz = True,h = 0 ,v = 12,  Text = BigText2,  RGB = BigText2RGB,     ShadowRGB = BigText2ShadowRGB,    ZoomFactor = 2,GlowLevels=50,DropShadow=True)
+    ShowGlowingText(CenterHoriz = True,h = 0 ,v = 12,  Text = BigText2,  RGB = BigText2RGB,     ShadowRGB = BigText2ShadowRGB,    ZoomFactor = 2,GlowLevels=_big2_glow,DropShadow=True)
+  flushMatrix()
 
 
   #Scrolling Message
   EraseMessageArea(LinesFromBottom=6)
   BrightRGB, ShadowRGB = GetBrightAndShadowRGB()
   ShowScrollingBanner2(ScrollText,ScrollTextRGB,ScrollSpeed=ScrollSleep,v=26)
+  flushMatrix()
 
 
 
@@ -16082,7 +16117,12 @@ def ShowTitleScreen(
     print("No effect")
 
   elif(ExitEffect == 0):
-    r = random.randint(0,5)
+    # LEDsim: only fade/shrink. Zoom-out (32->256) and bounce do hundreds of
+    # full-frame presents and feel like a long blank after ALERT.
+    if _sim:
+      r = random.choice((1, 4))
+    else:
+      r = random.randint(0, 5)
     if (r == 0):
       #Zoom out
       #print('Random Zoom out')
@@ -16090,7 +16130,7 @@ def ShowTitleScreen(
     elif (r == 1):
       #Shrink
       #print('Random Shrink')
-      ZoomScreen(ScreenArray,32,1,Fade=True,ZoomSleep=0.01)
+      ZoomScreen(ScreenArray,32,1,Fade=True,ZoomSleep=0.01 if not _sim else 0)
     elif (r == 2):
       #Bounce1
       #print('Random Bounce1')
@@ -16106,7 +16146,7 @@ def ShowTitleScreen(
       #print('Fade')
       ScreenArray2  = ([[]])
       ScreenArray2  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-      TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=1)
+      TransitionBetweenScreenArrays(ScreenArray,ScreenArray2,TransitionType=1,FadeSleep=0.005 if _sim else 0.01)
 
     elif (r == 5):
       #print('FallingSand')
@@ -16147,12 +16187,18 @@ def ShowTitleScreen(
 
   
   
-  #We want to clean up all our display, but then fade back into whatever what before this function was called
-  #fade back into the previous display (likely Uptime)
+  # Clean up. On hardware, fade back toward whatever was on ScreenArray before
+  # the title. On LEDsim this is usually empty and costs a long blank after
+  # ALERT — just clear and leave ScreenArray as the title content for the
+  # next intro step (terminal / game).
   TheMatrix.Clear()
-  BlankScreenArray  = ([[]])
-  BlankScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
-  TransitionBetweenScreenArrays(OldArray = BlankScreenArray, NewArray = ScreenArrayBefore,TransitionType=1)
+  if not _sim:
+    BlankScreenArray  = ([[]])
+    BlankScreenArray  = [[ (0,0,0) for i in range(HatWidth)] for i in range(HatHeight)]
+    TransitionBetweenScreenArrays(OldArray = BlankScreenArray, NewArray = ScreenArrayBefore,TransitionType=1)
+  else:
+    # Keep title pixels in ScreenArray for any follow-on TerminalScroll seed
+    flushMatrix()
   
   
       
