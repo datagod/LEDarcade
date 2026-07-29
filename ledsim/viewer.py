@@ -5,7 +5,7 @@ blocky LED look.
 
 Display modes:
   scale=1  — native panel resolution (e.g. 64x32 window)
-  scale>1  — integer upscale (e.g. 15 → 960x480)
+  scale>1  — integer upscale (e.g. 3 → 192x96)
 
 Window chrome:
   borderless (default) — no title bar / OS frame (pygame icon hidden with chrome)
@@ -15,7 +15,9 @@ Hotkeys while running:
   N        — next program (skip current LEDcommander item)
   T        — launch LEDtv
   R        — restart LEDsim (full process restart)
-  1        — native (scale 1)
+  1        — launch Pinball
+  2        — launch Space Explorer
+  0        — native (scale 1)
   S        — restore default scaled size
   + / =    — increase scale
   - / _    — decrease scale (min 1)
@@ -37,10 +39,10 @@ from typing import Any, Optional, Tuple
 from . import shared
 
 # Default "zoomed" scale when user presses S (or start-up default)
-DEFAULT_SCALED = 15
+DEFAULT_SCALED = 3
 MIN_SCALE = 1
 # Zoom keys (+/-) stop here so the panel does not shrink to an invisible 64×32
-# speck. Press "1" for true native 1:1 when you really want it.
+# speck. Press "0" for true native 1:1 when you really want it.
 MIN_ZOOM_KEY_SCALE = 3
 MAX_SCALE = 40
 
@@ -733,6 +735,24 @@ def _request_ledtv(command_queue: Optional[Any]) -> None:
     )
 
 
+def _request_pinball(command_queue: Optional[Any]) -> None:
+    """Launch Pinball table simulation."""
+    _send_command(
+        command_queue,
+        {"Action": "launch_pinball", "duration": 10},
+        "Pinball",
+    )
+
+
+def _request_spaceexplorer(command_queue: Optional[Any]) -> None:
+    """Launch Space Explorer."""
+    _send_command(
+        command_queue,
+        {"Action": "launch_spaceexplorer", "duration": 10},
+        "SpaceExplorer",
+    )
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
     if raw is None or str(raw).strip() == "":
@@ -868,8 +888,8 @@ def run_viewer(
     frame_label = "borderless" if borderless else "windowed"
     print(f"[LEDsim] Viewer started — {_mode_label(width, height, scale)} [{frame_label}]")
     print(
-        "[LEDsim] Keys: N=next  T=LEDtv  R=restart  1=native  S=scaled  "
-        "+/- zoom (resizes window)  F=frame  A=topmost  Esc=quit"
+        "[LEDsim] Keys: N=next  T=LEDtv  1=Pinball  2=SpaceExplorer  "
+        "R=restart  0=native  S=scaled  +/- zoom  F=frame  A=topmost  Esc=quit"
     )
     print("[LEDsim] Mouse: left-click and drag anywhere to move the panel")
 
@@ -930,8 +950,10 @@ def run_viewer(
                     exit_reason = "quit"
                     break
 
-                if event.key == pygame.K_r:
-                    print("[LEDsim] Restart requested (R)")
+                # R = full LEDsim restart (process reload via LEDsim.py / run_ledsim.bat)
+                key_ch = (getattr(event, "unicode", None) or "").lower()
+                if event.key in (pygame.K_r,) or key_ch == "r":
+                    print("[LEDsim] Restart requested (R) — reloading LEDsim")
                     stop_event.set()
                     exit_reason = "restart"
                     break
@@ -958,11 +980,22 @@ def run_viewer(
                     _request_ledtv(command_queue)
                     continue
 
-                # +/- resize the whole window to panel * scale
+                # Game shortcuts (main number row + keypad)
                 if event.key == pygame.K_1 or event.key == pygame.K_KP1:
-                    _apply_scale(1)
+                    _request_pinball(command_queue)
+                    continue
 
-                elif event.key == pygame.K_s:
+                if event.key == pygame.K_2 or event.key == pygame.K_KP2:
+                    _request_spaceexplorer(command_queue)
+                    continue
+
+                # 0 = native 1:1 scale (was key 1 before game shortcuts)
+                if event.key == pygame.K_0 or event.key == pygame.K_KP0:
+                    _apply_scale(1)
+                    continue
+
+                # +/- resize the whole window to panel * scale
+                if event.key == pygame.K_s:
                     _apply_scale(default_scaled)
 
                 elif event.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
@@ -976,7 +1009,7 @@ def run_viewer(
                         print(
                             f"[LEDsim] Zoom floor is x{MIN_ZOOM_KEY_SCALE} "
                             f"({width * MIN_ZOOM_KEY_SCALE}x{height * MIN_ZOOM_KEY_SCALE}). "
-                            f"Press 1 for true native {width}x{height}."
+                            f"Press 0 for true native {width}x{height}."
                         )
 
             if stop_event.is_set():

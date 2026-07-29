@@ -14,18 +14,18 @@ Display children write pixels into a shared memory framebuffer; the viewer
 is the only process that owns a window (stable across mode switches).
 
 Usage:
-  python LEDsim.py                 # scaled (default x15 → 960x480)
+  python LEDsim.py                 # scaled (default x3 → 192x96)
   python LEDsim.py --native        # true panel size 64x32
   python LEDsim.py --scale 12      # custom integer scale
   python LEDsim.py --port 5055
 
 In the viewer window:
-  N = next,  T = LEDtv,  R = restart sim,  1 = native,  S = scale,
-  +/- = zoom,  F = frame,  Esc = quit
+  N = next,  T = LEDtv,  1 = Pinball,  2 = SpaceExplorer,
+  R = restart,  0 = native,  S = scale,  +/- = zoom,  F = frame,  Esc = quit
 
 Environment:
   LEDARCADE_DISPLAY=sim          (set automatically)
-  LEDARCADE_SIM_SCALE=15         pixel scale (1 = native; default 15)
+  LEDARCADE_SIM_SCALE=3          pixel scale (1 = native; default 3)
   LEDARCADE_STREAM_MODE=0        full brightness (set automatically)
 """
 
@@ -98,8 +98,12 @@ def _setup_faulthandler() -> None:
 
 DEFAULT_WIDTH = 64
 DEFAULT_HEIGHT = 32
-DEFAULT_SCALE = 15  # comfortable desktop zoom; use --native for 1:1
+DEFAULT_SCALE = 3  # start at x3 zoom; use --scale / +/- to adjust
 DEFAULT_PORT = 5055
+# Exit code when the viewer presses R. run_ledsim.bat loops on this so a full
+# re-launch happens (os.execv after multiprocessing is unreliable on Windows,
+# and post-exit orphan cleanup would kill a Popen'd child).
+RESTART_EXIT_CODE = 42
 
 
 def _parse_args():
@@ -109,13 +113,13 @@ def _parse_args():
         epilog=(
             "display size examples:\n"
             "  python LEDsim.py --native          window is 64x32 (true panel pixels)\n"
-            "  python LEDsim.py                   window is 960x480 (64x32 x15)\n"
+            "  python LEDsim.py                   window is 192x96 (64x32 x3)\n"
             "  python LEDsim.py --scale 10        window is 640x320\n"
             "  python LEDsim.py --scale 1         same as --native\n"
             "  python LEDsim.py --bordered        normal title-bar window\n"
             "\n"
-            "while focused: N=next  T=LEDtv  R=restart  1=native  S=scaled  "
-            "+/-=zoom  F=frame  Esc=quit\n"
+            "while focused: N=next  T=LEDtv  1=Pinball  2=SpaceExplorer  "
+            "R=restart  0=native  S=scaled  +/-=zoom  F=frame  Esc=quit\n"
             "borderless: left-drag moves the window"
         ),
     )
@@ -368,8 +372,8 @@ def main():
     print(f"  Window: {width * scale}x{height * scale}")
     print(f"  Web:    http://127.0.0.1:{args.port}/" + (" (disabled)" if args.no_web else ""))
     print(
-        "  Keys:   N=next  T=LEDtv  R=restart  1=native  S=scaled  "
-        "+/-=zoom  F=frame  Esc=quit"
+        "  Keys:   N=next  T=LEDtv  1=Pinball  2=SpaceExplorer  "
+        "R=restart  0=native  S=scaled  +/-=zoom  F=frame  Esc=quit"
     )
     print("  Mouse:  left-click and drag moves the window")
     print("=" * 60)
@@ -438,12 +442,45 @@ def main():
         pass
 
     if exit_reason == "restart":
-        print("[LEDsim] Restarting…")
-        _cleanup_done["v"] = False  # allow cleanup on next life if exec fails
+        print("[LEDsim] Restart requested (R) — full process reload")
         script = os.path.join(REPO_DIR, "LEDsim.py")
-        argv = [sys.executable, script] + sys.argv[1:]
+        # Preserve CLI flags (--scale, --port, …)
+        cli_args = list(sys.argv[1:])
+        argv = [sys.executable, "-u", script] + cli_args
         os.chdir(REPO_DIR)
-        os.execv(sys.executable, argv)
+
+        under_wrapper = os.environ.get("LEDARCADE_SIM_WRAPPER", "").strip() in (
+            "1", "true", "yes", "on",
+        )
+        if under_wrapper:
+            # run_ledsim.bat will re-invoke us when it sees RESTART_EXIT_CODE
+            print(f"[LEDsim] Returning exit code {RESTART_EXIT_CODE} for wrapper restart")
+            return RESTART_EXIT_CODE
+
+        # Standalone (python LEDsim.py): spawn a fresh process, then exit
+        print(f"[LEDsim] Spawning: {' '.join(argv)}")
+        try:
+            env = os.environ.copy()
+            env["LEDARCADE_DISPLAY"] = "sim"
+            env.pop("LEDARCADE_SIM_CHILD", None)
+            subprocess.Popen(
+                argv,
+                cwd=REPO_DIR,
+                env=env,
+                close_fds=False,
+            )
+            print("[LEDsim] New LEDsim process started.")
+            return 0
+        except Exception as exc:
+            print(f"[LEDsim] Spawn restart failed: {exc}")
+            traceback.print_exc()
+            # Last resort: execv (may fail after multiprocessing on Windows)
+            try:
+                os.execv(sys.executable, argv)
+            except Exception as exc2:
+                print(f"[LEDsim] execv restart failed: {exc2}")
+                traceback.print_exc()
+            return RESTART_EXIT_CODE
 
     print("[LEDsim] Goodbye.")
     return 0

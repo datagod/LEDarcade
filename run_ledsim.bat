@@ -1,8 +1,11 @@
 @echo off
 REM Launch LEDsim (LEDcommander + desktop panel window)
-REM   run_ledsim.bat              scaled default (x15)
+REM   run_ledsim.bat              scaled default (x3)
 REM   run_ledsim.bat --native     true 64x32 panel size
 REM   run_ledsim.bat --scale 10   custom zoom
+REM
+REM Exit code 42 = viewer pressed R (restart). We re-run LEDsim without
+REM post-exit orphan kill so the new session is not wiped.
 cd /d "%~dp0"
 
 REM ---------------------------------------------------------------------------
@@ -14,19 +17,22 @@ REM ---------------------------------------------------------------------------
 echo [LEDsim] Pre-launch orphan cleanup...
 call :kill_orphans
 
-REM Drop stale bytecode so HWND / frame-IPC fixes always load
-if exist "%~dp0ledsim\__pycache__" rd /s /q "%~dp0ledsim\__pycache__" 2>nul
-if exist "%~dp0__pycache__\LEDsim*.pyc" del /q "%~dp0__pycache__\LEDsim*.pyc" 2>nul
-
 set LEDARCADE_DISPLAY=sim
 set LEDARCADE_STREAM_MODE=0
 set LEDARCADE_GAMMA=1.0
 set LEDARCADE_SKIP_BOOT_UPDATE=1
 set PYTHONUNBUFFERED=1
 set PYTHONFAULTHANDLER=1
+REM Signal LEDsim that this bat will re-loop on restart exit code 42
+set LEDARCADE_SIM_WRAPPER=1
 REM Borderless panel; +/- resizes the whole window. Topmost off (SDL2 topmost AVed).
 if not defined LEDARCADE_SIM_BORDERLESS set LEDARCADE_SIM_BORDERLESS=1
 if not defined LEDARCADE_SIM_TOPMOST set LEDARCADE_SIM_TOPMOST=0
+
+:run_ledsim
+REM Drop stale bytecode so HWND / frame-IPC / hotkey fixes always load
+if exist "%~dp0ledsim\__pycache__" rd /s /q "%~dp0ledsim\__pycache__" 2>nul
+if exist "%~dp0__pycache__\LEDsim*.pyc" del /q "%~dp0__pycache__\LEDsim*.pyc" 2>nul
 
 if exist "%~dp0.venv\Scripts\python.exe" (
   "%~dp0.venv\Scripts\python.exe" -X faulthandler -u LEDsim.py %*
@@ -34,6 +40,16 @@ if exist "%~dp0.venv\Scripts\python.exe" (
   python -X faulthandler -u LEDsim.py %*
 )
 set EXITCODE=%ERRORLEVEL%
+
+REM R key → exit 42 → full re-launch (intro + commander + viewer)
+if "%EXITCODE%"=="42" (
+  echo.
+  echo [LEDsim] Restart ^(R^) — reloading LEDsim...
+  echo.
+  REM Light cleanup of children only; do not race a new instance
+  call :kill_orphans
+  goto run_ledsim
+)
 
 echo [LEDsim] Post-exit orphan cleanup...
 call :kill_orphans

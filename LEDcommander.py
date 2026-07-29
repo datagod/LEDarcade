@@ -134,6 +134,7 @@ VALID_WEB_ACTIONS = {
     "launch_stockticker": ["duration", "symbols"],
     "launch_fallingsand": ["duration"],
     "launch_particles": ["duration"],
+    "launch_pinball": ["duration"],
     "launch_gravitysim": ["duration"],
     "launch_mazecar": ["duration"],
     "launch_rallydot": ["duration"],
@@ -404,6 +405,7 @@ def fallback_action_generator():
         {"Action": "launch_spacedot", "duration": 5},
         {"Action": "launch_fallingsand", "duration": 5},
         {"Action": "launch_particles", "duration": 5},
+        {"Action": "launch_pinball", "duration": 5},
         {"Action": "launch_rallydot"},  # until game over
     ]
 
@@ -824,6 +826,15 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "particles"
                 DisplayProcess = Process(target=LaunchParticles, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_pinball":
+                print("[LEDcommander][Run] Launching Pinball")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "pinball"
+                DisplayProcess = Process(target=LaunchPinball, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -2035,6 +2046,17 @@ def LaunchParticles(Command, StopEvent):
     # ShowIntro=True so title / open screens match other games (and LEDsim flush path)
     _run_game_dimmed(
         lambda: PT.LaunchParticles(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
+
+
+def LaunchPinball(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+    import Pinball as PB
+    Duration = Command.get("duration", 10)
+    print(f"[LEDcommander][LaunchPinball] Launching for {Duration} minutes...")
+    _run_game_dimmed(
+        lambda: PB.LaunchPinball(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     )
 
 

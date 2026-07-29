@@ -63,9 +63,11 @@ python LEDsim.py --no-web
 |-----|--------|
 | **N** | **Next** program (stop current, advance LEDcommander playlist) |
 | **T** | Launch **LEDtv** (channel-surf / local video) |
-| **R** | **Restart** LEDsim (full process reload — intro + playlist) |
-| **1** | Native 1:1 (64×32) |
-| **S** | Default scaled size (×15) |
+| **1** | Launch **Pinball** |
+| **2** | Launch **Space Explorer** |
+| **R** | **Restart** LEDsim (full process reload — intro + playlist; exit code 42 loops in `run_ledsim.bat`) |
+| **0** | Native 1:1 (64×32) |
+| **S** | Default scaled size (×3) |
 | **+** / **=** | Zoom in |
 | **-** | Zoom out (down to native) |
 | **F** | Toggle **borderless** / framed window |
@@ -86,7 +88,7 @@ Closing the window also stops LEDsim.
 | Variable | Meaning |
 |----------|---------|
 | `LEDARCADE_DISPLAY=sim` | Use software matrix backend |
-| `LEDARCADE_SIM_SCALE` | Pixel scale (`1` = native; default `15`) |
+| `LEDARCADE_SIM_SCALE` | Pixel scale (`1` = native; default `3`) |
 | `LEDARCADE_SIM_BORDERLESS` | `1` / `0` — borderless window (default `1`) |
 | `LEDARCADE_SIM_WIDTH` / `HEIGHT` | Panel size (must match launcher) |
 | `LEDARCADE_STREAM_MODE=0` | Full matrix brightness (standalone) |
