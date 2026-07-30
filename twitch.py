@@ -1736,8 +1736,8 @@ class Bot(commands.Bot ):
         time.sleep(4)
         await ctx.send(
             'Available games: ?astrosmash ?blasteroids ?defender ?fallingsand '
-            '?gravity ?invaders ?outbreak ?pacdot ?particles ?rally '
-            '?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8) ?zerk'
+            '?fractal ?gravity ?invaders ?outbreak ?pacdot ?particles ?pinball (random table) '
+            '?pinball2 ?rally ?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8) ?zerk'
         )
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
@@ -2351,6 +2351,46 @@ class Bot(commands.Bot ):
         message = "Sand is spraying time into life..."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "launch_particles", "duration": 10 })
+
+
+    #----------------------------------------
+    # FRACTAL (Mandelbrot zoom)            --
+    #----------------------------------------
+
+    @commands.command(name="fractal", aliases=["mandelbrot", "zoom", "fractalblaster"])
+    async def fractal(self, ctx: commands.Context):
+      """Chat: ?fractal — Fractal Blaster (Mandelbrot coastal zooms)."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Fractal Blaster — diving through the letters into infinity..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_fractal", "duration": 10 })
+
+
+    #----------------------------------------
+    # PINBALL                              --
+    #----------------------------------------
+
+    @commands.command(name="pinball", aliases=["pin", "flippers"])
+    async def pinball(self, ctx: commands.Context):
+      """Chat: ?pinball — random LED pinball table (also idle rotation)."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Flippers up — random table incoming!"
+        await self.Channel.send(message)
+      # LEDcommander picks among all registered pinball tables
+      CommandQueue.put({"Action": "launch_pinball_random", "duration": 10 })
+
+
+    #----------------------------------------
+    # PINBALL 2 — Central Park (1966)      --
+    #----------------------------------------
+
+    @commands.command(name="pinball2", aliases=["centralpark", "central"])
+    async def pinball2(self, ctx: commands.Context):
+      """Chat: ?pinball2 — Gottlieb Central Park (1966) inspired table."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Central Park, 1966 — watch the monkey ring the bell!"
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_pinball2", "duration": 10 })
 
 
     #----------------------------------------

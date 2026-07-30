@@ -20,8 +20,9 @@ Usage:
   python LEDsim.py --port 5055
 
 In the viewer window:
-  N = next,  T = LEDtv,  1 = Pinball,  2 = SpaceExplorer,
-  R = restart,  0 = native,  S = scale,  +/- = zoom,  F = frame,  Esc = quit
+  N = next,  T = LEDtv,  1 = Pinball,  2 = Pinball2,  3 = SpaceExplorer,
+  4 = 7-Seg Clock,  5 = Fractal Blaster,  R = restart,  0 = native,  S = scale,
+  +/- = zoom,  F = frame,  Esc = quit
 
 Environment:
   LEDARCADE_DISPLAY=sim          (set automatically)
@@ -118,8 +119,8 @@ def _parse_args():
             "  python LEDsim.py --scale 1         same as --native\n"
             "  python LEDsim.py --bordered        normal title-bar window\n"
             "\n"
-            "while focused: N=next  T=LEDtv  1=Pinball  2=SpaceExplorer  "
-            "R=restart  0=native  S=scaled  +/-=zoom  F=frame  Esc=quit\n"
+            "while focused: N=next  T=LEDtv  1=Pinball  2=Pinball2  3=SpaceExplorer  "
+            "4=7-SegClock  5=FractalBlaster  R=restart  0=native  S=scaled  +/-=zoom  F=frame  Esc=quit\n"
             "borderless: left-drag moves the window"
         ),
     )
@@ -372,7 +373,8 @@ def main():
     print(f"  Window: {width * scale}x{height * scale}")
     print(f"  Web:    http://127.0.0.1:{args.port}/" + (" (disabled)" if args.no_web else ""))
     print(
-        "  Keys:   N=next  T=LEDtv  1=Pinball  2=SpaceExplorer  "
+        "  Keys:   N=next  T=LEDtv  1=Pinball  2=Pinball2  3=SpaceExplorer  "
+        "4=7-SegClock  5=FractalBlaster  "
         "R=restart  0=native  S=scaled  +/-=zoom  F=frame  Esc=quit"
     )
     print("  Mouse:  left-click and drag moves the window")

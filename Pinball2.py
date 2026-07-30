@@ -1,12 +1,20 @@
 # =====================================================================================
-# PINBALL — LED matrix pinball table simulation
+# PINBALL 2 — Gottlieb "Central Park" (1966) inspired EM layout
 #
-# A tall (7× screen height) single-width playfield with:
-#   - Two animated flippers at the bottom corners
-#   - A silver ball with gravity, wall bounce, and flipper hits
-#   - Camera that pans vertically to follow the ball
+# Real-world reference (IPDB #481, Gottlieb, June 1966):
+#   Flippers (2), Pop bumpers (4), Slingshots (2), Standup targets (12),
+#   Left and right dual outlanes. Single-player electromechanical.
+#   Famous for mechanical backbox animation (monkey ringing a bell).
 #
-# Rendering uses the LEDarcade canvas + SwapOnVSync path (LEDsim-safe).
+# This module recreates the *playfield vocabulary* on the LED matrix:
+#   bottom Italian outlane/inlane + flippers + slings → midfield standups →
+#   four thumper bumpers under the top curve → right plunger lane.
+#
+# Outside the playfield (unchanged presentation):
+#   - Top: 5-digit flip-clock score (scrolls with camera)
+#   - Bottom apron: 7-seg time + drain score-reveal anim
+#
+# Engine forked from Pinball.py (physics, AI, LEDsim canvas path).
 # =====================================================================================
 
 from __future__ import annotations
@@ -32,10 +40,11 @@ except Exception:
 WIDTH = int(LED.HatWidth)
 HEIGHT = int(LED.HatHeight)
 
-# World is one screen wide, tall playfield (longer = more room for camera tracking)
-MAP_SCALE_Y = 7
-# Extra world height for the playfield (table taller by this many pixels)
-TABLE_EXTRA_H = 2
+# World is one screen wide. Central Park is a compact single-level EM —
+# short playfield: toys pack from the top arc down to the slings (no blank
+# mid band above the flippers). Scale 3 ≈ three screens of height.
+MAP_SCALE_Y = 3
+TABLE_EXTRA_H = 0
 MAP_W = WIDTH
 MAP_H = HEIGHT * MAP_SCALE_Y + TABLE_EXTRA_H
 
@@ -97,16 +106,16 @@ FLIP_TIP_T = 0.82
 FLIP_HOLD_FRAMES = 9
 # Short post-shot cooldown so AI can re-catch quickly
 FLIP_COOLDOWN_FRAMES = 3
-# Upper-third side flippers (symmetric, almost on the walls)
+# Central Park has only the two bottom flippers (no upper pair on the real table)
+ENABLE_UPPER_FLIPPERS = False
 UPPER_FLIPPER_LEN = max(8, int(FLIPPER_LEN * 0.90))
-UPPER_FLIPPER_SIDE_INSET = 2.2      # pivot almost touching each side wall
-UPPER_FLIPPER_Y_FRAC = 0.26         # fraction of playfield height from top
-# Aggressive upper AI: faster swing, harder hits, earlier intercept
+UPPER_FLIPPER_SIDE_INSET = 2.2
+UPPER_FLIPPER_Y_FRAC = 0.26
 UPPER_FLIPPER_SWING_SPEED = FLIPPER_SWING_SPEED * 1.55
 UPPER_FLIPPER_POWER = FLIPPER_POWER * 1.35
 UPPER_FLIP_CATCH_DIST = FLIP_CATCH_DIST * 1.55
-UPPER_FLIP_LOOKAHEAD = 10.0         # predict ball position (px-ish)
-UPPER_FLIP_REACT_Y = 22.0           # start tracking this far above the bat
+UPPER_FLIP_LOOKAHEAD = 10.0
+UPPER_FLIP_REACT_Y = 22.0
 
 # Plunger lane (right side — traditional pinball launch)
 PLUNGER_LANE_W = 3                 # width of the right-hand lane
@@ -142,17 +151,30 @@ PLUNGER_RETURN_SPEED = 0.35
 PLUNGER_RETRY_MIN_FRAMES = 12
 # Lane opens into the playfield *inside* the top arc (not outside the curve)
 PLUNGER_EXIT_INSET = 2.2           # how far inside the arc the ball is delivered
-# --- 1960s–early-70s EM layout vocabulary ---
-# Classic arrangement (bottom → top):
-#   flippers + center drain → slingshots just above/outside each bat
-#   → midfield targets → triangle of 3 pop bumpers under the top curve
-#   → plunger on the right. Drop-target bank sits mid-playfield.
+# --- Gottlieb Central Park (1966) layout vocabulary ---
+# Bottom → top:
+#   dual outlanes + 2 flippers + 2 slingshots
+#   → 12 standup targets (midfield)
+#   → 4 pop (thumper) bumpers under the top curve
+#   → right-hand plunger into the top arc
+# No skill ramps / multi-saucer network (not on this title).
+# One top-of-table spinner sits on the plunger launch corridor (see toys).
 #
-# Pop bumpers (active "thumper" bumpers)
+# Pop bumpers (active "thumper" bumpers) — Central Park has FOUR
 BUMPER_RGB = (50, 90, 200)
 BUMPER_LIT_RGB = (120, 180, 255)
-BUMPER_R = 2.5
+BUMPER_R = 2.4
 BUMPER_KICK = 0.72
+ENABLE_SKILL_RAMPS = False
+ENABLE_SPINNERS = False            # midfield multi-spinner cluster (off)
+ENABLE_TOP_LAUNCH_SPINNER = True   # single reel under the arc / launch path
+ENABLE_MULTI_SAUCERS = False
+ENABLE_DROP_TARGETS = False       # CP uses standups, not drop banks
+ENABLE_UPPER_TRI = False
+# Top launch spinner — high gain so a plunger shot rips the reel
+TOP_SPINNER_R = 2.15
+TOP_SPINNER_SPIN_GAIN = 1.15      # impulse scale (default collide uses 0.35)
+TOP_SPINNER_MAX_OMEGA = 3.8       # rad/frame cap (default ~1.0–1.4)
 # Slingshots — just above and to either side of the flippers (classic EM)
 # Tall wall, short base; long rubber faces the playfield. Apexes stay
 # outside the center drain corridor so the ball can always fall middle.
@@ -161,8 +183,8 @@ SLING_RGB = (160, 40, 40)
 SLING_RUBBER = (230, 85, 65)
 SLING_LIT_RGB = (255, 190, 90)
 SLING_PAD = 0.95                  # collision half-width (body + rubber solid)
-# Upper-center bounce triangle (between top flippers) — weak sling-like
-UPPER_TRI_SIDE = 10.0             # equilateral side length (px)
+# Upper-center bounce triangle (disabled for Central Park layout)
+UPPER_TRI_SIDE = 10.0
 UPPER_TRI_KICK = SLING_KICK * 0.45  # bounce pop, weaker than slingshots
 UPPER_TRI_RGB = (140, 150, 165)
 UPPER_TRI_EDGE = (200, 210, 225)
@@ -1408,36 +1430,27 @@ def _right_outlane_top_xy():
 
 def _pop_bumpers():
     """
-    Classic EM pop bumpers:
+    Central Park (1966): four pop bumpers under the top curve, plus a
+    right-outlane thumper 10 px above the outlane entrance.
 
-      • Upper triangle under the top curve (1 high center + 2 lower flanks)
-      • Side midfield pair near the left/right rails — bounce the ball
-        back into the middle when it hugs a wall at mid-table
-      • Right-outlane thumper 10 px above the outlane entrance
-
-    Returns list of (x, y, radius).
+    Diamond cluster (common Gottlieb EM packing):
+      one high, one low, two mid flanks — feeds standups below.
     """
     lane_l = _lane_left_x()
     play_w = max(10.0, lane_l - 2.0)
     _cx, cy, radius, _, _ = _top_arc()
-    # Cluster sits in the upper third of the main field, clear of the arc rail
-    y_hi = float(cy - radius * 0.22)
-    y_lo = y_hi + 7.5
+    # Compact diamond just under the arc — sits above the standup band
+    y_hi = float(cy - radius * 0.12)
+    y_mid = y_hi + 5.5
+    y_lo = y_hi + 10.5
     cx = play_w * 0.48
-    # Mid-table side thumpers (classic wall-hug pop bumpers)
-    mid_y = MAP_H * 0.50
-    mid_y2 = MAP_H * 0.56
-    side_inset = max(3.5, BUMPER_R + 1.8)
     # Right outlane bumper — 10 px above the outlane top
     rox, roy = _right_outlane_top_xy()
     return (
-        (cx, y_hi, BUMPER_R * 1.05),                 # top center
-        (play_w * 0.30, y_lo, BUMPER_R),             # lower left (upper cluster)
-        (play_w * 0.68, y_lo, BUMPER_R),             # lower right (upper cluster)
-        (side_inset, mid_y, BUMPER_R * 0.95),        # left mid-side
-        (play_w - side_inset, mid_y, BUMPER_R * 0.95),  # right mid-side
-        (side_inset + 1.2, mid_y2, BUMPER_R * 0.85), # left lower-mid side
-        (play_w - side_inset - 1.2, mid_y2, BUMPER_R * 0.85),  # right lower-mid side
+        (cx, y_hi, BUMPER_R * 1.05),                 # high center
+        (play_w * 0.28, y_mid, BUMPER_R),            # mid left
+        (play_w * 0.68, y_mid, BUMPER_R),            # mid right
+        (cx, y_lo, BUMPER_R * 0.95),                 # low center
         (rox, roy - 10.0, BUMPER_R),                 # right outlane top
     )
 
@@ -1646,52 +1659,21 @@ def collide_ramp(ball, ramp, state):
 
 def _drop_target_banks():
     """
-    Vertical drop-target banks along both sides (symmetric), plus a horizontal
-    line flanking the bottom eject hole (10 px further down).
-
-    Each side:
-      wall | ball-gap | outer column (tall) | gap | inner column | open field
-
-    Bottom hole row (bank ids 4 / 5):
-      [targets…]  (gap)  hole  (gap)  […targets]   at y = hole_y + 10
-
-    Returns list of (x, y, w, h, bank_id).
+    Central Park uses standup targets, not drop banks.
+    Returns empty when ENABLE_DROP_TARGETS is False.
     """
+    if not ENABLE_DROP_TARGETS:
+        return []
     lane_l = _lane_left_x()
     play_w = max(12.0, lane_l - 2.0)
-    # Long side runs — upper third down toward lower mid
     y0_outer = MAP_H * 0.28
-    y0_inner = MAP_H * 0.32
     left_outer = float(DROP_BEHIND_GAP)
-    left_inner = left_outer + DROP_W + DROP_COL_GAP
     right_outer = float(min(play_w - DROP_BEHIND_GAP - DROP_W, lane_l - DROP_W - 2.0))
-    right_inner = right_outer - DROP_W - DROP_COL_GAP
     rects = []
-    columns = (
-        (0, left_outer, y0_outer, DROP_COUNT),
-        (1, left_inner, y0_inner, DROP_INNER_COUNT),
-        (2, right_inner, y0_inner, DROP_INNER_COUNT),
-        (3, right_outer, y0_outer, DROP_COUNT),
-    )
-    for bank_id, x0, y0, count in columns:
-        for i in range(count):
-            y = y0 + i * (DROP_H + DROP_GAP)
+    for bank_id, x0 in enumerate((left_outer, right_outer)):
+        for i in range(DROP_COUNT):
+            y = y0_outer + i * (DROP_H + DROP_GAP)
             rects.append((x0, y, DROP_W, DROP_H, bank_id))
-
-    # Horizontal lines L/R of the bottom eject hole (must match saucer_low layout)
-    hole_x, hole_y = _bottom_saucer_xy(play_w)
-    row_y = hole_y + DROP_BOTTOM_LINE_BELOW
-    gap = DROP_BOTTOM_LINE_GAP
-    # Left of hole (bank 4) — extend leftward
-    for i in range(DROP_BOTTOM_LINE_EACH):
-        x = hole_x - gap - DROP_W - i * (DROP_W + DROP_GAP)
-        if x >= 1.5:
-            rects.append((x, row_y, DROP_W, DROP_H, 4))
-    # Right of hole (bank 5) — extend rightward
-    for i in range(DROP_BOTTOM_LINE_EACH):
-        x = hole_x + gap + i * (DROP_W + DROP_GAP)
-        if x + DROP_W <= lane_l - 1.5:
-            rects.append((x, row_y, DROP_W, DROP_H, 5))
     return rects
 
 
@@ -1701,10 +1683,13 @@ def _drop_target_bank():
 
 
 def _bottom_saucer_xy(play_w=None):
-    """World position of the bottom eject hole (shared with drop-target row)."""
+    """World position of a lower kick-out (compact table: above sling zone)."""
     if play_w is None:
         play_w = max(12.0, _lane_left_x() - 2.0)
-    return (float(play_w * 0.50), float(MAP_H * 0.72))
+    pf = _playfield_bottom()
+    flip_y = pf - FLIPPER_BOTTOM_INSET
+    sling_top = flip_y - SLING_HEIGHT - SLING_UP_SHIFT
+    return (float(play_w * 0.50), float(sling_top - 6.0))
 
 
 def draw_background(canvas, camera_y, plunger_charge=0.0):
@@ -2139,66 +2124,106 @@ def collide_outlane_guides(ball, guides):
 
 def _layout_playfield_toys():
     """
-    Positions for additional EM toys relative to the tall table.
-    Returns dict of static geometry lists.
+    Central Park (1966) toys on a compact playfield.
+
+    Fill the vertical band from just under the pop diamond down to the sling
+    tops so there is no blank midfield above the flippers. 12 standups +
+    light posts + single kick-out.
     """
     lane_l = _lane_left_x()
     play_w = max(12.0, lane_l - 2.0)
     arc_cx, cy, radius, _, _ = _top_arc()
-    upper = cy - radius * 0.15
-    low_mid = MAP_H * 0.62
+    pf = _playfield_bottom()
+    flip_y = pf - FLIPPER_BOTTOM_INSET
+    sling_top = flip_y - SLING_HEIGHT - SLING_UP_SHIFT
 
+    # Match _pop_bumpers diamond so standups sit immediately under it
+    pop_y_hi = float(cy - radius * 0.12)
+    pop_y_lo = pop_y_hi + 10.5
+    # Continuous band: under lowest pop → just above sling tops
+    content_top = pop_y_lo + 3.5
+    content_bot = sling_top - 2.5
+    span = max(10.0, content_bot - content_top)
+
+    upper_y = content_top + span * 0.08
+    mid_y = content_top + span * 0.48
+    low_mid = content_bot - 0.5
+    # Side-column vertical spacing (tighter on short tables)
+    col_step = min(6.5, max(3.5, span * 0.18))
+
+    # 12 standups — Gottlieb-style: upper row, side columns, lower approach
     standups = [
-        # Upper flanks — feed pop-bumper cluster
-        (play_w * 0.14, upper + 10.0),
-        (play_w * 0.86, upper + 10.0),
-        # Mid flanks beside drop bank
-        (play_w * 0.12, MAP_H * 0.40),
-        (play_w * 0.78, MAP_H * 0.40),
-        # Lower approach posts above slings
-        (play_w * 0.22, low_mid),
-        (play_w * 0.72, low_mid),
+        # Upper row under the bumper diamond
+        (play_w * 0.18, upper_y),
+        (play_w * 0.38, upper_y + 1.5),
+        (play_w * 0.58, upper_y + 1.5),
+        (play_w * 0.78, upper_y),
+        # Midfield side columns
+        (play_w * 0.16, mid_y - col_step),
+        (play_w * 0.16, mid_y),
+        (play_w * 0.16, mid_y + col_step),
+        (play_w * 0.80, mid_y - col_step),
+        (play_w * 0.80, mid_y),
+        (play_w * 0.80, mid_y + col_step),
+        # Lower approach just above slings (kills the blank band)
+        (play_w * 0.30, low_mid),
+        (play_w * 0.66, low_mid),
     ]
 
     posts = [
-        # Guide posts around pop bumpers
-        (play_w * 0.48, upper + 14.0),
-        (play_w * 0.22, upper + 16.0),
-        (play_w * 0.74, upper + 16.0),
-        # Outlane-top posts are placed after guides are built (top of each rail)
+        (play_w * 0.48, upper_y - 2.0),
+        (play_w * 0.24, mid_y - col_step * 0.5),
+        (play_w * 0.72, mid_y - col_step * 0.5),
     ]
 
+    # Spinners — optional midfield cluster + always-on top launch reel
+    spinners = []
+    if ENABLE_SPINNERS:
+        spinners.append((play_w * 0.50, mid_y, 2.0))
+    if ENABLE_TOP_LAUNCH_SPINNER:
+        # Top of table under the arc — shifted left of center, still in-field.
+        apex_y = float(cy - radius)
+        spin_x = float(arc_cx) - 10.0
+        # Keep hub clear of left wall and plunger wall
+        spin_x = max(TOP_SPINNER_R + 1.5, spin_x)
+        spin_x = min(spin_x, play_w - TOP_SPINNER_R - 1.5)
+        # Just below the apex, still clear of the curved rail
+        spin_y = float(apex_y + TOP_SPINNER_R + BALL_RADIUS + 1.2)
+        max_dist = radius - TOP_SPINNER_R - BALL_RADIUS - 0.8
+        dx, dy = spin_x - arc_cx, spin_y - cy
+        dist = math.hypot(dx, dy)
+        if dist > max_dist and dist > 1e-6:
+            s = max_dist / dist
+            spin_x = arc_cx + dx * s
+            spin_y = cy + dy * s
+        spinners.append({
+            "x": spin_x,
+            "y": spin_y,
+            "r": TOP_SPINNER_R,
+            "spin_gain": TOP_SPINNER_SPIN_GAIN,
+            "max_omega": TOP_SPINNER_MAX_OMEGA,
+        })
 
-    # Spinners — EM reels; big cluster in mid-table (where the clock used to sit)
-    # Each entry: (x, y, radius)
-    # (center-upper spinner removed — bounce triangle sits between top flippers)
-    spinners = [
-        # Big midfield trio (center of the tall table)
-        (play_w * 0.32, MAP_H * 0.48, 3.5),
-        (play_w * 0.50, MAP_H * 0.50, 4.2),   # largest — table center
-        (play_w * 0.68, MAP_H * 0.48, 3.5),
-        # Upper / flanks (smaller variety)
-        (play_w * 0.78, MAP_H * 0.33, 2.0),
-        (play_w * 0.22, MAP_H * 0.30, 2.6),
-        (play_w * 0.42, MAP_H * 0.58, 2.8),   # lower-mid large
-        (play_w * 0.60, MAP_H * 0.58, 2.8),
-    ]
-
-    # Top rollover switches in a shallow lane under the arc
-    rollover_y = upper + 5.5
+    # Rollovers sit in the gap between arc equator and the high pop
+    rollover_y = min(pop_y_hi - 3.0, float(cy - radius * 0.35))
+    rollover_y = max(float(WORLD_TOP_PAD + 3.0), rollover_y)
     rollovers = [
         (play_w * 0.30, rollover_y),
         (play_w * 0.48, rollover_y),
         (play_w * 0.66, rollover_y),
     ]
 
-    # Eject-hole network (4): enter any → vanish → pan → exit another
-    apex_y = cy - radius
-    saucer_top = (float(arc_cx), float(apex_y + SAUCER_TOP_BELOW_APEX))
-    saucer_mid_l = (play_w * 0.16, MAP_H * 0.46)
-    saucer_mid_r = (play_w * 0.80, MAP_H * 0.46)
-    saucer_low = _bottom_saucer_xy(play_w)
-    saucers = [saucer_top, saucer_mid_l, saucer_mid_r, saucer_low]
+    if ENABLE_MULTI_SAUCERS:
+        apex_y = cy - radius
+        saucers = [
+            (float(arc_cx), float(apex_y + SAUCER_TOP_BELOW_APEX)),
+            (play_w * 0.18, mid_y),
+            (play_w * 0.80, mid_y),
+            (play_w * 0.50, low_mid),
+        ]
+    else:
+        # One left mid kick-out between side standups and slings
+        saucers = [(play_w * 0.22, mid_y + col_step * 0.6)]
 
     return {
         "standups": standups,
@@ -2206,8 +2231,7 @@ def _layout_playfield_toys():
         "spinners": spinners,
         "rollovers": rollovers,
         "saucers": saucers,
-        # Back-compat single handle
-        "saucer": saucer_mid_l,
+        "saucer": saucers[0],
     }
 
 
@@ -2319,6 +2343,9 @@ def collide_spinner(ball, spinner, state):
     state: dict with angle, omega, lit_until
     Hitting the spinner adds spin; ball gets a light deflection.
     Larger reels spin a bit slower / hit a bit softer per size.
+
+    Dict spinners may set spin_gain / max_omega (used by the top launch reel
+    so a plunger shot spins it very quickly).
     """
     if ball.in_plunger:
         return
@@ -2338,13 +2365,24 @@ def collide_spinner(ball, spinner, state):
         # Impulse → angular velocity (EM reel); scale with size a little
         size_scale = SPINNER_R / max(0.8, radius)
         tang = ball.vx * (-ny) + ball.vy * nx
+        # Optional per-spinner boost (top launch spinner uses a high gain)
+        if isinstance(spinner, dict):
+            gain = float(spinner.get("spin_gain", 0.35))
+            max_w = float(spinner.get("max_omega", 1.0 + 0.35 * size_scale))
+        else:
+            gain = 0.35
+            max_w = 1.0 + 0.35 * size_scale
+        # Speed-weighted kick: fast launches (high |v|) really rip the reel
+        speed = math.hypot(ball.vx, ball.vy)
+        speed_boost = 1.0 + min(1.8, speed * 0.22)
         state["omega"] += (
-            tang * 0.35 * size_scale
-            + (0.4 if abs(tang) < 0.1 else 0.0)
+            tang * gain * size_scale * speed_boost
+            + (0.55 if abs(tang) < 0.1 else 0.0) * (1.0 if gain <= 0.4 else 1.4)
         )
-        max_w = 1.0 + 0.35 * size_scale
         state["omega"] = _clamp(state["omega"], -max_w, max_w)
-        state["lit_until"] = time.time() + 0.35
+        # Stay lit while spinning hard
+        lit_s = 0.35 if abs(state["omega"]) < 1.2 else 0.65
+        state["lit_until"] = time.time() + lit_s
         # Slight speed transfer along tangent
         ball.vx += -ny * 0.15
         ball.vy += nx * 0.15
@@ -3242,6 +3280,7 @@ def update_apron_drain_anim(anim, dt):
         anim["hold_left"] = float(anim.get("hold_left", APRON_SCORE_HOLD_SECONDS)) - dt
         if anim["hold_left"] <= 0.0:
             if anim.get("final_ball"):
+                # Keep score on apron; fade the whole screen out next
                 anim["phase"] = "screen_fade"
                 anim["t"] = 0.0
             else:
@@ -3259,6 +3298,7 @@ def update_apron_drain_anim(anim, dt):
             1.0,
             float(anim.get("t", 0.0)) + dt / max(0.05, GAME_OVER_FADE_SECONDS),
         )
+        # Ease toward black
         te = anim["t"] * anim["t"] * (3.0 - 2.0 * anim["t"])
         _set_screen_brightness(1.0 - te)
         if anim["t"] >= 1.0:
@@ -3321,6 +3361,7 @@ def draw_bottom_apron_display(canvas, camera_y, score=0, anim=None, blink_on=Tru
             clip_y0=apron_y0, clip_y1=apron_y1,
         )
     elif phase in ("hold", "screen_fade"):
+        # Mid-game hold or final-ball score hold / fade (score stays put)
         draw_flip_score(
             canvas, camera_y, score, oy=score_base_oy,
             clip_y0=apron_y0, clip_y1=apron_y1,
@@ -3345,7 +3386,11 @@ def draw_bottom_apron_clock(canvas, camera_y, blink_on=True):
 
 
 def _game_over_letter_pixels(text="GAME OVER", zoom=1):
-    """Build centered screen-space letter pixels for Game Over text."""
+    """
+    Build centered screen-space letter pixel lists for Game Over text.
+    Returns list of (sx, sy, rgb) in *local* coords with origin at top-left of
+    the whole phrase bounding box, plus (total_w, total_h).
+    """
     gap = 1
     specs = []
     max_h = 0
@@ -3395,7 +3440,10 @@ _GAME_OVER_CACHE = None
 
 
 def draw_game_over_text(canvas, alpha=1.0, pulse=1.0):
-    """Draw glowing 'GAME OVER' centered on the visible panel (screen space)."""
+    """
+    Draw glowing 'GAME OVER' centered on the visible panel (screen space).
+    alpha 0..1 fades letters into existence; pulse scales glow brightness.
+    """
     global _GAME_OVER_CACHE
     alpha = _clamp(float(alpha), 0.0, 1.0) * _SCREEN_BRIGHTNESS
     if alpha <= 0.02:
@@ -3407,12 +3455,14 @@ def draw_game_over_text(canvas, alpha=1.0, pulse=1.0):
         return
     ox = max(0, (WIDTH - tw) // 2)
     oy = max(0, (HEIGHT - th) // 2 - 1)
+    # Soft glow pass then core
     pulse = _clamp(float(pulse), 0.55, 1.35)
     glow_k = alpha * 0.45 * pulse
     core_k = alpha * pulse
     gr, gg, gb = GAME_OVER_GLOW_RGB
     cr, cg, cb = GAME_OVER_RGB
     set_px = canvas.SetPixel
+    # Glow: 1px halo
     if glow_k > 0.05:
         for lx, ly in pixels:
             for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
@@ -3450,9 +3500,12 @@ def _game_over_glow_alpha(anim):
 
 def PlayPinball(Duration=10000, StopEvent=None):
     """
-    Run the pinball table. Duration is minutes (LEDarcade convention).
-    5-ball game: after the last drain, apron holds score 3s with "Game Over"
-    glowing, then full-screen fade. Returns "game_over" to chain next table.
+    Gottlieb Central Park (1966) inspired table.
+    Score (top flip-clock) and time (bottom 7-seg apron) stay outside the playfield.
+
+    5-ball game: after the last drain, apron shows score for 3s with "Game Over"
+    glowing on-screen, then fades out. Returns "game_over" so the launcher can
+    chain into another pinball table. Other exits return None.
     """
     global WIDTH, HEIGHT, MAP_W, MAP_H
     WIDTH = int(LED.HatWidth)
@@ -3490,45 +3543,35 @@ def PlayPinball(Duration=10000, StopEvent=None):
         side="right",
     )
 
-    # Upper-third side flippers (symmetric, almost touching the walls)
-    up_left_px, up_right_px, up_flipper_y = place_upper_flippers(lane_l)
-    up_left = Flipper(
-        pivot_x=up_left_px,
-        pivot_y=up_flipper_y,
-        rest_angle=LEFT_REST,
-        active_angle=LEFT_ACTIVE,
-        length=UPPER_FLIPPER_LEN,
-        side="left",
-        swing_speed=UPPER_FLIPPER_SWING_SPEED,
-        power=UPPER_FLIPPER_POWER,
-    )
-    up_right = Flipper(
-        pivot_x=up_right_px,
-        pivot_y=up_flipper_y,
-        rest_angle=RIGHT_REST,
-        active_angle=RIGHT_ACTIVE,
-        length=UPPER_FLIPPER_LEN,
-        side="right",
-        swing_speed=UPPER_FLIPPER_SWING_SPEED,
-        power=UPPER_FLIPPER_POWER,
-    )
-    upper_tri = build_upper_bounce_triangle(up_left_px, up_right_px, up_flipper_y)
+    # Central Park: bottom flippers only (no upper pair / bounce triangle)
+    up_left = up_right = None
+    upper_tri = None
     upper_tri_lit = {}
-    ut = upper_tri["verts"]
-    print(
-        f"[pinball] upper flippers y={up_flipper_y:.1f} "
-        f"pivots=({up_left_px:.1f},{up_right_px:.1f}) "
-        f"len={UPPER_FLIPPER_LEN}  "
-        f"bounce_tri side={UPPER_TRI_SIDE:.0f} "
-        f"centroid=({(ut[0][0]+ut[1][0]+ut[2][0])/3:.1f},"
-        f"{(ut[0][1]+ut[1][1]+ut[2][1])/3:.1f})"
-    )
+    upper_ai_state = {}
+    if ENABLE_UPPER_FLIPPERS:
+        up_left_px, up_right_px, up_flipper_y = place_upper_flippers(lane_l)
+        up_left = Flipper(
+            pivot_x=up_left_px, pivot_y=up_flipper_y,
+            rest_angle=LEFT_REST, active_angle=LEFT_ACTIVE,
+            length=UPPER_FLIPPER_LEN, side="left",
+            swing_speed=UPPER_FLIPPER_SWING_SPEED, power=UPPER_FLIPPER_POWER,
+        )
+        up_right = Flipper(
+            pivot_x=up_right_px, pivot_y=up_flipper_y,
+            rest_angle=RIGHT_REST, active_angle=RIGHT_ACTIVE,
+            length=UPPER_FLIPPER_LEN, side="right",
+            swing_speed=UPPER_FLIPPER_SWING_SPEED, power=UPPER_FLIPPER_POWER,
+        )
+        if ENABLE_UPPER_TRI:
+            upper_tri = build_upper_bounce_triangle(
+                up_left_px, up_right_px, up_flipper_y,
+            )
 
     slings = build_slingshots(left_px, right_px, flipper_y, lane_l)
     outlane_guides = build_outlane_guides(
         left_px, right_px, flipper_y, lane_l, slings=slings,
     )
-    # Grey guide posts sit at the very top of each outlane rail (into bottom flippers)
+    # Dual outlanes: posts at the top of each guide rail
     toys = _layout_playfield_toys()
     for g in outlane_guides:
         pts = g.get("points") or ()
@@ -3537,42 +3580,19 @@ def PlayPinball(Duration=10000, StopEvent=None):
                 (float(pts[0][0]), float(pts[0][1]))
             )
     flipper_ai_state = {}
-    upper_ai_state = {}
-    # Debug classic lower layout once at start
     lt = _flipper_rest_tip(left_px, flipper_y, LEFT_REST, FLIPPER_LEN)
     rt = _flipper_rest_tip(right_px, flipper_y, RIGHT_REST, FLIPPER_LEN)
     tip_gap = rt[0] - lt[0]
-    lv = slings[0]["verts"]
-    rv = slings[1]["verts"]
-    # Apex = most-inboard vertex of each sling triangle
-    l_apex = max(v[0] for v in lv)
-    r_apex = min(v[0] for v in rv)
-    l_guide_x = outlane_guides[0].get("x", 0.0)
-    r_guide_x = outlane_guides[1].get("x", 0.0)
-    l_sling_x = _sling_outer_x(slings[0], "left")
-    r_sling_x = _sling_outer_x(slings[1], "right")
     print(
-        f"[pinball] classic bottom: tip_gap={tip_gap:.1f} "
-        f"(need>={FLIPPER_DRAIN_GAP:.1f}, hit_r={_FLIPPER_HIT_R:.1f})  "
+        f"[pinball2/Central Park] bottom flippers tip_gap={tip_gap:.1f} "
         f"pivots=({left_px:.1f},{right_px:.1f})  "
-        f"sling_apex=({l_apex:.1f}..{r_apex:.1f})  "
-        f"drain_open={r_apex - l_apex:.1f}  "
-        f"guides mid wall/sling L={l_guide_x:.1f} "
-        f"(wall0–sling{l_sling_x:.1f}) R={r_guide_x:.1f} "
-        f"(sling{r_sling_x:.1f}–wall{lane_l:.1f})"
+        f"standups={len(toys.get('standups') or [])}  "
+        f"pops={len(_pop_bumpers())}"
     )
-    drop_targets = make_drop_targets()
+    drop_targets = make_drop_targets() if ENABLE_DROP_TARGETS else []
     drop_bank_timers = {}
-    ramps = build_skill_ramps()
+    ramps = build_skill_ramps() if ENABLE_SKILL_RAMPS else []
     ramp_states = [{"cooldown": 0} for _ in ramps]
-    if ramps:
-        print(
-            f"[pinball] skill ramps×{len(ramps)}  base={RAMP_BASE_W:.0f} "
-            f"top={RAMP_TOP_W:.0f} h={RAMP_H:.0f}  "
-            f"cx=({ramps[0]['cx']:.1f},{ramps[1]['cx']:.1f})  "
-            f"sep={ramps[1]['cx'] - ramps[0]['cx']:.1f}  "
-            f"y={ramps[0]['top_y']:.1f}..{ramps[0]['bottom_y']:.1f}"
-        )
     standup_lit = {}
     spinner_states = make_spinner_states(toys.get("spinners"))
     rollover_lit = [False] * len(toys["rollovers"])
@@ -3631,7 +3651,7 @@ def PlayPinball(Duration=10000, StopEvent=None):
     tick_clock = pygame.time.Clock() if HAS_PYGAME else None
 
     print(
-        f"[pinball] EM layout {MAP_W}x{MAP_H} (×{MAP_SCALE_Y}): "
+        f"[pinball2/Central Park] layout {MAP_W}x{MAP_H} (×{MAP_SCALE_Y}): "
         f"pops, side mid bumpers, long-rubber slings, drops, standups, "
         f"posts, {len(toys.get('spinners') or [])} spinners, "
         f"rollovers, {len(toys.get('saucers') or [])} saucers  fps={TARGET_FPS}"
@@ -3745,7 +3765,8 @@ def PlayPinball(Duration=10000, StopEvent=None):
                             f"power {old_pwr:.2f}→{plunger_last_power:.2f}"
                         )
             elif not ball.alive:
-                # Drain: apron anim then re-launch, or game-over on 5th ball
+                # Drain: apron anim in place (clock ↓ score ↑ hold …) then
+                # re-launch, or game-over hold + fade on the 5th ball.
                 plunger_phase = "idle"
                 plunger_timer = 0
                 plunger_charge = 0.0
@@ -3800,23 +3821,28 @@ def PlayPinball(Duration=10000, StopEvent=None):
                         f"balls_left={balls_remaining}"
                     )
 
-            # --- Skill flipper AI: bottom pair + upper side pair ---
+            # --- Skill flipper AI: bottom pair (+ optional upper pair) ---
             if not ball.in_plunger and not saucer_state.get("held"):
                 flipper_ai_state = update_flipper_ai(
                     ball, left, right, frame, ai_state=flipper_ai_state,
                 )
-                upper_ai_state = update_upper_flipper_ai(
-                    ball, up_left, up_right, frame, ai_state=upper_ai_state,
-                )
+                if ENABLE_UPPER_FLIPPERS and up_left and up_right:
+                    upper_ai_state = update_upper_flipper_ai(
+                        ball, up_left, up_right, frame, ai_state=upper_ai_state,
+                    )
             else:
                 left.set_pressed(False)
                 right.set_pressed(False)
-                up_left.set_pressed(False)
-                up_right.set_pressed(False)
+                if up_left:
+                    up_left.set_pressed(False)
+                if up_right:
+                    up_right.set_pressed(False)
             left.update()
             right.update()
-            up_left.update()
-            up_right.update()
+            if up_left:
+                up_left.update()
+            if up_right:
+                up_right.update()
 
             # --- Saucers once per frame (vanish/pan timers must not run ×substeps) ---
             if ball.alive:
@@ -3853,14 +3879,18 @@ def PlayPinball(Duration=10000, StopEvent=None):
                             )
                             collide_outlane_guides(ball, outlane_guides)
                             collide_slingshots(ball, slings, sling_lit, score_state)
-                            collide_bounce_triangle(
-                                ball, upper_tri, upper_tri_lit, score_state,
-                            )
-                            collide_ramps(ball, ramps, ramp_states)
+                            if upper_tri is not None:
+                                collide_bounce_triangle(
+                                    ball, upper_tri, upper_tri_lit, score_state,
+                                )
+                            if ramps:
+                                collide_ramps(ball, ramps, ramp_states)
                         collide_flipper(ball, left)
                         collide_flipper(ball, right)
-                        collide_flipper(ball, up_left)
-                        collide_flipper(ball, up_right)
+                        if up_left:
+                            collide_flipper(ball, up_left)
+                        if up_right:
+                            collide_flipper(ball, up_right)
                         collide_top_arc(ball)
                         ensure_ball_inside_arc(ball)
                     clamp_ball_on_table(ball)
@@ -3909,14 +3939,17 @@ def PlayPinball(Duration=10000, StopEvent=None):
             )
             draw_outlane_guides(canvas, camera_y, outlane_guides)
             draw_slingshots(canvas, camera_y, slings, lit_until=sling_lit)
-            draw_bounce_triangle(
-                canvas, camera_y, upper_tri,
-                lit=time.time() < upper_tri_lit.get(0, 0.0),
-            )
+            if upper_tri is not None:
+                draw_bounce_triangle(
+                    canvas, camera_y, upper_tri,
+                    lit=time.time() < upper_tri_lit.get(0, 0.0),
+                )
             left.draw(canvas, camera_y)
             right.draw(canvas, camera_y)
-            up_left.draw(canvas, camera_y)
-            up_right.draw(canvas, camera_y)
+            if up_left:
+                up_left.draw(canvas, camera_y)
+            if up_right:
+                up_right.draw(canvas, camera_y)
             # Draw ball during vanish (fading); hide fully during pan (visible=0)
             if ball.alive and (
                 not saucer_state.get("held")
@@ -3934,6 +3967,7 @@ def PlayPinball(Duration=10000, StopEvent=None):
             # Final-ball: "Game Over" glows in while apron holds the score
             go_alpha = _game_over_glow_alpha(apron_anim)
             if go_alpha > 0.02:
+                # Ease-in + soft pulse once fully visible
                 ease = go_alpha * go_alpha * (3.0 - 2.0 * go_alpha)
                 pulse = 0.82 + 0.18 * (0.5 + 0.5 * math.sin(time.time() * 5.0))
                 if go_alpha < 1.0:
@@ -3973,8 +4007,8 @@ def PlayPinball(Duration=10000, StopEvent=None):
 # ===========================================================================
 # Title intro — fade-in letters + silver ball knockdown (Skyfall parallax bg)
 # ===========================================================================
-PB_TITLE_LINE1 = "PINBALL"
-PB_TITLE_LINE2 = "TIME"
+PB_TITLE_LINE1 = "CENTRAL"
+PB_TITLE_LINE2 = "PARK"
 PB_TITLE_ZOOM = 1
 PB_TITLE_SCALE = 1.0            # normal-size intro letters
 PB_TITLE_GAP = 1
@@ -4553,7 +4587,10 @@ def PlayPinballTitleIntro(StopEvent=None):
 
 
 def _chain_next_pinball_table(Duration, StopEvent, from_table):
-    """After game over, pick another table (prefer different) for remaining time."""
+    """
+    After game over, pick another pinball table (prefer a different one) and
+    launch it for the remaining session time.
+    """
     if _stop(StopEvent):
         return
     rem = float(Duration) if Duration else 5.0
@@ -4565,11 +4602,11 @@ def _chain_next_pinball_table(Duration, StopEvent, from_table):
     pick = random.choice(others if others else options)
     print(f"[pinball] Game over → chaining to {pick} for {rem:.2f} min")
     try:
-        if pick == "pinball":
-            LaunchPinball(Duration=rem, ShowIntro=True, StopEvent=StopEvent)
+        if pick == "pinball2":
+            LaunchPinball2(Duration=rem, ShowIntro=True, StopEvent=StopEvent)
         else:
-            import Pinball2 as PB2
-            PB2.LaunchPinball2(Duration=rem, ShowIntro=True, StopEvent=StopEvent)
+            import Pinball as PB
+            PB.LaunchPinball(Duration=rem, ShowIntro=True, StopEvent=StopEvent)
     except Exception as exc:
         import traceback
         print(f"[pinball] Chain to {pick} failed: {exc}")
@@ -4577,6 +4614,7 @@ def _chain_next_pinball_table(Duration, StopEvent, from_table):
 
 
 def LaunchPinball(Duration=10000, ShowIntro=True, StopEvent=None):
+    """Entry used by LaunchPinball2 (Central Park table)."""
     session_start = time.time()
     if ShowIntro:
         try:
@@ -4587,7 +4625,7 @@ def LaunchPinball(Duration=10000, ShowIntro=True, StopEvent=None):
             PlayPinballTitleIntro(StopEvent=StopEvent)
         except Exception as exc:
             import traceback
-            print(f"[pinball] intro failed: {exc}")
+            print(f"[pinball2] intro failed: {exc}")
             traceback.print_exc()
         try:
             LED.ClearBigLED()
@@ -4599,11 +4637,16 @@ def LaunchPinball(Duration=10000, ShowIntro=True, StopEvent=None):
     if reason == "game_over" and not _stop(StopEvent):
         elapsed_min = (time.time() - session_start) / 60.0
         remaining = max(0.0, float(Duration) - elapsed_min) if Duration else 5.0
-        _chain_next_pinball_table(remaining, StopEvent, from_table="pinball")
+        _chain_next_pinball_table(remaining, StopEvent, from_table="pinball2")
+
+
+def LaunchPinball2(Duration=10000, ShowIntro=True, StopEvent=None):
+    """Public entry for LEDcommander / Twitch (?pinball2 / Central Park)."""
+    LaunchPinball(Duration=Duration, ShowIntro=ShowIntro, StopEvent=StopEvent)
 
 
 if __name__ == "__main__":
     try:
-        LaunchPinball(Duration=100000, ShowIntro=True, StopEvent=None)
+        LaunchPinball2(Duration=100000, ShowIntro=True, StopEvent=None)
     except KeyboardInterrupt:
-        print("Exiting pinball.")
+        print("Exiting pinball2 (Central Park).")

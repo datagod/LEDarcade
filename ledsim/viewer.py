@@ -16,7 +16,10 @@ Hotkeys while running:
   T        — launch LEDtv
   R        — restart LEDsim (full process restart)
   1        — launch Pinball
-  2        — launch Space Explorer
+  2        — launch Pinball 2 (Central Park 1966)
+  3        — launch Space Explorer
+  4        — launch 7-Seg LED Clock
+  5        — launch Fractal Blaster
   0        — native (scale 1)
   S        — restore default scaled size
   + / =    — increase scale
@@ -767,12 +770,39 @@ def _request_pinball(command_queue: Optional[Any]) -> None:
     )
 
 
+def _request_pinball2(command_queue: Optional[Any]) -> None:
+    """Launch Pinball 2 — Gottlieb Central Park (1966) inspired table."""
+    _send_command(
+        command_queue,
+        {"Action": "launch_pinball2", "duration": 10},
+        "Pinball2",
+    )
+
+
 def _request_spaceexplorer(command_queue: Optional[Any]) -> None:
     """Launch Space Explorer."""
     _send_command(
         command_queue,
         {"Action": "launch_spaceexplorer", "duration": 10},
         "SpaceExplorer",
+    )
+
+
+def _request_sevenseg_clock(command_queue: Optional[Any]) -> None:
+    """Launch full-panel 7-segment digital clock."""
+    _send_command(
+        command_queue,
+        {"Action": "sevensegclock", "duration": 10},
+        "7-Seg Clock",
+    )
+
+
+def _request_fractal(command_queue: Optional[Any]) -> None:
+    """Launch Mandelbrot fractal zoom explorer."""
+    _send_command(
+        command_queue,
+        {"Action": "launch_fractal", "duration": 10},
+        "Fractal Blaster",
     )
 
 
@@ -919,7 +949,8 @@ def run_viewer(
     frame_label = "borderless" if borderless else "windowed"
     print(f"[LEDsim] Viewer started — {_mode_label(width, height, scale)} [{frame_label}]")
     print(
-        "[LEDsim] Keys: N=next  T=LEDtv  1=Pinball  2=SpaceExplorer  "
+        "[LEDsim] Keys: N=next  T=LEDtv  1=Pinball  2=Pinball2  3=SpaceExplorer  "
+        "4=7-SegClock  5=FractalBlaster  "
         "R=restart  0=native  S=scaled  +/- zoom  F=frame  A=topmost  Esc=quit"
     )
     print("[LEDsim] Mouse: left-click and drag anywhere to move the panel")
@@ -1017,7 +1048,19 @@ def run_viewer(
                     continue
 
                 if event.key == pygame.K_2 or event.key == pygame.K_KP2:
+                    _request_pinball2(command_queue)
+                    continue
+
+                if event.key == pygame.K_3 or event.key == pygame.K_KP3:
                     _request_spaceexplorer(command_queue)
+                    continue
+
+                if event.key == pygame.K_4 or event.key == pygame.K_KP4:
+                    _request_sevenseg_clock(command_queue)
+                    continue
+
+                if event.key == pygame.K_5 or event.key == pygame.K_KP5:
+                    _request_fractal(command_queue)
                     continue
 
                 # 0 = native 1:1 scale (was key 1 before game shortcuts)

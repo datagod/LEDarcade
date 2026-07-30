@@ -119,6 +119,7 @@ VALID_WEB_ACTIONS = {
     "analogclock": [],
     "retrodigital": [],
     "flipclock": ["duration"],
+    "sevensegclock": ["duration"],  # full-panel 7-segment digital clock
     "ledarcade_intro": [],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
     "launch_dotinvaders": ["duration"],
@@ -134,7 +135,10 @@ VALID_WEB_ACTIONS = {
     "launch_stockticker": ["duration", "symbols"],
     "launch_fallingsand": ["duration"],
     "launch_particles": ["duration"],
+    "launch_fractal": ["duration"],
     "launch_pinball": ["duration"],
+    "launch_pinball2": ["duration"],
+    "launch_pinball_random": ["duration"],  # picks a random table at launch
     "launch_gravitysim": ["duration"],
     "launch_mazecar": ["duration"],
     "launch_rallydot": ["duration"],
@@ -157,6 +161,13 @@ VALID_WEB_ACTIONS = {
     "showimagezoom": ["image", "zoommin", "zoommax", "zoomfinal", "sleep", "step"],
     "quit": [],
 }
+
+# Specific tables available to ?pinball / rotation random picker.
+# Add new tables here as they are wired into the commander.
+PINBALL_TABLE_ACTIONS = (
+    "launch_pinball",
+    "launch_pinball2",
+)
 
 
 def sanitize_web_command(data, action):
@@ -401,17 +412,21 @@ def fallback_action_generator():
         {"Action": "launch_dotinvaders", "duration": 5},
         {"Action": "launch_gravitysim", "duration": 5},
         {"Action": "launch_tron", "duration": 5},
-        {"Action": "launch_outbreak", "duration": 5},
+        # outbreak paused from idle rotation for now
+        # {"Action": "launch_outbreak", "duration": 5},
         {"Action": "launch_spacedot", "duration": 5},
         {"Action": "launch_fallingsand", "duration": 5},
         {"Action": "launch_particles", "duration": 5},
-        {"Action": "launch_pinball", "duration": 5},
+        {"Action": "launch_fractal", "duration": 5},
+        # One pinball slot per lap — table chosen at random when it runs
+        {"Action": "launch_pinball_random", "duration": 5},
         {"Action": "launch_rallydot"},  # until game over
     ]
 
     clock_pool = [
         {"Action": "retrodigital", "duration": 5},
         {"Action": "flipclock", "duration": 5},
+        {"Action": "sevensegclock", "duration": 5},
         {"Action": "analogclock", "duration": 5},
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 5, "Delay": 20},
         {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 5, "Delay": 10},
@@ -679,6 +694,16 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=ShowFlipClock, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+            elif Action == "sevensegclock":
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(
+                    target=ShowSevenSegClock, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
             elif Action == "ledarcade_intro":
                 stop_current_display(Action)
                 StopEvent.clear()
@@ -828,6 +853,47 @@ def Run(CommandQueue):
                 DisplayProcess = Process(target=LaunchParticles, args=(Command, StopEvent))
                 DisplayProcess.start()
 
+            elif Action == "launch_fractal":
+                print("[LEDcommander][Run] Launching Fractal")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "fractal"
+                DisplayProcess = Process(target=LaunchFractal, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_pinball_random":
+                # ?pinball / idle rotation: pick a random table at launch time
+                chosen = random.choice(PINBALL_TABLE_ACTIONS)
+                print(
+                    f"[LEDcommander][Run] Random pinball → {chosen} "
+                    f"(from {len(PINBALL_TABLE_ACTIONS)} tables)"
+                )
+                Action = chosen
+                Command = dict(Command)
+                Command["Action"] = chosen
+                if chosen == "launch_pinball":
+                    print("[LEDcommander][Run] Launching Pinball")
+                    stop_current_display(Action)
+                    StopEvent.clear()
+                    CurrentDisplayMode = "pinball"
+                    DisplayProcess = Process(
+                        target=LaunchPinball, args=(Command, StopEvent)
+                    )
+                    DisplayProcess.start()
+                elif chosen == "launch_pinball2":
+                    print(
+                        "[LEDcommander][Run] Launching Pinball2 "
+                        "(Central Park 1966)"
+                    )
+                    stop_current_display(Action)
+                    StopEvent.clear()
+                    CurrentDisplayMode = "pinball2"
+                    DisplayProcess = Process(
+                        target=LaunchPinball2, args=(Command, StopEvent)
+                    )
+                    DisplayProcess.start()
+
             elif Action == "launch_pinball":
                 print("[LEDcommander][Run] Launching Pinball")
                 stop_current_display(Action)
@@ -835,6 +901,15 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "pinball"
                 DisplayProcess = Process(target=LaunchPinball, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_pinball2":
+                print("[LEDcommander][Run] Launching Pinball2 (Central Park 1966)")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "pinball2"
+                DisplayProcess = Process(target=LaunchPinball2, args=(Command, StopEvent))
                 DisplayProcess.start()
 
 
@@ -1209,6 +1284,32 @@ def ShowFlipClock(Command, StopEvent):
             hh=24,
             RunMinutes=RunMinutes,
             StopEvent=StopEvent,
+        )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
+
+def ShowSevenSegClock(Command, StopEvent):
+    """Full-panel classic red 7-segment digital clock (HH:MM)."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import SevenSegClock as SSC
+
+    RunMinutes = Command.get("duration", 10)
+    try:
+        RunMinutes = float(RunMinutes)
+    except (TypeError, ValueError):
+        RunMinutes = 10.0
+
+    print(
+        f"[LEDcommander] Showing 7-seg clock: "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
+
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        SSC.LaunchSevenSegClock(
+            Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
     finally:
         _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
@@ -2049,6 +2150,18 @@ def LaunchParticles(Command, StopEvent):
     )
 
 
+def LaunchFractal(Command, StopEvent):
+    """Mandelbrot fractal zoom explorer."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import Fractal as FR
+    Duration = Command.get("duration", 10)
+    print(f"[LEDcommander][LaunchFractal] Fractal Blaster — {Duration} minutes...")
+    _run_game_dimmed(
+        lambda: FR.LaunchFractal(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
+
+
 def LaunchPinball(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
@@ -2057,6 +2170,22 @@ def LaunchPinball(Command, StopEvent):
     print(f"[LEDcommander][LaunchPinball] Launching for {Duration} minutes...")
     _run_game_dimmed(
         lambda: PB.LaunchPinball(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
+
+
+def LaunchPinball2(Command, StopEvent):
+    """Gottlieb Central Park (1966) inspired table."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import Pinball2 as PB2
+    Duration = Command.get("duration", 10)
+    print(
+        f"[LEDcommander][LaunchPinball2] Central Park — {Duration} minutes..."
+    )
+    _run_game_dimmed(
+        lambda: PB2.LaunchPinball2(
+            Duration=Duration, ShowIntro=True, StopEvent=StopEvent
+        )
     )
 
 

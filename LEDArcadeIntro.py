@@ -1,7 +1,8 @@
 # LEDArcadeIntro.py — Spectacular LEDcommander boot title
 """
 Multi-layer parallax stars; big letters fire into place from all angles to form
-two-line "LED / ARCADE", hold, then fly off before the idle rotation.
+two-line "LED / ARCADE", a specular light shine sweeps across them, then they
+hold and fly off before the idle rotation.
 """
 
 from __future__ import annotations
@@ -34,7 +35,12 @@ WORD_COLOR_PALETTE = (
 LETTER_SPAWN_GAP = 0.22    # seconds between letter launches
 FIRE_SPEED = 5.5           # px per step toward rest seat
 FIRE_STAGGER = 0.0         # all aim at final seats (no orbit)
-TITLE_HOLD_SEC = 1.6
+# After title locks: brief settle → light sweep → hold → fly off
+TITLE_SETTLE_SEC = 0.35    # pause before the shine starts
+SHINE_SEC = 0.90           # duration of one light pass across the title
+SHINE_BAND = 4.5           # half-width of bright core (screen px)
+SHINE_SOFT = 5.0           # soft halo around the core
+TITLE_HOLD_SEC = 1.15      # hold after shine before fly-off
 FLYOFF_SPEED = 5.0
 FADE_SEC = 0.4
 MAX_INTRO_SEC = 30.0
@@ -264,7 +270,12 @@ class IntroLetter(object):
             self.visible = False
             self.state = "gone"
 
-    def draw(self, canvas, fade=1.0):
+    def draw(self, canvas, fade=1.0, shine_pos=None):
+        """
+        Draw letter. When shine_pos is set, a diagonal band of strong light
+        (specular sweep) boosts pixels near that screen coordinate toward white.
+        shine_pos is the band center along (x + 0.35*y).
+        """
         if not self.visible:
             return
         fade = max(0.0, min(1.0, float(fade)))
@@ -273,14 +284,47 @@ class IntroLetter(object):
         sx, sy = int(round(self.x)), int(round(self.y))
         set_px = canvas.SetPixel
         pw, ph = self.panel_w, self.panel_h
+        band = float(SHINE_BAND)
+        soft = float(SHINE_SOFT)
+        total = band + soft
+
+        def _lit(rgb, px, py):
+            r, g, b = rgb[0], rgb[1], rgb[2]
+            if shine_pos is not None:
+                # Diagonal sweep (slight top-left → bottom-right slant)
+                d = abs((px + 0.35 * py) - shine_pos)
+                if d < total:
+                    if d <= band:
+                        t = 1.0 - 0.15 * (d / max(0.01, band))
+                    else:
+                        t = 1.0 - (d - band) / max(0.01, soft)
+                    t = max(0.0, min(1.0, t))
+                    t = t * t * (3.0 - 2.0 * t)  # smoothstep
+                    # Strong light: lift toward white / hot highlight
+                    r = min(255, int(r + (255 - r) * t * 0.98))
+                    g = min(255, int(g + (255 - g) * t * 0.95))
+                    b = min(255, int(b + (255 - b) * t * 0.90))
+                    # Extra punch in the core
+                    if d <= band * 0.45:
+                        r = min(255, r + 40)
+                        g = min(255, g + 40)
+                        b = min(255, b + 35)
+            return (
+                int(r * fade),
+                int(g * fade),
+                int(b * fade),
+            )
+
         for dx, dy, rgb in self.shadow:
             px, py = sx + dx, sy + dy
             if 0 <= px < pw and 0 <= py < ph:
-                set_px(px, py, int(rgb[0] * fade), int(rgb[1] * fade), int(rgb[2] * fade))
+                rr, gg, bb = _lit(rgb, px, py)
+                set_px(px, py, rr, gg, bb)
         for dx, dy, rgb in self.pixels:
             px, py = sx + dx, sy + dy
             if 0 <= px < pw and 0 <= py < ph:
-                set_px(px, py, int(rgb[0] * fade), int(rgb[1] * fade), int(rgb[2] * fade))
+                rr, gg, bb = _lit(rgb, px, py)
+                set_px(px, py, rr, gg, bb)
 
 
 def _pick_word_colors(n_words):
@@ -387,13 +431,21 @@ def PlayLEDArcadeIntro(StopEvent=None):
     print("[LEDArcadeIntro] Spectacular start — letters fire into place")
     start = time.time()
     last = start
-    phase = "fire"  # fire → hold → flyoff → fade
+    # fire → settle → shine (light pass) → hold → flyoff → fade
+    phase = "fire"
     next_spawn_i = 0
     next_spawn_t = start + 0.25
+    settle_start = None
+    shine_start = None
     hold_start = None
     fade_start = None
     letter_fade = 1.0
     star_fade = 1.0
+    shine_pos = None  # diagonal band center; None = no shine
+
+    # Sweep range covers whole panel with a slight diagonal slant
+    shine_start_pos = -SHINE_BAND - SHINE_SOFT - 4.0
+    shine_end_pos = panel_w + 0.35 * panel_h + SHINE_BAND + SHINE_SOFT + 4.0
 
     try:
         while True:
@@ -407,6 +459,7 @@ def PlayLEDArcadeIntro(StopEvent=None):
             last = now
             step = min(3.0, dt * 30.0)
             stars.update(dt)
+            shine_pos = None
 
             if phase == "fire":
                 # Launch next letter from a random off-screen angle
@@ -421,9 +474,30 @@ def PlayLEDArcadeIntro(StopEvent=None):
                 if next_spawn_i >= len(letters) and all(
                     L.state == "settled" for L in letters
                 ):
+                    phase = "settle"
+                    settle_start = now
+                    print("[LEDArcadeIntro] Title locked — LED / ARCADE")
+
+            elif phase == "settle":
+                for L in letters:
+                    L.x, L.y = L.rest_x, L.rest_y
+                if now - settle_start >= TITLE_SETTLE_SEC:
+                    phase = "shine"
+                    shine_start = now
+                    print("[LEDArcadeIntro] Shine pass")
+
+            elif phase == "shine":
+                for L in letters:
+                    L.x, L.y = L.rest_x, L.rest_y
+                t = (now - shine_start) / max(0.05, SHINE_SEC)
+                # Ease-in-out so the light eases across the face
+                te = t * t * (3.0 - 2.0 * t)
+                shine_pos = shine_start_pos + (shine_end_pos - shine_start_pos) * te
+                if t >= 1.0:
                     phase = "hold"
                     hold_start = now
-                    print("[LEDArcadeIntro] Title locked — LED / ARCADE")
+                    shine_pos = None
+                    print("[LEDArcadeIntro] Shine complete — hold")
 
             elif phase == "hold":
                 for L in letters:
@@ -460,7 +534,7 @@ def PlayLEDArcadeIntro(StopEvent=None):
                 canvas.Fill(0, 0, 0)
                 stars.draw(canvas, elapsed, fade=star_fade)
                 for L in letters:
-                    L.draw(canvas, fade=letter_fade)
+                    L.draw(canvas, fade=letter_fade, shine_pos=shine_pos)
                 canvas = LED.TheMatrix.SwapOnVSync(canvas)
             except Exception:
                 pass
