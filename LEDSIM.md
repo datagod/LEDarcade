@@ -71,7 +71,7 @@ python LEDsim.py --no-web
 | **+** / **=** | Zoom in |
 | **-** | Zoom out (down to native) |
 | **F** | Toggle **borderless** / framed window |
-| **A** | Toggle **always-on-top** (default **on**) |
+| **A** | Toggle **always-on-top** (default **on**, Win32 TOPMOST) |
 | **Esc** | Quit |
 
 Always-on-top is enabled by default so the panel stays above other windows.  

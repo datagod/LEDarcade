@@ -34,8 +34,10 @@ HEIGHT = int(LED.HatHeight)
 
 # World is one screen wide, tall playfield (longer = more room for camera tracking)
 MAP_SCALE_Y = 7
+# Extra world height for the playfield (table taller by this many pixels)
+TABLE_EXTRA_H = 2
 MAP_W = WIDTH
-MAP_H = HEIGHT * MAP_SCALE_Y
+MAP_H = HEIGHT * MAP_SCALE_Y + TABLE_EXTRA_H
 
 TARGET_FPS = 40
 PHYSICS_SUBSTEPS = 3               # smoother collision / less tunneling & jitter
@@ -92,6 +94,12 @@ FLIP_TIP_T = 0.82
 UPPER_FLIPPER_LEN = max(8, int(FLIPPER_LEN * 0.90))
 UPPER_FLIPPER_SIDE_INSET = 2.2      # pivot almost touching each side wall
 UPPER_FLIPPER_Y_FRAC = 0.26         # fraction of playfield height from top
+# Aggressive upper AI: faster swing, harder hits, earlier intercept
+UPPER_FLIPPER_SWING_SPEED = FLIPPER_SWING_SPEED * 1.55
+UPPER_FLIPPER_POWER = FLIPPER_POWER * 1.35
+UPPER_FLIP_CATCH_DIST = FLIP_CATCH_DIST * 1.55
+UPPER_FLIP_LOOKAHEAD = 10.0         # predict ball position (px-ish)
+UPPER_FLIP_REACT_Y = 22.0           # start tracking this far above the bat
 
 # Plunger lane (right side — traditional pinball launch)
 PLUNGER_LANE_W = 3                 # width of the right-hand lane
@@ -100,8 +108,10 @@ PLUNGER_LANE_W = 3                 # width of the right-hand lane
 PLUNGER_POWER = 6.6                # nominal full upward launch speed
 PLUNGER_CHARGE_FRAMES = 22         # frames for a full visual pull-back
 PLUNGER_RELOAD_FRAMES = 40         # delay after drain before next shot
-# After a drain, pause so the bottom digital clock is visible
-DRAIN_RELAUNCH_SECONDS = 3.0
+# After a drain: apron anim (clock → score → clock) then plunger
+# Camera stays put; only the bottom apron content scrolls in place.
+APRON_SCROLL_SECONDS = 0.45       # clock down / score in (and reverse)
+APRON_SCORE_HOLD_SECONDS = 1.0    # score stays before clock returns
 # Auto-play: each launch picks a random pull strength in this range
 # (soft = just clears chute; full = hard skill-shot crank)
 PLUNGER_STRENGTH_MIN = 0.35
@@ -132,11 +142,17 @@ BUMPER_KICK = 0.72
 # Slingshots — just above and to either side of the flippers (classic EM)
 # Tall wall, short base; long rubber faces the playfield. Apexes stay
 # outside the center drain corridor so the ball can always fall middle.
-SLING_KICK = 2.35
+SLING_KICK = 2.35 * 0.5           # 50% weaker pop (was 2.35)
 SLING_RGB = (160, 40, 40)
 SLING_RUBBER = (230, 85, 65)
 SLING_LIT_RGB = (255, 190, 90)
-SLING_PAD = 0.85
+SLING_PAD = 0.95                  # collision half-width (body + rubber solid)
+# Upper-center bounce triangle (between top flippers) — weak sling-like
+UPPER_TRI_SIDE = 10.0             # equilateral side length (px)
+UPPER_TRI_KICK = SLING_KICK * 0.45  # bounce pop, weaker than slingshots
+UPPER_TRI_RGB = (140, 150, 165)
+UPPER_TRI_EDGE = (200, 210, 225)
+UPPER_TRI_PAD = 0.9
 SLING_HEIGHT = 13.0            # tall relative to short base
 SLING_BASE = 4.2               # short base toward center — never closes the drain
 # Extra open space between left/right sling apexes (flippers stay put)
@@ -160,6 +176,10 @@ DROP_H = 2.4                      # each target height in the stack
 DROP_GAP = 0.75
 DROP_BEHIND_GAP = max(3.4, BALL_RADIUS * 2.8)  # wall → bank gap (ball fits)
 DROP_COL_GAP = 3.2                # gap between outer and inner columns
+# Horizontal row flanking the bottom eject hole (10 px below the hole)
+DROP_BOTTOM_LINE_EACH = 3         # targets left of hole + targets right of hole
+DROP_BOTTOM_LINE_BELOW = 10.0     # px further down than the bottom saucer
+DROP_BOTTOM_LINE_GAP = 3.2        # clear space left/right of the hole center
 DROP_RGB = (200, 160, 40)
 DROP_EDGE = (120, 90, 20)
 DROP_DOWN_RGB = (35, 30, 15)
@@ -183,6 +203,8 @@ RAMP_SHADE = (110, 118, 130)
 RAMP_LAUNCH = 3.55                # upward speed when leaving the lip
 RAMP_CLIMB = 0.14                 # extra climb assist while riding up
 RAMP_CENTER_PULL = 0.10           # keep ball on the ramp face
+# After leaving the lip, ball flies over mid toys (drops/posts/spinners/etc.)
+RAMP_AIRBORNE_SECONDS = 0.42
 # Spinners (EM reels — spin when hit; multiple sizes on the table)
 SPINNER_RGB = (200, 200, 80)
 SPINNER_LIT = (255, 255, 140)
@@ -487,13 +509,20 @@ def _draw_aa_disk(canvas, wx, wy, radius, rgb, camera_y):
 # ---------------- Flipper ----------------
 
 class Flipper:
-    def __init__(self, pivot_x, pivot_y, rest_angle, active_angle, length, side):
+    def __init__(
+        self, pivot_x, pivot_y, rest_angle, active_angle, length, side,
+        swing_speed=None, power=None,
+    ):
         self.px = float(pivot_x)
         self.py = float(pivot_y)
         self.rest = float(rest_angle)
         self.active = float(active_angle)
         self.length = float(length)
         self.side = side  # "left" or "right"
+        self.swing_speed = float(
+            FLIPPER_SWING_SPEED if swing_speed is None else swing_speed
+        )
+        self.power = float(FLIPPER_POWER if power is None else power)
         self.angle = float(rest_angle)
         self.target = float(rest_angle)
         self.omega = 0.0  # rad/frame (for hit impulse)
@@ -507,7 +536,7 @@ class Flipper:
         prev = self.angle
         # Move toward target with capped step
         d = (self.target - self.angle + math.pi) % (2 * math.pi) - math.pi
-        step = _clamp(d, -FLIPPER_SWING_SPEED, FLIPPER_SWING_SPEED)
+        step = _clamp(d, -self.swing_speed, self.swing_speed)
         self.angle += step
         self.omega = self.angle - prev
 
@@ -542,6 +571,7 @@ class Ball:
         self.alive = True
         self.in_plunger = True  # right-hand launch lane
         self.visible = 1.0      # 0..1 (saucer vanish fade)
+        self.airborne = 0       # frames of ramp-jump (skip mid toys)
 
     def speed(self):
         return math.hypot(self.vx, self.vy)
@@ -556,6 +586,7 @@ class Ball:
         self.alive = True
         self.in_plunger = True
         self.visible = 1.0
+        self.airborne = 0
 
     def fire_plunger(self, power=None):
         """Launch up the plunger lane (traditional plunger)."""
@@ -566,6 +597,11 @@ class Ball:
         self.in_plunger = True
         self.alive = True
         self.visible = 1.0
+        self.airborne = 0
+
+    def is_airborne(self):
+        """True while jumping off a ramp (ignores nearby obstacles)."""
+        return int(getattr(self, "airborne", 0)) > 0
 
     def launch(self, x=None, y=None):
         """Compatibility: seat for plunger (fire happens in main loop)."""
@@ -997,7 +1033,12 @@ def collide_walls(ball):
 
 
 def collide_flipper(ball, flipper):
-    """Resolve ball vs flipper segment; impart swing impulse when hitting."""
+    """
+    Ball vs flipper segment.
+
+    Stationary flipper → bounce only (no free energy). Swinging flipper
+    (nonzero omega) imparts bat velocity / FLIPPER_POWER along the swing.
+    """
     x1, y1, x2, y2 = flipper.endpoints()
     dist, nx, ny, t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
     hit_r = BALL_RADIUS + FLIPPER_THICK * 0.5 + FLIPPER_PAD
@@ -1006,9 +1047,7 @@ def collide_flipper(ball, flipper):
 
     # Surface normal from segment toward ball
     sx, sy = x2 - x1, y2 - y1
-    # Perpendicular (point upward-ish preference)
     nlen = math.hypot(sx, sy) or 1.0
-    # Two normals; pick the one pointing more toward ball from segment
     n1x, n1y = -sy / nlen, sx / nlen
     n2x, n2y = sy / nlen, -sx / nlen
     to_bx, to_by = ball.x - nx, ball.y - ny
@@ -1017,7 +1056,7 @@ def collide_flipper(ball, flipper):
     else:
         nnx, nny = n2x, n2y
 
-    # Push out
+    # Push out of the solid blade
     pen = hit_r - dist
     ball.x += nnx * pen
     ball.y += nny * pen
@@ -1025,46 +1064,41 @@ def collide_flipper(ball, flipper):
     speed = ball.speed()
     # Cradle: resting flipper holds a slow ball instead of batting it away
     if (not flipper.pressed) and speed < FLIP_HOLD_SPEED and 0.05 <= t <= 0.98:
-        # Kill bounce into the blade; let ball sit / roll along the surface
         vn = ball.vx * nnx + ball.vy * nny
         if vn < 0:
             ball.vx -= vn * nnx
             ball.vy -= vn * nny
-        # Light friction along the blade
         tx, ty = (x2 - x1), (y2 - y1)
         tl = math.hypot(tx, ty) or 1.0
         tx, ty = tx / tl, ty / tl
         vt = ball.vx * tx + ball.vy * ty
         ball.vx = tx * vt * 0.88
-        ball.vy = ty * vt * 0.88 + 0.02  # tiny settle into the cradle
+        ball.vy = ty * vt * 0.88 + 0.02
         return True
 
-    # Reflect velocity
+    # Always: elastic-ish bounce off the solid bat (no energy added yet)
     vn = ball.vx * nnx + ball.vy * nny
     if vn < 0:
         ball.vx -= (1.0 + BOUNCE) * vn * nnx
         ball.vy -= (1.0 + BOUNCE) * vn * nny
 
-    # Flipper angular velocity → tip velocity contribution along normal
-    # Power scales with contact position: tip hits harder than base
-    tip_scale = 0.55 + 0.75 * _clamp(t, 0.0, 1.0)
-    rx, ry = nx - flipper.px, ny - flipper.py
-    fvx = -flipper.omega * ry
-    fvy = flipper.omega * rx
-    boost = (fvx * nnx + fvy * nny)
-    if boost > 0 or flipper.pressed:
-        power = (
-            FLIPPER_POWER
-            * tip_scale
-            * (0.50 + 0.50 * abs(flipper.omega) / max(1e-3, FLIPPER_SWING_SPEED))
-        )
-        if flipper.pressed and boost < 0.05:
-            power = max(power, FLIPPER_POWER * tip_scale * 0.9)
-            ball.vx += nnx * power * 0.32
-            ball.vy += nny * power * 0.32 - power * 0.58
-        else:
+    # Active hit only while the flipper is *moving* (swinging omega).
+    # Held-still raised bats do not give free power.
+    omega_eps = 0.04
+    if abs(flipper.omega) > omega_eps:
+        tip_scale = 0.55 + 0.75 * _clamp(t, 0.0, 1.0)
+        rx, ry = nx - flipper.px, ny - flipper.py
+        fvx = -flipper.omega * ry
+        fvy = flipper.omega * rx
+        # Only add energy when the bat face is swinging into the ball
+        bat_into_ball = fvx * nnx + fvy * nny
+        if bat_into_ball > 0.0:
+            f_power = float(getattr(flipper, "power", FLIPPER_POWER))
+            f_swing = float(getattr(flipper, "swing_speed", FLIPPER_SWING_SPEED))
+            swing = abs(flipper.omega) / max(1e-3, f_swing)
+            power = f_power * tip_scale * (0.45 + 0.55 * _clamp(swing, 0.0, 1.2))
             ball.vx += fvx * power
-            ball.vy += fvy * power - abs(flipper.omega) * FLIPPER_POWER * tip_scale * 0.75
+            ball.vy += fvy * power - abs(flipper.omega) * f_power * tip_scale * 0.55
 
     # Cap
     sp = ball.speed()
@@ -1211,6 +1245,116 @@ def update_flipper_ai(ball, left, right, frame, ai_state=None):
         elif phase == 3:
             right_want = True
 
+    left.set_pressed(left_want)
+    right.set_pressed(right_want)
+    return ai_state
+
+
+def update_upper_flipper_ai(ball, left, right, frame, ai_state=None):
+    """
+    Aggressive, accurate upper-side flipper control.
+
+    Unlike the bottom AI (which idles when the ball is high), these bats live
+    in the top third and must always track nearby balls:
+      • Wide intercept zone with velocity look-ahead
+      • Early pre-fire so the bat is swinging on contact
+      • Minimal cradle — prefer hard saves / redirects
+      • Prefer tip shots into the center of the upper field
+    """
+    if ai_state is None:
+        ai_state = {}
+
+    def _predict(frames=3.0):
+        # Simple ballistic peek (ignore drag)
+        return (
+            ball.x + ball.vx * frames,
+            ball.y + ball.vy * frames + 0.5 * GRAVITY * frames * frames,
+        )
+
+    def _side_ai(flipper, key):
+        st = ai_state.setdefault(key, {
+            "mode": "idle",
+            "flip_timer": 0,
+            "cooldown": 0,
+        })
+        if st["cooldown"] > 0:
+            st["cooldown"] -= 1
+
+        catch = UPPER_FLIP_CATCH_DIST
+        x1, y1, x2, y2 = flipper.endpoints()
+        mid_x = 0.5 * (x1 + x2)
+        mid_y = 0.5 * (y1 + y2)
+        tip_x, tip_y = x2, y2
+        # Contact on current blade
+        dist, _qx, _qy, t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
+        on_blade = dist <= catch and -0.08 <= t <= 1.08
+        t = _clamp(t, 0.0, 1.0)
+
+        # Predicted intercept
+        px, py = _predict(UPPER_FLIP_LOOKAHEAD * 0.35)
+        pdist, _pqx, _pqy, pt = _dist_point_segment(px, py, x1, y1, x2, y2)
+        will_hit = pdist <= catch * 1.25 and -0.1 <= pt <= 1.12
+
+        # Zone around this flipper (generous)
+        near_x = abs(ball.x - mid_x) < flipper.length * 1.35
+        near_y = (ball.y > min(y1, y2, tip_y) - UPPER_FLIP_REACT_Y
+                  and ball.y < max(y1, y2, tip_y) + 8.0)
+        in_zone = near_x and near_y
+
+        if st["mode"] == "flip":
+            st["flip_timer"] -= 1
+            if st["flip_timer"] <= 0:
+                st["mode"] = "idle"
+                st["cooldown"] = 3  # short cooldown — stay aggressive
+                return False
+            return True
+
+        if st["cooldown"] > 0 and not on_blade and not will_hit:
+            return False
+
+        # Already on the bat — slap hard, especially tip/mid
+        if on_blade:
+            # Any speed on upper bats → fire (minimal cradle)
+            st["mode"] = "flip"
+            st["flip_timer"] = 9
+            return True
+
+        # Pre-fire: ball on a path to the blade — start the swing early
+        if will_hit and (ball.vy > -0.15 or ball.speed() > 0.9):
+            st["mode"] = "flip"
+            st["flip_timer"] = 10
+            return True
+
+        # Reactive: falling into the intercept corridor
+        if in_zone and ball.vy > 0.08 and ball.speed() > 0.55:
+            # On the correct side of the bat's swing arc
+            if flipper.side == "left" and ball.x < mid_x + flipper.length * 0.55:
+                st["mode"] = "flip"
+                st["flip_timer"] = 8
+                return True
+            if flipper.side == "right" and ball.x > mid_x - flipper.length * 0.55:
+                st["mode"] = "flip"
+                st["flip_timer"] = 8
+                return True
+
+        # High-speed lateral save near tip
+        if (
+            in_zone
+            and ball.speed() > 1.8
+            and abs(ball.x - tip_x) < flipper.length * 0.85
+            and abs(ball.y - tip_y) < UPPER_FLIP_REACT_Y * 0.7
+        ):
+            st["mode"] = "flip"
+            st["flip_timer"] = 8
+            return True
+
+        st["mode"] = "idle"
+        return False
+
+    left_want = _side_ai(left, "UL")
+    right_want = _side_ai(right, "UR")
+
+    # No idle flex — upper bats only move when the ball is a threat
     left.set_pressed(left_want)
     right.set_pressed(right_want)
     return ai_state
@@ -1369,13 +1513,22 @@ def collide_ramps(ball, ramps, states):
         collide_ramp(ball, ramp, st)
 
 
+def _ramp_airborne_frames():
+    return max(6, int(round(TARGET_FPS * RAMP_AIRBORNE_SECONDS)))
+
+
 def collide_ramp(ball, ramp, state):
     """
     Ride the ramp when moving up-table; launch off the top lip into the
     upper bumper cluster. Side hits bounce; falling onto the ramp from above
     is a soft bounce off the lip.
+
+    On lip launch the ball becomes airborne and skips nearby toys until it lands.
     """
     if ball.in_plunger or not ramp:
+        return
+    # Already jumping — don't re-grab this ramp
+    if ball.is_airborne():
         return
     if state is None:
         state = {}
@@ -1433,6 +1586,8 @@ def collide_ramp(ball, ramp, state):
                 s = MAX_SPEED / sp
                 ball.vx *= s
                 ball.vy *= s
+            # Fly over nearby obstacles until airborne timer expires
+            ball.airborne = _ramp_airborne_frames()
             state["cooldown"] = 18
             return
 
@@ -1443,13 +1598,16 @@ def collide_ramp(ball, ramp, state):
 
 def _drop_target_banks():
     """
-    Vertical drop-target banks along both sides (symmetric).
+    Vertical drop-target banks along both sides (symmetric), plus a horizontal
+    line flanking the bottom eject hole (10 px further down).
 
     Each side:
       wall | ball-gap | outer column (tall) | gap | inner column | open field
 
-    Columns run a long vertical stretch of the side rails. Returns list of
-    (x, y, w, h, bank_id).
+    Bottom hole row (bank ids 4 / 5):
+      [targets…]  (gap)  hole  (gap)  […targets]   at y = hole_y + 10
+
+    Returns list of (x, y, w, h, bank_id).
     """
     lane_l = _lane_left_x()
     play_w = max(12.0, lane_l - 2.0)
@@ -1471,12 +1629,34 @@ def _drop_target_banks():
         for i in range(count):
             y = y0 + i * (DROP_H + DROP_GAP)
             rects.append((x0, y, DROP_W, DROP_H, bank_id))
+
+    # Horizontal lines L/R of the bottom eject hole (must match saucer_low layout)
+    hole_x, hole_y = _bottom_saucer_xy(play_w)
+    row_y = hole_y + DROP_BOTTOM_LINE_BELOW
+    gap = DROP_BOTTOM_LINE_GAP
+    # Left of hole (bank 4) — extend leftward
+    for i in range(DROP_BOTTOM_LINE_EACH):
+        x = hole_x - gap - DROP_W - i * (DROP_W + DROP_GAP)
+        if x >= 1.5:
+            rects.append((x, row_y, DROP_W, DROP_H, 4))
+    # Right of hole (bank 5) — extend rightward
+    for i in range(DROP_BOTTOM_LINE_EACH):
+        x = hole_x + gap + i * (DROP_W + DROP_GAP)
+        if x + DROP_W <= lane_l - 1.5:
+            rects.append((x, row_y, DROP_W, DROP_H, 5))
     return rects
 
 
 def _drop_target_bank():
     """Back-compat flat list without bank ids (unused)."""
     return [(x, y, w, h) for x, y, w, h, _bid in _drop_target_banks()]
+
+
+def _bottom_saucer_xy(play_w=None):
+    """World position of the bottom eject hole (shared with drop-target row)."""
+    if play_w is None:
+        play_w = max(12.0, _lane_left_x() - 2.0)
+    return (float(play_w * 0.50), float(MAP_H * 0.72))
 
 
 def draw_background(canvas, camera_y, plunger_charge=0.0):
@@ -1943,6 +2123,7 @@ def _layout_playfield_toys():
 
     # Spinners — EM reels; big cluster in mid-table (where the clock used to sit)
     # Each entry: (x, y, radius)
+    # (center-upper spinner removed — bounce triangle sits between top flippers)
     spinners = [
         # Big midfield trio (center of the tall table)
         (play_w * 0.32, MAP_H * 0.48, 3.5),
@@ -1951,7 +2132,6 @@ def _layout_playfield_toys():
         # Upper / flanks (smaller variety)
         (play_w * 0.78, MAP_H * 0.33, 2.0),
         (play_w * 0.22, MAP_H * 0.30, 2.6),
-        (play_w * 0.52, MAP_H * 0.28, 1.5),
         (play_w * 0.42, MAP_H * 0.58, 2.8),   # lower-mid large
         (play_w * 0.60, MAP_H * 0.58, 2.8),
     ]
@@ -1969,7 +2149,7 @@ def _layout_playfield_toys():
     saucer_top = (float(arc_cx), float(apex_y + SAUCER_TOP_BELOW_APEX))
     saucer_mid_l = (play_w * 0.16, MAP_H * 0.46)
     saucer_mid_r = (play_w * 0.80, MAP_H * 0.46)
-    saucer_low = (play_w * 0.50, MAP_H * 0.72)
+    saucer_low = _bottom_saucer_xy(play_w)
     saucers = [saucer_top, saucer_mid_l, saucer_mid_r, saucer_low]
 
     return {
@@ -2468,6 +2648,158 @@ def place_upper_flippers(lane_l):
     return left_px, right_px, y
 
 
+def build_upper_bounce_triangle(up_left_px, up_right_px, up_flipper_y):
+    """
+    Equilateral bounce triangle (side UPPER_TRI_SIDE) centered between the
+    upper flippers. Apex points up-table; base faces down into the field.
+    Weaker pop than a slingshot; solid edges (ball cannot pass through).
+    """
+    cx = 0.5 * (float(up_left_px) + float(up_right_px))
+    cy = float(up_flipper_y)
+    s = float(UPPER_TRI_SIDE)
+    h = s * math.sqrt(3.0) * 0.5
+    # Centroid at (cx, cy): apex up, base down
+    apex = (cx, cy - (2.0 / 3.0) * h)
+    bl = (cx - 0.5 * s, cy + (1.0 / 3.0) * h)
+    br = (cx + 0.5 * s, cy + (1.0 / 3.0) * h)
+    # Prefer kick mostly up/center (toward playfield interior)
+    tri = _sling_from_triangle(apex, bl, br, prefer_right=True)
+    # Override kick: mild up + slight toward center of field
+    knx, kny = tri["kick"]
+    # Soften and bias upward (negative y)
+    knx = knx * 0.35
+    kny = min(kny, -0.55)
+    nlen = math.hypot(knx, kny) or 1.0
+    tri["kick"] = (knx / nlen, kny / nlen)
+    tri["side"] = "upper_center"
+    tri["kick_scale"] = UPPER_TRI_KICK / max(1e-6, SLING_KICK)
+    return tri
+
+
+def draw_bounce_triangle(canvas, camera_y, tri, lit=False):
+    """Draw the upper-center bounce triangle (steel-ish)."""
+    if not tri:
+        return
+    body = UPPER_TRI_EDGE if lit else UPPER_TRI_RGB
+    edge = (min(255, body[0] + 40), min(255, body[1] + 40), min(255, body[2] + 40))
+    v0, v1, v2 = tri["verts"]
+    for (ax, ay), (bx, by) in ((v0, v1), (v1, v2), (v2, v0)):
+        _draw_aa_flipper_blade(
+            canvas, ax, ay, bx, by,
+            body, edge, camera_y, half_width=0.85,
+        )
+    # Fill a couple interior points so it reads as a solid wedge
+    cx = (v0[0] + v1[0] + v2[0]) / 3.0
+    cy = (v0[1] + v1[1] + v2[1]) / 3.0
+    _draw_aa_disk(canvas, cx, cy, 0.9, body, camera_y)
+
+
+def collide_bounce_triangle(ball, tri, lit_state=None, score_state=None):
+    """
+    Solid equilateral wedge between the upper flippers.
+
+    All edges are hard walls (no pass-through). The long face gets a weak
+    center/up kick — slingshot-like but much softer.
+    """
+    if ball.in_plunger or not tri or ball.is_airborne():
+        return
+    if lit_state is None:
+        lit_state = {}
+    now = time.time()
+    hit_r = BALL_RADIUS + UPPER_TRI_PAD
+    verts = tri.get("verts")
+    if not verts or len(verts) < 3:
+        return
+    a, b, c = verts[0], verts[1], verts[2]
+    tcx = (a[0] + b[0] + c[0]) / 3.0
+    tcy = (a[1] + b[1] + c[1]) / 3.0
+    knx, kny = tri["kick"]
+    rx1, ry1, rx2, ry2 = tri["rubber"]
+    edges = ((a, b), (b, c), (c, a))
+    hit_rubber = False
+    hit_any = False
+
+    for (p1, p2) in edges:
+        x1, y1 = p1
+        x2, y2 = p2
+        dist, qx, qy, _t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
+        if dist >= hit_r or dist < 1e-9:
+            continue
+        hit_any = True
+        sx, sy = x2 - x1, y2 - y1
+        sl = math.hypot(sx, sy) or 1.0
+        n1x, n1y = -sy / sl, sx / sl
+        n2x, n2y = sy / sl, -sx / sl
+        if n1x * (qx - tcx) + n1y * (qy - tcy) > 0:
+            nnx, nny = n1x, n1y
+        else:
+            nnx, nny = n2x, n2y
+        to_bx, to_by = ball.x - qx, ball.y - qy
+        if nnx * to_bx + nny * to_by < 0:
+            nnx, nny = -nnx, -nny
+        pen = hit_r - dist + 0.2
+        ball.x += nnx * pen
+        ball.y += nny * pen
+        vn = ball.vx * nnx + ball.vy * nny
+        if vn < 0:
+            ball.vx -= (1.0 + BOUNCE) * vn * nnx
+            ball.vy -= (1.0 + BOUNCE) * vn * nny
+        is_rubber = (
+            (abs(x1 - rx1) < 0.2 and abs(y1 - ry1) < 0.2
+             and abs(x2 - rx2) < 0.2 and abs(y2 - ry2) < 0.2)
+            or (abs(x1 - rx2) < 0.2 and abs(y1 - ry2) < 0.2
+                and abs(x2 - rx1) < 0.2 and abs(y2 - ry1) < 0.2)
+        )
+        if is_rubber:
+            hit_rubber = True
+
+    if _point_in_triangle(ball.x, ball.y, a, b, c):
+        hit_any = True
+        best = None
+        best_d = 1e9
+        for (p1, p2) in edges:
+            dist, qx, qy, _t = _dist_point_segment(
+                ball.x, ball.y, p1[0], p1[1], p2[0], p2[1],
+            )
+            if dist < best_d:
+                best_d = dist
+                best = (p1, p2, qx, qy)
+        if best is not None:
+            p1, p2, qx, qy = best
+            sx, sy = p2[0] - p1[0], p2[1] - p1[1]
+            sl = math.hypot(sx, sy) or 1.0
+            n1x, n1y = -sy / sl, sx / sl
+            if n1x * (qx - tcx) + n1y * (qy - tcy) < 0:
+                n1x, n1y = -n1x, -n1y
+            ball.x = qx + n1x * (hit_r + 0.25)
+            ball.y = qy + n1y * (hit_r + 0.25)
+            vn = ball.vx * n1x + ball.vy * n1y
+            if vn < 0:
+                ball.vx -= (1.0 + BOUNCE) * vn * n1x
+                ball.vy -= (1.0 + BOUNCE) * vn * n1y
+
+    if hit_rubber:
+        fresh = now >= lit_state.get(0, 0.0)
+        vn_k = ball.vx * knx + ball.vy * kny
+        if vn_k < 0.15:
+            ball.vx += knx * UPPER_TRI_KICK
+            ball.vy += kny * UPPER_TRI_KICK
+        sp = ball.speed()
+        if sp > MAX_SPEED:
+            s = MAX_SPEED / sp
+            ball.vx *= s
+            ball.vy *= s
+        if fresh:
+            add_score(score_state, SCORE_TARGET)
+        lit_state[0] = now + 0.14
+    elif hit_any:
+        sp = ball.speed()
+        if sp > MAX_SPEED:
+            s = MAX_SPEED / sp
+            ball.vx *= s
+            ball.vy *= s
+
+
 def draw_slingshots(canvas, camera_y, slings, lit_until=None):
     """Draw triangular slingshot bodies + bright rubber faces."""
     lit_until = lit_until or {}
@@ -2493,42 +2825,131 @@ def draw_slingshots(canvas, camera_y, slings, lit_until=None):
         )
 
 
+def _point_in_triangle(px, py, a, b, c):
+    """True if (px, py) is inside triangle abc (inclusive edges)."""
+    def _cross(ox, oy, ax, ay, bx, by):
+        return (ax - ox) * (by - oy) - (ay - oy) * (bx - ox)
+
+    c1 = _cross(a[0], a[1], b[0], b[1], px, py)
+    c2 = _cross(b[0], b[1], c[0], c[1], px, py)
+    c3 = _cross(c[0], c[1], a[0], a[1], px, py)
+    has_neg = (c1 < 0) or (c2 < 0) or (c3 < 0)
+    has_pos = (c1 > 0) or (c2 > 0) or (c3 > 0)
+    return not (has_neg and has_pos)
+
+
 def collide_slingshots(ball, slings, lit_until, score_state=None):
     """
-    Hit the rubber face of a slingshot → strong kick along face normal
-    (toward center / up), classic pinball slingshot pop.
+    Solid triangular slingshot bodies — ball cannot pass through.
+
+    All three edges are hard walls; the rubber face also applies the (reduced)
+    solenoid kick toward center/up.
     """
     if ball.in_plunger or not slings:
         return
     now = time.time()
     hit_r = BALL_RADIUS + SLING_PAD
     for i, s in enumerate(slings):
-        x1, y1, x2, y2 = s["rubber"]
-        dist, nx, ny, _t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
-        if dist >= hit_r or dist < 1e-6:
+        verts = s.get("verts")
+        if not verts or len(verts) < 3:
             continue
-        fresh = now >= lit_until.get(i, 0.0)
+        a, b, c = verts[0], verts[1], verts[2]
+        cx = (a[0] + b[0] + c[0]) / 3.0
+        cy = (a[1] + b[1] + c[1]) / 3.0
+        rx1, ry1, rx2, ry2 = s["rubber"]
         knx, kny = s["kick"]
-        # Push out along kick normal
-        pen = hit_r - dist + 0.15
-        ball.x += knx * pen
-        ball.y += kny * pen
-        # Reflect residual + strong kick
-        vn = ball.vx * knx + ball.vy * kny
-        if vn < 0:
-            ball.vx -= 1.15 * vn * knx
-            ball.vy -= 1.15 * vn * kny
-        ball.vx += knx * SLING_KICK
-        ball.vy += kny * SLING_KICK
-        # Cap
-        sp = ball.speed()
-        if sp > MAX_SPEED:
-            s_scale = MAX_SPEED / sp
-            ball.vx *= s_scale
-            ball.vy *= s_scale
-        if fresh:
-            add_score(score_state, SCORE_SLING)
-        lit_until[i] = now + 0.16
+        edges = ((a, b), (b, c), (c, a))
+        hit_rubber = False
+        hit_any = False
+
+        # 1) Solid edges — push out and reflect (no tunneling through walls)
+        for (p1, p2) in edges:
+            x1, y1 = p1
+            x2, y2 = p2
+            dist, qx, qy, _t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
+            if dist >= hit_r or dist < 1e-9:
+                continue
+            hit_any = True
+            # Normal from edge toward ball; if ball is inside tri, force outward
+            sx, sy = x2 - x1, y2 - y1
+            sl = math.hypot(sx, sy) or 1.0
+            n1x, n1y = -sy / sl, sx / sl
+            n2x, n2y = sy / sl, -sx / sl
+            # Prefer normal pointing away from triangle centroid
+            if n1x * (qx - cx) + n1y * (qy - cy) > 0:
+                nnx, nny = n1x, n1y
+            else:
+                nnx, nny = n2x, n2y
+            # If ball is clearly outside, flip normal toward ball if needed
+            to_bx, to_by = ball.x - qx, ball.y - qy
+            if nnx * to_bx + nny * to_by < 0:
+                nnx, nny = -nnx, -nny
+            pen = hit_r - dist + 0.2
+            ball.x += nnx * pen
+            ball.y += nny * pen
+            vn = ball.vx * nnx + ball.vy * nny
+            if vn < 0:
+                ball.vx -= (1.0 + BOUNCE) * vn * nnx
+                ball.vy -= (1.0 + BOUNCE) * vn * nny
+            # Rubber edge → score + kick (once per fresh hit window)
+            is_rubber = (
+                (abs(x1 - rx1) < 0.2 and abs(y1 - ry1) < 0.2
+                 and abs(x2 - rx2) < 0.2 and abs(y2 - ry2) < 0.2)
+                or (abs(x1 - rx2) < 0.2 and abs(y1 - ry2) < 0.2
+                    and abs(x2 - rx1) < 0.2 and abs(y2 - ry1) < 0.2)
+            )
+            if is_rubber:
+                hit_rubber = True
+
+        # 2) If center is still inside the triangle, eject to nearest edge
+        if _point_in_triangle(ball.x, ball.y, a, b, c):
+            hit_any = True
+            best = None
+            best_d = 1e9
+            for (p1, p2) in edges:
+                dist, qx, qy, _t = _dist_point_segment(
+                    ball.x, ball.y, p1[0], p1[1], p2[0], p2[1],
+                )
+                if dist < best_d:
+                    best_d = dist
+                    best = (p1, p2, qx, qy)
+            if best is not None:
+                p1, p2, qx, qy = best
+                sx, sy = p2[0] - p1[0], p2[1] - p1[1]
+                sl = math.hypot(sx, sy) or 1.0
+                n1x, n1y = -sy / sl, sx / sl
+                # Outward from centroid
+                if n1x * (qx - cx) + n1y * (qy - cy) < 0:
+                    n1x, n1y = -n1x, -n1y
+                ball.x = qx + n1x * (hit_r + 0.25)
+                ball.y = qy + n1y * (hit_r + 0.25)
+                vn = ball.vx * n1x + ball.vy * n1y
+                if vn < 0:
+                    ball.vx -= (1.0 + BOUNCE) * vn * n1x
+                    ball.vy -= (1.0 + BOUNCE) * vn * n1y
+
+        if hit_rubber:
+            fresh = now >= lit_until.get(i, 0.0)
+            # Kick only if still moving into the rubber (or just hit)
+            vn_k = ball.vx * knx + ball.vy * kny
+            if vn_k < 0.15:
+                ball.vx += knx * SLING_KICK
+                ball.vy += kny * SLING_KICK
+            sp = ball.speed()
+            if sp > MAX_SPEED:
+                s_scale = MAX_SPEED / sp
+                ball.vx *= s_scale
+                ball.vy *= s_scale
+            if fresh:
+                add_score(score_state, SCORE_SLING)
+            lit_until[i] = now + 0.16
+        elif hit_any:
+            # Body bounce only — still cap speed
+            sp = ball.speed()
+            if sp > MAX_SPEED:
+                s_scale = MAX_SPEED / sp
+                ball.vx *= s_scale
+                ball.vy *= s_scale
 
 
 def _clock_total_width():
@@ -2620,23 +3041,35 @@ def _flip_card_size():
     return w, h
 
 
-def draw_flip_score(canvas, camera_y, score):
-    """
-    5-digit 70s flip-clock score at the top of the table (world-space, scrolls).
+def _draw_world_pixel_clipped(canvas, wx, wy, rgb, camera_y, clip_y0=None, clip_y1=None):
+    """World pixel with optional exclusive [clip_y0, clip_y1) vertical clip."""
+    if clip_y0 is not None and wy < clip_y0:
+        return
+    if clip_y1 is not None and wy >= clip_y1:
+        return
+    _draw_world_pixel(canvas, wx, wy, rgb, camera_y)
 
-    Styled after LEDarcade.GenerateFlipClockImage: white digits on black cards
-    with a horizontal mid-seam (split-flap hinge).
+
+def draw_flip_score(canvas, camera_y, score, oy=None, clip_y0=None, clip_y1=None):
+    """
+    5-digit 70s flip-clock score (world-space).
+
+    Default: top of table. Pass oy / clip to draw inside the bottom apron
+    during the post-drain score reveal animation.
     """
     text = f"{max(0, int(score)) % (SCORE_MAX + 1):0{SCORE_DIGITS}d}"
     card_w, card_h = _flip_card_size()
     total_w = SCORE_DIGITS * card_w + (SCORE_DIGITS - 1) * FLIP_CARD_GAP
     ox = max(0, int((MAP_W - total_w) // 2))
-    oy = FLIP_SCORE_Y
+    if oy is None:
+        oy = FLIP_SCORE_Y
     mid_off = card_h // 2
+
+    def plot(wx, wy, rgb):
+        _draw_world_pixel_clipped(canvas, wx, wy, rgb, camera_y, clip_y0, clip_y1)
 
     x = ox
     for ch in text:
-        # Card body + frame
         for yy in range(card_h):
             for xx in range(card_w):
                 wx, wy = x + xx, oy + yy
@@ -2650,75 +3083,192 @@ def draw_flip_score(canvas, camera_y, score):
                     rgb = FLIP_CARD_LOWER
                 else:
                     rgb = FLIP_CARD_BG
-                _draw_world_pixel(canvas, wx, wy, rgb, camera_y)
-        # Mid-seam (hinge)
+                plot(wx, wy, rgb)
         for xx in range(1, card_w - 1):
-            _draw_world_pixel(
-                canvas, x + xx, oy + mid_off, FLIP_CARD_SEAM, camera_y,
-            )
-        # Digit (3×5) centered in card
+            plot(x + xx, oy + mid_off, FLIP_CARD_SEAM)
         grid = _flip_digit_grid(ch)
         dx0 = x + FLIP_CARD_PAD_X
         dy0 = oy + FLIP_CARD_PAD_Y + 1
         for i, on in enumerate(grid):
-            if not on:
+            if not on or i >= FLIP_DIGIT_W * FLIP_DIGIT_H:
                 continue
-            if i >= FLIP_DIGIT_W * FLIP_DIGIT_H:
-                break
-            row, col = divmod(i, FLIP_DIGIT_W)
-            # DigitList is stored row-major 3 wide
-            # Actually DigitList is [row0c0, row0c1, row0c2, row1...] so divmod(i, 3)
             r, c = divmod(i, FLIP_DIGIT_W)
-            _draw_world_pixel(
-                canvas, dx0 + c, dy0 + r, FLIP_DIGIT_RGB, camera_y,
-            )
+            plot(dx0 + c, dy0 + r, FLIP_DIGIT_RGB)
         x += card_w + FLIP_CARD_GAP
 
 
-def draw_bottom_apron_clock(canvas, camera_y, blink_on=True):
-    """
-    Red 7-segment HH:MM in a dedicated apron strip *below the flippers*,
-    in world space so it scrolls with the playfield camera.
-    """
-    pf_bot = _playfield_bottom()
-    apron_y0 = int(pf_bot)
-    apron_y1 = int(MAP_H)
-
-    # Separate dark panel + top edge rail (world coords → camera)
-    for wy in range(apron_y0, apron_y1):
-        rgb = CLOCK_APRON_EDGE if wy == apron_y0 else CLOCK_APRON_RGB
-        for wx in range(MAP_W):
-            _draw_world_pixel(canvas, wx, wy, rgb, camera_y)
-
+def _draw_7seg_clock_row(canvas, camera_y, oy, blink_on=True, clip_y0=None, clip_y1=None):
+    """Red 7-segment HH:MM at world y = oy (top of digits), optional y-clip."""
     now = time.localtime()
     digits = (now.tm_hour // 10, now.tm_hour % 10, now.tm_min // 10, now.tm_min % 10)
-
     total_w = _clock_total_width()
     ox = max(0, int((MAP_W - total_w) // 2))
-    oy = apron_y0 + max(1, (CLOCK_APRON_H - CLOCK_DIGIT_H) // 2)
     lit = CLOCK_RGB
     dim = CLOCK_DIM
 
-    x = ox
-    _draw_7seg_digit_world(canvas, x, oy, digits[0], lit, dim, camera_y)
-    x += CLOCK_DIGIT_W + CLOCK_GAP
-    _draw_7seg_digit_world(canvas, x, oy, digits[1], lit, dim, camera_y)
-    x += CLOCK_DIGIT_W + CLOCK_GAP
+    # Thin wrappers that honor apron clip
+    def dig(oxd, oyd, d):
+        w = CLOCK_DIGIT_W
+        h = CLOCK_DIGIT_H
+        t = CLOCK_THICK
+        mid = h // 2
+        hx0, hx1 = t, w - 1 - t
+        vy0_top, vy1_top = t, mid - 1
+        vy0_bot, vy1_bot = mid + t, h - 1 - t
+        mask = _SEG_DIGIT_MASKS[int(d) % 10]
+        segs = (
+            (_SEG_A, "h", hx0, hx1, 0),
+            (_SEG_G, "h", hx0, hx1, mid),
+            (_SEG_D, "h", hx0, hx1, h - t),
+            (_SEG_F, "v", 0, vy0_top, vy1_top),
+            (_SEG_B, "v", w - t, vy0_top, vy1_top),
+            (_SEG_E, "v", 0, vy0_bot, vy1_bot),
+            (_SEG_C, "v", w - t, vy0_bot, vy1_bot),
+        )
+        for bit, kind, a, b, c in segs:
+            on = (mask & bit) != 0
+            if on:
+                rgb = lit
+            elif dim is not None:
+                rgb = dim
+            else:
+                continue
+            if kind == "h":
+                for yy in range(c, c + t):
+                    for xx in range(a, b + 1):
+                        _draw_world_pixel_clipped(
+                            canvas, oxd + xx, oyd + yy, rgb, camera_y, clip_y0, clip_y1,
+                        )
+            else:
+                for xx in range(a, a + t):
+                    for yy in range(b, c + 1):
+                        _draw_world_pixel_clipped(
+                            canvas, oxd + xx, oyd + yy, rgb, camera_y, clip_y0, clip_y1,
+                        )
 
-    # Colon (two stacked dots) — blink each second
+    x = ox
+    dig(x, oy, digits[0])
+    x += CLOCK_DIGIT_W + CLOCK_GAP
+    dig(x, oy, digits[1])
+    x += CLOCK_DIGIT_W + CLOCK_GAP
     colon_x = x
     mid = CLOCK_DIGIT_H // 2
     if blink_on:
         for dy in (mid - 2, mid + 1):
             for xx in range(CLOCK_COLON_W):
-                _draw_world_pixel(
-                    canvas, colon_x + xx, oy + dy, lit, camera_y,
+                _draw_world_pixel_clipped(
+                    canvas, colon_x + xx, oy + dy, lit, camera_y, clip_y0, clip_y1,
                 )
     x += CLOCK_COLON_W + CLOCK_GAP
-
-    _draw_7seg_digit_world(canvas, x, oy, digits[2], lit, dim, camera_y)
+    dig(x, oy, digits[2])
     x += CLOCK_DIGIT_W + CLOCK_GAP
-    _draw_7seg_digit_world(canvas, x, oy, digits[3], lit, dim, camera_y)
+    dig(x, oy, digits[3])
+
+
+def update_apron_drain_anim(anim, dt):
+    """
+    Advance post-drain apron animation.
+
+    Phases: to_score (clock ↓, score in from above) → hold →
+    to_clock (score ↑ out, clock ↑ from below) → done.
+    Returns True when the sequence has finished (plunger may charge).
+    """
+    if not anim or not anim.get("active"):
+        return True
+    phase = anim.get("phase") or "to_score"
+    if phase == "to_score":
+        anim["t"] = min(1.0, float(anim.get("t", 0.0)) + dt / max(0.05, APRON_SCROLL_SECONDS))
+        if anim["t"] >= 1.0:
+            anim["phase"] = "hold"
+            anim["t"] = 1.0
+            anim["hold_left"] = float(APRON_SCORE_HOLD_SECONDS)
+    elif phase == "hold":
+        anim["hold_left"] = float(anim.get("hold_left", APRON_SCORE_HOLD_SECONDS)) - dt
+        if anim["hold_left"] <= 0.0:
+            anim["phase"] = "to_clock"
+            anim["t"] = 0.0
+    elif phase == "to_clock":
+        anim["t"] = min(1.0, float(anim.get("t", 0.0)) + dt / max(0.05, APRON_SCROLL_SECONDS))
+        if anim["t"] >= 1.0:
+            anim["active"] = False
+            anim["phase"] = "done"
+            anim["t"] = 0.0
+            return True
+    return False
+
+
+def draw_bottom_apron_display(canvas, camera_y, score=0, anim=None, blink_on=True):
+    """
+    Bottom apron strip: normally the 7-seg clock.
+
+    During post-drain anim (in place, table fixed):
+      1) clock scrolls down, score scrolls in from above
+      2) score holds 1s
+      3) score scrolls up out, clock scrolls up from below into place
+    Content is clipped to the apron so the playfield is not disturbed.
+    """
+    pf_bot = _playfield_bottom()
+    apron_y0 = int(pf_bot)
+    apron_y1 = int(MAP_H)
+    apron_h = float(CLOCK_APRON_H)
+
+    # Dark panel + top edge rail (always fixed)
+    for wy in range(apron_y0, apron_y1):
+        rgb = CLOCK_APRON_EDGE if wy == apron_y0 else CLOCK_APRON_RGB
+        for wx in range(MAP_W):
+            _draw_world_pixel(canvas, wx, wy, rgb, camera_y)
+
+    base_oy = apron_y0 + max(1, (CLOCK_APRON_H - CLOCK_DIGIT_H) // 2)
+    card_w, card_h = _flip_card_size()
+    score_base_oy = apron_y0 + max(1, (CLOCK_APRON_H - card_h) // 2)
+
+    active = anim and anim.get("active")
+    phase = (anim or {}).get("phase")
+    t = float((anim or {}).get("t", 0.0))
+    # Ease scroll
+    te = t * t * (3.0 - 2.0 * t)
+
+    if not active or phase in (None, "done"):
+        _draw_7seg_clock_row(
+            canvas, camera_y, base_oy, blink_on=blink_on,
+            clip_y0=apron_y0, clip_y1=apron_y1,
+        )
+        return
+
+    if phase == "to_score":
+        # Clock moves down; score enters from above
+        clock_oy = base_oy + te * apron_h
+        score_oy = score_base_oy - apron_h + te * apron_h
+        _draw_7seg_clock_row(
+            canvas, camera_y, int(round(clock_oy)), blink_on=blink_on,
+            clip_y0=apron_y0, clip_y1=apron_y1,
+        )
+        draw_flip_score(
+            canvas, camera_y, score, oy=int(round(score_oy)),
+            clip_y0=apron_y0, clip_y1=apron_y1,
+        )
+    elif phase == "hold":
+        draw_flip_score(
+            canvas, camera_y, score, oy=score_base_oy,
+            clip_y0=apron_y0, clip_y1=apron_y1,
+        )
+    elif phase == "to_clock":
+        # Both scroll upward: score exits up; clock rises from below into place
+        score_oy = score_base_oy - te * apron_h
+        clock_oy = base_oy + apron_h - te * apron_h
+        draw_flip_score(
+            canvas, camera_y, score, oy=int(round(score_oy)),
+            clip_y0=apron_y0, clip_y1=apron_y1,
+        )
+        _draw_7seg_clock_row(
+            canvas, camera_y, int(round(clock_oy)), blink_on=blink_on,
+            clip_y0=apron_y0, clip_y1=apron_y1,
+        )
+
+
+def draw_bottom_apron_clock(canvas, camera_y, blink_on=True):
+    """Back-compat: static 7-seg clock on the apron."""
+    draw_bottom_apron_display(canvas, camera_y, score=0, anim=None, blink_on=blink_on)
 
 
 # ---------------- Main loop ----------------
@@ -2733,8 +3283,8 @@ def PlayPinball(Duration=10000, StopEvent=None):
     WIDTH = int(LED.HatWidth)
     HEIGHT = int(LED.HatHeight)
     MAP_W = WIDTH
-    # Playfield height + dedicated scrolling clock apron below the flippers
-    MAP_H = HEIGHT * MAP_SCALE_Y + CLOCK_APRON_H
+    # Playfield height (+ table extra) + dedicated scrolling clock apron below
+    MAP_H = HEIGHT * MAP_SCALE_Y + TABLE_EXTRA_H + CLOCK_APRON_H
 
     try:
         canvas = LED.TheMatrix.CreateFrameCanvas()
@@ -2773,6 +3323,8 @@ def PlayPinball(Duration=10000, StopEvent=None):
         active_angle=LEFT_ACTIVE,
         length=UPPER_FLIPPER_LEN,
         side="left",
+        swing_speed=UPPER_FLIPPER_SWING_SPEED,
+        power=UPPER_FLIPPER_POWER,
     )
     up_right = Flipper(
         pivot_x=up_right_px,
@@ -2781,11 +3333,19 @@ def PlayPinball(Duration=10000, StopEvent=None):
         active_angle=RIGHT_ACTIVE,
         length=UPPER_FLIPPER_LEN,
         side="right",
+        swing_speed=UPPER_FLIPPER_SWING_SPEED,
+        power=UPPER_FLIPPER_POWER,
     )
+    upper_tri = build_upper_bounce_triangle(up_left_px, up_right_px, up_flipper_y)
+    upper_tri_lit = {}
+    ut = upper_tri["verts"]
     print(
         f"[pinball] upper flippers y={up_flipper_y:.1f} "
         f"pivots=({up_left_px:.1f},{up_right_px:.1f}) "
-        f"len={UPPER_FLIPPER_LEN}"
+        f"len={UPPER_FLIPPER_LEN}  "
+        f"bounce_tri side={UPPER_TRI_SIDE:.0f} "
+        f"centroid=({(ut[0][0]+ut[1][0]+ut[2][0])/3:.1f},"
+        f"{(ut[0][1]+ut[1][1]+ut[2][1])/3:.1f})"
     )
 
     slings = build_slingshots(left_px, right_px, flipper_y, lane_l)
@@ -2853,7 +3413,14 @@ def PlayPinball(Duration=10000, StopEvent=None):
     ball = Ball(0, 0)
     ball.place_in_plunger()
     score_state = {"score": 0}
-    drain_relaunch_at = None  # time.time() when drain wait ends
+    # Post-drain apron anim: clock scrolls out → score holds 1s → clock returns
+    apron_anim = {
+        "active": False,
+        "phase": "done",
+        "t": 0.0,
+        "hold_left": 0.0,
+    }
+    apron_relaunch_ready = False
 
     # Plunger state: idle → charging → fire → in_play
     # Each charge picks a random pull strength (soft / medium / full crank)
@@ -2997,26 +3564,37 @@ def PlayPinball(Duration=10000, StopEvent=None):
                             f"power {old_pwr:.2f}→{plunger_last_power:.2f}"
                         )
             elif not ball.alive:
-                # Drain pause — enjoy the bottom digital clock before re-launch
+                # Drain: apron anim in place (clock ↓ score ↑ hold clock ↑) then plunger
                 plunger_phase = "idle"
                 plunger_timer = 0
                 plunger_charge = 0.0
                 plunger_climbed = False
                 plunger_last_power = 0.0
-                now_t = time.time()
-                if drain_relaunch_at is None:
-                    drain_relaunch_at = now_t + DRAIN_RELAUNCH_SECONDS
+                # Kick off apron sequence once per drain
+                if (
+                    not apron_anim.get("active")
+                    and not apron_relaunch_ready
+                    and apron_anim.get("phase") in (None, "done", "idle")
+                ):
+                    apron_anim["active"] = True
+                    apron_anim["phase"] = "to_score"
+                    apron_anim["t"] = 0.0
+                    apron_anim["hold_left"] = APRON_SCORE_HOLD_SECONDS
                     print(
                         f"[pinball] Ball drained — score={score_state['score']:05d}  "
-                        f"waiting {DRAIN_RELAUNCH_SECONDS:.0f}s for clock"
+                        f"apron clock→score reveal"
                     )
-                elif now_t >= drain_relaunch_at:
+                if apron_anim.get("active"):
+                    if update_apron_drain_anim(apron_anim, 1.0 / float(TARGET_FPS)):
+                        apron_relaunch_ready = True
+                if apron_relaunch_ready and not apron_anim.get("active"):
                     ball.place_in_plunger()
                     plunger_phase = "charging"
                     plunger_target = _pick_plunger_strength()
-                    drain_relaunch_at = None
+                    apron_relaunch_ready = False
+                    apron_anim["phase"] = "done"
                     print(
-                        f"[pinball] Re-launch after drain wait  "
+                        f"[pinball] Re-launch after apron score reveal  "
                         f"score={score_state['score']:05d}"
                     )
 
@@ -3025,7 +3603,7 @@ def PlayPinball(Duration=10000, StopEvent=None):
                 flipper_ai_state = update_flipper_ai(
                     ball, left, right, frame, ai_state=flipper_ai_state,
                 )
-                upper_ai_state = update_flipper_ai(
+                upper_ai_state = update_upper_flipper_ai(
                     ball, up_left, up_right, frame, ai_state=upper_ai_state,
                 )
             else:
@@ -3054,20 +3632,29 @@ def PlayPinball(Duration=10000, StopEvent=None):
                     ball.integrate(dt_scale=step_scale)
                     collide_walls(ball)
                     if not ball.in_plunger:
+                        airborne = ball.is_airborne()
                         collide_top_arc(ball)
+                        # Bumpers stay live — ramp jump lands in the upper cluster
                         collide_bumpers(ball, bumper_lit, score_state)
-                        collide_drop_targets(ball, drop_targets, score_state)
-                        collide_standups(
-                            ball, toys["standups"], standup_lit, score_state,
-                        )
-                        collide_posts(ball, toys["posts"])
-                        collide_spinners(ball, toys.get("spinners"), spinner_states)
-                        collide_rollovers(
-                            ball, toys["rollovers"], rollover_lit, score_state,
-                        )
-                        collide_outlane_guides(ball, outlane_guides)
-                        collide_slingshots(ball, slings, sling_lit, score_state)
-                        collide_ramps(ball, ramps, ramp_states)
+                        if not airborne:
+                            # Mid-table toys the ramp jump should clear
+                            collide_drop_targets(ball, drop_targets, score_state)
+                            collide_standups(
+                                ball, toys["standups"], standup_lit, score_state,
+                            )
+                            collide_posts(ball, toys["posts"])
+                            collide_spinners(
+                                ball, toys.get("spinners"), spinner_states,
+                            )
+                            collide_rollovers(
+                                ball, toys["rollovers"], rollover_lit, score_state,
+                            )
+                            collide_outlane_guides(ball, outlane_guides)
+                            collide_slingshots(ball, slings, sling_lit, score_state)
+                            collide_bounce_triangle(
+                                ball, upper_tri, upper_tri_lit, score_state,
+                            )
+                            collide_ramps(ball, ramps, ramp_states)
                         collide_flipper(ball, left)
                         collide_flipper(ball, right)
                         collide_flipper(ball, up_left)
@@ -3075,6 +3662,9 @@ def PlayPinball(Duration=10000, StopEvent=None):
                         collide_top_arc(ball)
                         ensure_ball_inside_arc(ball)
                     clamp_ball_on_table(ball)
+                # Tick airborne once per frame (not per substep)
+                if ball.is_airborne():
+                    ball.airborne = max(0, int(ball.airborne) - 1)
 
             update_spinners(spinner_states)
             drop_bank_timers, just_reset = update_drop_targets(
@@ -3117,6 +3707,10 @@ def PlayPinball(Duration=10000, StopEvent=None):
             )
             draw_outlane_guides(canvas, camera_y, outlane_guides)
             draw_slingshots(canvas, camera_y, slings, lit_until=sling_lit)
+            draw_bounce_triangle(
+                canvas, camera_y, upper_tri,
+                lit=time.time() < upper_tri_lit.get(0, 0.0),
+            )
             left.draw(canvas, camera_y)
             right.draw(canvas, camera_y)
             up_left.draw(canvas, camera_y)
@@ -3128,9 +3722,12 @@ def PlayPinball(Duration=10000, StopEvent=None):
                 or float(getattr(ball, "visible", 1.0)) > 0.02
             ):
                 ball.draw(canvas, camera_y)
-            # Clock apron below the flippers — world-space, scrolls with camera
-            draw_bottom_apron_clock(
-                canvas, camera_y, blink_on=(int(time.time()) % 2 == 0),
+            # Bottom apron: clock, or post-drain clock↔score scroll (table fixed)
+            draw_bottom_apron_display(
+                canvas, camera_y,
+                score=score_state.get("score", 0),
+                anim=apron_anim,
+                blink_on=(int(time.time()) % 2 == 0),
             )
 
             canvas = LED.TheMatrix.SwapOnVSync(canvas)

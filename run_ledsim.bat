@@ -25,9 +25,9 @@ set PYTHONUNBUFFERED=1
 set PYTHONFAULTHANDLER=1
 REM Signal LEDsim that this bat will re-loop on restart exit code 42
 set LEDARCADE_SIM_WRAPPER=1
-REM Borderless panel; +/- resizes the whole window. Topmost off (SDL2 topmost AVed).
+REM Borderless panel; +/- resizes the whole window. Stay on top via Win32 TOPMOST.
 if not defined LEDARCADE_SIM_BORDERLESS set LEDARCADE_SIM_BORDERLESS=1
-if not defined LEDARCADE_SIM_TOPMOST set LEDARCADE_SIM_TOPMOST=0
+if not defined LEDARCADE_SIM_TOPMOST set LEDARCADE_SIM_TOPMOST=1
 
 :run_ledsim
 REM Drop stale bytecode so HWND / frame-IPC / hotkey fixes always load

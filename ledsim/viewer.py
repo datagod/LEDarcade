@@ -462,12 +462,32 @@ def _place_window(
 
 def _set_always_on_top(enabled: bool = True) -> bool:
     """
-    Always-on-top is disabled for stability.
+    Pin (or unpin) the viewer above other windows via Win32 only.
 
-    pygame._sdl2.Window.always_on_top was part of the event.get AV path.
-    Keep the API so the A key does not crash; it just reports unsupported.
+    Uses SetWindowPos(HWND_TOPMOST / HWND_NOTOPMOST) — never pygame._sdl2
+    always_on_top (that path AVed event.get on some Windows hosts).
     """
-    return False
+    if not _win32_ready():
+        return False
+    hwnd = _get_hwnd()
+    u = _user32()
+    if not hwnd or u is None:
+        return False
+    try:
+        SWP_NOSIZE = 0x0001
+        SWP_NOMOVE = 0x0002
+        SWP_NOACTIVATE = 0x0010
+        SWP_SHOWWINDOW = 0x0040
+        ok = u.SetWindowPos(
+            hwnd,
+            _hwnd_insert_after(bool(enabled)),
+            0, 0, 0, 0,
+            SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+        )
+        return bool(ok)
+    except Exception as exc:
+        _breadcrumb(f"set_always_on_top failed: {exc}")
+        return False
 
 
 def _window_is_on_any_monitor() -> bool:
@@ -560,8 +580,11 @@ def _default_borderless() -> bool:
 
 
 def _default_topmost() -> bool:
-    """Off by default — SDL2 always_on_top AVed event.get on Windows."""
-    return _env_bool("LEDARCADE_SIM_TOPMOST", False)
+    """
+    On by default so the panel stays visible over other apps.
+    Uses Win32 TOPMOST (not SDL2). Set LEDARCADE_SIM_TOPMOST=0 to disable.
+    """
+    return _env_bool("LEDARCADE_SIM_TOPMOST", True)
 
 
 # Debounce window resizes (holding +/- must not spam set_mode)
@@ -825,12 +848,18 @@ def run_viewer(
         stop_event.set()
         return "quit"
 
-    # Never call SDL2 always_on_top at startup (AVs event.get on this host).
+    # Win32 TOPMOST only — do not use pygame._sdl2 always_on_top
     if always_on_top:
-        print("[LEDsim] Always-on-top unavailable (disabled for stability)")
+        ok = _set_always_on_top(True)
+        print(
+            f"[LEDsim] Always-on-top: {'on' if ok else 'requested (Win32 may be unavailable)'}"
+        )
+    else:
+        print("[LEDsim] Always-on-top: off (LEDARCADE_SIM_TOPMOST=0)")
 
     clock = pygame.time.Clock()
     panel = pygame.Surface((width, height))
+    last_topmost_assert = time.monotonic()
     _breadcrumb(f"viewer start scale={scale} window={win_w}x{win_h} borderless={borderless}")
 
     def _apply_scale(new_scale: int) -> bool:
@@ -853,6 +882,8 @@ def run_viewer(
         panel = pygame.Surface((width, height))
         dragging = False
         drag_grab = None
+        if always_on_top:
+            _set_always_on_top(True)
         return True
 
     def _toggle_frame() -> None:
@@ -1053,6 +1084,12 @@ def run_viewer(
                 pygame.display.flip()
             except Exception:
                 pass
+            # Periodically re-assert TOPMOST so other apps don't bury the panel
+            if always_on_top:
+                now_m = time.monotonic()
+                if now_m - last_topmost_assert >= _TOPMOST_REASSERT_SEC:
+                    _set_always_on_top(True)
+                    last_topmost_assert = now_m
             clock.tick(fps)
     finally:
         _breadcrumb("viewer finally / closing")
