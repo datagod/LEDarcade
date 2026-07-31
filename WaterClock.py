@@ -4,7 +4,8 @@
 # Fixed upper seat: HH:MM in a soft multi-shade 3x5 digit font (scaled).
 # Tide water washes around solid clock glyphs. A little sailboat tries to
 # cross shore-to-shore under wind + current. Once a minute the water rises
-# and calms, wind dies, boat drops a fishing hook, and small fish swim by.
+# Starts calm at the pier with the boat ready to sail. Later: five-minute
+# fishing trips, dock unload with scoreboard, cast off, weather resumes.
 # Yellow sun + pale moon follow Ottawa civil times on a fixed sky path.
 #
 # Launch:
@@ -100,13 +101,14 @@ LINE_RGB = (160, 160, 170)
 HOOK_RGB = (220, 200, 70)
 HOOK_TIP_RGB = (255, 240, 120)  # bright point of the J
 
-# ---- Once-a-minute fishing calm ----
-# Every FISHING_INTERVAL seconds: water rises + flattens, wind dies, boat
-# stops and drops a J-hook at varying depth; fish investigate — touch = catch.
-# Bigger fish hang near the bottom; a rare big red fish is the prize.
-FISHING_INTERVAL = 60.0        # seconds between fishing sessions
-FISHING_DURATION = 22.0        # how long the calm lasts
-FISHING_RISE_FRAC = 0.96       # target mean water fill while fishing
+# ---- Fishing trip (calm → fish 5 min → dock → unload → sail off) ----
+# After FISHING_INTERVAL: water rises + wind dies, boat fishes for
+# FISHING_DURATION. Then calms home to a wooden pier on the right, unloads,
+# shows catch count on a dock display, sails the other way, weather resumes.
+FISHING_INTERVAL = 60.0        # seconds between full trips
+FISHING_DURATION = 300.0       # five minutes of fishing
+START_READY_HOLD = 5.0         # opening: docked at pier before first cast-off
+FISHING_RISE_FRAC = 0.96       # target mean water fill while fishing / dock calm
 FISHING_LINE_MIN = 3.0         # shallow drop (surface school)
 FISHING_LINE_MAX = 11.0        # deep drop (bottom dwellers)
 FISHING_LINE_SPEED = 2.8       # line pay-out px/sec
@@ -120,6 +122,17 @@ FISH_INVESTIGATE_RANGE = 14.0  # how far fish notice the hook
 FISH_HOOK_TOUCH = 1.35         # distance to count as touching the J
 FISH_CATCH_FLASH = 1.4         # seconds the catch sits in the boat
 FISH_RARE_CHANCE = 0.10        # chance of the rare big red per school
+FISH_RESPAWN_EVERY = 18.0      # restock water during long fishing trips
+BOAT_HOME_SPEED = 6.5          # px/sec sailing to pier / away
+DOCK_HOLD = 0.6                # brief settle after tip touches dock
+SAIL_LOWER_TIME = 2.2          # seconds to lower the sail before unload
+UNLOAD_INTERVAL = 0.38         # seconds between fish tossed onto the pier
+SCORE_HOLD = 2.8               # hold scoreboard after last fish
+BOAT_BOW_OFFSET = 2            # hull-center → bow tip (sprite nose at +2)
+PIER_WOOD = (150, 95, 45)
+PIER_WOOD_DARK = (95, 55, 25)
+PIER_POST = (110, 70, 35)
+SCORE_RGB = (40, 255, 120)     # dock digital display
 FISH_COLORS = (
     (255, 160, 40),
     (255, 90, 70),
@@ -143,6 +156,11 @@ MOON_HALO = (70, 80, 110)
 MOON_EDGE_PAD = 1
 # Upper-limb + refraction horizon (deg below geometric) for moon rise/set
 MOON_HORIZON_ALT = -0.833
+# Sunset-style glitter path on the water (same color as the body, distorted)
+REFLECT_NEAR = 11.0           # start when body is within this many px of waterline
+REFLECT_MAX = 0.85             # peak strength of sun/moon color on the path
+REFLECT_DEPTH = 7              # how far the glitter runs down into the water
+REFLECT_JITTER = 1.6           # max horizontal distortion (px) deeper in the path
 
 BG = (0, 0, 4)
 # Water palette (deep → surface foam)
@@ -739,9 +757,10 @@ class Sun(object):
 
     Path (day fraction 0=sunrise → 1=sunset, Ottawa times):
       1) Rise at waterline on the RIGHT edge, climb the right side
-      2) Cross the TOP right → left
+      2) Cross the TOP right → left  (midday / day_t≈0.5 = top-center)
       3) Descend the LEFT side down to the waterline (sunset)
-    Hidden at night.
+    Hidden at night. Drawn under lit clock segments so noon can shine
+    through the unlit gaps of the digits.
     """
 
     def __init__(self, width, height):
@@ -843,6 +862,22 @@ class Sun(object):
             if 0 <= sx < self.w and 0 <= sy < self.h:
                 # Don't stomp brighter core; glow already set — reinforce
                 set_px(sx, sy, glow[0], glow[1], glow[2])
+
+    def _body_colors(self):
+        edge = abs(self.day_t - 0.5) * 2.0
+        core = (255, int(230 - 40 * edge), int(50 + 30 * (1.0 - edge)))
+        glow = (255, int(170 - 30 * edge), int(30 + 10 * edge))
+        return core, glow
+
+    def draw_reflection(self, canvas, water, solid_mask=None):
+        """Sunset glitter path — same warm sun color, broken & distorted on water."""
+        if not self.visible or water is None:
+            return
+        core, glow = self._body_colors()
+        _draw_water_reflection(
+            canvas, water, self.x, self.y, core, glow,
+            solid_mask=solid_mask, panel_w=self.w, panel_h=self.h,
+        )
 
 
 # ---------------- Moon (Ottawa rise → set, same sky path) ----------------
@@ -1064,6 +1099,7 @@ def _sky_path_xy(day_t: float, width: int, height: int, edge_pad: int = 1):
     """
     Shared sun/moon path on the panel.
     day_t 0 = rise (right waterline) → 1 = set (left waterline).
+    Midday (day_t = 0.5) is the middle of the top edge (top-center).
     """
     top_y = float(edge_pad)
     bot_y = float(height) * (1.0 - WATER_BAND_FRAC * 0.55)
@@ -1079,6 +1115,117 @@ def _sky_path_xy(day_t: float, width: int, height: int, edge_pad: int = 1):
         return right_x + (left_x - right_x) * u, top_y
     u = (t - 2.0 / 3.0) * 3.0
     return left_x, top_y + (bot_y - top_y) * u
+
+
+def _draw_water_reflection(
+    canvas, water, body_x, body_y, core_rgb, glow_rgb=None,
+    solid_mask=None, panel_w=None, panel_h=None,
+):
+    """
+    Real-sunset style reflection: the body's own color as a broken, distorted
+    vertical glitter path on the water (wobbles side-to-side, gaps, fades deep).
+    """
+    if water is None:
+        return
+    w = int(panel_w if panel_w is not None else water.w)
+    h = int(panel_h if panel_h is not None else water.h)
+    mask = solid_mask or set()
+    set_px = canvas.SetPixel
+    if glow_rgb is None:
+        glow_rgb = core_rgb
+
+    surf = water.surface_y_at(body_x)
+    gap = surf - float(body_y)
+    if gap > REFLECT_NEAR:
+        return
+    if gap < -2.5:
+        return
+
+    if gap >= 0.0:
+        proximity = 1.0 - (gap / REFLECT_NEAR)
+    else:
+        proximity = 1.0
+    proximity = _clamp(proximity, 0.0, 1.0)
+    # Bloom near the horizon (sunset / moonset)
+    proximity = proximity * proximity * (3.0 - 2.0 * proximity)
+    strength = REFLECT_MAX * proximity
+    if strength < 0.06:
+        return
+
+    # Vertical path length grows as the body sits lower
+    depth_rows = int(round(3 + REFLECT_DEPTH * proximity))
+    depth_rows = max(3, min(REFLECT_DEPTH + 2, depth_rows))
+    top = int(math.floor(surf + 0.35))
+    t = float(getattr(water, "t", 0.0))
+
+    for row in range(depth_rows):
+        sy = top + row
+        if sy < 0 or sy >= h or sy > water.floor_y:
+            continue
+        # Deeper = more horizontal distortion (chop on the water)
+        depth_u = row / float(max(1, depth_rows - 1))
+        # Broken path: skip some rows like wave facets
+        break_wave = math.sin(t * 5.1 + row * 1.7 + body_x * 0.4)
+        if break_wave < -0.55 and row > 0:
+            continue
+        # Sideways shimmer — increases with depth (classic glitter road)
+        jitter = (
+            math.sin(t * 3.3 + row * 2.1 + body_x * 0.55) * REFLECT_JITTER * (0.35 + 0.65 * depth_u)
+            + math.sin(t * 7.0 + row * 0.9) * 0.45 * depth_u
+        )
+        # Path width: a little wider mid-path, thin near the end
+        if row == 0:
+            half_w = 1
+        elif depth_u < 0.55:
+            half_w = 1 if break_wave > 0.2 else 0
+        else:
+            half_w = 0  # single-pixel glitter deeper down
+
+        # Brightness: strong at surface, dimmer/broken deeper
+        row_str = strength * (1.0 - 0.72 * depth_u)
+        # Alternate core vs softer glow along the path
+        use_core = (row % 2 == 0) or row == 0
+        src = core_rgb if use_core else glow_rgb
+
+        for dx in range(-half_w, half_w + 1):
+            sx = int(round(body_x + jitter + dx))
+            if not (0 <= sx < w):
+                continue
+            if mask and (sx, sy) in mask:
+                continue
+            local_surf = water.surface_y_at(sx)
+            if sy < int(math.floor(local_surf)):
+                continue
+            if water.level[sx] < 0.35:
+                continue
+            # Edge of path a bit dimmer
+            edge = 1.0 if dx == 0 else 0.62
+            mix = row_str * edge
+            if mix < 0.05:
+                continue
+            # Mix sun/moon color into the water at that depth
+            if row <= 1:
+                water_rgb = WATER_TOP
+            elif row <= 3:
+                water_rgb = WATER_MID
+            else:
+                water_rgb = WATER_DEEP
+            r = int(water_rgb[0] * (1.0 - mix) + src[0] * mix)
+            g = int(water_rgb[1] * (1.0 - mix) + src[1] * mix)
+            b = int(water_rgb[2] * (1.0 - mix) + src[2] * mix)
+            set_px(sx, sy, _clamp(r, 0, 255), _clamp(g, 0, 255), _clamp(b, 0, 255))
+
+        # Occasional twin sparkle offset (distorted double image)
+        if row > 1 and break_wave > 0.65:
+            sx2 = int(round(body_x - jitter * 0.7))
+            if 0 <= sx2 < w and not (mask and (sx2, sy) in mask):
+                if water.level[sx2] >= 0.35 and sy >= int(math.floor(water.surface_y_at(sx2))):
+                    mix2 = row_str * 0.4
+                    water_rgb = WATER_MID if row <= 3 else WATER_DEEP
+                    r = int(water_rgb[0] * (1.0 - mix2) + glow_rgb[0] * mix2)
+                    g = int(water_rgb[1] * (1.0 - mix2) + glow_rgb[1] * mix2)
+                    b = int(water_rgb[2] * (1.0 - mix2) + glow_rgb[2] * mix2)
+                    set_px(sx2, sy, _clamp(r, 0, 255), _clamp(g, 0, 255), _clamp(b, 0, 255))
 
 
 class Moon(object):
@@ -1187,21 +1334,48 @@ class Moon(object):
             if 0 <= sx < self.w and 0 <= sy < self.h:
                 set_px(sx, sy, glow[0], glow[1], glow[2])
 
+    def _body_colors(self):
+        b = 0.22 + 0.78 * max(0.0, min(1.0, self.illum))
+        core = (
+            int(MOON_CORE[0] * b),
+            int(MOON_CORE[1] * b),
+            int(MOON_CORE[2] * b),
+        )
+        glow = (
+            int(MOON_GLOW[0] * b),
+            int(MOON_GLOW[1] * b),
+            int(MOON_GLOW[2] * b),
+        )
+        return core, glow
+
+    def draw_reflection(self, canvas, water, solid_mask=None):
+        """Moonpath on the water — same silver as the disc, broken & distorted."""
+        if not self.visible or water is None:
+            return
+        core, glow = self._body_colors()
+        _draw_water_reflection(
+            canvas, water, self.x, self.y, core, glow,
+            solid_mask=solid_mask, panel_w=self.w, panel_h=self.h,
+        )
+
 
 # ---------------- Wind + current + sailboat ----------------
 # Tiny pixel sprites, origin at hull center on the waterline.
-# Facing right (+x). Left is dx mirrored.
-_SAILBOAT_RIGHT = (
-    # hull (bow to the right / +x)
+# Facing right (+x). Left is dx mirrored. Bow tip is at dx=+2.
+_SAILBOAT_HULL = (
     (-2, 0, BOAT_HULL), (-1, 0, BOAT_HULL), (0, 0, BOAT_HULL),
     (1, 0, BOAT_HULL), (2, 0, BOAT_HULL),
     (-1, 1, BOAT_HULL_DARK), (0, 1, BOAT_HULL_DARK), (1, 1, BOAT_HULL_DARK),
-    # mast
+    # mast (stays up when sail is lowered)
     (0, -1, BOAT_MAST), (0, -2, BOAT_MAST), (0, -3, BOAT_MAST),
-    # sail points toward direction of travel (bow / +x)
+)
+# Sail pixels relative to mast; drawn by height fraction (sail_raise 0..1)
+_SAILBOAT_SAIL = (
     (1, -1, BOAT_SAIL), (1, -2, BOAT_SAIL),
     (2, -1, BOAT_SAIL),
 )
+# Back-compat full sprite list
+_SAILBOAT_RIGHT = _SAILBOAT_HULL + _SAILBOAT_SAIL
 
 
 class WindField(object):
@@ -1295,7 +1469,7 @@ class Sailboat(object):
         self.anchor_t = 0.0
         self.calm_need = random.uniform(CALM_NEED_MIN, CALM_NEED_MAX)
         self.anchor_hold = random.uniform(ANCHOR_MIN, ANCHOR_MAX)
-        # Fishing (minute calm)
+        # Fishing / trip scripting
         self.fishing = False
         self.line_len = 0.0             # paid-out length in px
         self.line_target = FISHING_LINE_MIN  # current target drop depth
@@ -1306,35 +1480,79 @@ class Sailboat(object):
         self.catch_rgb = FISH_COLORS[0]
         self.catch_size = 1
         self._pre_fish_anchored = False
+        self.scripted = False           # trip director steers the boat
+        self.script_target_x = None
+        self.script_speed = BOAT_HOME_SPEED
+        self.sail_raise = 1.0           # 1 = full sail, 0 = lowered (furled)
 
-    def set_fishing(self, active):
-        """Stop for fishing and pay out a hook, or reel in and sail again."""
+    def set_fishing(self, active, reset_catches=False):
+        """Stop for fishing and pay out a hook, or reel in."""
         active = bool(active)
         if active and not self.fishing:
             self._pre_fish_anchored = self.anchored
             self.fishing = True
+            self.scripted = False
             self.anchored = True
             self.line_len = 0.0
             self.reeling = False
             self.catch_flash_t = 0.0
             self.catch_size = 1
             self.stuck_t = 0.0
+            if reset_catches:
+                self.catches = 0
             self._pick_line_depth(reason="cast")
             print(f"[WaterClock] Sailboat fishing  x={self.x:.1f}")
         elif not active and self.fishing:
             self.fishing = False
             self.line_len = 0.0
             self.reeling = False
-            # Resume sail unless we were already anchored before fishing
-            if not self._pre_fish_anchored:
-                self.anchored = False
-                self.calm_t = 0.0
-                self.calm_need = random.uniform(CALM_NEED_MIN, CALM_NEED_MAX)
-            self.rough_t = 0.0
+            if not self.scripted:
+                if not self._pre_fish_anchored:
+                    self.anchored = False
+                    self.calm_t = 0.0
+                    self.calm_need = random.uniform(CALM_NEED_MIN, CALM_NEED_MAX)
+                self.rough_t = 0.0
             print(
-                f"[WaterClock] Sailboat reeled in — underway again  "
+                f"[WaterClock] Sailboat reeled in  "
                 f"(caught {self.catches})"
             )
+
+    def start_scripted_sail(self, target_x, direction, speed=None, raise_sail=True):
+        """Trip director: sail to an x under calm weather (no free AI)."""
+        self.scripted = True
+        self.script_target_x = float(target_x)
+        self.script_speed = float(speed if speed is not None else BOAT_HOME_SPEED)
+        self.fishing = False
+        self.line_len = 0.0
+        self.reeling = False
+        self.anchored = False
+        self.dir = 1 if direction >= 0 else -1
+        self.goal = self.dir
+        self.stuck_t = 0.0
+        if raise_sail:
+            self.sail_raise = 1.0
+
+    def clear_scripted(self):
+        self.scripted = False
+        self.script_target_x = None
+        self.anchored = False
+        self.calm_t = 0.0
+        self.rough_t = 0.0
+        self.calm_need = random.uniform(CALM_NEED_MIN, CALM_NEED_MAX)
+        self.sail_raise = 1.0
+
+    def lower_sail(self, dt, duration=SAIL_LOWER_TIME):
+        """Animate sail down; returns True when fully lowered."""
+        if duration <= 0:
+            self.sail_raise = 0.0
+            return True
+        self.sail_raise = max(0.0, self.sail_raise - dt / float(duration))
+        return self.sail_raise <= 0.001
+
+    def arrived_scripted(self, tol=1.2):
+        if not self.scripted or self.script_target_x is None:
+            return True
+        return abs(self.x - self.script_target_x) <= tol
 
     def _pick_line_depth(self, reason=""):
         """
@@ -1435,6 +1653,30 @@ class Sailboat(object):
         current = water.mean_flow()     # -1..1-ish from tide
         w = float(wind)
         calm = self._seas_calm(current, w)
+
+        # --- Scripted trip sail (home to pier / depart) ---
+        if self.scripted and self.script_target_x is not None:
+            self.bob_phase += dt * 2.4
+            bob = 0.22 * math.sin(self.bob_phase)
+            self.y = water.surface_y_at(self.x) + bob
+            if self.catch_flash_t > 0.0:
+                self.catch_flash_t = max(0.0, self.catch_flash_t - dt)
+            tx = self.script_target_x
+            dx = tx - self.x
+            if abs(dx) <= 0.6:
+                self.x = tx
+                self.y = water.surface_y_at(self.x) + bob
+                return
+            step = self.script_speed * dt
+            if abs(dx) <= step:
+                self.x = tx
+            else:
+                self.x += math.copysign(step, dx)
+            self.dir = 1 if dx >= 0 else -1
+            lo = float(BOAT_EDGE_PAD)
+            hi = float(self.w - 1 - BOAT_EDGE_PAD)
+            self.x = _clamp(self.x, lo, hi)
+            return
 
         # --- Fishing calm: hold station, lower / reel hook ---
         if self.fishing:
@@ -1553,13 +1795,38 @@ class Sailboat(object):
         mask = solid_mask or set()
         ox = int(round(self.x))
         oy = int(round(self.y))
-        for dx, dy, rgb in _SAILBOAT_RIGHT:
-            sx = ox + (dx if self.dir >= 0 else -dx)
+        face = 1 if self.dir >= 0 else -1
+
+        def put_rel(dx, dy, rgb):
+            sx = ox + (dx if face >= 0 else -dx)
             sy = oy + dy
             if mask and (sx, sy) in mask:
-                continue
+                return
             if 0 <= sx < self.w and 0 <= sy < self.h:
                 set_px(sx, sy, rgb[0], rgb[1], rgb[2])
+
+        for dx, dy, rgb in _SAILBOAT_HULL:
+            put_rel(dx, dy, rgb)
+
+        # Sail: slowly lowers by dropping upper pixels first (furls toward boom)
+        raise_amt = _clamp(self.sail_raise, 0.0, 1.0)
+        if raise_amt > 0.04:
+            for dx, dy, rgb in _SAILBOAT_SAIL:
+                # dy is negative (up). Keep lower sail longer as raise falls.
+                # Full sail uses dy in {-1,-2}; at half only dy=-1; at 0 none.
+                sail_h = -dy  # 1 or 2
+                max_h = 1.0 + 1.0 * raise_amt  # 1..2
+                if sail_h <= max_h + 0.01:
+                    # Collapse height: blend upper pixels down toward boom
+                    draw_dy = dy
+                    if raise_amt < 0.55 and dy <= -2:
+                        continue
+                    if raise_amt < 0.25:
+                        # Almost furled — tiny flap at boom
+                        if dy != -1 or dx != 1:
+                            continue
+                        draw_dy = 0
+                    put_rel(dx, draw_dy, rgb)
         # Catch resting on deck (brief flash after a reel-in; bigger = more pixels)
         if self.fishing and self.catch_flash_t > 0.0:
             cr, cg, cb = self.catch_rgb
@@ -1636,11 +1903,13 @@ class FishSchool(object):
         self.h = int(height)
         self.fish = []     # dicts
         self.active = False
+        self._respawn_t = 0.0
 
     def set_fishing(self, active):
         active = bool(active)
         if active and not self.active:
             self.active = True
+            self._respawn_t = FISH_RESPAWN_EVERY
             self._spawn()
         elif not active and self.active:
             self.active = False
@@ -1721,6 +1990,21 @@ class FishSchool(object):
             )
 
     def update(self, dt, water, boat=None):
+        # During long fishing trips, restock when the school thins out
+        if self.active:
+            self._respawn_t -= dt
+            free_n = sum(1 for f in self.fish if f["state"] != "hooked")
+            if self._respawn_t <= 0.0 or free_n < 2:
+                self._respawn_t = FISH_RESPAWN_EVERY
+                add = random.randint(1, 3)
+                for _ in range(add):
+                    r = random.random()
+                    size = 1 if r < 0.55 else (2 if r < 0.88 else 3)
+                    rare = random.random() < (FISH_RARE_CHANCE * 0.35)
+                    self.fish.append(self._make_fish(4 if rare else size, rare=rare))
+                if any(f.get("rare") for f in self.fish[-add:]):
+                    print("[WaterClock] More fish (incl. rare red?) swam in")
+
         if not self.fish:
             return
         hook = boat.hook_tip() if boat is not None else None
@@ -1881,49 +2165,531 @@ class FishSchool(object):
                         set_px(sx, sy, r, g, b)
 
 
-class FishingCalm(object):
+def _draw_tiny_digit(canvas, ox, oy, digit, rgb, width, height):
+    """1× scale 3×5 digit for the pier scoreboard."""
+    grid = _digit_grid(digit)
+    r, g, b = rgb
+    set_px = canvas.SetPixel
+    for ly in range(DIGIT_H0):
+        for lx in range(DIGIT_W0):
+            if not grid[ly * DIGIT_W0 + lx]:
+                continue
+            sx, sy = ox + lx, oy + ly
+            if 0 <= sx < width and 0 <= sy < height:
+                set_px(sx, sy, r, g, b)
+
+
+def _draw_tiny_number(canvas, ox, oy, value, rgb, width, height):
+    """Draw 0–99 as tiny digits, right-aligned toward ox as left of first digit."""
+    n = int(max(0, min(99, value)))
+    if n >= 10:
+        _draw_tiny_digit(canvas, ox, oy, n // 10, rgb, width, height)
+        _draw_tiny_digit(canvas, ox + DIGIT_W0 + 1, oy, n % 10, rgb, width, height)
+    else:
+        _draw_tiny_digit(canvas, ox + DIGIT_W0 + 1, oy, n, rgb, width, height)
+
+
+class WoodenPier(object):
     """
-    Once a minute: rise + still water, wind dies, boat fishes, fish swim in.
+    Simple brown dock: deck plank one pixel above the waterline + shade line.
+    When the boat sails away, the dock scrolls off the opposite way at the
+    same speed.
     """
 
-    def __init__(self):
-        self.active = False
-        self.t_left = 0.0
-        self.t_next = FISHING_INTERVAL   # first session after one minute
-        self.sessions = 0
+    def __init__(self, width, height):
+        self.w = int(width)
+        self.h = int(height)
+        self.fade = 0.0                 # 0..1
+        self.target_fade = 0.0
+        self.show_score = False
+        self.display_count = 0          # digits on the board (counts up)
+        self.goal_count = 0
+        self.pile = []                  # fish resting on the pier {x,y,rgb,size}
+        self.flying = []                # unload animation {x,y,tx,ty,rgb,size,t}
+        # Compact deck near the right edge (home position)
+        self.base_x0 = self.w - 8
+        self.base_x1 = self.w - 3
+        self.scroll_x = 0.0             # horizontal offset (scrolls when departing)
+        self.scrolling_away = False
 
-    def update(self, dt, water, wind, boat, fish):
-        if self.active:
-            self.t_left -= dt
-            if self.t_left <= 0.0:
-                self._end(water, wind, boat, fish)
+    @property
+    def deck_x0(self):
+        return int(round(self.base_x0 + self.scroll_x))
+
+    @property
+    def deck_x1(self):
+        return int(round(self.base_x1 + self.scroll_x))
+
+    @property
+    def dock_x(self):
+        """Center of the deck plank (scroll-aware)."""
+        return (self.base_x0 + self.base_x1) * 0.5 + self.scroll_x
+
+    def berth_x(self, facing=1):
+        """
+        Hull-center X so the bow tip just touches the dock (does not overlap).
+        Approaching from the left, facing right: tip at +BOAT_BOW_OFFSET meets
+        the left edge of the deck.
+        """
+        left = float(self.base_x0 + self.scroll_x)
+        right = float(self.base_x1 + self.scroll_x)
+        if facing >= 0:
+            return left - float(BOAT_BOW_OFFSET)
+        return right + float(BOAT_BOW_OFFSET)
+
+    def show(self):
+        """Bring dock to home position (only when unloading)."""
+        self.scroll_x = 0.0
+        self.scrolling_away = False
+        self.target_fade = 1.0
+        self.fade = 1.0  # pop in for the berth — boat is already in place
+
+    def hide(self):
+        """Remove dock until next unload (stays off-screen)."""
+        self.target_fade = 0.0
+        self.fade = 0.0
+        self.show_score = False
+        self.scrolling_away = False
+        # Park off-screen so it cannot flash back until show()
+        self.scroll_x = float(self.w + 4)
+
+    def start_scroll_away(self):
+        """Begin sliding off-screen opposite the boat (set during depart)."""
+        self.scrolling_away = True
+        self.show_score = False
+        self.target_fade = 1.0  # stay solid while sliding
+
+    def off_screen(self):
+        return self.deck_x1 < 0 or self.deck_x0 >= self.w
+
+    def reset_cargo(self):
+        self.pile = []
+        self.flying = []
+        self.display_count = 0
+        self.goal_count = 0
+        self.show_score = False
+
+    def begin_unload(self, catch_total):
+        self.goal_count = int(max(0, catch_total))
+        self.display_count = 0
+        self.show_score = True
+        self.flying = []
+        self.pile = []
+
+    def toss_one(self, rgb, size=1, from_xy=None):
+        """Start one fish flying from the boat onto the pier deck."""
+        slot = len(self.pile) + len(self.flying)
+        span = max(1, self.base_x1 - self.base_x0 - 1)
+        tx = self.base_x0 + 1 + (slot % span) + self.scroll_x
+        ty = 0.0
+        if from_xy is not None:
+            sx, sy = from_xy
         else:
-            self.t_next -= dt
-            if self.t_next <= 0.0:
-                self._begin(water, wind, boat, fish)
+            sx, sy = self.dock_x - 2.0, float(self.h) * 0.55
+        self.flying.append({
+            "x": float(sx),
+            "y": float(sy),
+            "tx": float(tx),
+            "ty": float(ty),
+            "rgb": rgb,
+            "size": size,
+            "t": 0.0,
+            "_sy": float(sy),
+            "on_deck": True,
+            "slot": slot % span,
+        })
 
-    def _begin(self, water, wind, boat, fish):
+    def update(self, dt, water=None, boat_dx=0.0):
+        # Fade pier in/out (not used while scrolling away)
+        if not self.scrolling_away:
+            if self.fade < self.target_fade:
+                self.fade = min(self.target_fade, self.fade + dt * 1.2)
+            elif self.fade > self.target_fade:
+                self.fade = max(self.target_fade, self.fade - dt * 1.4)
+
+        # Scroll opposite the boat at the same speed
+        if self.scrolling_away and boat_dx != 0.0:
+            self.scroll_x -= float(boat_dx)
+            # Cargo rides the deck
+            for p in self.pile:
+                p["x"] -= float(boat_dx)
+            for f in self.flying:
+                f["x"] -= float(boat_dx)
+                f["tx"] -= float(boat_dx)
+
+        deck = self.deck_y(water)
+
+        landed = []
+        still = []
+        for f in self.flying:
+            f["ty"] = deck
+            f["t"] += dt
+            u = _clamp(f["t"] / 0.45, 0.0, 1.0)
+            ease = u * u * (3.0 - 2.0 * u)
+            sx0 = f.get("_sx", f["x"])
+            if "_sx" not in f:
+                f["_sx"] = f["x"]
+                sx0 = f["x"]
+            f["x"] = _lerp(sx0, f["tx"], ease)
+            hop = 2.2 * math.sin(math.pi * u)
+            f["y"] = _lerp(f.get("_sy", f["y"]), f["ty"], ease) - hop
+            if u >= 1.0:
+                landed.append(f)
+            else:
+                still.append(f)
+        self.flying = still
+        for f in landed:
+            self.pile.append({
+                "x": f["tx"], "y": deck,
+                "rgb": f["rgb"], "size": f["size"],
+            })
+            if self.show_score:
+                self.display_count = min(self.goal_count, self.display_count + 1)
+        for p in self.pile:
+            p["y"] = deck
+
+    def unload_done(self):
+        if not self.show_score:
+            return False
+        if self.flying:
+            return False
+        if self.goal_count <= 0:
+            return True
+        return self.display_count >= self.goal_count
+
+    def deck_y(self, water):
+        """Deck plank — exactly one pixel above the waterline."""
+        if water is not None:
+            return float(int(math.floor(water.surface_y_at(self.dock_x)))) - 1.0
+        return float(self.h) * 0.55 - 1.0
+
+    def draw(self, canvas, water=None, solid_mask=None):
+        if self.fade < 0.05 and not self.scrolling_away:
+            return
+        if self.off_screen():
+            return
+        set_px = canvas.SetPixel
+        mask = solid_mask or set()
+        a = 1.0 if self.scrolling_away else self.fade
+        if a < 0.05:
+            return
+        wood = (
+            int(PIER_WOOD[0] * a),
+            int(PIER_WOOD[1] * a),
+            int(PIER_WOOD[2] * a),
+        )
+        shade = (
+            int(PIER_WOOD_DARK[0] * a),
+            int(PIER_WOOD_DARK[1] * a),
+            int(PIER_WOOD_DARK[2] * a),
+        )
+        dy = int(round(self.deck_y(water)))
+        dy = _clamp(dy, 1, self.h - 3)
+        x0, x1 = self.deck_x0, self.deck_x1
+
+        def put(x, y, rgb):
+            if mask and (x, y) in mask:
+                return
+            if 0 <= x < self.w and 0 <= y < self.h:
+                set_px(x, y, rgb[0], rgb[1], rgb[2])
+
+        # Deck + shade only (no legs)
+        #   ██████  ← deck 1px above water
+        #   ░░░░░░  ← shade under deck
+        for x in range(x0, x1 + 1):
+            put(x, dy, wood)
+            put(x, dy + 1, shade)
+
+        if self.show_score and a > 0.6 and not self.scrolling_away:
+            score_rgb = (
+                int(SCORE_RGB[0] * a),
+                int(SCORE_RGB[1] * a),
+                int(SCORE_RGB[2] * a),
+            )
+            _draw_tiny_number(
+                canvas, x0, max(0, dy - DIGIT_H0 - 1),
+                self.display_count, score_rgb, self.w, self.h,
+            )
+
+        for f in self.pile:
+            self._draw_fish_px(set_px, mask, f["x"], f["y"], f["rgb"], f["size"], a)
+        for f in self.flying:
+            self._draw_fish_px(set_px, mask, f["x"], f["y"], f["rgb"], f["size"], a)
+
+    def _draw_fish_px(self, set_px, mask, x, y, rgb, size, a):
+        r = int(rgb[0] * a)
+        g = int(rgb[1] * a)
+        b = int(rgb[2] * a)
+        fx, fy = int(round(x)), int(round(y))
+        pts = [(0, 0), (1, 0)]
+        if size >= 2:
+            pts.append((-1, 0))
+        if size >= 3:
+            pts.extend([(0, -1), (2, 0)])
+        for dx, dy in pts:
+            sx, sy = fx + dx, fy + dy
+            if mask and (sx, sy) in mask:
+                continue
+            if 0 <= sx < self.w and 0 <= sy < self.h:
+                set_px(sx, sy, r, g, b)
+
+
+class FishingTrip(object):
+    """
+    Full fishing voyage:
+
+      ready (start at pier) → depart → idle weather → fishing (5 min) →
+      home → dock → unload → score → depart → weather resumes …
+
+    Alias: FishingCalm (kept for older call sites).
+    """
+
+    def __init__(self, width, height):
+        self.w = int(width)
+        self.h = int(height)
+        # ready|idle|fishing|home|dock|unload|score|depart
+        self.phase = "idle"
+        self.t = 0.0
+        self.t_next = FISHING_INTERVAL
+        self.sessions = 0
+        self.pier = WoodenPier(width, height)
+        self._unload_left = 0
+        self._unload_timer = 0.0
+        self._catch_rgbs = []           # colors to toss (padded if needed)
+        self.active = False             # any non-idle phase
+        self._prev_boat_x = None
+
+    def begin_at_dock(self, water, wind, boat, fish):
+        """
+        Opening scene: calm water, pier up, boat tip just touching the dock.
+        Called once from PlayWaterClock before the main loop.
+        """
+        self.phase = "ready"
+        self.t = 0.0
         self.active = True
-        self.t_left = FISHING_DURATION
-        self.sessions += 1
+        self.pier.reset_cargo()
+        self.pier.scroll_x = 0.0
+        self.pier.scrolling_away = False
+        self.pier.fade = 1.0
+        self.pier.target_fade = 1.0
+        self.pier.show_score = False
+        self._prev_boat_x = None
+        # Glassy high water + dead wind
         water.set_fishing(True)
+        # Snap water flat/high immediately (no slow rise on boot)
+        target = water.band * FISHING_RISE_FRAC
+        water.level = [target for _ in range(water.w)]
+        water.flow = [0.0 for _ in range(water.w)]
+        water.droplets = []
         wind.set_fishing(True)
-        boat.set_fishing(True)
-        fish.set_fishing(True)
+        wind.wind = 0.0
+        wind.gust = 0.0
+        fish.set_fishing(False)
+        fish.fish = []
+        # Bow tip just kisses the left edge of the dock (facing right)
+        boat.fishing = False
+        boat.line_len = 0.0
+        boat.reeling = False
+        boat.catches = 0
+        boat.scripted = True
+        boat.dir = 1
+        boat.goal = 1
+        boat.sail_raise = 1.0
+        boat.x = self.pier.berth_x(facing=1)
+        boat.script_target_x = boat.x
+        boat.anchored = True
+        boat.y = water.surface_y_at(boat.x)
         print(
-            f"[WaterClock] Fishing calm #{self.sessions}  "
-            f"({FISHING_DURATION:.0f}s) — water rising, wind dead"
+            f"[WaterClock] Opening at the pier — calm water, boat ready to sail  "
+            f"({START_READY_HOLD:.0f}s)"
         )
 
-    def _end(self, water, wind, boat, fish):
-        self.active = False
-        self.t_left = 0.0
-        self.t_next = FISHING_INTERVAL
-        water.set_fishing(False)
-        wind.set_fishing(False)
+    def update(self, dt, water, wind, boat, fish):
+        if self.phase == "idle":
+            self.active = False
+            self.t_next -= dt
+            if self.t_next <= 0.0:
+                self._begin_fishing(water, wind, boat, fish)
+            return
+
+        self.active = True
+        self.t += dt
+        # Track boat motion so the dock can scroll the opposite way
+        if self._prev_boat_x is None:
+            self._prev_boat_x = boat.x
+        boat_dx = boat.x - self._prev_boat_x
+        self._prev_boat_x = boat.x
+        self.pier.update(dt, water, boat_dx=boat_dx)
+
+        if self.phase == "ready":
+            # Hold with bow tip on the dock, then cast off into the day
+            boat.x = self.pier.berth_x(facing=1)
+            boat.dir = 1
+            boat.anchored = True
+            boat.scripted = True
+            boat.script_target_x = boat.x
+            self._prev_boat_x = boat.x
+            if self.t >= START_READY_HOLD:
+                self._begin_depart(boat)
+
+        elif self.phase == "fishing":
+            if self.t >= FISHING_DURATION:
+                self._begin_home(water, wind, boat, fish)
+
+        elif self.phase == "home":
+            # Dock stays off-screen until unload; boat sails to berth alone
+            if boat.arrived_scripted():
+                self._begin_dock(boat)
+
+        elif self.phase == "dock":
+            # Tip on dock; slowly lower the sail, then unload
+            boat.x = self.pier.berth_x(facing=1)
+            boat.dir = 1
+            boat.anchored = True
+            boat.scripted = True
+            boat.script_target_x = boat.x
+            if self.t >= DOCK_HOLD and boat.lower_sail(dt, SAIL_LOWER_TIME):
+                self._begin_unload(boat)
+
+        elif self.phase == "unload":
+            self._unload_timer -= dt
+            if self._unload_left > 0 and self._unload_timer <= 0.0:
+                rgb = FISH_COLORS[0]
+                size = 1
+                if self._catch_rgbs:
+                    rgb, size = self._catch_rgbs.pop(0)
+                self.pier.toss_one(
+                    rgb, size=size, from_xy=(boat.x, boat.y - 1.0),
+                )
+                self._unload_left -= 1
+                self._unload_timer = UNLOAD_INTERVAL
+            if self._unload_left <= 0 and self.pier.unload_done():
+                self.phase = "score"
+                self.t = 0.0
+                # Snap display to full total
+                self.pier.display_count = self.pier.goal_count
+                print(
+                    f"[WaterClock] Unloaded at pier — scoreboard {self.pier.goal_count}"
+                )
+
+        elif self.phase == "score":
+            if self.t >= SCORE_HOLD:
+                self._begin_depart(boat)
+
+        elif self.phase == "depart":
+            # Done when boat reaches the far side (dock has scrolled off opposite)
+            if boat.arrived_scripted() or boat.x <= BOAT_EDGE_PAD + 2:
+                self._resume(water, wind, boat, fish)
+
+    def draw(self, canvas, water=None, solid_mask=None):
+        self.pier.draw(canvas, water=water, solid_mask=solid_mask)
+
+    def _begin_fishing(self, water, wind, boat, fish):
+        self.phase = "fishing"
+        self.t = 0.0
+        self.sessions += 1
+        self.pier.reset_cargo()
+        self.pier.hide()
+        water.set_fishing(True)
+        wind.set_fishing(True)
+        boat.clear_scripted()
+        boat.set_fishing(True, reset_catches=True)
+        fish.set_fishing(True)
+        print(
+            f"[WaterClock] Fishing trip #{self.sessions}  "
+            f"({FISHING_DURATION / 60.0:.0f} min) — water rising, wind dead"
+        )
+
+    def _begin_home(self, water, wind, boat, fish):
+        self.phase = "home"
+        self.t = 0.0
+        # Still calm seas; reel in, fish leave. Dock stays hidden until unload.
         boat.set_fishing(False)
         fish.set_fishing(False)
-        print("[WaterClock] Fishing calm ended — weather returns")
+        water.set_fishing(True)   # stay glassy for the home run
+        wind.set_fishing(True)
+        self.pier.hide()          # do not reappear until unload
+        self._prev_boat_x = boat.x
+        # Sail to berth position (bow tip will touch dock when pier appears)
+        berth = self.pier.berth_x(facing=1)
+        # berth_x while scroll is off-screen uses wrong x — use home berth
+        berth = float(self.pier.base_x0 - BOAT_BOW_OFFSET)
+        boat.start_scripted_sail(berth, direction=1, speed=BOAT_HOME_SPEED)
+        print(
+            f"[WaterClock] Heading home with {boat.catches} fish "
+            f"(dock waits until unload)"
+        )
+
+    def _begin_dock(self, boat):
+        self.phase = "dock"
+        self.t = 0.0
+        # Only now does the dock reappear
+        self.pier.show()
+        boat.dir = 1
+        boat.x = self.pier.berth_x(facing=1)
+        boat.anchored = True
+        boat.scripted = True
+        boat.script_target_x = boat.x
+        boat.sail_raise = 1.0  # will lower before unload
+        print("[WaterClock] Docked — bow tip on the pier, lowering sail")
+
+    def _begin_unload(self, boat):
+        self.phase = "unload"
+        self.t = 0.0
+        total = max(0, int(boat.catches))
+        self.pier.begin_unload(total)
+        # Build toss list (use catch flash color if we only know total)
+        self._catch_rgbs = []
+        for i in range(total):
+            self._catch_rgbs.append((
+                random.choice(FISH_COLORS) if i > 0 or total == 0 else (
+                    boat.catch_rgb if boat.catches else random.choice(FISH_COLORS)
+                ),
+                1 + (i % 3),
+            ))
+        # Ensure at least we show the number even with 0 fish
+        self._unload_left = total
+        self._unload_timer = 0.15
+        if total == 0:
+            self.pier.display_count = 0
+            self.pier.show_score = True
+        print(f"[WaterClock] Unloading {total} fish onto the pier")
+
+    def _begin_depart(self, boat):
+        self.phase = "depart"
+        self.t = 0.0
+        boat.anchored = False
+        boat.sail_raise = 1.0  # raise sail for cast-off
+        # Sail left; dock scrolls right at the same speed
+        if self.pier.fade > 0.05 or not self.pier.off_screen():
+            self.pier.start_scroll_away()
+        self._prev_boat_x = boat.x
+        boat.start_scripted_sail(
+            float(BOAT_EDGE_PAD + 2), direction=-1, speed=BOAT_HOME_SPEED * 1.05,
+            raise_sail=True,
+        )
+        print("[WaterClock] Cast off — dock scrolling opposite the boat")
+
+    def _resume(self, water, wind, boat, fish):
+        self.phase = "idle"
+        self.t = 0.0
+        self.t_next = FISHING_INTERVAL
+        self.active = False
+        self._prev_boat_x = None
+        water.set_fishing(False)
+        wind.set_fishing(False)
+        fish.set_fishing(False)
+        boat.clear_scripted()
+        boat.goal = -1
+        boat.dir = -1
+        boat.sail_raise = 1.0
+        self.pier.hide()  # off-screen until next unload
+        self.pier.reset_cargo()
+        print("[WaterClock] Trip complete — weather patterns resume")
+
+
+# Back-compat name used by the main loop
+FishingCalm = FishingTrip
 
 
 # ---------------- Main loop ----------------
@@ -1949,7 +2715,9 @@ def PlayWaterClock(Duration=10, StopEvent=None):
     wind = WindField()
     boat = Sailboat(width, height)
     fish = FishSchool(width, height)
-    fishing = FishingCalm()
+    fishing = FishingTrip(width, height)
+    # Opening: calm water, pier up, boat docked and ready to sail
+    fishing.begin_at_dock(water, wind, boat, fish)
     sun = Sun(width, height)
     moon = Moon(width, height)
     tick = pygame.time.Clock() if HAS_PYGAME else None
@@ -1957,8 +2725,8 @@ def PlayWaterClock(Duration=10, StopEvent=None):
 
     print(
         f"[WaterClock] {width}x{height}  shaded HH:MM + tide + sailboat + Ottawa sun/moon  "
-        f"(wind + current)  fishing every {FISHING_INTERVAL:.0f}s  "
-        f"duration={run_min} min  fps~{TARGET_FPS}"
+        f"(wind + current)  start at pier → fishing trip {FISHING_DURATION / 60.0:.0f}min "
+        f"every {FISHING_INTERVAL:.0f}s  duration={run_min} min  fps~{TARGET_FPS}"
     )
 
     try:
@@ -1975,6 +2743,7 @@ def PlayWaterClock(Duration=10, StopEvent=None):
             last = now
 
             blink = (int(time.time()) % 2) == 0
+            # Lit glyph pixels only — sun/moon/water show through unlit segments
             mask = build_clock_solid_mask(width, height, blink_on=blink)
             # Minute fishing calm drives water / wind / boat / fish together
             fishing.update(dt, water, wind, boat, fish)
@@ -1987,10 +2756,13 @@ def PlayWaterClock(Duration=10, StopEvent=None):
 
             try:
                 canvas.Fill(BG[0], BG[1], BG[2])
-                # Sky bodies first so water can sit under a setting disc
+                # Sky first; reflections after water; lit digits last
                 moon.draw(canvas, solid_mask=mask)
                 sun.draw(canvas, solid_mask=mask)
                 water.draw(canvas, solid_mask=mask)
+                moon.draw_reflection(canvas, water, solid_mask=mask)
+                sun.draw_reflection(canvas, water, solid_mask=mask)
+                fishing.draw(canvas, water=water, solid_mask=mask)
                 fish.draw(canvas, solid_mask=mask)
                 boat.draw(canvas, solid_mask=mask)
                 draw_time(canvas, width, height)
