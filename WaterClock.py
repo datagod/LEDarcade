@@ -156,11 +156,11 @@ MOON_HALO = (70, 80, 110)
 MOON_EDGE_PAD = 1
 # Upper-limb + refraction horizon (deg below geometric) for moon rise/set
 MOON_HORIZON_ALT = -0.833
-# Sunset-style glitter path on the water (same color as the body, distorted)
-REFLECT_NEAR = 11.0           # start when body is within this many px of waterline
-REFLECT_MAX = 0.85             # peak strength of sun/moon color on the path
-REFLECT_DEPTH = 7              # how far the glitter runs down into the water
-REFLECT_JITTER = 1.6           # max horizontal distortion (px) deeper in the path
+# Static narrow oval reflection on the water (same color as the body)
+REFLECT_NEAR = 11.0            # start when body is within this many px of waterline
+REFLECT_MAX = 0.72             # peak mix of sun/moon color into water
+REFLECT_OVAL_RX = 1.35         # horizontal half-width of the oval (px)
+REFLECT_OVAL_RY = 3.2          # vertical half-height of the oval (px, down into water)
 
 BG = (0, 0, 4)
 # Water palette (deep → surface foam)
@@ -870,7 +870,7 @@ class Sun(object):
         return core, glow
 
     def draw_reflection(self, canvas, water, solid_mask=None):
-        """Sunset glitter path — same warm sun color, broken & distorted on water."""
+        """Narrow static oval of the sun's color on the water near the horizon."""
         if not self.visible or water is None:
             return
         core, glow = self._body_colors()
@@ -1122,8 +1122,8 @@ def _draw_water_reflection(
     solid_mask=None, panel_w=None, panel_h=None,
 ):
     """
-    Real-sunset style reflection: the body's own color as a broken, distorted
-    vertical glitter path on the water (wobbles side-to-side, gaps, fades deep).
+    Static narrow oval of the body's color on the water under a near-horizon
+    sun/moon. No animation, no wiggle, no sparkle — just a soft fixed oval.
     """
     if water is None:
         return
@@ -1146,49 +1146,26 @@ def _draw_water_reflection(
     else:
         proximity = 1.0
     proximity = _clamp(proximity, 0.0, 1.0)
-    # Bloom near the horizon (sunset / moonset)
     proximity = proximity * proximity * (3.0 - 2.0 * proximity)
     strength = REFLECT_MAX * proximity
     if strength < 0.06:
         return
 
-    # Vertical path length grows as the body sits lower
-    depth_rows = int(round(3 + REFLECT_DEPTH * proximity))
-    depth_rows = max(3, min(REFLECT_DEPTH + 2, depth_rows))
-    top = int(math.floor(surf + 0.35))
-    t = float(getattr(water, "t", 0.0))
+    # Oval sits just under the waterline, centered on the body's x
+    cx = float(body_x)
+    cy = float(surf) + REFLECT_OVAL_RY * 0.55  # center slightly below surface
+    rx = REFLECT_OVAL_RX
+    ry = REFLECT_OVAL_RY * (0.65 + 0.35 * proximity)  # taller when lower on horizon
 
-    for row in range(depth_rows):
-        sy = top + row
+    x0 = int(math.floor(cx - rx - 0.5))
+    x1 = int(math.ceil(cx + rx + 0.5))
+    y0 = int(math.floor(cy - ry - 0.5))
+    y1 = int(math.ceil(cy + ry + 0.5))
+
+    for sy in range(y0, y1 + 1):
         if sy < 0 or sy >= h or sy > water.floor_y:
             continue
-        # Deeper = more horizontal distortion (chop on the water)
-        depth_u = row / float(max(1, depth_rows - 1))
-        # Broken path: skip some rows like wave facets
-        break_wave = math.sin(t * 5.1 + row * 1.7 + body_x * 0.4)
-        if break_wave < -0.55 and row > 0:
-            continue
-        # Sideways shimmer — increases with depth (classic glitter road)
-        jitter = (
-            math.sin(t * 3.3 + row * 2.1 + body_x * 0.55) * REFLECT_JITTER * (0.35 + 0.65 * depth_u)
-            + math.sin(t * 7.0 + row * 0.9) * 0.45 * depth_u
-        )
-        # Path width: a little wider mid-path, thin near the end
-        if row == 0:
-            half_w = 1
-        elif depth_u < 0.55:
-            half_w = 1 if break_wave > 0.2 else 0
-        else:
-            half_w = 0  # single-pixel glitter deeper down
-
-        # Brightness: strong at surface, dimmer/broken deeper
-        row_str = strength * (1.0 - 0.72 * depth_u)
-        # Alternate core vs softer glow along the path
-        use_core = (row % 2 == 0) or row == 0
-        src = core_rgb if use_core else glow_rgb
-
-        for dx in range(-half_w, half_w + 1):
-            sx = int(round(body_x + jitter + dx))
+        for sx in range(x0, x1 + 1):
             if not (0 <= sx < w):
                 continue
             if mask and (sx, sy) in mask:
@@ -1198,34 +1175,34 @@ def _draw_water_reflection(
                 continue
             if water.level[sx] < 0.35:
                 continue
-            # Edge of path a bit dimmer
-            edge = 1.0 if dx == 0 else 0.62
-            mix = row_str * edge
+            # Ellipse test (nx^2 + ny^2 <= 1)
+            nx = (sx + 0.5 - cx) / max(0.25, rx)
+            ny = (sy + 0.5 - cy) / max(0.25, ry)
+            d2 = nx * nx + ny * ny
+            if d2 > 1.0:
+                continue
+            # Soft falloff toward the rim; brighter on the center line
+            edge = 1.0 - d2
+            mix = strength * (0.35 + 0.65 * edge)
+            if abs(nx) < 0.35:
+                mix = min(1.0, mix * 1.15)  # slightly stronger spine
             if mix < 0.05:
                 continue
-            # Mix sun/moon color into the water at that depth
-            if row <= 1:
+            # Blend body color into water (deeper rows use darker water base)
+            depth_from_surf = sy - int(math.floor(local_surf))
+            if depth_from_surf <= 1:
                 water_rgb = WATER_TOP
-            elif row <= 3:
+                src = core_rgb
+            elif depth_from_surf <= 3:
                 water_rgb = WATER_MID
+                src = core_rgb
             else:
                 water_rgb = WATER_DEEP
+                src = glow_rgb
             r = int(water_rgb[0] * (1.0 - mix) + src[0] * mix)
             g = int(water_rgb[1] * (1.0 - mix) + src[1] * mix)
             b = int(water_rgb[2] * (1.0 - mix) + src[2] * mix)
             set_px(sx, sy, _clamp(r, 0, 255), _clamp(g, 0, 255), _clamp(b, 0, 255))
-
-        # Occasional twin sparkle offset (distorted double image)
-        if row > 1 and break_wave > 0.65:
-            sx2 = int(round(body_x - jitter * 0.7))
-            if 0 <= sx2 < w and not (mask and (sx2, sy) in mask):
-                if water.level[sx2] >= 0.35 and sy >= int(math.floor(water.surface_y_at(sx2))):
-                    mix2 = row_str * 0.4
-                    water_rgb = WATER_MID if row <= 3 else WATER_DEEP
-                    r = int(water_rgb[0] * (1.0 - mix2) + glow_rgb[0] * mix2)
-                    g = int(water_rgb[1] * (1.0 - mix2) + glow_rgb[1] * mix2)
-                    b = int(water_rgb[2] * (1.0 - mix2) + glow_rgb[2] * mix2)
-                    set_px(sx2, sy, _clamp(r, 0, 255), _clamp(g, 0, 255), _clamp(b, 0, 255))
 
 
 class Moon(object):
@@ -1349,7 +1326,7 @@ class Moon(object):
         return core, glow
 
     def draw_reflection(self, canvas, water, solid_mask=None):
-        """Moonpath on the water — same silver as the disc, broken & distorted."""
+        """Narrow static oval of the moon's color on the water near the horizon."""
         if not self.visible or water is None:
             return
         core, glow = self._body_colors()
