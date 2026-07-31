@@ -16,6 +16,7 @@ CLOCK_LAUNCHERS = [
     ("analogclock", "Analog Clock", ["duration"]),
     ("flipclock", "Flip Clock (70s)", ["duration"]),
     ("sevensegclock", "7-Seg LED Clock", ["duration"]),
+    ("waterclock", "Water Clock", ["duration"]),
     ("stopclock", "Stop Clock", []),
 ]
 
@@ -57,6 +58,7 @@ ACTION_LABELS = {
     "retrodigital": "Retro Digital",
     "flipclock": "Flip Clock (70s)",
     "sevensegclock": "7-Seg LED Clock",
+    "waterclock": "Water Clock",
     "ledarcade_intro": "LED Arcade Intro",
     "starrynightdisplaytext": "Starry Night Text",
     "launch_stockticker": "Stock Ticker",

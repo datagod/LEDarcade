@@ -2367,6 +2367,19 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
+    # WATER CLOCK                          --
+    #----------------------------------------
+
+    @commands.command(name="waterclock", aliases=["water", "slosh"])
+    async def waterclock(self, ctx: commands.Context):
+      """Chat: ?waterclock — shaded HH:MM with sloshing tide water."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Tide's coming in — water clock on the panel..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "waterclock", "duration": 10 })
+
+
+    #----------------------------------------
     # PINBALL                              --
     #----------------------------------------
 

@@ -21,7 +21,8 @@ Usage:
 
 In the viewer window:
   N = next,  T = LEDtv,  1 = Pinball,  2 = Pinball2,  3 = SpaceExplorer,
-  4 = 7-Seg Clock,  5 = Fractal Blaster,  R = restart,  0 = native,  S = scale,
+  4 = 7-Seg Clock,  5 = Fractal Blaster,  6 = Water Clock,  R = restart,
+  0 = native,  S = scale,
   +/- = zoom,  F = frame,  Esc = quit
 
 Environment:
@@ -120,7 +121,8 @@ def _parse_args():
             "  python LEDsim.py --bordered        normal title-bar window\n"
             "\n"
             "while focused: N=next  T=LEDtv  1=Pinball  2=Pinball2  3=SpaceExplorer  "
-            "4=7-SegClock  5=FractalBlaster  R=restart  0=native  S=scaled  +/-=zoom  F=frame  Esc=quit\n"
+            "4=7-SegClock  5=FractalBlaster  6=WaterClock  R=restart  0=native  "
+            "S=scaled  +/-=zoom  F=frame  Esc=quit\n"
             "borderless: left-drag moves the window"
         ),
     )
@@ -374,7 +376,7 @@ def main():
     print(f"  Web:    http://127.0.0.1:{args.port}/" + (" (disabled)" if args.no_web else ""))
     print(
         "  Keys:   N=next  T=LEDtv  1=Pinball  2=Pinball2  3=SpaceExplorer  "
-        "4=7-SegClock  5=FractalBlaster  "
+        "4=7-SegClock  5=FractalBlaster  6=WaterClock  "
         "R=restart  0=native  S=scaled  +/-=zoom  F=frame  Esc=quit"
     )
     print("  Mouse:  left-click and drag moves the window")

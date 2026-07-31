@@ -20,6 +20,7 @@ Hotkeys while running:
   3        — launch Space Explorer
   4        — launch 7-Seg LED Clock
   5        — launch Fractal Blaster
+  6        — launch Water Clock
   0        — native (scale 1)
   S        — restore default scaled size
   + / =    — increase scale
@@ -806,6 +807,15 @@ def _request_fractal(command_queue: Optional[Any]) -> None:
     )
 
 
+def _request_water_clock(command_queue: Optional[Any]) -> None:
+    """Launch shaded HH:MM water clock with tide slosh."""
+    _send_command(
+        command_queue,
+        {"Action": "waterclock", "duration": 10},
+        "Water Clock",
+    )
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
     if raw is None or str(raw).strip() == "":
@@ -950,7 +960,7 @@ def run_viewer(
     print(f"[LEDsim] Viewer started — {_mode_label(width, height, scale)} [{frame_label}]")
     print(
         "[LEDsim] Keys: N=next  T=LEDtv  1=Pinball  2=Pinball2  3=SpaceExplorer  "
-        "4=7-SegClock  5=FractalBlaster  "
+        "4=7-SegClock  5=FractalBlaster  6=WaterClock  "
         "R=restart  0=native  S=scaled  +/- zoom  F=frame  A=topmost  Esc=quit"
     )
     print("[LEDsim] Mouse: left-click and drag anywhere to move the panel")
@@ -1061,6 +1071,10 @@ def run_viewer(
 
                 if event.key == pygame.K_5 or event.key == pygame.K_KP5:
                     _request_fractal(command_queue)
+                    continue
+
+                if event.key == pygame.K_6 or event.key == pygame.K_KP6:
+                    _request_water_clock(command_queue)
                     continue
 
                 # 0 = native 1:1 scale (was key 1 before game shortcuts)

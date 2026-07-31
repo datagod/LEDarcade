@@ -4,8 +4,8 @@
 # Title: "FRACTAL BLASTER" zooms in from nothing, then the camera dives into
 # a letter and the Mandelbrot set begins there.
 #
-# Tour: zoom in 2–3× (pause between) → pan the coastline → either zoom in
-# 2–3× more or zoom out 2–3× (pause between) → repeat.
+# Tour: zoom in → pan coastline → zoom in/out series → repeat.
+# (Optional blaster ship after zoom-in: ENABLE_BLASTER_SHIP — currently off.)
 #
 # Launch:
 #   LEDsim key 5 / LEDpanel / LEDcommander "launch_fractal" / ?fractal
@@ -50,6 +50,20 @@ MAX_ZOOM_DEPTH = 1e-11
 # Iterations grow as we zoom (detail)
 BASE_ITERS = 48
 MAX_ITERS = 220
+# ---- Blaster ship (after zoom-in: shoot holes, then zoom again) ----
+ENABLE_BLASTER_SHIP = False  # set True to re-enable combat interlude
+BLAST_FRAMES = 130         # ~6.5 s @ 20 fps of ship combat
+BLAST_SHIP_SPEED = 0.72    # px per frame
+BLAST_TURN = 0.35          # steering blend toward target
+BLAST_SHOT_COOLDOWN = 7    # frames between shots
+BLAST_SHOT_SPEED = 1.55
+BLAST_MAX_SHOTS = 6
+BLAST_MAX_SPARKS = 96
+BLAST_HOLE_R = 1           # destroy radius (1 → ~3×3)
+BLAST_SPARKS_PER_HIT = (5, 11)
+BLAST_SHIP_RGB = (240, 245, 255)
+BLAST_SHIP_ACCENT = (40, 200, 255)
+BLAST_SHOT_RGB = (255, 230, 80)
 
 
 def _stop(StopEvent):
@@ -172,6 +186,334 @@ def blit_pixels(canvas, pixels, width, height):
         for x in range(width):
             r, g, b = row[x]
             set_px(x, y, r, g, b)
+
+
+# ---------------- Blaster ship (pixel destruction + sparks) ----------------
+def _pixel_brightness(rgb):
+    r, g, b = rgb
+    return r * 0.30 + g * 0.59 + b * 0.11
+
+
+def _blit_with_holes(canvas, pixels, width, height, holes):
+    """Draw fractal frame with destroyed pixels punched out (near-black)."""
+    set_px = canvas.SetPixel
+    for y in range(height):
+        row = pixels[y]
+        for x in range(width):
+            if (x, y) in holes:
+                set_px(x, y, 0, 0, 0)
+            else:
+                r, g, b = row[x]
+                set_px(x, y, r, g, b)
+
+
+class FractalBlasterShip(object):
+    """
+    Tiny combat craft that flies over a frozen Mandelbrot frame, shoots
+    colorful pixels into spark showers, and leaves lasting holes.
+    Camera stays fixed during the blast phase.
+    """
+
+    def __init__(self, width, height):
+        self.w = int(width)
+        self.h = int(height)
+        self.x = self.w * 0.2
+        self.y = self.h * 0.5
+        self.vx = 0.6
+        self.vy = 0.0
+        self.facing = 1        # -1 left / +1 right (sprite mirror)
+        self.cooldown = 0
+        self.shots = []        # {x,y,vx,vy,life}
+        self.sparks = []       # {x,y,vx,vy,life,max_life,r,g,b}
+        self.holes = set()     # destroyed (x,y)
+        self.target = None     # (tx, ty) pixel to attack
+        self.retarget_t = 0
+        self.alive = True
+
+    def reset(self):
+        self.x = random.uniform(2.0, max(3.0, self.w * 0.35))
+        self.y = random.uniform(2.0, max(3.0, self.h - 3.0))
+        ang = random.uniform(-0.6, 0.6)
+        self.vx = math.cos(ang) * BLAST_SHIP_SPEED
+        self.vy = math.sin(ang) * BLAST_SHIP_SPEED
+        self.facing = 1 if self.vx >= 0 else -1
+        self.cooldown = 4
+        self.shots = []
+        self.sparks = []
+        self.holes = set()
+        self.target = None
+        self.retarget_t = 0
+        self.alive = True
+
+    def _pick_target(self, pixels):
+        """Prefer bright, not-yet-destroyed pixels (colorful coastline candy)."""
+        candidates = []
+        # Sparse scan — cheap on 64×32
+        step_x = 2 if self.w > 40 else 1
+        step_y = 2 if self.h > 24 else 1
+        for py in range(1, self.h - 1, step_y):
+            row = pixels[py]
+            for px in range(1, self.w - 1, step_x):
+                if (px, py) in self.holes:
+                    continue
+                bri = _pixel_brightness(row[px])
+                if bri < 28:
+                    continue
+                # Prefer mid-screen targets slightly + distance from ship
+                dx = px - self.x
+                dy = py - self.y
+                dist = math.hypot(dx, dy) + 0.01
+                # Not too close (already chewing) and not edge-glued
+                if dist < 2.5:
+                    continue
+                score = bri * (1.0 + 0.15 * random.random()) / (0.6 + dist * 0.08)
+                candidates.append((score, px, py))
+        if not candidates:
+            # Fallback: any non-hole pixel with some color
+            for _ in range(40):
+                px = random.randint(1, self.w - 2)
+                py = random.randint(1, self.h - 2)
+                if (px, py) not in self.holes and _pixel_brightness(pixels[py][px]) > 12:
+                    return (px, py)
+            return (
+                random.randint(2, self.w - 3),
+                random.randint(2, self.h - 3),
+            )
+        candidates.sort(key=lambda t: -t[0])
+        top = candidates[: max(4, min(12, len(candidates)))]
+        _s, px, py = random.choice(top)
+        return (px, py)
+
+    def _destroy_at(self, px, py, pixels):
+        """Punch a hole and emit colored sparks from that neighborhood."""
+        px = int(px)
+        py = int(py)
+        r = BLAST_HOLE_R
+        hit_colors = []
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                if dx * dx + dy * dy > r * r + 0.5:
+                    continue
+                x, y = px + dx, py + dy
+                if not (0 <= x < self.w and 0 <= y < self.h):
+                    continue
+                if (x, y) in self.holes:
+                    continue
+                self.holes.add((x, y))
+                rgb = pixels[y][x]
+                if _pixel_brightness(rgb) > 8:
+                    hit_colors.append(rgb)
+        if not hit_colors:
+            hit_colors = [BLAST_SHOT_RGB]
+        n_sparks = random.randint(*BLAST_SPARKS_PER_HIT)
+        for _ in range(n_sparks):
+            if len(self.sparks) >= BLAST_MAX_SPARKS:
+                break
+            cr, cg, cb = random.choice(hit_colors)
+            # Boost spark brightness a bit so they read on LEDs
+            cr = min(255, int(cr * 1.25) + 20)
+            cg = min(255, int(cg * 1.15) + 15)
+            cb = min(255, int(cb * 1.20) + 20)
+            ang = random.uniform(0, math.pi * 2)
+            spd = random.uniform(0.35, 1.65)
+            life = random.uniform(8.0, 18.0)
+            self.sparks.append({
+                "x": float(px) + random.uniform(-0.3, 0.3),
+                "y": float(py) + random.uniform(-0.3, 0.3),
+                "vx": math.cos(ang) * spd,
+                "vy": math.sin(ang) * spd - random.uniform(0.05, 0.35),
+                "life": life,
+                "max_life": life,
+                "r": cr, "g": cg, "b": cb,
+            })
+
+    def update(self, pixels):
+        """One combat frame: steer, shoot, move shots/sparks, punch holes."""
+        if not self.alive:
+            return
+
+        self.retarget_t -= 1
+        if (
+            self.target is None
+            or self.retarget_t <= 0
+            or (self.target in self.holes)
+        ):
+            self.target = self._pick_target(pixels)
+            self.retarget_t = random.randint(12, 28)
+
+        tx, ty = self.target
+        # Steer toward target with a little wander so flight isn't laser-straight
+        want_x = tx - self.x + random.uniform(-0.4, 0.4)
+        want_y = ty - self.y + random.uniform(-0.4, 0.4)
+        dist = math.hypot(want_x, want_y) + 1e-6
+        speed = BLAST_SHIP_SPEED * (0.75 + 0.35 * random.random())
+        # Circle a bit when close so we rake fire across a region
+        if dist < 5.0:
+            # tangential drift
+            want_x += -want_y * 0.55
+            want_y += (tx - self.x) * 0.25
+            dist = math.hypot(want_x, want_y) + 1e-6
+        t_vx = (want_x / dist) * speed
+        t_vy = (want_y / dist) * speed
+        self.vx = self.vx * (1.0 - BLAST_TURN) + t_vx * BLAST_TURN
+        self.vy = self.vy * (1.0 - BLAST_TURN) + t_vy * BLAST_TURN
+        # Normalize to roughly constant speed
+        sp = math.hypot(self.vx, self.vy) + 1e-6
+        self.vx = (self.vx / sp) * BLAST_SHIP_SPEED
+        self.vy = (self.vy / sp) * BLAST_SHIP_SPEED
+        self.x += self.vx
+        self.y += self.vy
+        # Bounce off panel edges
+        if self.x < 1.0:
+            self.x = 1.0
+            self.vx = abs(self.vx)
+        elif self.x > self.w - 2.0:
+            self.x = self.w - 2.0
+            self.vx = -abs(self.vx)
+        if self.y < 1.0:
+            self.y = 1.0
+            self.vy = abs(self.vy)
+        elif self.y > self.h - 2.0:
+            self.y = self.h - 2.0
+            self.vy = -abs(self.vy)
+        if abs(self.vx) > 0.05:
+            self.facing = 1 if self.vx >= 0 else -1
+
+        # Fire toward target when lined up / close enough
+        self.cooldown -= 1
+        if (
+            self.cooldown <= 0
+            and len(self.shots) < BLAST_MAX_SHOTS
+            and dist < max(self.w, self.h) * 0.85
+        ):
+            aim_x = tx - self.x
+            aim_y = ty - self.y
+            ad = math.hypot(aim_x, aim_y) + 1e-6
+            # Nose offset
+            nose = 1.4
+            self.shots.append({
+                "x": self.x + (aim_x / ad) * nose,
+                "y": self.y + (aim_y / ad) * nose,
+                "vx": (aim_x / ad) * BLAST_SHOT_SPEED,
+                "vy": (aim_y / ad) * BLAST_SHOT_SPEED,
+                "life": 40,
+            })
+            self.cooldown = BLAST_SHOT_COOLDOWN + random.randint(0, 3)
+
+        # Advance shots; destroy on impact with a live pixel
+        alive_shots = []
+        for s in self.shots:
+            s["x"] += s["vx"]
+            s["y"] += s["vy"]
+            s["life"] -= 1
+            ix, iy = int(round(s["x"])), int(round(s["y"]))
+            if s["life"] <= 0 or not (0 <= ix < self.w and 0 <= iy < self.h):
+                continue
+            # Hit if this cell (or neighbor) still has fractal color
+            hit = False
+            for dy in (0, -1, 1):
+                for dx in (0, -1, 1):
+                    hx, hy = ix + dx, iy + dy
+                    if not (0 <= hx < self.w and 0 <= hy < self.h):
+                        continue
+                    if (hx, hy) in self.holes:
+                        continue
+                    if _pixel_brightness(pixels[hy][hx]) >= 14:
+                        self._destroy_at(hx, hy, pixels)
+                        hit = True
+                        break
+                if hit:
+                    break
+            if not hit:
+                alive_shots.append(s)
+        self.shots = alive_shots
+
+        # Occasional ram-blast if we fly through dense color
+        sx, sy = int(round(self.x)), int(round(self.y))
+        if 0 <= sx < self.w and 0 <= sy < self.h:
+            if (sx, sy) not in self.holes and _pixel_brightness(pixels[sy][sx]) > 40:
+                if random.random() < 0.18:
+                    self._destroy_at(sx, sy, pixels)
+
+        # Sparks
+        alive_sparks = []
+        for p in self.sparks:
+            p["vy"] += 0.04          # slight gravity
+            p["vx"] *= 0.98
+            p["x"] += p["vx"]
+            p["y"] += p["vy"]
+            p["life"] -= 1.0
+            if p["life"] <= 0:
+                continue
+            if not (-1 <= p["x"] < self.w + 1 and -1 <= p["y"] < self.h + 1):
+                continue
+            alive_sparks.append(p)
+        self.sparks = alive_sparks
+
+    def draw(self, canvas, pixels):
+        """Blit fractal with holes, then sparks, shots, and ship on top."""
+        _blit_with_holes(canvas, pixels, self.w, self.h, self.holes)
+        set_px = canvas.SetPixel
+
+        # Sparks (fade with life)
+        for p in self.sparks:
+            ix, iy = int(round(p["x"])), int(round(p["y"]))
+            if not (0 <= ix < self.w and 0 <= iy < self.h):
+                continue
+            u = _clamp(p["life"] / max(1.0, p["max_life"]), 0.0, 1.0)
+            # Hot core early, dim embers late
+            br = 0.35 + 0.65 * u
+            set_px(
+                ix, iy,
+                int(p["r"] * br),
+                int(p["g"] * br),
+                int(p["b"] * br),
+            )
+            # Tiny trail pixel
+            if u > 0.45:
+                tx = int(round(p["x"] - p["vx"]))
+                ty = int(round(p["y"] - p["vy"]))
+                if 0 <= tx < self.w and 0 <= ty < self.h:
+                    set_px(
+                        tx, ty,
+                        int(p["r"] * br * 0.45),
+                        int(p["g"] * br * 0.45),
+                        int(p["b"] * br * 0.45),
+                    )
+
+        # Shots
+        sr, sg, sb = BLAST_SHOT_RGB
+        for s in self.shots:
+            ix, iy = int(round(s["x"])), int(round(s["y"]))
+            if 0 <= ix < self.w and 0 <= iy < self.h:
+                set_px(ix, iy, sr, sg, sb)
+                # streak
+                bx = int(round(s["x"] - s["vx"] * 0.6))
+                by = int(round(s["y"] - s["vy"] * 0.6))
+                if 0 <= bx < self.w and 0 <= by < self.h:
+                    set_px(bx, by, sr // 2, sg // 2, sb // 3)
+
+        # Ship sprite — tiny arrow/fighter, mirrored by facing
+        sx = int(round(self.x))
+        sy = int(round(self.y))
+        f = self.facing
+        body = BLAST_SHIP_RGB
+        accent = BLAST_SHIP_ACCENT
+        # pixels relative to center: nose points along +x when facing right
+        parts = (
+            (0, 0, body),           # core
+            (1 * f, 0, accent),     # nose
+            (2 * f, 0, accent),     # nose tip
+            (-1 * f, 0, body),      # tail
+            (0, -1, body),          # upper wing
+            (0, 1, body),           # lower wing
+            (-1 * f, -1, accent),   # wing tip
+            (-1 * f, 1, accent),
+        )
+        for dx, dy, rgb in parts:
+            px, py = sx + dx, sy + dy
+            if 0 <= px < self.w and 0 <= py < self.h:
+                set_px(px, py, rgb[0], rgb[1], rgb[2])
 
 
 # ---------------- Zoom target selection (coastline only) ----------------
@@ -308,24 +650,34 @@ def pick_zoom_target(center_x, center_y, scale, width, height, escape, prefer_ed
 def _build_cycle_plan():
     """
     One tour cycle:
-      pause → zoom-in ×(2–3) with pauses → pan coastline →
-      either zoom-in ×(2–3) or zoom-out ×(2–3) with pauses.
+      pause → (zoom-in [→ blast ship] → pause) ×(2–3) → pan coastline →
+      either (zoom-in [→ blast]) or zoom-out series with pauses.
+
+    Blast ship steps are only inserted when ENABLE_BLASTER_SHIP is True.
     """
     plan = [("pause", START_PAUSE_FRAMES)]
     n_in = random.randint(HOPS_MIN, HOPS_MAX)
     for i in range(n_in):
         plan.append(("zoom_in", None))
-        plan.append(("pause", PAUSE_FRAMES))
+        plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
+        if ENABLE_BLASTER_SHIP:
+            plan.append(("blast", None))
+            plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
     plan.append(("pan", None))
     plan.append(("pause", PAUSE_FRAMES))
     n2 = random.randint(HOPS_MIN, HOPS_MAX)
-    if random.random() < 0.5:
+    if random.random() < 0.55:
         kind = "zoom_in"
     else:
         kind = "zoom_out"
     for i in range(n2):
         plan.append((kind, None))
-        plan.append(("pause", PAUSE_FRAMES))
+        plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
+        if kind == "zoom_in" and ENABLE_BLASTER_SHIP:
+            plan.append(("blast", None))
+            plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
+        elif kind == "zoom_out":
+            plan.append(("pause", PAUSE_FRAMES // 2))
     return plan, n_in, kind, n2
 
 
@@ -407,7 +759,7 @@ def PlayFractal(Duration=10, StopEvent=None, start_cam=None):
     hop = 0
 
     # Active motion
-    phase = "idle"       # idle | pause | zoom_in | zoom_out | pan
+    phase = "idle"       # idle | pause | zoom_in | zoom_out | pan | blast
     phase_t = 0
     phase_len = 1
     z_from = (cx, cy, scale)
@@ -416,17 +768,21 @@ def PlayFractal(Duration=10, StopEvent=None, start_cam=None):
 
     plan = []
     cycle = 0
+    blaster = FractalBlasterShip(width, height)
+    blast_base_pixels = None   # frozen frame the ship chews through
+    blast_base_escape = None
 
     def _pull_next_action():
         """Start the next planned action; rebuild cycle when empty."""
         nonlocal plan, cycle, phase, phase_t, phase_len, z_from, z_to, pause_left, hop
-        nonlocal cx, cy, scale
+        nonlocal cx, cy, scale, blast_base_pixels, blast_base_escape, last_escape
         while True:
             if not plan:
                 plan, n_in, second_kind, n2 = _build_cycle_plan()
                 cycle += 1
+                blast_note = " (+blast)" if ENABLE_BLASTER_SHIP else ""
                 print(
-                    f"[Fractal] Cycle #{cycle}: zoom-in×{n_in} → pan → "
+                    f"[Fractal] Cycle #{cycle}: zoom-in×{n_in}{blast_note} → pan → "
                     f"{second_kind}×{n2}"
                 )
             action, arg = plan.pop(0)
@@ -471,11 +827,31 @@ def PlayFractal(Duration=10, StopEvent=None, start_cam=None):
                     f"[Fractal] Pan coastline → ({z_to[0]:.6f}, {z_to[1]:.6f})"
                 )
                 return
+            if action == "blast":
+                if not ENABLE_BLASTER_SHIP:
+                    continue  # ship disabled — skip
+                # Freeze current view; ship chews holes until timer ends,
+                # then the plan continues (typically another zoom-in).
+                max_iter = _iters_for_scale(scale)
+                blast_base_pixels, blast_base_escape = render_mandelbrot(
+                    width, height, cx, cy, scale, max_iter,
+                )
+                last_escape = blast_base_escape
+                blaster.reset()
+                phase = "blast"
+                phase_t = 0
+                phase_len = BLAST_FRAMES
+                print(
+                    f"[Fractal] Blaster ship engaged  "
+                    f"({BLAST_FRAMES} frames @ view scale {scale:.3e})"
+                )
+                return
 
     _pull_next_action()
 
+    mode = "coastal tour + blaster" if ENABLE_BLASTER_SHIP else "coastal tour"
     print(
-        f"[Fractal] Mandelbrot coastal tour  {width}x{height}  "
+        f"[Fractal] Mandelbrot {mode}  {width}x{height}  "
         f"duration={run_min} min  fps~{TARGET_FPS}"
     )
 
@@ -505,16 +881,36 @@ def PlayFractal(Duration=10, StopEvent=None, start_cam=None):
                     cx, cy, scale = z_to[0], z_to[1], z_to[2]
                     _pull_next_action()
 
+            elif phase == "blast":
+                phase_t += 1
+                if blast_base_pixels is None:
+                    blast_base_pixels, blast_base_escape = render_mandelbrot(
+                        width, height, cx, cy, scale, max_iter,
+                    )
+                    last_escape = blast_base_escape
+                    blaster.reset()
+                blaster.update(blast_base_pixels)
+                if phase_t >= phase_len:
+                    print(
+                        f"[Fractal] Blaster done — {len(blaster.holes)} holes  "
+                        f"→ resume coastline zoom"
+                    )
+                    blast_base_pixels = None
+                    _pull_next_action()
+
             elif phase == "idle":
                 _pull_next_action()
 
             # --- Render ---
-            pixels, last_escape = render_mandelbrot(
-                width, height, cx, cy, scale, max_iter,
-            )
             try:
                 canvas.Fill(0, 0, 0)
-                blit_pixels(canvas, pixels, width, height)
+                if phase == "blast" and blast_base_pixels is not None:
+                    blaster.draw(canvas, blast_base_pixels)
+                else:
+                    pixels, last_escape = render_mandelbrot(
+                        width, height, cx, cy, scale, max_iter,
+                    )
+                    blit_pixels(canvas, pixels, width, height)
                 canvas = LED.TheMatrix.SwapOnVSync(canvas)
                 LED.Canvas = canvas
             except Exception:

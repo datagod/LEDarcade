@@ -120,6 +120,7 @@ VALID_WEB_ACTIONS = {
     "retrodigital": [],
     "flipclock": ["duration"],
     "sevensegclock": ["duration"],  # full-panel 7-segment digital clock
+    "waterclock": ["duration"],
     "ledarcade_intro": [],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
     "launch_dotinvaders": ["duration"],
@@ -427,6 +428,7 @@ def fallback_action_generator():
         {"Action": "retrodigital", "duration": 5},
         {"Action": "flipclock", "duration": 5},
         {"Action": "sevensegclock", "duration": 5},
+        {"Action": "waterclock", "duration": 5},
         {"Action": "analogclock", "duration": 5},
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 5, "Delay": 20},
         {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 5, "Delay": 10},
@@ -701,6 +703,16 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "clock"
                 DisplayProcess = Process(
                     target=ShowSevenSegClock, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
+            elif Action == "waterclock":
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(
+                    target=ShowWaterClock, args=(Command, StopEvent)
                 )
                 DisplayProcess.start()
 
@@ -1309,6 +1321,32 @@ def ShowSevenSegClock(Command, StopEvent):
     try:
         LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
         SSC.LaunchSevenSegClock(
+            Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
+        )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
+
+def ShowWaterClock(Command, StopEvent):
+    """Shaded HH:MM with tide water washing around the clock."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import WaterClock as WC
+
+    RunMinutes = Command.get("duration", 10)
+    try:
+        RunMinutes = float(RunMinutes)
+    except (TypeError, ValueError):
+        RunMinutes = 10.0
+
+    print(
+        f"[LEDcommander] Showing water clock: "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
+
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        WC.LaunchWaterClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
     finally:
