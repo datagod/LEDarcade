@@ -1737,7 +1737,7 @@ class Bot(commands.Bot ):
         await ctx.send(
             'Available games: ?astrosmash ?blasteroids ?defender ?fallingsand '
             '?fractal ?gravity ?invaders ?outbreak ?pacdot ?particles ?pinball (random table) '
-            '?pinball2 ?rally ?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8) ?zerk'
+            '?pinball2 ?planet ?rally ?skyfall ?spaceexplorer ?tron ?tv (?tv8 = channel 8) ?zerk'
         )
         #time.sleep(4)
         #await ctx.send('Trigger words: hug ghosts minions police storm ')
@@ -2377,6 +2377,19 @@ class Bot(commands.Bot ):
         message = "Tide's coming in — water clock on the panel..."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "waterclock", "duration": 10 })
+
+
+    #----------------------------------------
+    # PLANET BLAST                         --
+    #----------------------------------------
+
+    @commands.command(name="planet", aliases=["planetfly", "planetblast", "world", "flyover"])
+    async def planet(self, ctx: commands.Context):
+      """Chat: ?planet — Planet Blast orbital strike tour."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Planet Blast — locking orbital strike package..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_planet", "duration": 10 })
 
 
     #----------------------------------------

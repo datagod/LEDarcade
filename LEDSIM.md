@@ -69,6 +69,7 @@ python LEDsim.py --no-web
 | **4** | Launch **7-Seg LED Clock** (full-panel HH:MM) |
 | **5** | Launch **Fractal Blaster** (title dive → Mandelbrot) |
 | **6** | Launch **Water Clock** (shaded HH:MM + sloshing water) |
+| **7** | Launch **Planet Blast** (orbital strike tour / procedural world) |
 | **R** | **Restart** LEDsim (full process reload — intro + playlist; exit code 42 loops in `run_ledsim.bat`) |
 | **0** | Native 1:1 (64×32) |
 | **S** | Default scaled size (×3) |

@@ -816,6 +816,15 @@ def _request_water_clock(command_queue: Optional[Any]) -> None:
     )
 
 
+def _request_planet_fly(command_queue: Optional[Any]) -> None:
+    """Launch Planet Blast (orbital strike tour)."""
+    _send_command(
+        command_queue,
+        {"Action": "launch_planet", "duration": 10},
+        "Planet Blast",
+    )
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
     if raw is None or str(raw).strip() == "":
@@ -1075,6 +1084,10 @@ def run_viewer(
 
                 if event.key == pygame.K_6 or event.key == pygame.K_KP6:
                     _request_water_clock(command_queue)
+                    continue
+
+                if event.key == pygame.K_7 or event.key == pygame.K_KP7:
+                    _request_planet_fly(command_queue)
                     continue
 
                 # 0 = native 1:1 scale (was key 1 before game shortcuts)

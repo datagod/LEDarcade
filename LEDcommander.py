@@ -121,6 +121,7 @@ VALID_WEB_ACTIONS = {
     "flipclock": ["duration"],
     "sevensegclock": ["duration"],  # full-panel 7-segment digital clock
     "waterclock": ["duration"],
+    "launch_planet": ["duration"],
     "ledarcade_intro": [],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
     "launch_dotinvaders": ["duration"],
@@ -419,6 +420,7 @@ def fallback_action_generator():
         {"Action": "launch_fallingsand", "duration": 5},
         {"Action": "launch_particles", "duration": 5},
         {"Action": "launch_fractal", "duration": 5},
+        {"Action": "launch_planet", "duration": 5},
         # One pinball slot per lap — table chosen at random when it runs
         {"Action": "launch_pinball_random", "duration": 5},
         {"Action": "launch_rallydot"},  # until game over
@@ -872,6 +874,17 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "fractal"
                 DisplayProcess = Process(target=LaunchFractal, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_planet":
+                print("[LEDcommander][Run] Launching Planet Blast")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "planet"
+                DisplayProcess = Process(
+                    target=LaunchPlanetFly, args=(Command, StopEvent)
+                )
                 DisplayProcess.start()
 
             elif Action == "launch_pinball_random":
@@ -2197,6 +2210,18 @@ def LaunchFractal(Command, StopEvent):
     print(f"[LEDcommander][LaunchFractal] Fractal Blaster — {Duration} minutes...")
     _run_game_dimmed(
         lambda: FR.LaunchFractal(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+    )
+
+
+def LaunchPlanetFly(Command, StopEvent):
+    """Planet Blast — orbital strike tour of a procedural world."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import PlanetFly as PF
+    Duration = Command.get("duration", 10)
+    print(f"[LEDcommander][LaunchPlanetFly] Planet Blast — {Duration} minutes...")
+    _run_game_dimmed(
+        lambda: PF.LaunchPlanetFly(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
     )
 
 

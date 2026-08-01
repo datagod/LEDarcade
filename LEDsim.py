@@ -21,7 +21,8 @@ Usage:
 
 In the viewer window:
   N = next,  T = LEDtv,  1 = Pinball,  2 = Pinball2,  3 = SpaceExplorer,
-  4 = 7-Seg Clock,  5 = Fractal Blaster,  6 = Water Clock,  R = restart,
+  4 = 7-Seg Clock,  5 = Fractal Blaster,  6 = Water Clock,  7 = Planet Blast,
+  R = restart,
   0 = native,  S = scale,
   +/- = zoom,  F = frame,  Esc = quit
 
