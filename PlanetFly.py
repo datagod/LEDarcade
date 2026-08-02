@@ -26,6 +26,24 @@ try:
 except Exception:
     HAS_PYGAME = False
 
+# Numba: cache=True writes machine code under __pycache__ for reuse across runs.
+try:
+    from numba import njit as _numba_njit
+    HAS_NUMBA = True
+except ImportError:
+    HAS_NUMBA = False
+    _numba_njit = None
+
+
+def _jit(fn):
+    """@njit(cache=True) when Numba is available; identity otherwise."""
+    if HAS_NUMBA:
+        return _numba_njit(cache=True)(fn)
+    return fn
+
+
+_numba_warmed = False
+
 
 # ---------------- Configuration ----------------
 TARGET_FPS = 18
@@ -204,11 +222,12 @@ NV_GAIN = 2.15                 # amplify surface contrast so terrain reads
 NV_FLOOR = 18.0                # pedestal so oceans/land stay visible
 NV_SURF_DAY = 0.78             # sample surface lit enough to show biome detail
 # HUD — 3×5 micro font (teeny but readable on LED panels)
-HUD_RGB = (40, 255, 90)          # targeting / scan green
-HUD_FIRE_RGB = (255, 200, 40)    # firing amber
-HUD_ALERT_RGB = (255, 50, 40)    # destroyed red
-HUD_DIM_RGB = (20, 140, 70)
-HUD_NAME_RGB = (180, 255, 200)   # acquired city name
+# HUD text colors at 80% brightness (20% dimmer than full panel primaries)
+HUD_RGB = (32, 204, 72)          # targeting / scan green
+HUD_FIRE_RGB = (204, 160, 32)    # firing amber
+HUD_ALERT_RGB = (204, 40, 32)    # destroyed red
+HUD_DIM_RGB = (16, 112, 56)
+HUD_NAME_RGB = (144, 204, 160)   # acquired city name
 # Alien-but-readable English city name parts
 _NAME_ONSET = (
     "Zor", "Kel", "Vyn", "Ash", "Tor", "Xel", "Mir", "Qan", "Dra", "Nex",
@@ -294,11 +313,7 @@ CRUISE_SPAN_PER_SEC = 0.18
 TURN_PERIOD = 22.0
 LEG_MIN = 6.0
 LEG_MAX = 12.0
-# Noise world is continuous in meters; larger scale = bigger oceans/continents
-CONTINENT_SCALE = 1.0 / 720_000.0   # broad continents
-DETAIL_SCALE = 1.0 / 70_000.0
-RIVER_SCALE = 1.0 / 32_000.0
-MOUNTAIN_SCALE = 1.0 / 110_000.0
+# Noise scales CONTINENT_SCALE / DETAIL_SCALE / … defined with planet map constants
 # ---- Space intro (parallax stars → planet dot → zoom) ----
 STAR_DRIFT_SEC = 3.8       # pure starfield before the planet appears
 PLANET_DOT_SEC = 1.6       # bright dot visible before zoom begins
@@ -346,47 +361,7 @@ def _lerp_rgb(c0, c1, t):
     )
 
 
-# ---------------- Hash noise (no deps) ----------------
-def _hash2(ix, iy, seed):
-    """Deterministic 0..1 hash of integer lattice + seed."""
-    n = (ix * 374761393 + iy * 668265263 + seed * 1274126177) & 0x7FFFFFFF
-    n = (n ^ (n >> 13)) * 1274126177
-    n = n ^ (n >> 16)
-    return (n & 0x7FFFFFFF) / float(0x7FFFFFFF)
-
-
-def _value_noise(x, y, seed):
-    """Bilinear value noise; x,y continuous."""
-    x0 = int(math.floor(x))
-    y0 = int(math.floor(y))
-    fx = x - x0
-    fy = y - y0
-    # Smooth fade
-    ux = fx * fx * (3.0 - 2.0 * fx)
-    uy = fy * fy * (3.0 - 2.0 * fy)
-    v00 = _hash2(x0, y0, seed)
-    v10 = _hash2(x0 + 1, y0, seed)
-    v01 = _hash2(x0, y0 + 1, seed)
-    v11 = _hash2(x0 + 1, y0 + 1, seed)
-    a = _lerp(v00, v10, ux)
-    b = _lerp(v01, v11, ux)
-    return _lerp(a, b, uy)
-
-
-def _fbm(x, y, seed, octaves=5, lacunarity=2.05, gain=0.5):
-    amp = 1.0
-    freq = 1.0
-    total = 0.0
-    norm = 0.0
-    for i in range(octaves):
-        total += amp * _value_noise(x * freq, y * freq, seed + i * 1013)
-        norm += amp
-        amp *= gain
-        freq *= lacunarity
-    return total / max(1e-9, norm)
-
-
-# ---------------- Shared planet surface map ----------------
+# ---------------- Shared planet surface map (constants before Numba kernels) ---
 # World coords are meters on an equirectangular unwrap; same map for globe + flyover.
 PLANET_R = 2_000_000.0       # map scale: lon/lat * PLANET_R → meters
 # Elevation threshold: ~75% of the surface is ocean (land only above this)
@@ -400,6 +375,258 @@ CITY_DAY = (105, 105, 112)       # readable gray urban mass from altitude
 CITY_DAY_CORE = (130, 128, 125)  # denser core
 CITY_NIGHT = (255, 200, 90)
 CITY_GLOW = (255, 140, 40)
+# Noise scales (also used as module globals inside @njit)
+CONTINENT_SCALE = 1.0 / 720_000.0   # broad continents
+DETAIL_SCALE = 1.0 / 70_000.0
+RIVER_SCALE = 1.0 / 32_000.0
+MOUNTAIN_SCALE = 1.0 / 110_000.0
+
+
+# ---------------- Hash noise + terrain (Numba @njit cache=True) ----------------
+# Hot path: every surface pixel samples elev via FBM.
+# cache=True → machine code saved under __pycache__; reloads next process.
+_INV_I31 = 1.0 / 2147483647.0
+
+
+@_jit
+def _n_clamp(v, lo, hi):
+    if v < lo:
+        return lo
+    if v > hi:
+        return hi
+    return v
+
+
+@_jit
+def _n_smoothstep(t):
+    if t < 0.0:
+        t = 0.0
+    elif t > 1.0:
+        t = 1.0
+    return t * t * (3.0 - 2.0 * t)
+
+
+@_jit
+def _n_smooth_edge(v, a, b):
+    if b <= a:
+        return 1.0 if v >= a else 0.0
+    return _n_smoothstep((v - a) / (b - a))
+
+
+@_jit
+def _hash2(ix, iy, seed):
+    """Deterministic 0..1 hash of integer lattice + seed."""
+    n = (ix * 374761393 + iy * 668265263 + seed * 1274126177) & 0x7FFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177
+    n = (n ^ (n >> 16)) & 0x7FFFFFFF
+    return n * _INV_I31
+
+
+@_jit
+def _value_noise(x, y, seed):
+    """Bilinear value noise; x,y continuous. Hash corners inlined."""
+    x0 = int(math.floor(x))
+    y0 = int(math.floor(y))
+    fx = x - x0
+    fy = y - y0
+    ux = fx * fx * (3.0 - 2.0 * fx)
+    uy = fy * fy * (3.0 - 2.0 * fy)
+    s = seed
+    n = (x0 * 374761393 + y0 * 668265263 + s * 1274126177) & 0x7FFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177
+    v00 = ((n ^ (n >> 16)) & 0x7FFFFFFF) * _INV_I31
+    n = ((x0 + 1) * 374761393 + y0 * 668265263 + s * 1274126177) & 0x7FFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177
+    v10 = ((n ^ (n >> 16)) & 0x7FFFFFFF) * _INV_I31
+    n = (x0 * 374761393 + (y0 + 1) * 668265263 + s * 1274126177) & 0x7FFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177
+    v01 = ((n ^ (n >> 16)) & 0x7FFFFFFF) * _INV_I31
+    n = ((x0 + 1) * 374761393 + (y0 + 1) * 668265263 + s * 1274126177) & 0x7FFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177
+    v11 = ((n ^ (n >> 16)) & 0x7FFFFFFF) * _INV_I31
+    a = v00 + (v10 - v00) * ux
+    b = v01 + (v11 - v01) * ux
+    return a + (b - a) * uy
+
+
+@_jit
+def _fbm(x, y, seed, octaves, lacunarity, gain):
+    amp = 1.0
+    freq = 1.0
+    total = 0.0
+    norm = 0.0
+    for i in range(octaves):
+        total += amp * _value_noise(x * freq, y * freq, seed + i * 1013)
+        norm += amp
+        amp *= gain
+        freq *= lacunarity
+    if norm < 1e-9:
+        return 0.0
+    return total / norm
+
+
+@_jit
+def _fbm_fast(x, y, seed, octaves):
+    """
+    Cheap FBM for realtime surface (fixed lacunarity 2, gain 0.5).
+    Unrolled for 1–3 octaves — the elev hot path.
+    """
+    if octaves <= 1:
+        return _value_noise(x, y, seed)
+    v = _value_noise(x, y, seed)
+    v2 = _value_noise(x * 2.0, y * 2.0, seed + 1013)
+    if octaves == 2:
+        return (v + 0.5 * v2) * (1.0 / 1.5)
+    v3 = _value_noise(x * 4.0, y * 4.0, seed + 2026)
+    return (v + 0.5 * v2 + 0.25 * v3) * (1.0 / 1.75)
+
+
+@_jit
+def _elev_raw_n(wx, wy, seed, lod):
+    """
+    Elevation + continent/detail/mountain.
+    lod 0: 1 octave continent only; lod 1–2: 2+1+1 octaves.
+    Returns (elev, c, d, mountain).
+    """
+    if lod <= 0:
+        c = _fbm_fast(wx * CONTINENT_SCALE, wy * CONTINENT_SCALE, seed, 1)
+        if c < 0.0:
+            c = 0.0
+        elif c > 1.0:
+            c = 1.0
+        return c, c, 0.5, 0.0
+    c = _fbm_fast(wx * CONTINENT_SCALE, wy * CONTINENT_SCALE, seed, 2)
+    d = _fbm_fast(wx * DETAIL_SCALE, wy * DETAIL_SCALE, seed + 7, 1)
+    m_raw = _fbm_fast(wx * MOUNTAIN_SCALE, wy * MOUNTAIN_SCALE, seed + 19, 1)
+    mountain = 1.0 - abs(2.0 * m_raw - 1.0)
+    mountain *= mountain
+    elev = c * 0.72 + d * 0.14 + mountain * 0.14
+    if elev < 0.0:
+        elev = 0.0
+    elif elev > 1.0:
+        elev = 1.0
+    return elev, c, d, mountain
+
+
+@_jit
+def _is_river_n(wx, wy, elev, moist, seed):
+    river_n = _value_noise(wx * RIVER_SCALE, wy * RIVER_SCALE, seed + 55)
+    river_ridge = 1.0 - abs(2.0 * river_n - 1.0)
+    river_w = _n_smooth_edge(river_ridge, 0.84, 0.96)
+    river_ok = _n_smooth_edge(elev, SEA_LEVEL + 0.01, SEA_LEVEL + 0.04)
+    river_ok *= 1.0 - _n_smooth_edge(elev, 0.68, 0.78)
+    river_ok *= _n_smooth_edge(moist, 0.28, 0.45)
+    return river_w * river_ok
+
+
+@_jit
+def _sample_biome_n(wx, wy, seed, lod):
+    """
+    Daytime surface color + meta.
+    Returns (r, g, b, elev, river_amt, land_flag) with land_flag 1.0 or 0.0.
+    """
+    elev, c, d, mountain = _elev_raw_n(wx, wy, seed, lod)
+    if lod <= 0:
+        moist = 0.45
+    else:
+        moist_oct = 1 if lod < 2 else 2
+        moist = _fbm_fast(
+            wx * DETAIL_SCALE * 0.7, wy * DETAIL_SCALE * 0.7,
+            seed + 31, moist_oct,
+        )
+    lat_norm = wy / (PLANET_R * (math.pi * 0.5))
+    if lat_norm < -1.0:
+        lat_norm = -1.0
+    elif lat_norm > 1.0:
+        lat_norm = 1.0
+
+    river_amt = 0.0
+    land = 0.0
+    if elev < SEA_LEVEL:
+        t_deep = _n_smooth_edge(elev, SEA_LEVEL - 0.14, SEA_LEVEL - 0.06)
+        r = 8.0 + (15.0 - 8.0) * t_deep
+        g = 25.0 + (55.0 - 25.0) * t_deep
+        b = 70.0 + (120.0 - 70.0) * t_deep
+        t_shal = _n_smooth_edge(elev, SEA_LEVEL - 0.07, SEA_LEVEL - 0.01)
+        r = r + (40.0 - r) * t_shal
+        g = g + (130.0 - g) * t_shal
+        b = b + (170.0 - b) * t_shal
+        if lod >= 1:
+            t_foam = _n_smooth_edge(elev, SEA_LEVEL - 0.015, SEA_LEVEL) * 0.22
+            r = r + (120.0 - r) * t_foam
+            g = g + (160.0 - g) * t_foam
+            b = b + (175.0 - b) * t_foam
+        land = 0.0
+    else:
+        land = 1.0
+        denom = 1.0 - SEA_LEVEL
+        if denom < 1e-6:
+            denom = 1e-6
+        land_h = (elev - SEA_LEVEL) / denom
+        # desert / grass / forest / rock / snow (float RGB blends)
+        dr = 170.0 + (200.0 - 170.0) * land_h
+        dg = 150.0 + (170.0 - 150.0) * land_h
+        db = 90.0 + (100.0 - 90.0) * land_h
+        gt = land_h * 0.6 + moist * 0.3
+        gr = 50.0 + (90.0 - 50.0) * gt
+        gg = 110.0 + (140.0 - 110.0) * gt
+        gb = 40.0 + (50.0 - 40.0) * gt
+        ft = 0.4 + 0.4 * land_h
+        fr = 20.0 + (35.0 - 20.0) * ft
+        fg = 80.0 + (110.0 - 80.0) * ft
+        fb = 30.0 + (40.0 - 30.0) * ft
+        rt = _n_smooth_edge(land_h, 0.45, 0.85)
+        rr = 90.0 + (160.0 - 90.0) * rt
+        rg = 85.0 + (155.0 - 85.0) * rt
+        rb = 75.0 + (145.0 - 75.0) * rt
+        rm = _n_smooth_edge(moist, 0.45, 0.75) * 0.3
+        rr = rr + (70.0 - rr) * rm
+        rg = rg + (95.0 - rg) * rm
+        rb = rb + (60.0 - rb) * rm
+        st = _n_smooth_edge(land_h, 0.55, 0.90)
+        sr = 200.0 + (235.0 - 200.0) * st
+        sg = 210.0 + (240.0 - 210.0) * st
+        sb = 220.0 + (245.0 - 220.0) * st
+        t_dry = 1.0 - _n_smooth_edge(moist, 0.22, 0.42)
+        t_wet = _n_smooth_edge(moist, 0.55, 0.75)
+        r = gr + (dr - gr) * t_dry
+        g = gg + (dg - gg) * t_dry
+        b = gb + (db - gb) * t_dry
+        r = r + (fr - r) * t_wet
+        g = g + (fg - g) * t_wet
+        b = b + (fb - b) * t_wet
+        rk = _n_smooth_edge(land_h, 0.48, 0.68)
+        r = r + (rr - r) * rk
+        g = g + (rg - g) * rk
+        b = b + (rb - b) * rk
+        ice_lat = _n_smooth_edge(abs(lat_norm), 2.0 / 3.0, 2.0 / 3.0 + 0.06)
+        ice = ice_lat * (0.55 + 0.45 * _n_smooth_edge(land_h, 0.15, 0.70))
+        r = r + (sr - r) * ice
+        g = g + (sg - g) * ice
+        b = b + (sb - b) * ice
+        t_beach = (1.0 - _n_smooth_edge(elev, SEA_LEVEL, SEA_LEVEL + 0.035)) * (1.0 - ice) * 0.85
+        r = r + (194.0 - r) * t_beach
+        g = g + (178.0 - g) * t_beach
+        b = b + (128.0 - b) * t_beach
+        if lod >= 1:
+            river_amt = _is_river_n(wx, wy, elev, moist, seed)
+            r = r + (35.0 - r) * river_amt
+            g = g + (90.0 - g) * river_amt
+            b = b + (140.0 - b) * river_amt
+
+    ndot = 0.62 + 0.38 * (mountain * 0.5 + (d - 0.5) * -0.4)
+    if ndot < 0.35:
+        ndot = 0.35
+    elif ndot > 1.1:
+        ndot = 1.1
+    r = r * ndot
+    g = g * ndot
+    b = b * ndot
+    haze = 0.12 + 0.06 * (1.0 - elev)
+    r = r * (1.0 - haze) + 40.0 * haze
+    g = g * (1.0 - haze) + 70.0 * haze
+    b = b * (1.0 - haze) + 120.0 * haze
+    return r, g, b, elev, river_amt, land
 
 
 def _smooth_edge(v, a, b):
@@ -407,6 +634,47 @@ def _smooth_edge(v, a, b):
     if b <= a:
         return 1.0 if v >= a else 0.0
     return _smoothstep((v - a) / (b - a))
+
+
+def _warm_planet_numba(StopEvent=None):
+    """
+    Compile or load cached Numba kernels for surface sampling.
+    First cold compile can take a few seconds; later launches load from disk.
+    """
+    global _numba_warmed
+    if _numba_warmed:
+        return
+    if not HAS_NUMBA:
+        print("[PlanetBlast] Numba not available — pure Python surface path")
+        _numba_warmed = True
+        return
+    try:
+        if StopEvent is not None and StopEvent.is_set():
+            return
+    except Exception:
+        pass
+    print(
+        "[PlanetBlast] Warming Numba surface kernels (cache=True)...",
+        flush=True,
+    )
+    t0 = time.time()
+    # Touch every cached kernel (lod 0/1/2)
+    _hash2(1, 2, 3)
+    _value_noise(0.25, 0.75, 42)
+    _fbm(0.1, 0.2, 7, 2, 2.05, 0.5)
+    _fbm_fast(0.1, 0.2, 7, 2)
+    _elev_raw_n(1000.0, -500.0, 42, 0)
+    _elev_raw_n(1000.0, -500.0, 42, 2)
+    _is_river_n(1000.0, -500.0, 0.7, 0.5, 42)
+    _sample_biome_n(1000.0, -500.0, 42, 0)
+    _sample_biome_n(1000.0, -500.0, 42, 1)
+    _sample_biome_n(1000.0, -500.0, 42, 2)
+    _numba_warmed = True
+    print(
+        f"[PlanetBlast] Surface kernels ready ({time.time() - t0:.1f}s; "
+        f"cached for next launch).",
+        flush=True,
+    )
 
 
 def _dist_point_seg(px, py, x0, y0, x1, y1):
@@ -520,24 +788,18 @@ class PlanetMap(object):
         m = math.sqrt(x * x + y * y + z * z) or 1.0
         return (x / m, y / m, z / m)
 
-    def elev_raw(self, wx, wy):
-        c = _fbm(wx * CONTINENT_SCALE, wy * CONTINENT_SCALE, self.seed, octaves=3)
-        d = _fbm(wx * DETAIL_SCALE, wy * DETAIL_SCALE, self.seed + 7, octaves=2)
-        m_raw = _fbm(wx * MOUNTAIN_SCALE, wy * MOUNTAIN_SCALE, self.seed + 19, octaves=2)
-        mountain = 1.0 - abs(2.0 * m_raw - 1.0)
-        mountain *= mountain
-        # Continent-scale dominates so land forms large coherent masses
-        elev = _clamp(c * 0.72 + d * 0.14 + mountain * 0.14, 0.0, 1.0)
-        return elev, c, d, mountain
+    def elev_raw(self, wx, wy, lod=2):
+        """
+        Elevation + continent/detail/mountain components (Numba when available).
+        lod 0: 1 octave continent only (far overview)
+        lod 1–2: 2+1+1 octaves (readable on 64×32 without 3×2×2 cost)
+        """
+        return _elev_raw_n(float(wx), float(wy), int(self.seed), int(lod))
 
     def is_river(self, wx, wy, elev, moist):
-        river_n = _value_noise(wx * RIVER_SCALE, wy * RIVER_SCALE, self.seed + 55)
-        river_ridge = 1.0 - abs(2.0 * river_n - 1.0)
-        river_w = _smooth_edge(river_ridge, 0.84, 0.96)
-        river_ok = _smooth_edge(elev, SEA_LEVEL + 0.01, SEA_LEVEL + 0.04)
-        river_ok *= 1.0 - _smooth_edge(elev, 0.68, 0.78)
-        river_ok *= _smooth_edge(moist, 0.28, 0.45)
-        return river_w * river_ok
+        return _is_river_n(
+            float(wx), float(wy), float(elev), float(moist), int(self.seed),
+        )
 
     def is_land(self, wx, wy):
         elev, _, _, _ = self.elev_raw(wx, wy)
@@ -742,7 +1004,7 @@ class PlanetMap(object):
                 continue
             moist = _fbm(
                 wx * DETAIL_SCALE * 0.7, wy * DETAIL_SCALE * 0.7,
-                self.seed + 31, octaves=2,
+                self.seed + 31, 2, 2.05, 0.5,
             )
             # Avoid pure desert wasteland for large cities
             r = rng.random()
@@ -841,26 +1103,31 @@ class PlanetMap(object):
                 key = self._cell(x, y)
                 self.road_grid.setdefault(key, []).append(ri)
 
-    def _nearby_roads(self, wx, wy):
+    def _nearby_roads(self, wx, wy, radius_cells=1):
         cx, cy = self._cell(wx, wy)
         seen = set()
         out = []
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
+        r = max(0, int(radius_cells))
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
                 for ri in self.road_grid.get((cx + dx, cy + dy), ()):
                     if ri not in seen:
                         seen.add(ri)
                         out.append(self.roads[ri])
         return out
 
-    def _nearby_cities(self, wx, wy):
-        # Wider stencil — megacities span multiple cells
+    def _nearby_cities(self, wx, wy, radius_cells=2):
+        # Wider stencil — megacities span multiple cells (radius 2 default)
         cx, cy = self._cell(wx, wy)
+        seen = set()
         out = []
-        for dy in (-2, -1, 0, 1, 2):
-            for dx in (-2, -1, 0, 1, 2):
+        r = max(0, int(radius_cells))
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
                 for i in self.city_grid.get((cx + dx, cy + dy), ()):
-                    out.append(self.cities[i])
+                    if i not in seen:
+                        seen.add(i)
+                        out.append(self.cities[i])
         return out
 
     def _fire_key(self, wx, wy):
@@ -880,7 +1147,7 @@ class PlanetMap(object):
             return False
         moist = _fbm(
             wx * DETAIL_SCALE * 0.7, wy * DETAIL_SCALE * 0.7,
-            self.seed + 31, octaves=2,
+            self.seed + 31, 2, 2.05, 0.5,
         )
         lat_norm = _clamp(wy / (PLANET_R * (math.pi * 0.5)), -1.0, 1.0)
         ice_lat = _smooth_edge(abs(lat_norm), 2.0 / 3.0, 2.0 / 3.0 + 0.06)
@@ -1007,77 +1274,28 @@ class PlanetMap(object):
             return False
         return self._fire_key(wx, wy) in self.fire_scorch
 
-    def sample_biome(self, wx, wy):
-        """Daytime surface color + meta (elev, river strength, land)."""
-        elev, c, d, mountain = self.elev_raw(wx, wy)
-        moist = _fbm(
-            wx * DETAIL_SCALE * 0.7, wy * DETAIL_SCALE * 0.7,
-            self.seed + 31, octaves=2,
+    def sample_biome(self, wx, wy, lod=2):
+        """Daytime surface color + meta (elev, river strength, land). lod 0–2.
+
+        Implemented in Numba (_sample_biome_n) when available; disk-cached.
+        """
+        r, g, b, elev, river_amt, land_f = _sample_biome_n(
+            float(wx), float(wy), int(self.seed), int(lod),
         )
-        # Geographic latitude −1..+1 (south..north) from equirectangular map
-        lat_norm = _clamp(wy / (PLANET_R * (math.pi * 0.5)), -1.0, 1.0)
+        return (r, g, b), elev, river_amt, land_f > 0.5
 
-        deep = (8, 25, 70)
-        mid_sea = (15, 55, 120)
-        shallow = (40, 130, 170)
-        foam = (120, 160, 175)  # muted shore foam — not white
-        river_amt = 0.0
-        if elev < SEA_LEVEL:
-            t_deep = _smooth_edge(elev, SEA_LEVEL - 0.14, SEA_LEVEL - 0.06)
-            rgb = _lerp_rgb(deep, mid_sea, t_deep)
-            t_shal = _smooth_edge(elev, SEA_LEVEL - 0.07, SEA_LEVEL - 0.01)
-            rgb = _lerp_rgb(rgb, shallow, t_shal)
-            t_foam = _smooth_edge(elev, SEA_LEVEL - 0.015, SEA_LEVEL)
-            rgb = _lerp_rgb(rgb, foam, t_foam * 0.22)
-            land = False
-        else:
-            land = True
-            land_h = (elev - SEA_LEVEL) / max(1e-6, 1.0 - SEA_LEVEL)
-            desert = _lerp_rgb((170, 150, 90), (200, 170, 100), land_h)
-            grass = _lerp_rgb((50, 110, 40), (90, 140, 50), land_h * 0.6 + moist * 0.3)
-            forest = _lerp_rgb((20, 80, 30), (35, 110, 40), 0.4 + 0.4 * land_h)
-            rock = _lerp_rgb((90, 85, 75), (160, 155, 145), _smooth_edge(land_h, 0.45, 0.85))
-            rock = _lerp_rgb(rock, (70, 95, 60), _smooth_edge(moist, 0.45, 0.75) * 0.3)
-            # Snow/ice only in the top & bottom 1/6 of the planet (|lat| > 2/3)
-            snow = _lerp_rgb((200, 210, 220), (235, 240, 245), _smooth_edge(land_h, 0.55, 0.90))
-            t_dry = 1.0 - _smooth_edge(moist, 0.22, 0.42)
-            t_wet = _smooth_edge(moist, 0.55, 0.75)
-            rgb = _lerp_rgb(grass, desert, t_dry)
-            rgb = _lerp_rgb(rgb, forest, t_wet)
-            rgb = _lerp_rgb(rgb, rock, _smooth_edge(land_h, 0.48, 0.68))
-            # Polar sixths only — soft edge at ±2/3 latitude
-            ice_lat = _smooth_edge(abs(lat_norm), 2.0 / 3.0, 2.0 / 3.0 + 0.06)
-            ice = ice_lat * (0.55 + 0.45 * _smooth_edge(land_h, 0.15, 0.70))
-            rgb = _lerp_rgb(rgb, snow, ice)
-            t_beach = 1.0 - _smooth_edge(elev, SEA_LEVEL, SEA_LEVEL + 0.035)
-            rgb = _lerp_rgb(rgb, (194, 178, 128), t_beach * (1.0 - ice) * 0.85)
-            # Soften coastal foam so it doesn't read as white cloud bands
-            # (foam only applied on water branch above)
-            river_amt = self.is_river(wx, wy, elev, moist)
-            rgb = _lerp_rgb(rgb, (35, 90, 140), river_amt)
-
-        # Terrain micro-lighting
-        ndot = _clamp(0.62 + 0.38 * (mountain * 0.5 + (d - 0.5) * -0.4), 0.35, 1.1)
-        r = rgb[0] * ndot
-        g = rgb[1] * ndot
-        b = rgb[2] * ndot
-        haze = 0.12 + 0.06 * (1.0 - elev)
-        r = r * (1.0 - haze) + 40 * haze
-        g = g * (1.0 - haze) + 70 * haze
-        b = b * (1.0 - haze) + 120 * haze
-        return (r, g, b), elev, river_amt, land
-
-    def sample(self, wx, wy, day_factor=1.0):
+    def sample(self, wx, wy, day_factor=1.0, lod=2):
         """
         Full surface sample including cities, roads, rails, bridges, night lights.
         day_factor 0 = night, 1 = full day (from light source).
+        lod 0 = far overview (cheap), 1 = cruise/approach, 2 = close strike.
         """
         day = _clamp(day_factor, 0.0, 1.0)
-        (r, g, b), elev, river_amt, land = self.sample_biome(wx, wy)
+        (r, g, b), elev, river_amt, land = self.sample_biome(wx, wy, lod=lod)
 
-        # Roads / rails / bridges
-        if land or river_amt > 0.2:
-            for rd in self._nearby_roads(wx, wy):
+        # Roads / rails / bridges — skip at far LOD (sub-pixel width)
+        if lod >= 1 and (land or river_amt > 0.2):
+            for rd in self._nearby_roads(wx, wy, radius_cells=1):
                 dist = _dist_point_seg(wx, wy, rd["x0"], rd["y0"], rd["x1"], rd["y1"])
                 half = rd["width"] * 0.5
                 if dist > half * 1.8:
@@ -1093,21 +1311,32 @@ class PlanetMap(object):
                     col = HIGHWAY_RGB
                 else:
                     col = ROAD_RGB
-                r = _lerp(r, col[0], edge * 0.85)
-                g = _lerp(g, col[1], edge * 0.85)
-                b = _lerp(b, col[2], edge * 0.85)
+                r = r + (col[0] - r) * (edge * 0.85)
+                g = g + (col[1] - g) * (edge * 0.85)
+                b = b + (col[2] - b) * (edge * 0.85)
 
         # Cities painted into the surface (stable world-grid blocks — no sparkle)
         light_r = light_g = light_b = 0.0
         light_w = 0.0
-        for city in self._nearby_cities(wx, wy):
+        # Far LOD: smaller city search (discs are large; edges rarely need 5×5)
+        city_cells = 2 if lod >= 2 else 1
+        for city in self._nearby_cities(wx, wy, radius_cells=city_cells):
             dx = wx - city["x"]
             dy = wy - city["y"]
-            dist = math.hypot(dx, dy)
+            # hypot is expensive; use squared distance cull first
+            dist2 = dx * dx + dy * dy
             radius = 12_000.0 + city["size"] * 14_000.0
-            if dist > radius * 1.5:
+            r_lim = radius * 1.5
+            if dist2 > r_lim * r_lim:
                 continue
-            dmg = _clamp(float(city.get("damage", 0.0)), 0.0, 1.0)
+            dist = math.sqrt(dist2)
+            dmg = city.get("damage", 0.0)
+            if dmg:
+                dmg = dmg if dmg <= 1.0 else 1.0
+                if dmg < 0.0:
+                    dmg = 0.0
+            else:
+                dmg = 0.0
             dead = city.get("obliterated", False) or dmg >= 0.99
             disc = 1.0 - _smooth_edge(dist, radius * 0.35, radius)
             core = 1.0 - _smooth_edge(dist, radius * 0.08, radius * 0.42)
@@ -1115,58 +1344,55 @@ class PlanetMap(object):
                 # Permanent scorched paint as damage rises
                 rubble_w = disc * (0.45 + 0.55 * dmg)
                 if rubble_w > 0.02:
-                    ash = (
-                        int(RUBBLE_RGB[0] * (0.7 + 0.3 * (1.0 - dmg))),
-                        int(RUBBLE_RGB[1] * (0.65 + 0.2 * (1.0 - dmg))),
-                        int(RUBBLE_RGB[2] * 0.7),
-                    )
-                    r = _lerp(r, ash[0], rubble_w * 0.92)
-                    g = _lerp(g, ash[1], rubble_w * 0.92)
-                    b = _lerp(b, ash[2], rubble_w * 0.92)
-                # Fixed embers (hash only — never time-animated)
-                if dmg > 0.35 and dist < radius * 0.65:
+                    ash0 = RUBBLE_RGB[0] * (0.7 + 0.3 * (1.0 - dmg))
+                    ash1 = RUBBLE_RGB[1] * (0.65 + 0.2 * (1.0 - dmg))
+                    ash2 = RUBBLE_RGB[2] * 0.7
+                    r = r + (ash0 - r) * (rubble_w * 0.92)
+                    g = g + (ash1 - g) * (rubble_w * 0.92)
+                    b = b + (ash2 - b) * (rubble_w * 0.92)
+                # Fixed embers (hash only — never time-animated); close LOD only
+                if lod >= 2 and dmg > 0.35 and dist < radius * 0.65:
                     cell = 5000.0
                     gx = int(math.floor((wx - city["x"]) / cell))
                     gy = int(math.floor((wy - city["y"]) / cell))
                     h = _hash2(gx, gy, 91)
                     if h > 0.88:
-                        r = _lerp(r, FIRE_RGB[0], 0.4 * dmg)
-                        g = _lerp(g, FIRE_RGB[1], 0.4 * dmg)
-                        b = _lerp(b, FIRE_RGB[2], 0.3 * dmg)
+                        r = r + (FIRE_RGB[0] - r) * (0.4 * dmg)
+                        g = g + (FIRE_RGB[1] - g) * (0.4 * dmg)
+                        b = b + (FIRE_RGB[2] - b) * (0.3 * dmg)
             if not dead:
                 intact = 1.0 - dmg
                 # Solid urban disc baked onto terrain
                 if disc > 0.02 and intact > 0.05:
                     k = disc * 0.88 * intact
-                    r = _lerp(r, CITY_DAY[0], k)
-                    g = _lerp(g, CITY_DAY[1], k)
-                    b = _lerp(b, CITY_DAY[2], k)
+                    r = r + (CITY_DAY[0] - r) * k
+                    g = g + (CITY_DAY[1] - g) * k
+                    b = b + (CITY_DAY[2] - b) * k
                 if core > 0.02 and intact > 0.05:
                     k = core * 0.75 * intact
-                    r = _lerp(r, CITY_DAY_CORE[0], k)
-                    g = _lerp(g, CITY_DAY_CORE[1], k)
-                    b = _lerp(b, CITY_DAY_CORE[2], k)
-                # Coarse permanent block paint (stable world cells)
-                if dist < radius * 0.92 and intact > 0.08:
+                    r = r + (CITY_DAY_CORE[0] - r) * k
+                    g = g + (CITY_DAY_CORE[1] - g) * k
+                    b = b + (CITY_DAY_CORE[2] - b) * k
+                # Building blocks / parks — only when close enough to read
+                if lod >= 2 and dist < radius * 0.92 and intact > 0.08:
                     cell = 5200.0
                     gx = int(math.floor((wx - city["x"]) / cell))
                     gy = int(math.floor((wy - city["y"]) / cell))
                     h = _hash2(gx, gy, 77 + city["size"] * 3)
                     if h > 0.38:
-                        # Building block shade from hash — fixed forever
                         shade_b = 0.55 + 0.45 * h
-                        br = int(100 + 55 * shade_b)
-                        bg = int(98 + 50 * shade_b)
-                        bb = int(95 + 48 * shade_b)
+                        br = 100 + 55 * shade_b
+                        bg = 98 + 50 * shade_b
+                        bb = 95 + 48 * shade_b
                         blk = (0.55 + 0.35 * h) * intact * max(disc, 0.25)
-                        r = _lerp(r, br, blk)
-                        g = _lerp(g, bg, blk)
-                        b = _lerp(b, bb, blk)
+                        r = r + (br - r) * blk
+                        g = g + (bg - g) * blk
+                        b = b + (bb - b) * blk
                     elif h < 0.18 and disc > 0.2:
-                        # Park / courtyard patches
-                        r = _lerp(r, 55, 0.35 * intact * disc)
-                        g = _lerp(g, 95, 0.35 * intact * disc)
-                        b = _lerp(b, 50, 0.35 * intact * disc)
+                        pk = 0.35 * intact * disc
+                        r = r + (55 - r) * pk
+                        g = g + (95 - g) * pk
+                        b = b + (50 - b) * pk
                 # Night lights: warm street/building glow (pops on dark terrain)
                 glow = 1.0 - _smooth_edge(dist, radius * 0.12, radius * 1.35)
                 if glow > 0.01 and intact > 0.1:
@@ -1179,8 +1405,8 @@ class PlanetMap(object):
                         light_r += CITY_GLOW[0] * intensity * 0.65
                         light_g += CITY_GLOW[1] * intensity * 0.65
                         light_b += CITY_GLOW[2] * intensity * 0.55
-                    # Sparse bright building windows
-                    if dist < radius * 0.85:
+                    # Sparse bright building windows — close LOD only
+                    if lod >= 2 and dist < radius * 0.85:
                         cell = 4800.0
                         gx = int(math.floor((wx - city["x"]) / cell))
                         gy = int(math.floor((wy - city["y"]) / cell))
@@ -1193,16 +1419,16 @@ class PlanetMap(object):
 
         # Wildfire — static scorched paint only (no animated flame)
         if land and self.fire_scorch and self._fire_key(wx, wy) in self.fire_scorch:
-            r = _lerp(r, ASH_RGB[0], 0.88)
-            g = _lerp(g, ASH_RGB[1], 0.88)
-            b = _lerp(b, ASH_RGB[2], 0.85)
-            # Sparse permanent ember flecks (hash — not time-based)
-            gx = int(math.floor(wx / 2800.0))
-            gy = int(math.floor(wy / 2800.0))
-            if _hash2(gx, gy, 44) > 0.90:
-                r = _lerp(r, ASH_EMBER[0], 0.55)
-                g = _lerp(g, ASH_EMBER[1], 0.55)
-                b = _lerp(b, ASH_EMBER[2], 0.4)
+            r = r + (ASH_RGB[0] - r) * 0.88
+            g = g + (ASH_RGB[1] - g) * 0.88
+            b = b + (ASH_RGB[2] - b) * 0.85
+            if lod >= 2:
+                gx = int(math.floor(wx / 2800.0))
+                gy = int(math.floor(wy / 2800.0))
+                if _hash2(gx, gy, 44) > 0.90:
+                    r = r + (ASH_EMBER[0] - r) * 0.55
+                    g = g + (ASH_EMBER[1] - g) * 0.55
+                    b = b + (ASH_EMBER[2] - b) * 0.4
 
         # Day / night mix — respect light source (deep night away from sun)
         night_floor = 0.04  # dark atmosphere, not pure black
@@ -1213,16 +1439,26 @@ class PlanetMap(object):
         # City lights dominate at night / dusk
         night = 1.0 - day
         if light_w > 0.01 and night > 0.04:
-            k = _clamp(night * 1.35, 0.0, 1.0)
+            k = night * 1.35
+            if k > 1.0:
+                k = 1.0
             r = r + light_r * k * 0.85
             g = g + light_g * k * 0.8
             b = b + light_b * k * 0.55
 
-        return (
-            int(_clamp(r, 0, 255)),
-            int(_clamp(g, 0, 255)),
-            int(_clamp(b, 0, 255)),
-        )
+        if r < 0:
+            r = 0
+        elif r > 255:
+            r = 255
+        if g < 0:
+            g = 0
+        elif g > 255:
+            g = 255
+        if b < 0:
+            b = 0
+        elif b > 255:
+            b = 255
+        return (int(r), int(g), int(b))
 
 
 # ---------------- Parallax space (Space Explorer techniques) ----------------
@@ -1582,14 +1818,34 @@ class SpaceIntro(object):
         # As we zoom, blend from full-sphere UV toward a local window around landing
         # (keeps continuity into the flyover camera)
         local_blend = _smoothstep((radius - 4.0) / max(1.0, min(self.w, self.h) * 0.45))
+        # LOD: small disc is cheap; large disc needs lower sample quality
+        if radius < 6.0:
+            lod = 0
+        elif radius < min(self.w, self.h) * 0.35:
+            lod = 1
+        else:
+            lod = 1 if local_blend < 0.55 else 2
+        # Subsample large discs (fill 2×2) once the planet covers most of the panel
+        step = 2 if radius >= 10.0 else 1
+        sample = self.planet.sample
+        day_sphere = self.planet.day_factor_sphere
+        day_flat = self.planet.day_factor_flat
+        world_from = self.planet.world_from_sphere
+        view_to = self._view_to_planet_normal
+        land_x, land_y = self.land_x, self.land_y
+        mpp_local = (PLANET_R * 1.8) / max(radius, 1.0)
+        fade = 1.0 if radius > 3 else _clamp(radius / 3.0, 0.0, 1.0)
+        glow_span = max(0.2, glow_r - radius)
 
-        for y in range(y0, y1 + 1):
-            for x in range(x0, x1 + 1):
+        for y in range(y0, y1 + 1, step):
+            for x in range(x0, x1 + 1, step):
                 dx = x + 0.5 - cx
                 dy = y + 0.5 - cy
-                d = math.hypot(dx, dy)
-                if d > glow_r:
+                d2 = dx * dx + dy * dy
+                glow_r2 = glow_r * glow_r
+                if d2 > glow_r2:
                     continue
+                d = math.sqrt(d2)
                 if radius < 1.25:
                     if d < 0.75:
                         set_px(x, y, int(255 * b), int(240 * b), int(200 * b))
@@ -1606,34 +1862,54 @@ class SpaceIntro(object):
                         continue
                     nz = math.sqrt(nz2)
                     # Planet-frame normal (landing faces camera)
-                    pnx, pny, pnz = self._view_to_planet_normal(nx, ny, nz)
-                    wx_s, wy_s = self.planet.world_from_sphere(pnx, pny, pnz)
+                    pnx, pny, pnz = view_to(nx, ny, nz)
+                    wx_s, wy_s = world_from(pnx, pny, pnz)
                     # Local zoom window around landing (same map, tighter FOV)
-                    mpp = (PLANET_R * 1.8) / max(radius, 1.0)  # shrinks as disc grows
-                    wx_l = self.land_x + dx * mpp
-                    wy_l = self.land_y + dy * mpp
-                    wx = _lerp(wx_s, wx_l, local_blend)
-                    wy = _lerp(wy_s, wy_l, local_blend)
+                    wx_l = land_x + dx * mpp_local
+                    wy_l = land_y + dy * mpp_local
+                    wx = wx_s + (wx_l - wx_s) * local_blend
+                    wy = wy_s + (wy_l - wy_s) * local_blend
 
-                    day = self.planet.day_factor_sphere(pnx, pny, pnz)
-                    # When heavily zoomed local, use flat terminator too
-                    day_f = self.planet.day_factor_flat(wx, wy)
-                    day = _lerp(day, day_f, local_blend * 0.65)
+                    day = day_sphere(pnx, pny, pnz)
+                    if local_blend > 0.05:
+                        day_f = day_flat(wx, wy)
+                        day = day + (day_f - day) * (local_blend * 0.65)
 
-                    tr, tg, tb = self.planet.sample(wx, wy, day_factor=day)
+                    tr, tg, tb = sample(wx, wy, day_factor=day, lod=lod)
                     # Sphere limb shading (shape cue)
                     limb = 0.55 + 0.45 * nz
-                    fade = 1.0 if radius > 3 else _clamp(radius / 3.0, 0.0, 1.0)
-                    set_px(
-                        x, y,
-                        int(_clamp(tr * limb * fade, 0, 255)),
-                        int(_clamp(tg * limb * fade, 0, 255)),
-                        int(_clamp(tb * limb * fade, 0, 255)),
-                    )
+                    lf = limb * fade
+                    rr = int(tr * lf)
+                    gg = int(tg * lf)
+                    bb = int(tb * lf)
+                    if rr < 0:
+                        rr = 0
+                    elif rr > 255:
+                        rr = 255
+                    if gg < 0:
+                        gg = 0
+                    elif gg > 255:
+                        gg = 255
+                    if bb < 0:
+                        bb = 0
+                    elif bb > 255:
+                        bb = 255
+                    if step == 1:
+                        set_px(x, y, rr, gg, bb)
+                    else:
+                        for fy in range(y, min(y + step, y1 + 1)):
+                            for fx in range(x, min(x + step, x1 + 1)):
+                                set_px(fx, fy, rr, gg, bb)
                 elif d <= glow_r:
-                    t = 1.0 - (d - radius) / max(0.2, glow_r - radius)
+                    t = 1.0 - (d - radius) / glow_span
                     t = t * t * 0.55
-                    set_px(x, y, int(80 * t), int(140 * t), int(220 * t))
+                    gr, gg, gb = int(80 * t), int(140 * t), int(220 * t)
+                    if step == 1:
+                        set_px(x, y, gr, gg, gb)
+                    else:
+                        for fy in range(y, min(y + step, y1 + 1)):
+                            for fx in range(x, min(x + step, x1 + 1)):
+                                set_px(fx, fy, gr, gg, gb)
 
 
 # ---------------- Camera / flight ----------------
@@ -1751,7 +2027,8 @@ class PlanetCamera(object):
         self.hud_rgb = HUD_RGB
         self.clock_text = "00:00"     # when set, always drawn upper-left
         self.cruise_stream = ""       # continuous marquee text
-        self.cruise_scroll_x = float(self.w)  # pixel offset (smooth)
+        self.cruise_scroll_x = float(self.w)  # integer pixel x (see ticker)
+        self._scroll_accum = 0.0      # sub-pixel scroll residue (no round flicker)
         self.cruise_ticker_queue = []
         self._prev = [[(0, 0, 0) for _ in range(self.w)] for _ in range(self.h)]
         # Batches: 5 night → 5 day → repeat until all destroyed
@@ -2034,6 +2311,7 @@ class PlanetCamera(object):
         self.warcom_order = order
         # Start just off the right edge; scroll until fully past the left
         self.warcom_order_scroll = float(self.w)
+        self._warcom_scroll_accum = 0.0
         self.warcom_order_w = float(_hud_text_width(order))
         self.warcom_order_done = False
         self.warcom_order_done_t = 0.0
@@ -2083,7 +2361,13 @@ class PlanetCamera(object):
         # Scroll only after ALERT is readable; do not loop — wait for full pass
         if self.phase_t >= CRUISE_ORDER_ALERT_SEC:
             if not self.warcom_order_done:
-                self.warcom_order_scroll -= CRUISE_TICKER_PPS * 1.15 * dt
+                # Whole-pixel steps (same scheme as cruise marquee)
+                self._warcom_scroll_accum = getattr(self, "_warcom_scroll_accum", 0.0)
+                self._warcom_scroll_accum += CRUISE_TICKER_PPS * 1.15 * min(dt, 0.08)
+                step = int(self._warcom_scroll_accum)
+                if step > 0:
+                    self.warcom_order_scroll -= float(step)
+                    self._warcom_scroll_accum -= float(step)
                 # Fully past left edge when right edge of text is < 0
                 if self.warcom_order_scroll + self.warcom_order_w < -2:
                     self.warcom_order_done = True
@@ -2189,12 +2473,13 @@ class PlanetCamera(object):
 
     def _update_cruise_ticker(self, dt):
         """
-        Smooth pixel marquee: scroll left by fractional pixels each frame,
-        trim fully off-screen characters to keep the string short.
+        Integer-pixel marquee: accumulate sub-pixels, advance whole pixels only.
+        Avoids round() dither at .5 that makes thin glyphs flicker on LEDs.
         """
         char_step = float(_HUD_CHAR_W + _HUD_GAP)
         if not self.cruise_stream:
             self.cruise_scroll_x = float(self.w)
+            self._scroll_accum = 0.0
             self._cruise_append_stream()
         else:
             # Top up stream before it runs out
@@ -2202,8 +2487,12 @@ class PlanetCamera(object):
             if self.cruise_scroll_x + stream_w < self.w * 2:
                 self._cruise_append_stream(min_px=self.w * 4)
 
-        # Smooth continuous motion (sub-pixel accumulated)
-        self.cruise_scroll_x -= CRUISE_TICKER_PPS * dt
+        # Sub-pixel residue → whole-pixel steps (stable under variable dt)
+        self._scroll_accum += CRUISE_TICKER_PPS * min(dt, 0.08)
+        step = int(self._scroll_accum)
+        if step > 0:
+            self.cruise_scroll_x -= float(step)
+            self._scroll_accum -= float(step)
 
         # Drop characters that have fully scrolled off the left edge
         while self.cruise_stream and self.cruise_scroll_x <= -char_step:
@@ -2214,8 +2503,8 @@ class PlanetCamera(object):
                 break
 
     def _cruise_ticker_draw_x(self):
-        """Integer pixel x for drawing (rounded from smooth scroll)."""
-        return int(round(self.cruise_scroll_x))
+        """Integer pixel x for drawing (already whole-pixel stepped)."""
+        return int(self.cruise_scroll_x)
 
     def _update_cruise(self, dt):
         """
@@ -2510,6 +2799,24 @@ class PlanetCamera(object):
         v = int((1.0 - b) * (1.0 - b) * 95 + 4)
         return (int(v * 0.08), v, int(v * 0.12))
 
+    def _render_lod(self, mpp):
+        """
+        Choose surface sample quality + pixel step from meters-per-pixel.
+        Always sample a sparse grid (step 2) — 64×32 LEDs hide 2×2 blocks,
+        and full 2048 procedural samples cannot hit TARGET_FPS in pure Python.
+        Returns (lod, step).
+        """
+        phase = self.phase
+        # step=2 → 512 samples/frame (~4× cheaper than full panel)
+        if phase in ("cruise", "patrol", "warcom_order") or mpp >= 14_000.0:
+            return 0, 2
+        if phase == "zoom_out" or mpp >= 7_000.0:
+            return 1, 2
+        if phase == "zoom_in" or mpp >= 3_500.0:
+            return 1, 2
+        # Bomb / low altitude — full city detail, still sparse pixels
+        return 2, 2
+
     def render(self, canvas):
         """Top-down map + crosshairs, bombs, smoke rings, fire."""
         mpp = self._mpp()
@@ -2519,52 +2826,76 @@ class PlanetCamera(object):
         half_w = self.w * 0.5
         half_h = self.h * 0.5
         set_px = canvas.SetPixel
-        taa = 0.08 if self.phase in ("zoom_in", "bomb") else 0.22
+        lod, step = self._render_lod(mpp)
+        # Lighter TAA when sparse — avoid smearing block fills
+        if step > 1:
+            taa = 0.12
+        else:
+            taa = 0.08 if self.phase in ("zoom_in", "bomb") else 0.18
         planet = self.planet
         nv = self._night_vision_on()
         self._nv = nv  # for FX drawers
         alt_haze = _clamp((self.alt_ft - 200_000) / 1_800_000.0, 0.0, 0.20)
         if self.phase in ("patrol", "cruise", "warcom_order"):
             alt_haze = max(alt_haze, 0.04)
+        apply_haze = alt_haze > 0.01 and self.phase == "zoom_out"
+        inv_taa = 1.0 - taa
+        cam_x, cam_y = self.x, self.y
+        sample = planet.sample
+        to_nv = self._to_night_vision
+        prev = self._prev
+        w, h = self.w, self.h
+        sun_lon = planet.sun_lon
+        inv_pr = 1.0 / PLANET_R
 
-        for py in range(self.h):
-            for px in range(self.w):
+        # Sparse sample grid; fill neighbors by nearest (step>1)
+        for py in range(0, h, step):
+            sf = (half_h - (py + 0.5)) * mpp
+            base_wx = cam_x + cos_h * sf
+            base_wy = cam_y + sin_h * sf
+            for px in range(0, w, step):
                 sx = (px + 0.5 - half_w) * mpp
-                sf = (half_h - (py + 0.5)) * mpp
-                wx = self.x + cos_h * sf + rx * sx
-                wy = self.y + sin_h * sf + ry * sx
-                day = planet.day_factor_flat(wx, wy)
+                wx = base_wx + rx * sx
+                wy = base_wy + ry * sx
+                # Inline day_factor_flat
+                day = 0.5 + 0.55 * math.cos(wx * inv_pr - sun_lon)
+                if day < 0.0:
+                    day = 0.0
+                elif day > 1.0:
+                    day = 1.0
                 if nv:
-                    # Amp surface lighting so oceans, land, cities keep shape
-                    # (true night would crush everything to black before NV)
-                    day_s = max(day, NV_SURF_DAY)
-                    r, g, b = planet.sample(wx, wy, day_factor=day_s)
-                    r, g, b = self._to_night_vision(r, g, b)
-                    # Scorched / burned land blooms bright under NV (−25%)
+                    day_s = day if day > NV_SURF_DAY else NV_SURF_DAY
+                    r, g, b = sample(wx, wy, day_factor=day_s, lod=lod)
+                    r, g, b = to_nv(r, g, b)
+                    # Scorched bloom under NV — only when fire cells exist
                     if planet.fire_scorch and planet.is_scorched(wx, wy):
-                        h = _hash2(
+                        hh = _hash2(
                             int(math.floor(wx / 2800.0)),
                             int(math.floor(wy / 2800.0)),
                             71,
                         )
-                        g_hot = int((230 + 25 * h) * 0.75)
-                        r, g, b = (
-                            int((50 + 40 * h) * 0.75),
-                            g_hot,
-                            int((70 + 30 * h) * 0.75),
-                        )
+                        g_hot = int((230 + 25 * hh) * 0.75)
+                        r = int((50 + 40 * hh) * 0.75)
+                        g = g_hot
+                        b = int((70 + 30 * hh) * 0.75)
                 else:
-                    r, g, b = planet.sample(wx, wy, day_factor=day)
-                    if alt_haze > 0.01 and self.phase == "zoom_out":
+                    r, g, b = sample(wx, wy, day_factor=day, lod=lod)
+                    if apply_haze:
                         r = int(r * (1.0 - alt_haze) + 50 * alt_haze)
                         g = int(g * (1.0 - alt_haze) + 75 * alt_haze)
                         b = int(b * (1.0 - alt_haze) + 120 * alt_haze)
-                pr, pg, pb = self._prev[py][px]
-                r = int(r * (1.0 - taa) + pr * taa)
-                g = int(g * (1.0 - taa) + pg * taa)
-                b = int(b * (1.0 - taa) + pb * taa)
-                self._prev[py][px] = (r, g, b)
-                set_px(px, py, r, g, b)
+                pr, pg, pb = prev[py][px]
+                r = int(r * inv_taa + pr * taa)
+                g = int(g * inv_taa + pg * taa)
+                b = int(b * inv_taa + pb * taa)
+                # Write block of step×step pixels
+                y1 = py + step if py + step <= h else h
+                x1 = px + step if px + step <= w else w
+                for fy in range(py, y1):
+                    row = prev[fy]
+                    for fx in range(px, x1):
+                        row[fx] = (r, g, b)
+                        set_px(fx, fy, r, g, b)
 
         # FX overlays (no TAA — stay sharp). No weapons UI on cruise/patrol/order.
         if self.phase not in ("patrol", "cruise", "warcom_order"):
@@ -2579,9 +2910,11 @@ class PlanetCamera(object):
         """
         Teeny 3×5 HUD.
         clock_text (HH:MM) always upper-left when set; other HUD as appropriate.
+        Glyphs are transparent (terrain shows through). Double-buffered present.
         """
         nv = getattr(self, "_nv", False)
         rgb = HUD_RGB if nv else self.hud_rgb
+        hy = max(0, self.h - _HUD_CHAR_H - 1)
 
         # Time always upper-left whenever shown
         clock = getattr(self, "clock_text", "") or ""
@@ -2593,7 +2926,6 @@ class PlanetCamera(object):
             # Bottom marquee: stats + WARCOM / intel chatter
             stream = self.cruise_stream or ""
             if stream:
-                hy = max(0, self.h - _HUD_CHAR_H - 1)
                 trgb = HUD_RGB if nv else HUD_FIRE_RGB
                 _draw_hud_text(
                     canvas, stream,
@@ -2612,11 +2944,10 @@ class PlanetCamera(object):
                 and self.phase_t >= CRUISE_ORDER_ALERT_SEC
                 and not getattr(self, "warcom_order_done", False)
             ):
-                hy = max(0, self.h - _HUD_CHAR_H - 1)
                 orr = HUD_RGB if nv else HUD_ALERT_RGB
                 _draw_hud_text(
                     canvas, order,
-                    int(round(self.warcom_order_scroll)), hy,
+                    int(self.warcom_order_scroll), hy,
                     orr, self.w, self.h,
                 )
             return
@@ -2628,7 +2959,6 @@ class PlanetCamera(object):
         hx = 1
         if tw + 2 > self.w:
             hx = max(0, self.w - tw)
-        hy = max(0, self.h - _HUD_CHAR_H - 1)
         _draw_hud_text(canvas, text, hx, hy, rgb, self.w, self.h)
 
     def _draw_crosshairs(self, canvas):
@@ -3251,8 +3581,13 @@ def PlayPlanetBlastTitle(StopEvent=None):
     print("[PlanetBlast] Title complete — beginning mission")
 
 
-def PlayPlanetFly(Duration=10, StopEvent=None):
-    """Space intro → planet approach → surface strike tour. Duration in minutes."""
+def PlayPlanetFly(Duration=None, StopEvent=None):
+    """
+    Space intro → planet approach → surface strike tour.
+
+    Runs until StopEvent is set (LEDcommander next/stop/preempt) or Ctrl-C.
+    Duration is accepted for API compatibility but ignored — no wall-clock limit.
+    """
     width = int(getattr(LED, "HatWidth", 64) or 64)
     height = int(getattr(LED, "HatHeight", 32) or 32)
 
@@ -3260,14 +3595,6 @@ def PlayPlanetFly(Duration=10, StopEvent=None):
         canvas = LED.TheMatrix.CreateFrameCanvas()
     except Exception:
         canvas = LED.Canvas
-
-    start = time.time()
-    try:
-        run_min = float(Duration)
-    except (TypeError, ValueError):
-        run_min = 10.0
-    if run_min <= 0:
-        run_min = 10.0
 
     # One planet map for globe zoom AND surface flight
     planet = PlanetMap()
@@ -3278,16 +3605,13 @@ def PlayPlanetFly(Duration=10, StopEvent=None):
 
     print(
         f"[PlanetBlast] {width}x{height}  space → zoom city → strike  "
-        f"duration={run_min} min  fps~{TARGET_FPS}"
+        f"until StopEvent  fps~{TARGET_FPS}"
     )
 
     try:
         while True:
             if _stop(StopEvent):
-                print("[PlanetFly] StopEvent — exit")
-                break
-            if time.time() - start > run_min * 60.0:
-                print("[PlanetFly] Duration reached — exit")
+                print("[PlanetBlast] StopEvent received — exiting")
                 break
 
             now = time.time()
@@ -3306,9 +3630,12 @@ def PlayPlanetFly(Duration=10, StopEvent=None):
                         )
                 else:
                     cam.update(dt)
+                    # Draw entire frame into the *back* canvas, then present once.
+                    # Never write TheMatrix.SetPixel mid-frame (that tears/flickers).
                     canvas.Fill(0, 0, 8)
                     cam.render(canvas)
 
+                # Double-buffer present: show completed back buffer, get next back canvas
                 canvas = LED.TheMatrix.SwapOnVSync(canvas)
                 LED.Canvas = canvas
             except Exception:
@@ -3320,7 +3647,7 @@ def PlayPlanetFly(Duration=10, StopEvent=None):
                 time.sleep(1.0 / TARGET_FPS)
 
     except KeyboardInterrupt:
-        print("[PlanetFly] Interrupted")
+        print("[PlanetBlast] Interrupted")
 
     try:
         LED.ClearBuffers()
@@ -3329,12 +3656,25 @@ def PlayPlanetFly(Duration=10, StopEvent=None):
         pass
 
 
-def LaunchPlanetFly(Duration=10, ShowIntro=True, StopEvent=None):
-    """Public entry for LEDcommander / Twitch / LEDsim — Planet Blast."""
+def LaunchPlanetFly(Duration=None, ShowIntro=True, StopEvent=None):
+    """
+    Public entry for LEDcommander / Twitch / LEDsim — Planet Blast.
+
+    Honors StopEvent so commander can preempt (next, stop, other launch).
+    Duration is ignored (no time limit); kept for call-site compatibility.
+    """
     try:
         LED.LoadConfigData()
     except Exception:
         pass
+    if _stop(StopEvent):
+        print("[PlanetBlast] Launch aborted (StopEvent already set)")
+        return
+    # Compile or load cached surface kernels before first frame / title zoom
+    _warm_planet_numba(StopEvent)
+    if _stop(StopEvent):
+        print("[PlanetBlast] StopEvent during Numba warm — exiting")
+        return
     if ShowIntro:
         try:
             PlayPlanetBlastTitle(StopEvent=StopEvent)
@@ -3346,6 +3686,7 @@ def LaunchPlanetFly(Duration=10, ShowIntro=True, StopEvent=None):
         except Exception:
             pass
     if _stop(StopEvent):
+        print("[PlanetBlast] StopEvent after title — exiting")
         return
     PlayPlanetFly(Duration=Duration, StopEvent=StopEvent)
 
@@ -3356,6 +3697,6 @@ LaunchPlanetBlast = LaunchPlanetFly
 
 if __name__ == "__main__":
     try:
-        LaunchPlanetFly(Duration=30, ShowIntro=True, StopEvent=None)
+        LaunchPlanetFly(ShowIntro=True, StopEvent=None)
     except KeyboardInterrupt:
         print("Exiting Planet Blast.")

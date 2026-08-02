@@ -420,7 +420,7 @@ def fallback_action_generator():
         {"Action": "launch_fallingsand", "duration": 5},
         {"Action": "launch_particles", "duration": 5},
         {"Action": "launch_fractal", "duration": 5},
-        {"Action": "launch_planet", "duration": 5},
+        {"Action": "launch_planet"},  # until StopEvent / next
         # One pinball slot per lap — table chosen at random when it runs
         {"Action": "launch_pinball_random", "duration": 5},
         {"Action": "launch_rallydot"},  # until game over
@@ -2214,14 +2214,16 @@ def LaunchFractal(Command, StopEvent):
 
 
 def LaunchPlanetFly(Command, StopEvent):
-    """Planet Blast — orbital strike tour of a procedural world."""
+    """Planet Blast — runs until StopEvent (next/stop/preempt), no time limit."""
     import LEDarcade as LED
     LED.Initialize()
     import PlanetFly as PF
-    Duration = Command.get("duration", 10)
-    print(f"[LEDcommander][LaunchPlanetFly] Planet Blast — {Duration} minutes...")
+    print(
+        "[LEDcommander][LaunchPlanetFly] Planet Blast — until StopEvent "
+        f"(alive={not StopEvent.is_set() if StopEvent is not None else 'n/a'})..."
+    )
     _run_game_dimmed(
-        lambda: PF.LaunchPlanetFly(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+        lambda: PF.LaunchPlanetFly(ShowIntro=True, StopEvent=StopEvent)
     )
 
 

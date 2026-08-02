@@ -34,19 +34,23 @@ Key features:
 NUMBA JIT COMPILATION
 -------------------------------------------------------------------------------
 
-Numba's `@njit` decorator is used to accelerate functions via Just-In-Time
-(JIT) compilation. JIT translates a subset of Python and NumPy code into 
-optimized machine code at runtime, significantly improving the performance
+Numba's `@njit(cache=True)` decorator is used to accelerate functions via
+Just-In-Time (JIT) compilation. JIT translates a subset of Python and NumPy
+code into optimized machine code, significantly improving the performance
 of tight loops and math-heavy logic.
+
+With cache=True, compiled code is written under __pycache__ and reloaded on
+later process starts (until source or Numba/Python versions change).
 
 Why use JIT here:
 - The particle update logic runs every frame and is performance-critical.
 - JIT provides near-C speeds while maintaining Pythonic syntax.
-- Numba supports `prange`, `List`, and common math operations, making it 
+- Numba supports `prange`, `List`, and common math operations, making it
   ideal for simulations like this.
 
-On LEDsim / Windows the *first* call can take tens of seconds (looks like a hang).
-We print a clear message during that warm-up.
+On LEDsim / Windows a *cold* first compile can take tens of seconds (looks
+like a hang). We print a clear message during warm-up; later launches load
+from the disk cache and are much faster.
 
 -------------------------------------------------------------------------------
 PARTICLE STRUCTURE
@@ -101,7 +105,7 @@ next_spawn_index = 0
 _numba_warmed = False
 
 
-@njit
+@njit(cache=True)
 def random_explosion_color():
     return (
         float(random.randint(100, 255)),
@@ -110,7 +114,7 @@ def random_explosion_color():
     )
 
 
-@njit
+@njit(cache=True)
 def spawn_particle_fast(particles, active_mask, i):
     x = float(random.uniform((SIM_WIDTH - WIDTH) // 2, (SIM_WIDTH + WIDTH) // 2))
     y = float(SIM_HEIGHT - HEIGHT - 1)
@@ -121,7 +125,7 @@ def spawn_particle_fast(particles, active_mask, i):
     active_mask[i] = True
 
 
-@njit
+@njit(cache=True)
 def spawn_explosion_particle(particles, active_mask, i, x, y):
     angle = random.uniform(0, 2 * np.pi)
     speed = random.uniform(1.0, 3.0)
@@ -134,7 +138,7 @@ def spawn_explosion_particle(particles, active_mask, i, x, y):
     active_mask[i] = True
 
 
-@njit
+@njit(cache=True)
 def update_particles(particles, active_mask, exploded_xs, exploded_ys):
     for i in range(particles.shape[0]):
         if not active_mask[i]:
@@ -201,22 +205,33 @@ def update_particles(particles, active_mask, exploded_xs, exploded_ys):
 
 def _warm_numba(StopEvent=None):
     """
-    First Numba call compiles update_particles to machine code — can take
-    10-60+ seconds on Windows/LEDsim and looks like a hang if silent.
+    First Numba call compiles kernels to machine code (or loads disk cache).
+    With @njit(cache=True), later process starts reuse __pycache__ and are fast.
+    Cold compile can take 10-60+ seconds on Windows/LEDsim — print progress.
     """
     global _numba_warmed
     if _numba_warmed:
         return
     if StopEvent is not None and StopEvent.is_set():
         return
-    print("[FallingSand] Compiling particle engine (Numba JIT, first run only)...", flush=True)
+    print(
+        "[FallingSand] Warming Numba kernels (cache=True; first cold compile may take a while)...",
+        flush=True,
+    )
     t0 = time.time()
     dummy_xs = List.empty_list(types.float32)
     dummy_ys = List.empty_list(types.float32)
+    # Touch each cached kernel so they compile / load from disk
+    random_explosion_color()
+    spawn_particle_fast(particles, active_mask, 0)
+    active_mask[0] = False
+    spawn_explosion_particle(particles, active_mask, 0, 0.0, 0.0)
+    active_mask[0] = False
     update_particles(particles, active_mask, dummy_xs, dummy_ys)
     _numba_warmed = True
     print(
-        f"[FallingSand] Particle engine ready ({time.time() - t0:.1f}s).",
+        f"[FallingSand] Particle engine ready ({time.time() - t0:.1f}s; "
+        f"cached for next launch).",
         flush=True,
     )
 
