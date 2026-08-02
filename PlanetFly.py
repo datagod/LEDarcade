@@ -54,6 +54,11 @@ CITY_TARGET_PX = 20.0          # zoom until city footprint is ~this many pixels 
 CITY_WIDE_PX = 4.0             # overview size before zoom-in / after zoom-out
 ZOOM_IN_SEC = 4.5
 ZOOM_OUT_SEC = 4.0
+# After a kill: pick a nearby target and cruise there (no teleports)
+NEXT_MIN_SEP_M = 22_000.0      # ignore targets basically under the crater
+CRUISE_TO_ARRIVE_M = 52_000.0  # must be this close before zoom-in starts
+CRUISE_TO_MPS = 24_000.0       # steady transit ground speed (m/s) — no warp
+ZOOM_TRACK_MPS = 9_000.0       # max reticle fine-track during zoom-in
 # Alternate batches: 5 night targets, then 5 day, repeat until all gone
 TARGETS_PER_BATCH = 5
 NIGHT_DAY_MAX = 0.40           # day_factor ≤ this → night target
@@ -245,17 +250,18 @@ _NAME_CODA = (
 _NAME_TITLE = (
     "", "", "", "Prime", "Minor", "Deep", "High", "Outer", "New", "Old",
 )
-# Planet names (readable English shape, alien worlds)
-_PLANET_ONSET = (
-    "Vor", "Kel", "Nyx", "Ash", "Xel", "Mir", "Thal", "Zor", "Sael", "Orn",
-    "Dra", "Lun", "Pha", "Ryn", "Vesk", "Hel", "Isk", "Pra", "Qan", "Bry",
-)
-_PLANET_BODY = (
-    "ath", "ion", "ara", "os", "is", "or", "eth", "ax", "ium", "ara",
-    "on", "is", "ael", "une", "ora", "ith", "yx", "eus", "ara", "ion",
-)
-_PLANET_TAIL = (
-    "", "", "", " Prime", " Minor", " Major", " Deep", " Reach",
+# 50 named worlds (star-system ordinals: Vulcanis III, Tantr X, …)
+_PLANET_NAMES = (
+    "Vulcanis III", "Tantr X", "Keldor IV", "Nyxara VII", "Ashmere II",
+    "Xelion IX", "Miros V", "Thalos VIII", "Zoran Prime", "Saelith VI",
+    "Ornax III", "Dravak XII", "Lunaris IV", "Pharos XI", "Rynos II",
+    "Veskara IX", "Helion VII", "Iskan V", "Praxis III", "Qantor VIII",
+    "Brynnos IV", "Corvex VI", "Deneb Minor", "Eryndor X", "Fomal X",
+    "Ganymar III", "Hyperion IX", "Iridon II", "Jotun IV", "Krynn VII",
+    "Lothor V", "Manticore III", "Nexara VIII", "Oberon VI", "Phaeton IX",
+    "Quoros II", "Rigel Minor", "Solara IV", "Titanos VII", "Umbra III",
+    "Vortex V", "Weyland IX", "Xandar II", "Ymir IV", "Zephyros VIII",
+    "Andaros VI", "Boreas III", "Cygnus IX", "Delphos IV", "Erebus VII",
 )
 # 3 wide × 5 tall bit rows (MSB left). Space = empty.
 _HUD_GLYPHS = {
@@ -314,10 +320,37 @@ TURN_PERIOD = 22.0
 LEG_MIN = 6.0
 LEG_MAX = 12.0
 # Noise scales CONTINENT_SCALE / DETAIL_SCALE / … defined with planet map constants
-# ---- Space intro (parallax stars → planet dot → zoom) ----
-STAR_DRIFT_SEC = 3.8       # pure starfield before the planet appears
-PLANET_DOT_SEC = 1.6       # bright dot visible before zoom begins
-PLANET_ZOOM_SEC = 3.8      # approach / grow the planet disc
+# ---- Space intro (parallax stars → planet dot → zoom → surface) ----
+STAR_DRIFT_SEC = 3.0       # pure starfield before the planet appears
+PLANET_DOT_SEC = 2.2       # bright dot visible before zoom begins
+PLANET_ZOOM_SEC = 5.5      # approach / grow the planet disc to large globe
+BRIEFING_HOLD_SEC = 1.2    # brief pause after terminal finishes typing
+PLANET_DESCENT_SEC = 4.0   # after briefing: keep zooming into the surface
+TERM_CPS = 14.0            # approach dossier typewriter chars/sec
+TERM_LINE_GAP = 1          # px between terminal rows
+TERM_SCROLL_SEC = 0.30     # smooth line-up: one row height over this many seconds
+# Random dossier STATUS: lines (picked once per approach)
+TERM_STATUSES = (
+    "PENDING",
+    "GUILTY",
+    "ENDANGERED",
+    "INDICTED",
+    "WANTED",
+    "HOSTILE",
+    "QUARANTINED",
+    "CONDEMNED",
+    "AT LARGE",
+    "SENTENCED",
+    "HIGH PRIORITY",
+    "UNDER REVIEW",
+    "EXTERMINATUS PENDING",
+    "CLEARED FOR STRIKE",
+    "ARMED RESPONSE",
+    "NO SURRENDER",
+    "THREAT LEVEL RED",
+    "ORBITAL AUTHORIZED",
+)
+# Terminal starts only once the disc is a large globe (end of zoom)
 STAR_DIM = 0.70            # match Space Explorer dimming feel
 # Oversized wrap layers (Space Explorer style) — tall for vertical scroll
 SPACE_LAYER_W = 160
@@ -363,7 +396,10 @@ def _lerp_rgb(c0, c1, t):
 
 # ---------------- Shared planet surface map (constants before Numba kernels) ---
 # World coords are meters on an equirectangular unwrap; same map for globe + flyover.
-PLANET_R = 2_000_000.0       # map scale: lon/lat * PLANET_R → meters
+PLANET_R = 2_000_000.0       # baseline map scale: lon/lat * R → meters
+# Per-planet radius multiplier (log-uniform between these)
+PLANET_SIZE_MIN = 0.22       # dwarf / moonlet
+PLANET_SIZE_MAX = 3.2        # massive super-world
 # Elevation threshold: ~75% of the surface is ocean (land only above this)
 SEA_LEVEL = 0.58
 CITY_CELL = 80_000.0         # spatial hash cell for cities/roads (m)
@@ -734,20 +770,104 @@ def _assign_city_names(cities, seed):
             used.add(c["name"].upper())
 
 
+# 50 alien species (readable English shape)
+_SPECIES_NAMES = (
+    "the Vorthari", "the Kelion Hives", "the Nyxari Collective",
+    "the Ashmeer Clans", "the Xelith Swarm", "House Mirox",
+    "the Thalos Dominion", "the Zorani Choir", "the Free Saelith",
+    "the Ornavi Mandate", "the Dravak Hordes", "the Lunari Weavers",
+    "the Pharosi Guild", "the Rynax Brethren", "the Veskari League",
+    "the Helion Spinners", "the Iskari Lattice", "the Praxari Court",
+    "the Qantor Blades", "the Brynnos Kin", "the Corvexi",
+    "the Denebi Drift", "the Eryndari", "the Fomari Reef",
+    "the Ganymari", "the Hyperion Veil", "the Iridonites",
+    "the Jotunari", "the Krynnari", "the Lothorii",
+    "the Manticore Host", "the Nexari Cabal", "the Oberoni",
+    "the Phaetoni", "the Quorosi", "the Rigellian March",
+    "the Solari Choir", "the Titanos Guard", "the Umbri Shade",
+    "the Vortexi", "the Weylandi", "the Xandari",
+    "the Ymirfolk", "the Zephyrosi", "the Andarosi",
+    "the Boreali", "the Cygnari", "the Delphosi",
+    "the Erebim", "the Krellari Assembly",
+)
+
+# 50 crimes against the Human Empire (serious + silly)
+_EMPIRE_CRIMES = (
+    # Serious
+    "TREASON AGAINST THE HUMAN EMPIRE",
+    "HARBORING ENEMY FLEETS",
+    "ATTACK ON IMPERIAL COLONIES",
+    "BLOCKADE OF TRADE LANES",
+    "THEFT OF IMPERIAL SHIPS",
+    "SABOTAGE OF JUMP GATES",
+    "ASSASSINATION OF IMPERIAL ENVOYS",
+    "GENOCIDE OF HUMAN OUTPOSTS",
+    "ILLEGAL WEAPONS RESEARCH",
+    "BIOWEAPON DEPLOYMENT",
+    "SLAVERY OF HUMAN CITIZENS",
+    "PIRACY IN EMPIRE SPACE",
+    "DESECRATION OF HUMAN TOMBS",
+    "BREACH OF THE CEASEFIRE",
+    "SPYING ON IMPERIAL COMMAND",
+    "FALSIFYING PEACE TREATIES",
+    "RAIDING SUPPLY CONVOYS",
+    "COLLUSION WITH OUTER REBELS",
+    "DESTRUCTION OF STARPORTS",
+    "POISONING OF COLONY WORLDS",
+    "KIDNAPPING IMPERIAL OFFICERS",
+    "REFUSAL OF IMPERIAL TAX",
+    "SHELTERING WAR CRIMINALS",
+    "ORBITAL BOMBARDMENT OF CIVILIANS",
+    "THEFT OF TERRAFORMING SEEDS",
+    "HACKING THE IMPERIAL NET",
+    "SMUGGLING FORBIDDEN TECH",
+    "OPEN REBELLION IN SECTOR 7",
+    "MURDER OF A GOVERNOR",
+    "INVASION OF HUMAN SPACE",
+    # Silly
+    "UNPAID PARKING TICKETS",
+    "LEAVING THE SEAT UP",
+    "LEAVING BAD TIPS",
+    "RETURNING LIBRARY BOOKS LATE",
+    "CUTTING IN LINE AT CUSTOMS",
+    "SPOILING THE SEASON FINALE",
+    "STEALING OFFICE SNACKS",
+    "PLAYING MUSIC TOO LOUD AT NIGHT",
+    "USING ALL THE HOT WATER",
+    "FORGETTING TO RSVP",
+    "DOUBLE DIPPING THE DIP",
+    "REPLYING ALL TO EMPIRE MAIL",
+    "TAKING THE LAST DOUGHNUT",
+    "MISPRONOUNCING THE EMPEROR",
+    "JAYWALKING ON ORBITAL DECKS",
+    "LEAVING DISHES IN THE SINK",
+    "HOARDING THE GOOD CHAIRS",
+    "SKIPPING THE GROUP PHOTO",
+    "PUTTING EMPTY CARTONS BACK",
+    "WEARING BOOTS ON THE COUCH",
+)
+
+
 def _generate_planet_name(seed):
-    """Readable alien world name, e.g. Voreth, Kelion Prime, Nyxara."""
+    """Pick from 50 fixed star-system style names (e.g. Vulcanis III)."""
     rng = random.Random(int(seed) ^ 0x51A7E7)
-    onset = rng.choice(_PLANET_ONSET)
-    body = rng.choice(_PLANET_BODY)
-    # Avoid awkward vowel piles
-    if onset[-1].lower() in "aeiouy" and body[0] in "aeiouy":
-        body = rng.choice([b for b in _PLANET_BODY if b[0] not in "aeiouy"] or _PLANET_BODY)
-    name = onset + body
-    name = name[:1].upper() + name[1:].lower()
-    tail = rng.choice(_PLANET_TAIL)
-    if tail:
-        name = name + tail
-    return name
+    return rng.choice(_PLANET_NAMES)
+
+
+def _generate_species_name(rng):
+    """Pick from 50 fixed alien species names."""
+    return rng.choice(_SPECIES_NAMES)
+
+
+def _generate_world_dossier(seed, world_name):
+    """
+    Species + single empire crime for approach briefing.
+    Returns (species_str, list_of_crimes with one entry).
+    """
+    rng = random.Random(int(seed) ^ 0xC41BE1)
+    species = _generate_species_name(rng)
+    crime = rng.choice(_EMPIRE_CRIMES)
+    return species, [crime]
 
 
 class PlanetMap(object):
@@ -758,6 +878,22 @@ class PlanetMap(object):
 
     def __init__(self, seed=None):
         self.seed = int(seed if seed is not None else random.randint(1, 1_000_000))
+        # World radius: log-uniform from dwarf moonlets to massive worlds
+        rng_size = random.Random(self.seed ^ 0x5121)
+        log_lo = math.log(PLANET_SIZE_MIN)
+        log_hi = math.log(PLANET_SIZE_MAX)
+        self.size_scale = math.exp(rng_size.uniform(log_lo, log_hi))
+        self.R = PLANET_R * self.size_scale
+        if self.size_scale < 0.40:
+            self.size_class = "dwarf"
+        elif self.size_scale < 0.70:
+            self.size_class = "small"
+        elif self.size_scale < 1.25:
+            self.size_class = "medium"
+        elif self.size_scale < 2.0:
+            self.size_class = "large"
+        else:
+            self.size_class = "massive"
         # Sun: randomized so each approach sees different day/night mix
         rng_sun = random.Random(self.seed ^ 0x50A1)
         self.sun_lon = rng_sun.uniform(-math.pi, math.pi)
@@ -769,6 +905,7 @@ class PlanetMap(object):
             math.cos(self.sun_lon),
         )
         self.name = _generate_planet_name(self.seed)
+        self.species, self.crimes = _generate_world_dossier(self.seed, self.name)
         self.cities = []     # dict x,y,size (1..5), name-ish
         self.roads = []      # dict x0,y0,x1,y1,kind highway|rail|road, width
         self.city_grid = {}  # (cx,cy) -> [city indices]
@@ -779,8 +916,10 @@ class PlanetMap(object):
         self._fire_tick_t = 0.0
         self._build_civilization()
         print(
-            f"[PlanetBlast] World {self.name}  seed={self.seed}  "
-            f"cities={len(self.cities)}  routes={len(self.roads)}"
+            f"[PlanetBlast] World {self.name}  size={self.size_class} "
+            f"({self.size_scale:.2f}x)  species={self.species}  "
+            f"seed={self.seed}  cities={len(self.cities)}  "
+            f"crime={self.crimes[0] if self.crimes else 'none'}"
         )
 
     @staticmethod
@@ -809,17 +948,17 @@ class PlanetMap(object):
         """Map unit sphere normal → world meters (equirectangular unwrap)."""
         lon = math.atan2(nx, nz)
         lat = math.asin(_clamp(ny, -1.0, 1.0))
-        return lon * PLANET_R, lat * PLANET_R
+        return lon * self.R, lat * self.R
 
     def sphere_from_world(self, wx, wy):
-        lon = wx / PLANET_R
-        lat = _clamp(wy / PLANET_R, -math.pi * 0.5 + 0.01, math.pi * 0.5 - 0.01)
+        lon = wx / self.R
+        lat = _clamp(wy / self.R, -math.pi * 0.5 + 0.01, math.pi * 0.5 - 0.01)
         cl = math.cos(lat)
         return (math.sin(lon) * cl, math.sin(lat), math.cos(lon) * cl)
 
     def day_factor_flat(self, wx, wy):
         """Day amount on the unwrapped map from sun longitude (soft terminator)."""
-        lon = wx / PLANET_R
+        lon = wx / self.R
         # cos(lon - sun_lon): 1 = noon, -1 = midnight
         return _clamp(0.5 + 0.55 * math.cos(lon - self.sun_lon), 0.0, 1.0)
 
@@ -845,11 +984,12 @@ class PlanetMap(object):
 
     def pick_landing(self):
         """Prefer temperate land for flyover start."""
+        R = self.R
         for _ in range(80):
-            wx = random.uniform(-math.pi * PLANET_R * 0.9, math.pi * PLANET_R * 0.9)
-            wy = random.uniform(-PLANET_R * 0.55, PLANET_R * 0.55)
+            wx = random.uniform(-math.pi * R * 0.9, math.pi * R * 0.9)
+            wy = random.uniform(-R * 0.55, R * 0.55)
             elev, c, _, _ = self.elev_raw(wx, wy)
-            if elev > SEA_LEVEL + 0.04 and elev < 0.75 and abs(wy) < PLANET_R * 0.65:
+            if elev > SEA_LEVEL + 0.04 and elev < 0.75 and abs(wy) < R * 0.65:
                 return wx, wy
         return 0.0, 0.0
 
@@ -864,7 +1004,7 @@ class PlanetMap(object):
 
     def _place_sun_for_side(self, city, side):
         """Orient sun so city is solidly night or day."""
-        city_lon = float(city["x"]) / PLANET_R
+        city_lon = float(city["x"]) / self.R
         if side == "night":
             # day_factor ≈ 0.22 → cos ≈ -0.51
             cos_t = (0.22 - 0.5) / 0.55
@@ -879,7 +1019,7 @@ class PlanetMap(object):
 
     def _place_sun_for_twilight(self, city):
         """Orient sun so the city is near dusk (day_factor ≈ 0.36)."""
-        city_lon = float(city["x"]) / PLANET_R
+        city_lon = float(city["x"]) / self.R
         offset = math.acos(_clamp(-0.255, -1.0, 1.0))
         if random.random() < 0.35:
             offset = -offset
@@ -993,12 +1133,19 @@ class PlanetMap(object):
 
     def _build_civilization(self):
         rng = random.Random(self.seed ^ 0xC17E5)
-        # Cities of varying sizes on land
+        # Random city count per planet (10–200)
+        target_n = rng.randint(10, 200)
+        self.city_count = target_n
+        # Dense maps need tighter spacing + more placement attempts
+        dens = (target_n - 10) / 190.0  # 0 sparse → 1 dense
+        space_scale = 1.0 - 0.45 * dens
+        max_attempts = max(800, target_n * 25)
         attempts = 0
-        while len(self.cities) < 90 and attempts < 800:
+        R = self.R
+        while len(self.cities) < target_n and attempts < max_attempts:
             attempts += 1
-            wx = rng.uniform(-math.pi * PLANET_R, math.pi * PLANET_R)
-            wy = rng.uniform(-PLANET_R * 0.85, PLANET_R * 0.85)
+            wx = rng.uniform(-math.pi * R, math.pi * R)
+            wy = rng.uniform(-R * 0.85, R * 0.85)
             elev, _, _, _ = self.elev_raw(wx, wy)
             if elev < SEA_LEVEL + 0.03 or elev > 0.78:
                 continue
@@ -1020,9 +1167,9 @@ class PlanetMap(object):
                 size = 1
             if moist < 0.25 and size >= 4:
                 size = 2
-            # Spacing
+            # Spacing (tighter when the planet has many cities)
             ok = True
-            min_d = 35_000 + size * 22_000
+            min_d = (35_000 + size * 22_000) * space_scale
             for c in self.cities:
                 if math.hypot(c["x"] - wx, c["y"] - wy) < min_d:
                     ok = False
@@ -1036,16 +1183,23 @@ class PlanetMap(object):
                 "obliterated": False,
                 "name": "",
             })
-        # Guarantee at least a few large cities for the opening zoom
-        while sum(1 for c in self.cities if c["size"] >= 4) < 4 and attempts < 1200:
+        # Guarantee a few large cities for zoom/targets (without exceeding target_n)
+        want_large = min(4, max(1, target_n // 5))
+        large_min_d = 60_000 * space_scale
+        while (
+            sum(1 for c in self.cities if c["size"] >= 4) < want_large
+            and len(self.cities) < target_n
+            and attempts < max_attempts + 400
+        ):
             attempts += 1
-            wx = rng.uniform(-math.pi * PLANET_R * 0.8, math.pi * PLANET_R * 0.8)
-            wy = rng.uniform(-PLANET_R * 0.5, PLANET_R * 0.5)
+            wx = rng.uniform(-math.pi * R * 0.8, math.pi * R * 0.8)
+            wy = rng.uniform(-R * 0.5, R * 0.5)
             if not self.is_land(wx, wy):
                 continue
             size = 5 if rng.random() < 0.4 else 4
             ok = all(
-                math.hypot(c["x"] - wx, c["y"] - wy) > 60_000 for c in self.cities
+                math.hypot(c["x"] - wx, c["y"] - wy) > large_min_d
+                for c in self.cities
             )
             if not ok:
                 continue
@@ -1149,7 +1303,7 @@ class PlanetMap(object):
             wx * DETAIL_SCALE * 0.7, wy * DETAIL_SCALE * 0.7,
             self.seed + 31, 2, 2.05, 0.5,
         )
-        lat_norm = _clamp(wy / (PLANET_R * (math.pi * 0.5)), -1.0, 1.0)
+        lat_norm = _clamp(wy / (self.R * (math.pi * 0.5)), -1.0, 1.0)
         ice_lat = _smooth_edge(abs(lat_norm), 2.0 / 3.0, 2.0 / 3.0 + 0.06)
         if ice_lat > 0.35:
             return False
@@ -1683,8 +1837,10 @@ class SpaceParallax(object):
 
 class SpaceIntro(object):
     """
-    starfield → bright planet dot → zoom into *the same surface map* → flyover.
-    Phases: stars | dot | zoom | done
+    starfield → planet sighted → zoom → terminal briefing → surface descent.
+    Phases: stars | dot | zoom | briefing | hold | descent | done
+    Terminal types L→R, wraps, scrolls up when the bottom line fills.
+    After the dossier, keeps zooming into the surface, then hands off to flight.
     """
 
     def __init__(self, width, height, planet=None):
@@ -1699,21 +1855,256 @@ class SpaceIntro(object):
         self.land_x = self.showcase["x"]
         self.land_y = self.showcase["y"]
         # Orientation: rotate so approach site faces the camera (+Z)
-        self.land_lon = self.land_x / PLANET_R
-        self.land_lat = _clamp(self.land_y / PLANET_R, -1.2, 1.2)
+        R = float(getattr(self.planet, "R", PLANET_R))
+        self.land_lon = self.land_x / R
+        self.land_lat = _clamp(self.land_y / R, -1.2, 1.2)
         # Planet appears off-center a bit (not dead middle)
         self.px = self.w * random.uniform(0.35, 0.65)
         self.py = self.h * random.uniform(0.30, 0.70)
         self.dot_bright = 0.0
         self.planet_r = 0.4
         self.zoom_u = 0.0
-        self.hud_text = ""
-        self.hud_rgb = HUD_RGB
+        self.descent_u = 0.0       # 0..1 surface zoom after briefing
+        self.descent_r0 = 0.0      # disc radius at start of descent
+        self.term_fade = 1.0       # terminal opacity (fades out on descent)
+        # Terminal geometry (3×5 font + gap)
+        self.term_cols = max(8, (self.w - 2) // (_HUD_CHAR_W + _HUD_GAP))
+        self.term_row_h = _HUD_CHAR_H + TERM_LINE_GAP
+        self.term_rows = max(3, (self.h - 2) // self.term_row_h)
+        self.term_script = ""
+        self.term_script_i = 0
+        self.term_carry = 0.0
+        self.term_lines = []       # completed lines (oldest first)
+        self.term_cur = ""         # current line being typed
+        self.term_done = False
+        self.term_cursor_on = True
+        self.term_scroll_px = 0.0  # pixels scrolled up during line-feed anim
+        self.term_scrolling = False
+        self._build_approach_terminal()
         day0 = self.planet.day_factor_flat(self.land_x, self.land_y)
+        size_cls = getattr(self.planet, "size_class", "?")
+        size_sc = float(getattr(self.planet, "size_scale", 1.0))
         print(
             f"[PlanetBlast] Space intro — approaching {self.planet.name}  "
-            f"site day={day0:.2f}  @ ({self.px:.0f},{self.py:.0f})"
+            f"size={size_cls} ({size_sc:.2f}x)  species={self.planet.species}  "
+            f"site day={day0:.2f}  terminal {self.term_cols}x{self.term_rows}"
         )
+
+    def _globe_max_r(self):
+        """
+        Screen disc radius at full approach — tiny worlds stay small on the panel;
+        massive ones nearly fill it.
+        """
+        s = float(getattr(self.planet, "size_scale", 1.0))
+        s = _clamp(s, PLANET_SIZE_MIN, PLANET_SIZE_MAX)
+        t = (math.log(s) - math.log(PLANET_SIZE_MIN)) / (
+            math.log(PLANET_SIZE_MAX) - math.log(PLANET_SIZE_MIN)
+        )
+        return math.hypot(self.w, self.h) * _lerp(0.28, 0.96, t)
+
+    def _build_approach_terminal(self):
+        """
+        Label on its own line, value on the next, blank line between sections:
+          PLANET:
+          BARFUS III
+
+          CRIME:
+          BLAH BLAH BLAH.
+        """
+        world = str(self.planet.name).upper()
+        species = str(getattr(self.planet, "species", "UNKNOWN")).upper()
+        crimes = list(getattr(self.planet, "crimes", ()) or ())
+        crime = str(crimes[0]).upper() if crimes else "UNKNOWN"
+        status = random.choice(TERM_STATUSES)
+        # Each block: [label, value...] — blank line inserted between blocks
+        blocks = [
+            ["PLANET:", world],
+            ["SPECIES:", species],
+            ["CRIME:", crime],
+            ["STATUS:", status],
+            ["AWAITING SURFACE DESCENT..."],
+        ]
+        script_parts = []
+        for bi, block in enumerate(blocks):
+            for line in block:
+                script_parts.extend(self._wrap_line(line, self.term_cols))
+            if bi < len(blocks) - 1:
+                script_parts.append("")
+        self.term_script = "\n".join(script_parts) + "\n"
+        self.term_script_i = 0
+        self.term_carry = 0.0
+        self.term_lines = []
+        self.term_cur = ""
+        self.term_done = False
+        self.term_scroll_px = 0.0
+        self.term_scrolling = False
+
+    @staticmethod
+    def _wrap_line(text, cols):
+        """Word-wrap a single line to col width; returns list of row strings."""
+        text = str(text)
+        if len(text) <= cols:
+            return [text]
+        words = text.split(" ")
+        rows = []
+        cur = ""
+        for w in words:
+            if not w:
+                continue
+            if len(w) > cols:
+                if cur:
+                    rows.append(cur)
+                    cur = ""
+                for i in range(0, len(w), cols):
+                    rows.append(w[i: i + cols])
+                continue
+            trial = w if not cur else (cur + " " + w)
+            if len(trial) <= cols:
+                cur = trial
+            else:
+                if cur:
+                    rows.append(cur)
+                cur = w
+        if cur:
+            rows.append(cur)
+        return rows or [""]
+
+    def _term_line_rgb(self, line):
+        """Terminal dossier is mono green (night-vision / warcom feed)."""
+        fade = _clamp(getattr(self, "term_fade", 1.0), 0.0, 1.0)
+        r, g, b = HUD_RGB
+        return (int(r * fade), int(g * fade), int(b * fade))
+
+    def _term_push_line(self):
+        """Commit current line; start smooth scroll-up if at bottom."""
+        self.term_lines.append(self.term_cur)
+        self.term_cur = ""
+        if len(self.term_lines) >= self.term_rows and not self.term_scrolling:
+            # Slide content up one row (px/frame), then drop the oldest line
+            self.term_scrolling = True
+            self.term_scroll_px = 0.0
+
+    def _term_finish_scroll(self):
+        """Finalize scroll: remove lines that scrolled off the top."""
+        while len(self.term_lines) >= self.term_rows:
+            self.term_lines.pop(0)
+        self.term_scrolling = False
+        self.term_scroll_px = 0.0
+
+    def _update_terminal(self, dt):
+        """Typewriter L→R; smooth pixel scroll when a new line needs room."""
+        self.term_cursor_on = (int(self.t * 3.2) % 2) == 0
+
+        # Smooth scroll-up: constant px/sec so each LED row steps evenly
+        if self.term_scrolling:
+            # Cap dt so a hitch doesn't jump a full row in one frame
+            step = min(dt, TERM_SCROLL_SEC * 0.35)
+            speed = float(self.term_row_h) / max(0.05, TERM_SCROLL_SEC)
+            self.term_scroll_px += speed * step
+            if self.term_scroll_px >= float(self.term_row_h):
+                self._term_finish_scroll()
+            return
+
+        if self.term_done:
+            return
+        self.term_carry += TERM_CPS * dt
+        while self.term_carry >= 1.0 and not self.term_done and not self.term_scrolling:
+            self.term_carry -= 1.0
+            if self.term_script_i >= len(self.term_script):
+                if self.term_cur:
+                    self._term_push_line()
+                if not self.term_scrolling:
+                    self.term_done = True
+                break
+            ch = self.term_script[self.term_script_i]
+            self.term_script_i += 1
+            if ch == "\n":
+                self._term_push_line()
+            else:
+                self.term_cur += ch
+                if len(self.term_cur) >= self.term_cols:
+                    self._term_push_line()
+            if self.term_scrolling:
+                break
+        # If scroll started after last char, don't mark done until scroll ends
+        if (
+            self.term_script_i >= len(self.term_script)
+            and not self.term_cur
+            and not self.term_scrolling
+        ):
+            self.term_done = True
+
+    def _draw_terminal(self, canvas):
+        """
+        Paint terminal text over the live planet (no solid plate).
+        Blinking square block cursor; smooth vertical scroll on new lines.
+        """
+        total_h = self.term_rows * self.term_row_h
+        y0 = max(0, self.h - total_h - 1)
+        y_clip_bot = self.h
+        set_px = canvas.SetPixel
+
+        rows = list(self.term_lines) + [self.term_cur]
+        # During scroll keep one extra row so content slides in from below
+        if self.term_scrolling:
+            rows = rows[-(self.term_rows + 1):]
+        else:
+            rows = rows[-self.term_rows:]
+
+        # Integer pixel offset: advance 0 → row_h upward, one LED row at a time
+        offset_px = 0
+        if self.term_scrolling:
+            offset_px = -int(min(self.term_scroll_px, float(self.term_row_h)))
+
+        cursor_col = len(self.term_cur)
+        cursor_row_index = len(rows) - 1
+
+        for i, line in enumerate(rows):
+            hy = y0 + i * self.term_row_h + offset_px
+            # Clip to terminal band (line exits cleanly at the top)
+            if hy + _HUD_CHAR_H < y0:
+                continue
+            if hy >= y_clip_bot:
+                break
+            rgb = self._term_line_rgb(line)
+            text = _hud_fit(line, self.w - 2)
+            if text:
+                self._draw_term_line_clipped(
+                    canvas, text, 1, hy, rgb, y0, y_clip_bot,
+                )
+
+        # Square block cursor at end of typing line (blinks; hidden while scrolling)
+        if self.term_cursor_on and not self.term_scrolling and self.term_fade > 0.2:
+            cx = 1 + cursor_col * (_HUD_CHAR_W + _HUD_GAP)
+            cy = y0 + cursor_row_index * self.term_row_h + offset_px
+            cr, cg, cb = self._term_line_rgb("")
+            if y0 <= cy < self.h:
+                for dy in range(_HUD_CHAR_H):
+                    for dx in range(_HUD_CHAR_W):
+                        px, py = cx + dx, cy + dy
+                        if 0 <= px < self.w and y0 <= py < self.h:
+                            set_px(px, py, cr, cg, cb)
+
+    def _draw_term_line_clipped(self, canvas, text, x, y, rgb, y_lo, y_hi):
+        """Draw HUD text with vertical clip so scroll edges stay clean."""
+        set_px = canvas.SetPixel
+        r, g, b = rgb
+        cx = int(x)
+        cy = int(y)
+        for ch in str(text).upper():
+            rows = _HUD_GLYPHS.get(
+                ch, _HUD_GLYPHS.get("?", (0b111, 0b001, 0b010, 0b000, 0b010)),
+            )
+            for row_i, bits in enumerate(rows):
+                py = cy + row_i
+                if py < y_lo or py >= y_hi or py < 0 or py >= self.h:
+                    continue
+                for col in range(_HUD_CHAR_W):
+                    if bits & (0b100 >> col):
+                        px = cx + col
+                        if 0 <= px < self.w:
+                            set_px(px, py, r, g, b)
+            cx += _HUD_CHAR_W + _HUD_GAP
 
     @property
     def done(self):
@@ -1723,39 +2114,79 @@ class SpaceIntro(object):
         self.t += dt
         if self.phase == "stars":
             self.space.update(dt, streak=0.0)
-            self.hud_text = ""
             if self.t >= STAR_DRIFT_SEC:
                 self.phase = "dot"
                 self.t = 0.0
                 print(f"[PlanetBlast] {self.planet.name} sighted — bright dot")
+                print(f"[PlanetBlast] Species: {self.planet.species}")
+                if self.planet.crimes:
+                    print(f"[PlanetBlast] Crime: {self.planet.crimes[0]}")
         elif self.phase == "dot":
+            # Planet as a distant point only — no briefing text yet
             self.space.update(dt, streak=0.0)
             self.dot_bright = _smoothstep(self.t / 0.55)
-            # Identify the world as we close in
-            self.hud_text = _hud_fit(
-                str(self.planet.name).upper(), max(8, self.w - 2),
-            )
-            self.hud_rgb = HUD_NAME_RGB
             if self.t >= PLANET_DOT_SEC:
                 self.phase = "zoom"
                 self.t = 0.0
                 print(f"[PlanetBlast] Approaching {self.planet.name}…")
         elif self.phase == "zoom":
-            u = _smoothstep(self.t / PLANET_ZOOM_SEC)
+            # Grow to full globe first; terminal waits until fully zoomed
+            u = _smoothstep(min(1.0, self.t / PLANET_ZOOM_SEC))
             self.zoom_u = u
             self.space.update(dt, streak=u * u)
             self.dot_bright = 1.0
-            max_r = math.hypot(self.w, self.h) * 0.72
+            max_r = self._globe_max_r()
             self.planet_r = _lerp(0.6, max_r, u * u * (0.4 + 0.6 * u))
             self.px = _lerp(self.px, self.w * 0.5, dt * 0.35)
             self.py = _lerp(self.py, self.h * 0.5, dt * 0.35)
-            self.hud_text = _hud_fit(
-                str(self.planet.name).upper(), max(8, self.w - 2),
-            )
-            self.hud_rgb = HUD_NAME_RGB
             if self.t >= PLANET_ZOOM_SEC:
+                self.phase = "briefing"
+                self.t = 0.0
+                print(f"[PlanetBlast] Globe locked — terminal briefing")
+        elif self.phase == "briefing":
+            # Full-size planet visible; type world / species / charges
+            self.space.update(dt, streak=1.0)
+            self.dot_bright = 1.0
+            self.planet_r = self._globe_max_r()
+            self.px = self.w * 0.5
+            self.py = self.h * 0.5
+            self.term_fade = 1.0
+            self._update_terminal(dt)
+            if self.term_done:
+                self.phase = "hold"
+                self.t = 0.0
+                print(f"[PlanetBlast] Briefing complete — {self.planet.name}")
+        elif self.phase == "hold":
+            self.space.update(dt, streak=1.0)
+            self.dot_bright = 1.0
+            self.planet_r = self._globe_max_r()
+            self.px = self.w * 0.5
+            self.py = self.h * 0.5
+            self.term_fade = 1.0
+            self._update_terminal(dt)
+            if self.t >= BRIEFING_HOLD_SEC:
+                self.phase = "descent"
+                self.t = 0.0
+                self.descent_r0 = float(self.planet_r)
+                self.descent_u = 0.0
+                print(f"[PlanetBlast] Descending to surface — {self.planet.name}")
+        elif self.phase == "descent":
+            # Keep zooming past the globe until the surface fills the panel
+            self.space.update(dt, streak=1.0)
+            self.dot_bright = 1.0
+            u = _smoothstep(min(1.0, self.t / max(0.05, PLANET_DESCENT_SEC)))
+            self.descent_u = u
+            # Ease hard into the surface (slow start, fast close)
+            ease = u * u * (0.25 + 0.75 * u)
+            deep_r = math.hypot(self.w, self.h) * 3.4
+            self.planet_r = _lerp(self.descent_r0, deep_r, ease)
+            self.px = self.w * 0.5
+            self.py = self.h * 0.5
+            # Terminal fades out as we dive in
+            self.term_fade = max(0.0, 1.0 - u * 1.6)
+            if self.t >= PLANET_DESCENT_SEC:
                 self.phase = "done"
-                print(f"[PlanetBlast] Entering atmosphere — {self.planet.name}")
+                print(f"[PlanetBlast] Surface contact — {self.planet.name}")
 
     def draw(self, canvas):
         set_px = canvas.SetPixel
@@ -1768,22 +2199,19 @@ class SpaceIntro(object):
 
         star_fade = 1.0
         if self.phase == "zoom":
-            u = _smoothstep(self.t / PLANET_ZOOM_SEC)
+            u = _smoothstep(min(1.0, self.t / PLANET_ZOOM_SEC))
             star_fade = 1.0 - u * 0.92
+        elif self.phase in ("briefing", "hold"):
+            star_fade = 0.08
+        elif self.phase == "descent":
+            star_fade = 0.08 * (1.0 - self.descent_u)
         self.space.draw(canvas, fade=star_fade)
 
-        if self.phase in ("dot", "zoom"):
+        if self.phase in ("dot", "zoom", "briefing", "hold", "descent"):
             self._draw_planet(canvas)
-        # HUD: planet name while approaching
-        if self.hud_text:
-            tw = _hud_text_width(self.hud_text)
-            hx = 1
-            if tw + 2 > self.w:
-                hx = max(0, self.w - tw)
-            hy = max(0, self.h - _HUD_CHAR_H - 1)
-            _draw_hud_text(
-                canvas, self.hud_text, hx, hy, self.hud_rgb, self.w, self.h,
-            )
+        # Terminal over the globe; fades during surface descent
+        if self.phase in ("briefing", "hold", "descent") and self.term_fade > 0.04:
+            self._draw_terminal(canvas)
 
     def _view_to_planet_normal(self, nx, ny, nz):
         """
@@ -1818,6 +2246,9 @@ class SpaceIntro(object):
         # As we zoom, blend from full-sphere UV toward a local window around landing
         # (keeps continuity into the flyover camera)
         local_blend = _smoothstep((radius - 4.0) / max(1.0, min(self.w, self.h) * 0.45))
+        # Extra push during surface descent (flatten to top-down map)
+        descent = _clamp(getattr(self, "descent_u", 0.0), 0.0, 1.0)
+        local_blend = _clamp(local_blend + descent * 0.35, 0.0, 1.0)
         # LOD: small disc is cheap; large disc needs lower sample quality
         if radius < 6.0:
             lod = 0
@@ -1833,7 +2264,11 @@ class SpaceIntro(object):
         world_from = self.planet.world_from_sphere
         view_to = self._view_to_planet_normal
         land_x, land_y = self.land_x, self.land_y
-        mpp_local = (PLANET_R * 1.8) / max(radius, 1.0)
+        # Local meters-per-pixel: per-planet radius + tighter FOV on descent
+        world_r = float(getattr(self.planet, "R", PLANET_R))
+        mpp_local = (world_r * 1.8) / max(radius, 1.0)
+        if descent > 0.0:
+            mpp_local *= 1.0 - 0.55 * descent
         fade = 1.0 if radius > 3 else _clamp(radius / 3.0, 0.0, 1.0)
         glow_span = max(0.2, glow_r - radius)
 
@@ -1871,13 +2306,16 @@ class SpaceIntro(object):
                     wy = wy_s + (wy_l - wy_s) * local_blend
 
                     day = day_sphere(pnx, pny, pnz)
-                    if local_blend > 0.05:
+                    if local_blend > 0.05 or descent > 0.0:
                         day_f = day_flat(wx, wy)
-                        day = day + (day_f - day) * (local_blend * 0.65)
+                        day = day + (day_f - day) * (
+                            local_blend * 0.65 + descent * 0.35
+                        )
 
                     tr, tg, tb = sample(wx, wy, day_factor=day, lod=lod)
-                    # Sphere limb shading (shape cue)
+                    # Sphere limb shading fades out as we go top-down surface
                     limb = 0.55 + 0.45 * nz
+                    limb = limb + (1.0 - limb) * max(local_blend, descent)
                     lf = limb * fade
                     rr = int(tr * lf)
                     gg = int(tg * lf)
@@ -1901,8 +2339,11 @@ class SpaceIntro(object):
                             for fx in range(x, min(x + step, x1 + 1)):
                                 set_px(fx, fy, rr, gg, bb)
                 elif d <= glow_r:
+                    # Atmosphere glow disappears once we are inside the disc
+                    if descent > 0.55:
+                        continue
                     t = 1.0 - (d - radius) / glow_span
-                    t = t * t * 0.55
+                    t = t * t * 0.55 * (1.0 - descent)
                     gr, gg, gb = int(80 * t), int(140 * t), int(220 * t)
                     if step == 1:
                         set_px(x, y, gr, gg, gb)
@@ -2041,6 +2482,8 @@ class PlanetCamera(object):
         self.patrol_leg_len = PATROL_LEG_MAX
         # Approach site for cruise; first strike city chosen after WARCOM order
         self.strike_city = None
+        self.next_city = None       # preselected target during zoom-out / cruise_to
+        self._pending_patrol = False
         self.city = self._pick_patrol_city()
         # Keep sun as-is during approach/cruise so day-night mix stays varied
         self._cruise_refill_ticker(force=True)
@@ -2068,9 +2511,16 @@ class PlanetCamera(object):
                 f"({TARGETS_PER_BATCH} next) ==="
             )
 
+    def _city_on_side(self, city, side):
+        d = self.planet.day_factor_flat(city["x"], city["y"])
+        if side == "night":
+            return d <= NIGHT_DAY_MAX
+        return d >= DAY_DAY_MIN
+
     def _pick_next_city(self, count_kill=True):
         """
         Next bomb target from the current batch side (night or day).
+        Prefers a nearby intact city so zoom-out → cruise_to feels continuous.
         After 5 kills on a side, switch to the other side. Repeat until none left.
         count_kill: if True, register the city we just finished toward the batch.
         """
@@ -2095,10 +2545,7 @@ class PlanetCamera(object):
         # If no intact cities remain on this side, flip early
         side_left = [
             c for c in alive
-            if c is not self.city and (
-                (side == "night" and self.planet.day_factor_flat(c["x"], c["y"]) <= NIGHT_DAY_MAX)
-                or (side == "day" and self.planet.day_factor_flat(c["x"], c["y"]) >= DAY_DAY_MIN)
-            )
+            if c is not self.city and self._city_on_side(c, side)
         ]
         if not side_left and len(alive) > 1:
             other = "day" if side == "night" else "night"
@@ -2109,21 +2556,129 @@ class PlanetCamera(object):
             self.batch_done = 0
             side = other
 
-        nxt = self.planet.pick_city_for_side(
-            side,
-            exclude=(self.city,),
-            prefer_unvisited=self.visited,
-        )
-        # Prefer some travel distance between targets
-        if nxt is self.city or math.hypot(nxt["x"] - self.x, nxt["y"] - self.y) < 40_000:
-            alt = self.planet.pick_city_for_side(
-                side,
-                exclude=(self.city, nxt),
-                prefer_unvisited=self.visited,
+        # Rank by distance from current camera — nearby first
+        ox, oy = float(self.x), float(self.y)
+        ranked = []
+        for c in alive:
+            if c is self.city:
+                continue
+            if not self._city_on_side(c, side):
+                continue
+            d = math.hypot(float(c["x"]) - ox, float(c["y"]) - oy)
+            if d < NEXT_MIN_SEP_M:
+                continue
+            unvis = 1 if id(c) not in self.visited else 0
+            # Closer is better; small bonuses for unvisited + larger cities
+            score = (
+                d
+                - unvis * 45_000.0
+                - float(c.get("size", 1)) * 10_000.0
+                + random.uniform(0.0, 18_000.0)
             )
-            if alt is not self.city:
-                nxt = alt
+            ranked.append((score, d, c))
+
+        if not ranked:
+            # Fallback: any intact on side (or any alive) without min-sep filter
+            pool = [
+                c for c in alive
+                if c is not self.city and self._city_on_side(c, side)
+            ] or [c for c in alive if c is not self.city] or alive
+            return random.choice(pool)
+
+        ranked.sort(key=lambda t: t[0])
+        # Weighted pick among the nearest handful (still local, not globe-hopping)
+        near = ranked[: max(1, min(5, len(ranked)))]
+        weights = []
+        for _score, d, _c in near:
+            weights.append(1.0 / (1.0 + d / 80_000.0))
+        total_w = sum(weights) or 1.0
+        r = random.random() * total_w
+        acc = 0.0
+        nxt = near[0][2]
+        for (_score, d, c), w in zip(near, weights):
+            acc += w
+            if r <= acc:
+                nxt = c
+                break
+        dist_km = math.hypot(float(nxt["x"]) - ox, float(nxt["y"]) - oy) / 1000.0
+        print(
+            f"[PlanetFly] Next target nearby: {_city_display_name(nxt)}  "
+            f"~{dist_km:.0f} km  side={side}"
+        )
         return nxt
+
+    def _steer_toward(self, wx, wy, dt, turn_rate=0.55):
+        """Gently bank heading toward a world point (no hard spins)."""
+        dx = float(wx) - self.x
+        dy = float(wy) - self.y
+        dist = math.hypot(dx, dy)
+        if dist < 400.0:
+            return dist
+        desired = math.atan2(dy, dx)
+        err = (desired - self.heading + math.pi) % (math.pi * 2) - math.pi
+        self.heading += _clamp(err, -turn_rate * dt, turn_rate * dt)
+        return dist
+
+    def _fly_forward(self, dt, span_frac, max_mps=None):
+        """Advance along heading; optional hard cap so transit never warps."""
+        speed = self._mpp() * self.h * CRUISE_SPAN_PER_SEC * span_frac
+        if max_mps is not None:
+            speed = min(speed, float(max_mps))
+        self.x += math.cos(self.heading) * speed * dt
+        self.y += math.sin(self.heading) * speed * dt
+
+    def _cruise_toward(self, wx, wy, dt, speed_mps=CRUISE_TO_MPS, turn_rate=0.5):
+        """
+        Steady cruise to a world point: bank + capped ground speed.
+        Never lerps/teleports the camera — only flies along heading.
+        Returns remaining distance (m).
+        """
+        dist = self._steer_toward(wx, wy, dt, turn_rate=turn_rate)
+        if dist < 200.0:
+            return dist
+        # Don't overshoot the approach point in one frame
+        step = min(float(speed_mps) * dt, max(0.0, dist - 150.0))
+        self.x += math.cos(self.heading) * step
+        self.y += math.sin(self.heading) * step
+        return max(0.0, dist - step)
+
+    def _nudge_toward(self, wx, wy, dt, max_mps=ZOOM_TRACK_MPS):
+        """Rate-limited position nudge (fine aim only — no map jumps)."""
+        dx = float(wx) - self.x
+        dy = float(wy) - self.y
+        d = math.hypot(dx, dy)
+        if d < 1.0:
+            return 0.0
+        step = min(float(max_mps) * dt, d)
+        self.x += dx * (step / d)
+        self.y += dy * (step / d)
+        return d - step
+
+    def _begin_cruise_to(self, city):
+        """Fly continuously to a target city, then zoom-in — never jump."""
+        if city is None:
+            city = self._pick_next_city(count_kill=False)
+        self.next_city = city
+        self.strike_city = city
+        self.phase = "cruise_to"
+        self.phase_t = 0.0
+        self.bombs = []
+        self.blasts = []
+        self.bomb_cd = 999.0
+        self.alt_wide = max(
+            float(self.alt_wide),
+            _alt_for_city_pixels(city, self.h, CITY_WIDE_PX),
+        )
+        self.hud_text = "NEXT TGT"
+        self.hud_rgb = HUD_RGB
+        self.clock_text = ""
+        dist_km = math.hypot(
+            float(city["x"]) - self.x, float(city["y"]) - self.y,
+        ) / 1000.0
+        print(
+            f"[PlanetBlast] Cruising to {_city_display_name(city)}  "
+            f"~{dist_km:.0f} km (no jump)"
+        )
 
     def _pick_patrol_city(self):
         """Waypoint city for sightseeing patrol — prefer ahead, not sharp turns."""
@@ -2197,7 +2752,7 @@ class PlanetCamera(object):
         self.clock_text = ""
         self.cruise_stream = ""
         nxt = self._pick_next_city(count_kill=False)
-        self._begin_zoom_in(nxt)
+        self._begin_cruise_to(nxt)
 
     def _update_patrol(self, dt):
         """Fly city to city at cruise altitude; clock + WARCOM ticker like opening."""
@@ -2271,9 +2826,13 @@ class PlanetCamera(object):
         return self._screen_to_world(*self._crosshair_screen())
 
     def _begin_zoom_in(self, city):
-        """Acquire next target; do not revive already-obliterated cities."""
+        """
+        Start altitude zoom + reticle fine-track. Camera x/y stay put —
+        caller must already have cruised near the city (no teleports).
+        """
         self.city = city
         self.strike_city = city
+        self.next_city = None
         self.city["damage"] = float(self.city.get("damage", 0.0))
         self.city["obliterated"] = bool(self.city.get("obliterated", False))
         self._mark_visited(city)
@@ -2281,9 +2840,9 @@ class PlanetCamera(object):
         self.phase_t = 0.0
         self.alt_wide = _alt_for_city_pixels(city, self.h, CITY_WIDE_PX)
         self.alt_close = _alt_for_city_pixels(city, self.h, CITY_TARGET_PX)
-        self.alt_from = max(float(self.alt_ft), self.alt_wide)
+        # Descend from wherever we are — never snap altitude or position
+        self.alt_from = float(self.alt_ft)
         self.alt_to = float(self.alt_close)
-        self.alt_ft = self.alt_from
         self.bombs = []
         self.blasts = []
         self.bomb_cd = 0.4
@@ -2330,21 +2889,16 @@ class PlanetCamera(object):
         )
 
     def _begin_first_strike(self):
-        """After WARCOM order — begin first night-batch target acquire."""
+        """After WARCOM order — cruise to first nearby night target, then zoom."""
         print(
             f"[PlanetBlast] Order acknowledged — acquiring first target on "
             f"{getattr(self.planet, 'name', 'world')}"
         )
-        # Night batch starts here; may reorient sun only for strike targeting
+        # Night batch starts here; cruise in — never jump the camera
         self.batch_side = "night"
         self.batch_done = 0
-        target = self.planet.pick_city_for_side(
-            "night",
-            exclude=(),
-            prefer_unvisited=self.visited,
-        )
-        self.strike_city = target
-        self._begin_zoom_in(target)
+        target = self._pick_next_city(count_kill=False)
+        self._begin_cruise_to(target)
 
     def _update_warcom_order(self, dt):
         """Hold cruise flight until the full WARCOM order has scrolled off."""
@@ -2659,17 +3213,17 @@ class PlanetCamera(object):
         elif self.phase == "zoom_in":
             u = _smoothstep(self.phase_t / ZOOM_IN_SEC)
             self.alt_ft = _lerp(self.alt_from, self.alt_to, u)
-            # Put city under reticle (fwd offset for CROSSHAIR_UP_PX)
+            # Fine-track only (rate-limited) — cruise already put us nearby
             mpp = self._mpp()
             cos_h = math.cos(self.heading)
             sin_h = math.sin(self.heading)
             fwd = float(CROSSHAIR_UP_PX) * mpp
-            # Ideal cam so city sits under crosshair, plus imperfect aim error
             ideal_x = cx - cos_h * fwd + self.aim_err_x
             ideal_y = cy - sin_h * fwd + self.aim_err_y
-            self.x = _lerp(self.x, ideal_x, min(1.0, 2.4 * dt))
-            self.y = _lerp(self.y, ideal_y, min(1.0, 2.4 * dt))
-            self.heading += 0.02 * dt
+            self._nudge_toward(ideal_x, ideal_y, dt, max_mps=ZOOM_TRACK_MPS)
+            # Light forward drift while descending
+            self._fly_forward(dt, 0.12, max_mps=ZOOM_TRACK_MPS * 0.85)
+            self.heading += 0.015 * dt
             # Drift aim error slowly
             self.aim_err_x += random.uniform(-1, 1) * CAM_AIM_ERR_M * CAM_AIM_WANDER * dt
             self.aim_err_y += random.uniform(-1, 1) * CAM_AIM_ERR_M * CAM_AIM_WANDER * dt
@@ -2714,13 +3268,11 @@ class PlanetCamera(object):
             self.aim_err_y += random.uniform(-1, 1) * CAM_AIM_ERR_M * CAM_AIM_WANDER * dt
             self.aim_err_x = _clamp(self.aim_err_x, -CAM_AIM_ERR_M, CAM_AIM_ERR_M)
             self.aim_err_y = _clamp(self.aim_err_y, -CAM_AIM_ERR_M, CAM_AIM_ERR_M)
-            # Ideal cam: city under crosshair + error
+            # Ideal cam: city under crosshair + error (rate-limited — no snap)
             fwd = float(CROSSHAIR_UP_PX) * mpp
             ideal_x = cx - cos_h * fwd + self.aim_err_x
             ideal_y = cy - sin_h * fwd + self.aim_err_y
-            pull = min(1.0, 0.7 * dt)
-            self.x = _lerp(self.x, ideal_x, pull)
-            self.y = _lerp(self.y, ideal_y, pull)
+            self._nudge_toward(ideal_x, ideal_y, dt, max_mps=ZOOM_TRACK_MPS * 1.2)
             # Drop bombs at crosshair aim point until obliterated
             self.bomb_cd -= dt
             if self.bomb_cd <= 0.0 and not self.city.get("obliterated"):
@@ -2741,29 +3293,80 @@ class PlanetCamera(object):
                 self.cities_bombed += 1
                 self.since_patrol += 1
                 self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
+                # Preselect next target now so zoom-out can steer toward it
+                if self.since_patrol >= PATROL_EVERY:
+                    self._pending_patrol = True
+                    self.next_city = None
+                else:
+                    self._pending_patrol = False
+                    self.next_city = self._pick_next_city(count_kill=True)
                 print(
                     f"[PlanetFly] Target destroyed — total bombed={self.cities_bombed}  "
                     f"since patrol={self.since_patrol}/{PATROL_EVERY}"
                 )
 
         elif self.phase == "zoom_out":
-            u = _smoothstep(self.phase_t / ZOOM_OUT_SEC)
+            # Climb to overview while banking toward the next nearby target
+            u = _smoothstep(min(1.0, self.phase_t / max(0.05, ZOOM_OUT_SEC)))
             self.alt_ft = _lerp(self.alt_from, self.alt_to, u)
-            speed = self._mpp() * self.h * CRUISE_SPAN_PER_SEC * 0.4
-            self.heading += 0.02 * dt
-            self.x += math.cos(self.heading) * speed * dt
-            self.y += math.sin(self.heading) * speed * dt
-            self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
+            tgt = self.next_city
+            if tgt is not None:
+                dist = self._cruise_toward(
+                    tgt["x"], tgt["y"], dt,
+                    speed_mps=CRUISE_TO_MPS * (0.75 + 0.25 * u),
+                    turn_rate=0.32 + 0.35 * u,
+                )
+                if dist < CRUISE_TO_ARRIVE_M * 2.5:
+                    name = _hud_fit(
+                        _city_display_name(tgt), max(8, self.w - 2),
+                    )
+                    self.hud_text, self.hud_rgb = name, HUD_NAME_RGB
+                else:
+                    self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
+            else:
+                # Heading into patrol — easy cruise climb
+                self.heading += 0.02 * dt
+                self._fly_forward(dt, 0.35, max_mps=CRUISE_TO_MPS)
+                self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
             if self.phase_t >= ZOOM_OUT_SEC:
                 self.alt_ft = float(self.alt_wide)
-                # After every N cities: peaceful patrol instead of next strike
-                if self.since_patrol >= PATROL_EVERY:
+                if self._pending_patrol:
                     self.since_patrol = 0
+                    self._pending_patrol = False
                     self._advance_batch_after_kill()
                     self._begin_patrol()
+                elif self.next_city is not None:
+                    # Always finish the trip as a cruise — never jump-zoom
+                    self._begin_cruise_to(self.next_city)
                 else:
-                    nxt = self._pick_next_city(count_kill=True)
-                    self._begin_zoom_in(nxt)
+                    self._begin_cruise_to(self._pick_next_city(count_kill=False))
+
+        elif self.phase == "cruise_to":
+            # Continuous transit at overview altitude until over the target
+            self.alt_ft = _lerp(
+                self.alt_ft, float(self.alt_wide), min(1.0, 0.9 * dt),
+            )
+            tgt = self.next_city
+            if tgt is None:
+                tgt = self._pick_next_city(count_kill=False)
+                self.next_city = tgt
+            dist = self._cruise_toward(
+                tgt["x"], tgt["y"], dt,
+                speed_mps=CRUISE_TO_MPS,
+                turn_rate=0.55,
+            )
+            # SCAN → name as we close in
+            if dist < CRUISE_TO_ARRIVE_M * 3.0:
+                name = _hud_fit(
+                    _city_display_name(tgt), max(8, self.w - 2),
+                )
+                self.hud_text, self.hud_rgb = name, HUD_NAME_RGB
+            else:
+                self.hud_text, self.hud_rgb = "SCAN", HUD_RGB
+            # Only start zoom-in when actually nearby (no timeout jump)
+            if dist <= CRUISE_TO_ARRIVE_M:
+                nxt = self.next_city or tgt
+                self._begin_zoom_in(nxt)
 
         elif self.phase == "patrol":
             self._update_patrol(dt)
@@ -2808,7 +3411,7 @@ class PlanetCamera(object):
         """
         phase = self.phase
         # step=2 → 512 samples/frame (~4× cheaper than full panel)
-        if phase in ("cruise", "patrol", "warcom_order") or mpp >= 14_000.0:
+        if phase in ("cruise", "patrol", "warcom_order", "cruise_to") or mpp >= 14_000.0:
             return 0, 2
         if phase == "zoom_out" or mpp >= 7_000.0:
             return 1, 2
@@ -2836,9 +3439,11 @@ class PlanetCamera(object):
         nv = self._night_vision_on()
         self._nv = nv  # for FX drawers
         alt_haze = _clamp((self.alt_ft - 200_000) / 1_800_000.0, 0.0, 0.20)
-        if self.phase in ("patrol", "cruise", "warcom_order"):
+        if self.phase in ("patrol", "cruise", "warcom_order", "cruise_to"):
             alt_haze = max(alt_haze, 0.04)
-        apply_haze = alt_haze > 0.01 and self.phase == "zoom_out"
+        apply_haze = (
+            alt_haze > 0.01 and self.phase in ("zoom_out", "cruise_to")
+        )
         inv_taa = 1.0 - taa
         cam_x, cam_y = self.x, self.y
         sample = planet.sample
@@ -2846,7 +3451,7 @@ class PlanetCamera(object):
         prev = self._prev
         w, h = self.w, self.h
         sun_lon = planet.sun_lon
-        inv_pr = 1.0 / PLANET_R
+        inv_pr = 1.0 / float(getattr(planet, "R", PLANET_R))
 
         # Sparse sample grid; fill neighbors by nearest (step>1)
         for py in range(0, h, step):
@@ -2897,8 +3502,8 @@ class PlanetCamera(object):
                         row[fx] = (r, g, b)
                         set_px(fx, fy, r, g, b)
 
-        # FX overlays (no TAA — stay sharp). No weapons UI on cruise/patrol/order.
-        if self.phase not in ("patrol", "cruise", "warcom_order"):
+        # FX overlays (no TAA — stay sharp). No weapons UI on cruise/patrol/order/transit.
+        if self.phase not in ("patrol", "cruise", "warcom_order", "cruise_to"):
             self._draw_blasts(canvas)
             self._draw_bombs(canvas)
             if self.phase in ("zoom_in", "bomb") and not self.city.get("obliterated"):
