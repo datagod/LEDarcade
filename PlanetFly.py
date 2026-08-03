@@ -54,7 +54,15 @@ CITY_TARGET_PX = 20.0          # zoom until city footprint is ~this many pixels 
 CITY_WIDE_PX = 4.0             # overview size before zoom-in / after zoom-out
 ZOOM_IN_SEC = 4.5
 ZOOM_OUT_SEC = 4.0
-# After a kill: pick a nearby target and cruise there (no teleports)
+# After a kill: pull out to full globe, orbit, pick next target, dive in
+ORBIT_OUT_SEC = 3.2            # zoom out until whole planet is visible
+ORBIT_TURN_SEC = 5.5           # rotate around the world before/while locking next tgt
+ORBIT_IN_SEC = 7.5             # continuous dive globe → surface → strike alt (no jump)
+ORBIT_IN_FLAT_U = 0.38         # fraction of dive spent flattening sphere → map
+ORBIT_SPIN_RAD = 1.35          # radians of free spin before target lock
+# Night vision: only true night (below twilight). Day + twilight stay normal color.
+NV_NIGHT_MAX = 0.20            # day_factor < this → night (NV on)
+# After a kill (legacy cruise path kept for first strike / patrol handoff)
 NEXT_MIN_SEP_M = 22_000.0      # ignore targets basically under the crater
 CRUISE_TO_ARRIVE_M = 52_000.0  # must be this close before zoom-in starts
 CRUISE_TO_MPS = 24_000.0       # steady transit ground speed (m/s) — no warp
@@ -579,19 +587,23 @@ def _sample_biome_n(wx, wy, seed, lod):
     river_amt = 0.0
     land = 0.0
     if elev < SEA_LEVEL:
-        t_deep = _n_smooth_edge(elev, SEA_LEVEL - 0.14, SEA_LEVEL - 0.06)
-        r = 8.0 + (15.0 - 8.0) * t_deep
-        g = 25.0 + (55.0 - 25.0) * t_deep
-        b = 70.0 + (120.0 - 70.0) * t_deep
-        t_shal = _n_smooth_edge(elev, SEA_LEVEL - 0.07, SEA_LEVEL - 0.01)
-        r = r + (40.0 - r) * t_shal
-        g = g + (130.0 - g) * t_shal
-        b = b + (170.0 - b) * t_shal
+        # Oceans: deep navy → mid cobalt → thin shallow shelf (high contrast)
+        # deep abyss (low elev)
+        t_deep = _n_smooth_edge(elev, SEA_LEVEL - 0.16, SEA_LEVEL - 0.05)
+        r = 2.0 + (6.0 - 2.0) * t_deep
+        g = 12.0 + (32.0 - 12.0) * t_deep
+        b = 55.0 + (110.0 - 55.0) * t_deep
+        # shallow shelf — still blue, not teal/cyan wash
+        t_shal = _n_smooth_edge(elev, SEA_LEVEL - 0.055, SEA_LEVEL - 0.008)
+        r = r + (18.0 - r) * t_shal
+        g = g + (70.0 - g) * t_shal
+        b = b + (145.0 - b) * t_shal
         if lod >= 1:
-            t_foam = _n_smooth_edge(elev, SEA_LEVEL - 0.015, SEA_LEVEL) * 0.22
-            r = r + (120.0 - r) * t_foam
-            g = g + (160.0 - g) * t_foam
-            b = b + (175.0 - b) * t_foam
+            # thin shore line only — less foam so blue stays deep
+            t_foam = _n_smooth_edge(elev, SEA_LEVEL - 0.012, SEA_LEVEL) * 0.14
+            r = r + (90.0 - r) * t_foam
+            g = g + (130.0 - g) * t_foam
+            b = b + (155.0 - b) * t_foam
         land = 0.0
     else:
         land = 1.0
@@ -599,18 +611,21 @@ def _sample_biome_n(wx, wy, seed, lod):
         if denom < 1e-6:
             denom = 1e-6
         land_h = (elev - SEA_LEVEL) / denom
-        # desert / grass / forest / rock / snow (float RGB blends)
-        dr = 170.0 + (200.0 - 170.0) * land_h
-        dg = 150.0 + (170.0 - 150.0) * land_h
-        db = 90.0 + (100.0 - 90.0) * land_h
-        gt = land_h * 0.6 + moist * 0.3
-        gr = 50.0 + (90.0 - 50.0) * gt
-        gg = 110.0 + (140.0 - 110.0) * gt
-        gb = 40.0 + (50.0 - 40.0) * gt
-        ft = 0.4 + 0.4 * land_h
-        fr = 20.0 + (35.0 - 20.0) * ft
-        fg = 80.0 + (110.0 - 80.0) * ft
-        fb = 30.0 + (40.0 - 30.0) * ft
+        # desert (warm sand/ochre) vs grass/forest (saturated green) — push apart
+        # sand / desert: yellower, less green mud
+        dr = 195.0 + (225.0 - 195.0) * land_h
+        dg = 145.0 + (165.0 - 145.0) * land_h
+        db = 55.0 + (70.0 - 55.0) * land_h
+        # grass: deeper emerald, less brown
+        gt = land_h * 0.45 + moist * 0.4
+        gr = 28.0 + (55.0 - 28.0) * gt
+        gg = 105.0 + (155.0 - 105.0) * gt
+        gb = 28.0 + (42.0 - 28.0) * gt
+        # forest: dark green canopy
+        ft = 0.35 + 0.45 * land_h
+        fr = 10.0 + (22.0 - 10.0) * ft
+        fg = 70.0 + (105.0 - 70.0) * ft
+        fb = 18.0 + (32.0 - 18.0) * ft
         rt = _n_smooth_edge(land_h, 0.45, 0.85)
         rr = 90.0 + (160.0 - 90.0) * rt
         rg = 85.0 + (155.0 - 85.0) * rt
@@ -623,8 +638,9 @@ def _sample_biome_n(wx, wy, seed, lod):
         sr = 200.0 + (235.0 - 200.0) * st
         sg = 210.0 + (240.0 - 210.0) * st
         sb = 220.0 + (245.0 - 220.0) * st
-        t_dry = 1.0 - _n_smooth_edge(moist, 0.22, 0.42)
-        t_wet = _n_smooth_edge(moist, 0.55, 0.75)
+        # Sharper dry↔wet so sand and green don't muddy together
+        t_dry = 1.0 - _n_smooth_edge(moist, 0.28, 0.40)
+        t_wet = _n_smooth_edge(moist, 0.52, 0.68)
         r = gr + (dr - gr) * t_dry
         g = gg + (dg - gg) * t_dry
         b = gb + (db - gb) * t_dry
@@ -640,28 +656,37 @@ def _sample_biome_n(wx, wy, seed, lod):
         r = r + (sr - r) * ice
         g = g + (sg - g) * ice
         b = b + (sb - b) * ice
-        t_beach = (1.0 - _n_smooth_edge(elev, SEA_LEVEL, SEA_LEVEL + 0.035)) * (1.0 - ice) * 0.85
-        r = r + (194.0 - r) * t_beach
-        g = g + (178.0 - g) * t_beach
-        b = b + (128.0 - b) * t_beach
+        # Narrower beach so sand doesn't wash out the coast green/blue split
+        t_beach = (1.0 - _n_smooth_edge(elev, SEA_LEVEL, SEA_LEVEL + 0.022)) * (1.0 - ice) * 0.72
+        r = r + (210.0 - r) * t_beach
+        g = g + (175.0 - g) * t_beach
+        b = b + (95.0 - b) * t_beach
         if lod >= 1:
             river_amt = _is_river_n(wx, wy, elev, moist, seed)
-            r = r + (35.0 - r) * river_amt
-            g = g + (90.0 - g) * river_amt
-            b = b + (140.0 - b) * river_amt
+            r = r + (18.0 - r) * river_amt
+            g = g + (70.0 - g) * river_amt
+            b = b + (130.0 - b) * river_amt
 
-    ndot = 0.62 + 0.38 * (mountain * 0.5 + (d - 0.5) * -0.4)
-    if ndot < 0.35:
-        ndot = 0.35
-    elif ndot > 1.1:
-        ndot = 1.1
+    # Slightly stronger relief for biome readability on 64×32
+    ndot = 0.55 + 0.48 * (mountain * 0.55 + (d - 0.5) * -0.45)
+    if ndot < 0.32:
+        ndot = 0.32
+    elif ndot > 1.15:
+        ndot = 1.15
     r = r * ndot
     g = g * ndot
     b = b * ndot
-    haze = 0.12 + 0.06 * (1.0 - elev)
-    r = r * (1.0 - haze) + 40.0 * haze
-    g = g * (1.0 - haze) + 70.0 * haze
-    b = b * (1.0 - haze) + 120.0 * haze
+    # Light haze only — preserve deep ocean blue and land color splits
+    haze = 0.05 + 0.03 * (1.0 - elev)
+    if land < 0.5:
+        # Ocean: haze stays cool/deep, don't wash toward cyan sky
+        r = r * (1.0 - haze) + 8.0 * haze
+        g = g * (1.0 - haze) + 22.0 * haze
+        b = b * (1.0 - haze) + 70.0 * haze
+    else:
+        r = r * (1.0 - haze) + 35.0 * haze
+        g = g * (1.0 - haze) + 48.0 * haze
+        b = b * (1.0 - haze) + 55.0 * haze
     return r, g, b, elev, river_amt, land
 
 
@@ -1527,27 +1552,39 @@ class PlanetMap(object):
                     r = r + (CITY_DAY_CORE[0] - r) * k
                     g = g + (CITY_DAY_CORE[1] - g) * k
                     b = b + (CITY_DAY_CORE[2] - b) * k
-                # Building blocks / parks — only when close enough to read
+                # Building blocks / parks — only when close enough to read.
+                # Large cells + soft in-cell falloff so blocks don't sparkle when
+                # the camera scrolls (hard floor-hash on ~5km cells blinked).
                 if lod >= 2 and dist < radius * 0.92 and intact > 0.08:
-                    cell = 5200.0
-                    gx = int(math.floor((wx - city["x"]) / cell))
-                    gy = int(math.floor((wy - city["y"]) / cell))
+                    cell = 11_000.0
+                    rel_x = (wx - city["x"]) / cell
+                    rel_y = (wy - city["y"]) / cell
+                    gx = int(math.floor(rel_x))
+                    gy = int(math.floor(rel_y))
+                    fx = rel_x - gx
+                    fy = rel_y - gy
+                    edge = min(fx, 1.0 - fx, fy, 1.0 - fy) * 2.0
+                    if edge < 0.0:
+                        edge = 0.0
+                    elif edge > 1.0:
+                        edge = 1.0
+                    edge = edge * edge * (3.0 - 2.0 * edge)
                     h = _hash2(gx, gy, 77 + city["size"] * 3)
-                    if h > 0.38:
+                    if h > 0.34 and edge > 0.05:
                         shade_b = 0.55 + 0.45 * h
                         br = 100 + 55 * shade_b
                         bg = 98 + 50 * shade_b
                         bb = 95 + 48 * shade_b
-                        blk = (0.55 + 0.35 * h) * intact * max(disc, 0.25)
+                        blk = (0.40 + 0.30 * h) * intact * max(disc, 0.25) * edge
                         r = r + (br - r) * blk
                         g = g + (bg - g) * blk
                         b = b + (bb - b) * blk
-                    elif h < 0.18 and disc > 0.2:
-                        pk = 0.35 * intact * disc
+                    elif h < 0.16 and disc > 0.2 and edge > 0.08:
+                        pk = 0.28 * intact * disc * edge
                         r = r + (55 - r) * pk
                         g = g + (95 - g) * pk
                         b = b + (50 - b) * pk
-                # Night lights: warm street/building glow (pops on dark terrain)
+                # Night lights: warm street/building glow (smooth disc)
                 glow = 1.0 - _smooth_edge(dist, radius * 0.12, radius * 1.35)
                 if glow > 0.01 and intact > 0.1:
                     intensity = glow * glow * (0.7 + 0.28 * city["size"]) * intact
@@ -1559,30 +1596,54 @@ class PlanetMap(object):
                         light_r += CITY_GLOW[0] * intensity * 0.65
                         light_g += CITY_GLOW[1] * intensity * 0.65
                         light_b += CITY_GLOW[2] * intensity * 0.55
-                    # Sparse bright building windows — close LOD only
+                    # Sparse windows: large cells + soft edge (no binary blink)
                     if lod >= 2 and dist < radius * 0.85:
-                        cell = 4800.0
-                        gx = int(math.floor((wx - city["x"]) / cell))
-                        gy = int(math.floor((wy - city["y"]) / cell))
+                        cell = 10_000.0
+                        rel_x = (wx - city["x"]) / cell
+                        rel_y = (wy - city["y"]) / cell
+                        gx = int(math.floor(rel_x))
+                        gy = int(math.floor(rel_y))
+                        fx = rel_x - gx
+                        fy = rel_y - gy
+                        edge = min(fx, 1.0 - fx, fy, 1.0 - fy) * 2.0
+                        if edge < 0.0:
+                            edge = 0.0
+                        elif edge > 1.0:
+                            edge = 1.0
+                        edge = edge * edge * (3.0 - 2.0 * edge)
                         wh = _hash2(gx, gy, 55 + city["size"])
-                        if wh > 0.72:
-                            light_r += 255 * intensity * 0.35 * wh
-                            light_g += 220 * intensity * 0.3 * wh
-                            light_b += 120 * intensity * 0.15 * wh
-                            light_w += intensity * 0.25
+                        if wh > 0.70 and edge > 0.08:
+                            wamp = intensity * 0.28 * wh * edge
+                            light_r += 255 * wamp
+                            light_g += 220 * wamp * 0.85
+                            light_b += 120 * wamp * 0.45
+                            light_w += intensity * 0.18 * edge
 
         # Wildfire — static scorched paint only (no animated flame)
         if land and self.fire_scorch and self._fire_key(wx, wy) in self.fire_scorch:
             r = r + (ASH_RGB[0] - r) * 0.88
             g = g + (ASH_RGB[1] - g) * 0.88
             b = b + (ASH_RGB[2] - b) * 0.85
+            # Embers: coarser cells + soft interior so ash doesn't twinkle when scrolling
             if lod >= 2:
-                gx = int(math.floor(wx / 2800.0))
-                gy = int(math.floor(wy / 2800.0))
-                if _hash2(gx, gy, 44) > 0.90:
-                    r = r + (ASH_EMBER[0] - r) * 0.55
-                    g = g + (ASH_EMBER[1] - g) * 0.55
-                    b = b + (ASH_EMBER[2] - b) * 0.4
+                cell = 6_500.0
+                rel_x = wx / cell
+                rel_y = wy / cell
+                gx = int(math.floor(rel_x))
+                gy = int(math.floor(rel_y))
+                fx = rel_x - gx
+                fy = rel_y - gy
+                edge = min(fx, 1.0 - fx, fy, 1.0 - fy) * 2.0
+                if edge < 0.0:
+                    edge = 0.0
+                elif edge > 1.0:
+                    edge = 1.0
+                edge = edge * edge * (3.0 - 2.0 * edge)
+                if _hash2(gx, gy, 44) > 0.90 and edge > 0.12:
+                    e = 0.45 * edge
+                    r = r + (ASH_EMBER[0] - r) * e
+                    g = g + (ASH_EMBER[1] - g) * e
+                    b = b + (ASH_EMBER[2] - b) * e
 
         # Day / night mix — respect light source (deep night away from sun)
         night_floor = 0.04  # dark atmosphere, not pure black
@@ -2354,6 +2415,20 @@ class SpaceIntro(object):
 
 
 # ---------------- Camera / flight ----------------
+def _view_to_planet_normal(nx, ny, nz, lon, lat):
+    """
+    Rotate view-space sphere normal so (lon, lat) faces the camera (+Z).
+    View: +Z toward camera. Used by intro globe and mid-mission orbit.
+    """
+    cl, sl = math.cos(lat), math.sin(lat)
+    x1, y1, z1 = nx, ny * cl - nz * sl, ny * sl + nz * cl
+    co, so = math.cos(lon), math.sin(lon)
+    x2 = x1 * co + z1 * so
+    y2 = y1
+    z2 = -x1 * so + z1 * co
+    return x2, y2, z2
+
+
 def _hud_text_width(text):
     """Pixel width of HUD string (3×5 glyphs + 1px gaps)."""
     n = len(text)
@@ -2482,8 +2557,10 @@ class PlanetCamera(object):
         self.patrol_leg_len = PATROL_LEG_MAX
         # Approach site for cruise; first strike city chosen after WARCOM order
         self.strike_city = None
-        self.next_city = None       # preselected target during zoom-out / cruise_to
+        self.next_city = None       # preselected target during orbit / cruise_to
         self._pending_patrol = False
+        self._orbit_space = None    # lazy SpaceParallax for globe backdrop
+        self.orbit_picked = False
         self.city = self._pick_patrol_city()
         # Keep sun as-is during approach/cruise so day-night mix stays varied
         self._cruise_refill_ticker(force=True)
@@ -2746,13 +2823,12 @@ class PlanetCamera(object):
         )
 
     def _end_patrol(self):
-        """Resume strike package after patrol window."""
-        print("[PlanetBlast] === PATROL complete — resuming targets ===")
+        """Resume strike package after patrol window — globe orbit to next tgt."""
+        print("[PlanetBlast] === PATROL complete — orbital search for next target ===")
         self.since_patrol = 0
         self.clock_text = ""
         self.cruise_stream = ""
-        nxt = self._pick_next_city(count_kill=False)
-        self._begin_cruise_to(nxt)
+        self._begin_globe_search(count_kill=False)
 
     def _update_patrol(self, dt):
         """Fly city to city at cruise altitude; clock + WARCOM ticker like opening."""
@@ -2859,6 +2935,458 @@ class PlanetCamera(object):
             f"city={cname} size={city['size']}  day={day0:.2f}  "
             f"→ ~{CITY_TARGET_PX:.0f}px @ {self.alt_close:.0f} ft"
         )
+
+    def _globe_max_r(self):
+        """Pixel radius so the whole planet fits on the panel with a little rim."""
+        return min(self.w, self.h) * 0.48
+
+    def _world_to_lon_lat(self, wx, wy):
+        world_r = float(getattr(self.planet, "R", PLANET_R) or PLANET_R)
+        lon = float(wx) / world_r
+        lat = _clamp(float(wy) / world_r, -1.15, 1.15)
+        return lon, lat
+
+    def _begin_globe_search(self, count_kill=True):
+        """
+        After a strike (or patrol): pull out to a full-planet globe, orbit,
+        pick the next target while rotating, then dive back to the surface.
+        """
+        self._orbit_count_kill = bool(count_kill)
+        lon0, lat0 = self._world_to_lon_lat(self.x, self.y)
+        self.orbit_lon = lon0
+        self.orbit_lat = lat0
+        self.orbit_lon0 = lon0
+        self.orbit_lat0 = lat0
+        self.orbit_lon1 = lon0
+        self.orbit_lat1 = lat0
+        self.orbit_spin_dir = 1.0 if random.random() < 0.5 else -1.0
+        self.orbit_spin_amt = ORBIT_SPIN_RAD * random.uniform(0.85, 1.25)
+        self.orbit_r = min(self.w, self.h) * 0.22
+        self.orbit_r_full = self._globe_max_r()
+        self.orbit_px = self.w * 0.5
+        self.orbit_py = self.h * 0.5
+        self.orbit_local_blend = 0.72  # start semi-surface, pull to pure globe
+        self.orbit_mpp = None         # continuous dive meters-per-pixel
+        self.orbit_use_surface = False
+        self.orbit_picked = False
+        self._orbit_dive_heading_set = False
+        self.next_city = None
+        self.bombs = []
+        self.blasts = []
+        self.bomb_cd = 999.0
+        self.clock_text = ""
+        self.hud_text = "ORBIT"
+        self.hud_rgb = HUD_RGB
+        # Lazy starfield for globe backdrop
+        if getattr(self, "_orbit_space", None) is None:
+            try:
+                self._orbit_space = SpaceParallax(self.w, self.h)
+            except Exception:
+                self._orbit_space = None
+        self.phase = "orbit_out"
+        self.phase_t = 0.0
+        print(
+            f"[PlanetBlast] Pulling out to orbit — full planet view "
+            f"(then rotate / pick next target)"
+        )
+
+    def _pick_orbit_target(self):
+        """
+        Choose next strike city for globe search — prefer distant unvisited
+        targets so the orbit rotation is visible and dramatic.
+        """
+        # Register batch advance when coming from a kill
+        if getattr(self, "_orbit_count_kill", False):
+            self._orbit_count_kill = False
+            self._advance_batch_after_kill()
+
+        alive = self._intact_cities()
+        if not alive:
+            # All destroyed — reset world (same as surface picker)
+            return self._pick_next_city(count_kill=False)
+
+        side = self.batch_side
+        side_left = [
+            c for c in alive
+            if c is not self.city and self._city_on_side(c, side)
+        ]
+        if not side_left and len(alive) > 1:
+            other = "day" if side == "night" else "night"
+            print(
+                f"[PlanetFly] No more {side} cities — early switch to {other.upper()}"
+            )
+            self.batch_side = other
+            self.batch_done = 0
+            side = other
+            side_left = [
+                c for c in alive
+                if c is not self.city and self._city_on_side(c, side)
+            ]
+
+        pool = side_left or [c for c in alive if c is not self.city] or alive
+        ox, oy = float(self.x), float(self.y)
+        scored = []
+        for c in pool:
+            d = math.hypot(float(c["x"]) - ox, float(c["y"]) - oy)
+            if d < NEXT_MIN_SEP_M:
+                continue
+            unvis = 1 if id(c) not in self.visited else 0
+            # Prefer far + unvisited + larger (dramatic globe hop)
+            score = (
+                d
+                + unvis * 120_000.0
+                + float(c.get("size", 1)) * 25_000.0
+                + random.uniform(0.0, 40_000.0)
+            )
+            scored.append((score, d, c))
+        if not scored:
+            return random.choice(pool)
+        scored.sort(key=lambda t: -t[0])
+        top = scored[: max(2, min(6, len(scored)))]
+        city = random.choice(top)[2]
+        dist_km = math.hypot(float(city["x"]) - ox, float(city["y"]) - oy) / 1000.0
+        print(
+            f"[PlanetFly] Orbit target: {_city_display_name(city)}  "
+            f"~{dist_km:.0f} km  side={side}"
+        )
+        return city
+
+    def _update_orbit_out(self, dt):
+        """Zoom out until the whole planet is on screen as a globe."""
+        u = _smoothstep(min(1.0, self.phase_t / max(0.05, ORBIT_OUT_SEC)))
+        self.orbit_r = _lerp(min(self.w, self.h) * 0.22, self.orbit_r_full, u)
+        self.orbit_local_blend = _lerp(0.72, 0.0, u)
+        self.orbit_px = self.w * 0.5
+        self.orbit_py = self.h * 0.5
+        # Gentle spin already starts while pulling out
+        self.orbit_lon = self.orbit_lon0 + self.orbit_spin_dir * self.orbit_spin_amt * u * 0.35
+        self.hud_text, self.hud_rgb = "ORBIT", HUD_RGB
+        if self._orbit_space is not None:
+            self._orbit_space.update(dt, streak=0.15 * u)
+        if self.phase_t >= ORBIT_OUT_SEC:
+            self.orbit_r = self.orbit_r_full
+            self.orbit_local_blend = 0.0
+            self.phase = "orbit_turn"
+            self.phase_t = 0.0
+            self.orbit_lon0 = self.orbit_lon
+            self.orbit_lat0 = self.orbit_lat
+            print("[PlanetBlast] Full planet locked — scanning for next target")
+
+    def _update_orbit_turn(self, dt):
+        """Rotate around the planet; pick next target mid-orbit and face it."""
+        u = _smoothstep(min(1.0, self.phase_t / max(0.05, ORBIT_TURN_SEC)))
+        pick_at = 0.38
+        if not self.orbit_picked and u >= pick_at:
+            city = self._pick_orbit_target()
+            self.next_city = city
+            self.strike_city = city
+            self.orbit_picked = True
+            # Freeze free-spin origin at current facing, aim at new city
+            self.orbit_lon0 = self.orbit_lon
+            self.orbit_lat0 = self.orbit_lat
+            self.orbit_lon1, self.orbit_lat1 = self._world_to_lon_lat(
+                city["x"], city["y"],
+            )
+            # Prefer continuing the spin direction for a dramatic approach
+            dlon = self.orbit_lon1 - self.orbit_lon0
+            while self.orbit_spin_dir > 0 and dlon < 0.4:
+                self.orbit_lon1 += math.pi * 2
+                dlon = self.orbit_lon1 - self.orbit_lon0
+            while self.orbit_spin_dir < 0 and dlon > -0.4:
+                self.orbit_lon1 -= math.pi * 2
+                dlon = self.orbit_lon1 - self.orbit_lon0
+            print(
+                f"[PlanetBlast] Orbital lock → {_city_display_name(city)}  "
+                f"size={city.get('size')}  side={self.batch_side}"
+            )
+        if not self.orbit_picked:
+            # Free spin away from the crater
+            spin_u = min(1.0, u / max(0.05, pick_at))
+            self.orbit_lon = (
+                self.orbit_lon0
+                + self.orbit_spin_dir * self.orbit_spin_amt * spin_u
+            )
+            self.hud_text, self.hud_rgb = "SCAN", HUD_RGB
+        else:
+            # Ease facing toward the chosen city
+            t = _smoothstep((u - pick_at) / max(0.05, 1.0 - pick_at))
+            self.orbit_lon = _lerp(self.orbit_lon0, self.orbit_lon1, t)
+            self.orbit_lat = _lerp(self.orbit_lat0, self.orbit_lat1, t)
+            name = _hud_fit(
+                _city_display_name(self.next_city), max(8, self.w - 2),
+            )
+            self.hud_text, self.hud_rgb = name, HUD_NAME_RGB
+        self.orbit_r = self.orbit_r_full
+        self.orbit_local_blend = 0.0
+        if self._orbit_space is not None:
+            self._orbit_space.update(dt, streak=0.25)
+        if self.phase_t >= ORBIT_TURN_SEC:
+            if self.next_city is None:
+                self.next_city = self._pick_orbit_target()
+                self.orbit_picked = True
+            self.orbit_lon, self.orbit_lat = self._world_to_lon_lat(
+                self.next_city["x"], self.next_city["y"],
+            )
+            self.phase = "orbit_in"
+            self.phase_t = 0.0
+            print(
+                f"[PlanetBlast] Diving to surface — {_city_display_name(self.next_city)}"
+            )
+
+    def _alt_from_mpp(self, mpp):
+        """Altitude (ft) for a given meters-per-pixel ground scale."""
+        span = float(mpp) * float(max(1, self.h))
+        alt_m = span / (2.0 * math.tan(math.radians(_FOV_DEG) * 0.5))
+        return max(20_000.0, alt_m / 0.3048)
+
+    def _city_is_night(self, city):
+        """True night only (not twilight, not day) — NV applies here."""
+        if not city:
+            return False
+        d = self.planet.day_factor_flat(float(city["x"]), float(city["y"]))
+        return d < NV_NIGHT_MAX
+
+    def _update_orbit_in(self, dt):
+        """
+        Continuous dive from full globe → flat map → strike altitude.
+        No phase jump: meters-per-pixel and camera x/y/alt stay continuous,
+        then hand off straight into bomb with matching FOV.
+        """
+        city = self.next_city
+        if city is None:
+            city = self._pick_orbit_target()
+            self.next_city = city
+
+        # Keep globe facing locked on the city (smooth, no snaps)
+        tlon, tlat = self._world_to_lon_lat(city["x"], city["y"])
+        self.orbit_lon = _lerp(self.orbit_lon, tlon, min(1.0, 3.0 * dt))
+        self.orbit_lat = _lerp(self.orbit_lat, tlat, min(1.0, 3.0 * dt))
+
+        # Precompute continuous FOV range for this city
+        diameter = 2.0 * _city_radius_m(city)
+        mpp_wide = diameter / max(1.5, CITY_WIDE_PX)
+        mpp_close = diameter / max(1.5, CITY_TARGET_PX)
+        world_r = float(getattr(self.planet, "R", PLANET_R) or PLANET_R)
+        mpp_orbit = (world_r * 1.8) / max(self.orbit_r_full, 1.0)
+
+        u_lin = _clamp(self.phase_t / max(0.05, ORBIT_IN_SEC), 0.0, 1.0)
+        u = _smoothstep(u_lin)
+        flat_u = ORBIT_IN_FLAT_U
+
+        if u_lin < flat_u:
+            # Stage A: sphere → local surface window (still high overview)
+            t = _smoothstep(u_lin / max(0.05, flat_u))
+            self.orbit_local_blend = t
+            # Grow disc until it more than fills the panel (no black corners mid-dive)
+            max_r = math.hypot(self.w, self.h) * 1.05
+            self.orbit_r = _lerp(self.orbit_r_full, max_r, t * t)
+            self.orbit_mpp = _lerp(mpp_orbit, mpp_wide, t)
+            self.orbit_use_surface = False
+        else:
+            # Stage B: pure top-down map, zoom all the way to strike scale
+            t = _smoothstep((u_lin - flat_u) / max(0.05, 1.0 - flat_u))
+            self.orbit_local_blend = 1.0
+            self.orbit_r = math.hypot(self.w, self.h) * 1.15
+            # Ease-in-out zoom so final approach feels continuous
+            ease = t * t * (3.0 - 2.0 * t)
+            self.orbit_mpp = _lerp(mpp_wide, mpp_close, ease)
+            # Switch to surface raster once fully flat (matches final bomb view)
+            self.orbit_use_surface = t > 0.12
+
+        self.orbit_px = self.w * 0.5
+        self.orbit_py = self.h * 0.5
+
+        # Sync surface camera every frame — handoff has zero teleport
+        self.x = float(city["x"])
+        self.y = float(city["y"])
+        self.alt_wide = _alt_for_city_pixels(city, self.h, CITY_WIDE_PX)
+        self.alt_close = _alt_for_city_pixels(city, self.h, CITY_TARGET_PX)
+        self.alt_ft = self._alt_from_mpp(self.orbit_mpp)
+        # Stable heading during dive (no random spin at handoff)
+        if not getattr(self, "_orbit_dive_heading_set", False):
+            self.heading = random.uniform(0, math.pi * 2)
+            self._orbit_dive_heading_set = True
+
+        name = _hud_fit(_city_display_name(city), max(8, self.w - 2))
+        if u_lin < 0.55:
+            self.hud_text, self.hud_rgb = name, HUD_NAME_RGB
+        elif u_lin < 0.82:
+            self.hud_text, self.hud_rgb = "SCAN", HUD_RGB
+        else:
+            self.hud_text, self.hud_rgb = "LOCKED", HUD_RGB
+
+        if self._orbit_space is not None:
+            # Stars only while still seeing space around the globe
+            star_u = 1.0 - self.orbit_local_blend
+            self._orbit_space.update(dt, streak=0.15 + 0.5 * star_u)
+
+        if self.phase_t >= ORBIT_IN_SEC:
+            # Seamless enter bomb: already at strike FOV over the city
+            self.city = city
+            self.strike_city = city
+            self.next_city = None
+            self.city["damage"] = float(self.city.get("damage", 0.0))
+            self.city["obliterated"] = bool(self.city.get("obliterated", False))
+            self._mark_visited(city)
+            self.alt_ft = float(self.alt_close)
+            self.alt_from = float(self.alt_close)
+            self.alt_to = float(self.alt_close)
+            self.aim_err_x = random.uniform(-0.35, 0.35) * CAM_AIM_ERR_M
+            self.aim_err_y = random.uniform(-0.35, 0.35) * CAM_AIM_ERR_M
+            self.bombs = []
+            self.blasts = []
+            self.bomb_cd = 0.35
+            self.phase = "bomb"
+            self.phase_t = 0.0
+            self._orbit_dive_heading_set = False
+            self.orbit_use_surface = False
+            day0 = self.planet.day_factor_flat(city["x"], city["y"])
+            nv = "NV" if self._city_is_night(city) else "VIS"
+            n = self.batch_done + 1
+            print(
+                f"[PlanetBlast] {self.batch_side.upper()} batch {n}/{TARGETS_PER_BATCH}  "
+                f"city={_city_display_name(city)} size={city['size']}  "
+                f"day={day0:.2f} {nv}  weapons free @ {self.alt_close:.0f} ft"
+            )
+
+    def _render_globe(self, canvas):
+        """Draw orbiting full-planet disc (shared with intro style)."""
+        set_px = canvas.SetPixel
+        try:
+            canvas.Fill(0, 0, 4)
+        except Exception:
+            for y in range(self.h):
+                for x in range(self.w):
+                    set_px(x, y, 0, 0, 4)
+        # Stars behind the planet (fade out as we dive into atmosphere)
+        star_fade = 0.55
+        if self.phase == "orbit_out":
+            u = _smoothstep(min(1.0, self.phase_t / max(0.05, ORBIT_OUT_SEC)))
+            star_fade = 0.15 + 0.55 * u
+        elif self.phase == "orbit_in":
+            star_fade = 0.55 * (1.0 - _clamp(self.orbit_local_blend, 0.0, 1.0))
+        if self._orbit_space is not None and star_fade > 0.02:
+            try:
+                self._orbit_space.draw(canvas, fade=star_fade)
+            except Exception:
+                pass
+
+        cx = float(getattr(self, "orbit_px", self.w * 0.5))
+        cy = float(getattr(self, "orbit_py", self.h * 0.5))
+        radius = max(0.5, float(getattr(self, "orbit_r", self._globe_max_r())))
+        glow_r = radius + 1.2 + min(3.0, radius * 0.08)
+        x0 = max(0, int(cx - glow_r - 1))
+        x1 = min(self.w - 1, int(cx + glow_r + 1))
+        y0 = max(0, int(cy - glow_r - 1))
+        y1 = min(self.h - 1, int(cy + glow_r + 1))
+        local_blend = _clamp(float(getattr(self, "orbit_local_blend", 0.0)), 0.0, 1.0)
+        lon = float(getattr(self, "orbit_lon", 0.0))
+        lat = float(getattr(self, "orbit_lat", 0.0))
+        world_r = float(getattr(self.planet, "R", PLANET_R) or PLANET_R)
+        land_x = lon * world_r
+        land_y = lat * world_r
+        # Prefer continuous dive mpp when set (orbit_in)
+        if getattr(self, "orbit_mpp", None) is not None and self.phase == "orbit_in":
+            mpp_local = float(self.orbit_mpp)
+        else:
+            mpp_local = (world_r * 1.8) / max(radius, 1.0)
+            if local_blend > 0.0:
+                mpp_local *= 1.0 - 0.55 * local_blend
+        lod = 0 if (radius < 8.0 or mpp_local > 12_000.0) else (1 if mpp_local > 4_000.0 else 2)
+        step = 2 if radius >= 10.0 or local_blend > 0.35 else 1
+        sample = self.planet.sample
+        day_sphere = self.planet.day_factor_sphere
+        day_flat = self.planet.day_factor_flat
+        world_from = self.planet.world_from_sphere
+        glow_span = max(0.2, glow_r - radius)
+        fade = 1.0 if radius > 3 else _clamp(radius / 3.0, 0.0, 1.0)
+        # NV only for true night target cities during dive
+        force_nv = False
+        if self.phase == "orbit_in":
+            tgt = self.next_city or self.city
+            force_nv = self._city_is_night(tgt)
+        self._nv = force_nv
+        half_w = self.w * 0.5
+        half_h = self.h * 0.5
+        # When fully flat, draw as true top-down (matches surface renderer axes)
+        use_flat = local_blend > 0.92
+        cos_h = math.cos(self.heading) if use_flat else 1.0
+        sin_h = math.sin(self.heading) if use_flat else 0.0
+        rx, ry = -sin_h, cos_h
+
+        for y in range(y0, y1 + 1, step):
+            for x in range(x0, x1 + 1, step):
+                dx = x + 0.5 - cx
+                dy = y + 0.5 - cy
+                d2 = dx * dx + dy * dy
+                if d2 > glow_r * glow_r:
+                    continue
+                d = math.sqrt(d2)
+                if d <= radius:
+                    if use_flat:
+                        # Continuous surface-style sampling (same as final bomb view)
+                        sx = (x + 0.5 - half_w) * mpp_local
+                        sf = (half_h - (y + 0.5)) * mpp_local
+                        wx = land_x + cos_h * sf + rx * sx
+                        wy = land_y + sin_h * sf + ry * sx
+                        day = day_flat(wx, wy)
+                        if force_nv:
+                            day_s = max(day, NV_SURF_DAY)
+                            tr, tg, tb = sample(wx, wy, day_factor=day_s, lod=lod)
+                            rr, gg, bb = self._to_night_vision(tr, tg, tb)
+                        else:
+                            tr, tg, tb = sample(wx, wy, day_factor=day, lod=lod)
+                            rr, gg, bb = tr, tg, tb
+                    else:
+                        nx = dx / radius
+                        ny = dy / radius
+                        nz2 = 1.0 - nx * nx - ny * ny
+                        if nz2 < 0.0:
+                            continue
+                        nz = math.sqrt(nz2)
+                        pnx, pny, pnz = _view_to_planet_normal(nx, ny, nz, lon, lat)
+                        wx_s, wy_s = world_from(pnx, pny, pnz)
+                        wx_l = land_x + dx * mpp_local
+                        wy_l = land_y + dy * mpp_local
+                        wx = wx_s + (wx_l - wx_s) * local_blend
+                        wy = wy_s + (wy_l - wy_s) * local_blend
+                        day = day_sphere(pnx, pny, pnz)
+                        if local_blend > 0.05:
+                            day_f = day_flat(wx, wy)
+                            day = day + (day_f - day) * (local_blend * 0.7)
+                        if force_nv:
+                            day_s = max(day, NV_SURF_DAY)
+                            tr, tg, tb = sample(wx, wy, day_factor=day_s, lod=lod)
+                            tr, tg, tb = self._to_night_vision(tr, tg, tb)
+                        else:
+                            tr, tg, tb = sample(wx, wy, day_factor=day, lod=lod)
+                        limb = 0.55 + 0.45 * nz
+                        limb = limb + (1.0 - limb) * local_blend
+                        lf = limb * fade
+                        rr = int(_clamp(tr * lf, 0, 255))
+                        gg = int(_clamp(tg * lf, 0, 255))
+                        bb = int(_clamp(tb * lf, 0, 255))
+                    # Feed TAA history so surface handoff doesn't flash
+                    if 0 <= y < self.h and 0 <= x < self.w:
+                        self._prev[y][x] = (rr, gg, bb)
+                    if step == 1:
+                        set_px(x, y, rr, gg, bb)
+                    else:
+                        for fy in range(y, min(y + step, y1 + 1)):
+                            for fx in range(x, min(x + step, x1 + 1)):
+                                if 0 <= fy < self.h and 0 <= fx < self.w:
+                                    self._prev[fy][fx] = (rr, gg, bb)
+                                set_px(fx, fy, rr, gg, bb)
+                elif d <= glow_r and local_blend < 0.55:
+                    t = 1.0 - (d - radius) / glow_span
+                    t = t * t * 0.55 * (1.0 - local_blend)
+                    gr, gg, gb = int(80 * t), int(140 * t), int(220 * t)
+                    if step == 1:
+                        set_px(x, y, gr, gg, gb)
+                    else:
+                        for fy in range(y, min(y + step, y1 + 1)):
+                            for fx in range(x, min(x + step, x1 + 1)):
+                                set_px(fx, fy, gr, gg, gb)
 
     def _end_opening_cruise(self):
         """After cruise: flash urgent WARCOM attack order, then acquire."""
@@ -3286,63 +3814,55 @@ class PlanetCamera(object):
                 self.hud_text, self.hud_rgb = "FIRING", HUD_FIRE_RGB
             # Wait for lingering smoke before leaving the crater
             if self.city.get("obliterated") and not self.bombs and not self.blasts:
-                self.phase = "zoom_out"
-                self.phase_t = 0.0
-                self.alt_from = float(self.alt_ft)
-                self.alt_to = float(self.alt_wide)
                 self.cities_bombed += 1
                 self.since_patrol += 1
-                self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
-                # Preselect next target now so zoom-out can steer toward it
-                if self.since_patrol >= PATROL_EVERY:
-                    self._pending_patrol = True
-                    self.next_city = None
-                else:
-                    self._pending_patrol = False
-                    self.next_city = self._pick_next_city(count_kill=True)
                 print(
                     f"[PlanetFly] Target destroyed — total bombed={self.cities_bombed}  "
                     f"since patrol={self.since_patrol}/{PATROL_EVERY}"
                 )
+                if self.since_patrol >= PATROL_EVERY:
+                    # Climb to overview then patrol (surface sightseeing)
+                    self._pending_patrol = True
+                    self.next_city = None
+                    self.phase = "zoom_out"
+                    self.phase_t = 0.0
+                    self.alt_from = float(self.alt_ft)
+                    self.alt_to = float(self.alt_wide)
+                    self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
+                    self._advance_batch_after_kill()
+                else:
+                    # Full-planet pullback → orbit → pick next → dive
+                    self._pending_patrol = False
+                    self._begin_globe_search(count_kill=True)
 
         elif self.phase == "zoom_out":
-            # Climb to overview while banking toward the next nearby target
+            # Climb to overview (used for patrol handoff only)
             u = _smoothstep(min(1.0, self.phase_t / max(0.05, ZOOM_OUT_SEC)))
             self.alt_ft = _lerp(self.alt_from, self.alt_to, u)
-            tgt = self.next_city
-            if tgt is not None:
-                dist = self._cruise_toward(
-                    tgt["x"], tgt["y"], dt,
-                    speed_mps=CRUISE_TO_MPS * (0.75 + 0.25 * u),
-                    turn_rate=0.32 + 0.35 * u,
-                )
-                if dist < CRUISE_TO_ARRIVE_M * 2.5:
-                    name = _hud_fit(
-                        _city_display_name(tgt), max(8, self.w - 2),
-                    )
-                    self.hud_text, self.hud_rgb = name, HUD_NAME_RGB
-                else:
-                    self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
-            else:
-                # Heading into patrol — easy cruise climb
-                self.heading += 0.02 * dt
-                self._fly_forward(dt, 0.35, max_mps=CRUISE_TO_MPS)
-                self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
+            self.heading += 0.02 * dt
+            self._fly_forward(dt, 0.35, max_mps=CRUISE_TO_MPS)
+            self.hud_text, self.hud_rgb = "NEXT TGT", HUD_RGB
             if self.phase_t >= ZOOM_OUT_SEC:
                 self.alt_ft = float(self.alt_wide)
                 if self._pending_patrol:
                     self.since_patrol = 0
                     self._pending_patrol = False
-                    self._advance_batch_after_kill()
                     self._begin_patrol()
-                elif self.next_city is not None:
-                    # Always finish the trip as a cruise — never jump-zoom
-                    self._begin_cruise_to(self.next_city)
                 else:
-                    self._begin_cruise_to(self._pick_next_city(count_kill=False))
+                    self._begin_globe_search(count_kill=False)
+
+        elif self.phase == "orbit_out":
+            self._update_orbit_out(dt)
+
+        elif self.phase == "orbit_turn":
+            self._update_orbit_turn(dt)
+
+        elif self.phase == "orbit_in":
+            self._update_orbit_in(dt)
 
         elif self.phase == "cruise_to":
             # Continuous transit at overview altitude until over the target
+            # (first strike after WARCOM still uses this surface path)
             self.alt_ft = _lerp(
                 self.alt_ft, float(self.alt_wide), min(1.0, 0.9 * dt),
             )
@@ -3372,9 +3892,19 @@ class PlanetCamera(object):
             self._update_patrol(dt)
 
     def _night_vision_on(self):
-        """NV when the camera is on the dark side of the terminator."""
+        """
+        Night vision only for true night targets.
+        Day and twilight stay normal color. During strike / orbit dive, lock to
+        the target city's lighting (not the free-camera terminator).
+        """
+        city = None
+        if self.phase in ("orbit_in", "zoom_in", "bomb"):
+            city = self.next_city if self.phase == "orbit_in" else self.city
+        if city is not None:
+            return self._city_is_night(city)
+        # Cruise / patrol: NV only deep night under the camera
         day = self.planet.day_factor_flat(self.x, self.y)
-        return day < NV_DAY_THRESH
+        return day < NV_NIGHT_MAX
 
     @staticmethod
     def _to_night_vision(r, g, b):
@@ -3405,23 +3935,35 @@ class PlanetCamera(object):
     def _render_lod(self, mpp):
         """
         Choose surface sample quality + pixel step from meters-per-pixel.
-        Always sample a sparse grid (step 2) — 64×32 LEDs hide 2×2 blocks,
-        and full 2048 procedural samples cannot hit TARGET_FPS in pure Python.
+        Sparse step=2 is fine at altitude; close over cities use step=1 so
+        urban discs don't blink as the sample lattice crawls across them.
         Returns (lod, step).
         """
         phase = self.phase
-        # step=2 → 512 samples/frame (~4× cheaper than full panel)
+        # High altitude overview
         if phase in ("cruise", "patrol", "warcom_order", "cruise_to") or mpp >= 14_000.0:
             return 0, 2
         if phase == "zoom_out" or mpp >= 7_000.0:
             return 1, 2
+        # Approach — denser samples keep city blobs stable while scrolling
         if phase == "zoom_in" or mpp >= 3_500.0:
-            return 1, 2
-        # Bomb / low altitude — full city detail, still sparse pixels
-        return 2, 2
+            return 1, 1
+        # Bomb / low altitude — full detail, full pixel rate (no 2×2 crawl)
+        return 2, 1
 
     def render(self, canvas):
-        """Top-down map + crosshairs, bombs, smoke rings, fire."""
+        """Top-down map + crosshairs, bombs, smoke rings, fire — or globe orbit."""
+        # Globe phases always use globe raster. Late orbit_in flips to the same
+        # surface top-down path once fully flat (continuous FOV, no jump).
+        if self.phase in ("orbit_out", "orbit_turn"):
+            self._render_globe(canvas)
+            self._draw_hud(canvas)
+            return
+        if self.phase == "orbit_in" and not getattr(self, "orbit_use_surface", False):
+            self._render_globe(canvas)
+            self._draw_hud(canvas)
+            return
+
         mpp = self._mpp()
         cos_h = math.cos(self.heading)
         sin_h = math.sin(self.heading)
@@ -3430,11 +3972,12 @@ class PlanetCamera(object):
         half_h = self.h * 0.5
         set_px = canvas.SetPixel
         lod, step = self._render_lod(mpp)
-        # Lighter TAA when sparse — avoid smearing block fills
+        # Temporal blend: stronger when dense (damps city-edge crawl);
+        # lighter when sparse so 2×2 blocks don't smear.
         if step > 1:
-            taa = 0.12
+            taa = 0.14
         else:
-            taa = 0.08 if self.phase in ("zoom_in", "bomb") else 0.18
+            taa = 0.16 if self.phase in ("zoom_in", "bomb") else 0.18
         planet = self.planet
         nv = self._night_vision_on()
         self._nv = nv  # for FX drawers
@@ -3502,8 +4045,11 @@ class PlanetCamera(object):
                         row[fx] = (r, g, b)
                         set_px(fx, fy, r, g, b)
 
-        # FX overlays (no TAA — stay sharp). No weapons UI on cruise/patrol/order/transit.
-        if self.phase not in ("patrol", "cruise", "warcom_order", "cruise_to"):
+        # FX overlays (no TAA — stay sharp). No weapons UI on cruise/patrol/order/orbit.
+        if self.phase not in (
+            "patrol", "cruise", "warcom_order", "cruise_to",
+            "orbit_out", "orbit_turn", "orbit_in",
+        ):
             self._draw_blasts(canvas)
             self._draw_bombs(canvas)
             if self.phase in ("zoom_in", "bomb") and not self.city.get("obliterated"):
