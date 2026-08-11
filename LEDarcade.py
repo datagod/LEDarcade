@@ -18787,10 +18787,22 @@ def DisplayDigitalClock(
       DisplayCustomFontClock(StopEvent, RunMinutes=RunMinutes)
       Done = True
 
-    #Blasteroids
+    #Blasteroids (clock overlay) — honor RunMinutes like other clock styles
     elif (ClockStyle == 5):
       import Blasteroids as BL
-      BL.LaunchBlasteroids(Duration=100000, ShowIntro=False, StopEvent=StopEvent)        
+      try:
+        blaster_minutes = float(RunMinutes) if RunMinutes not in (None, "") else 5.0
+      except (TypeError, ValueError):
+        blaster_minutes = 5.0
+      if blaster_minutes <= 0:
+        blaster_minutes = 5.0
+      print(
+        f"[LEDarcade][DisplayDigitalClock] Style 5 Blasteroids "
+        f"for {blaster_minutes} min"
+      )
+      BL.LaunchBlasteroids(
+        Duration=blaster_minutes, ShowIntro=False, StopEvent=StopEvent
+      )
       Done = True
 
     # 1970s flip-card clock (white on black)

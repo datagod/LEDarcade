@@ -398,8 +398,8 @@ def fallback_action_generator():
          Pattern: content → clock → content → clock → …
          So after the intro the first item is always a game, never a clock.
 
-    Timed content runs 5 minutes. Weather ends when the scroll finishes.
-    Rally Dot runs until game over.
+    Timed content runs 5 minutes (including Planet Blast). Weather ends when
+    the scroll finishes. Rally Dot runs until game over.
     """
     # Boot title — once
     yield {"Action": "ledarcade_intro"}
@@ -420,7 +420,7 @@ def fallback_action_generator():
         {"Action": "launch_fallingsand", "duration": 5},
         {"Action": "launch_particles", "duration": 5},
         {"Action": "launch_fractal", "duration": 5},
-        {"Action": "launch_planet"},  # until StopEvent / next
+        {"Action": "launch_planet", "duration": 5},
         # One pinball slot per lap — table chosen at random when it runs
         {"Action": "launch_pinball_random", "duration": 5},
         {"Action": "launch_rallydot"},  # until game over
@@ -2214,17 +2214,29 @@ def LaunchFractal(Command, StopEvent):
 
 
 def LaunchPlanetFly(Command, StopEvent):
-    """Planet Blast — runs until StopEvent (next/stop/preempt), no time limit."""
+    """Planet Blast — default 5 minutes; exits early on StopEvent (next/stop)."""
     import LEDarcade as LED
     LED.Initialize()
-    import PlanetFly as PF
+    import planetblast as PF
+    Duration = Command.get("duration", 5)
+    if Duration in (None, ""):
+        Duration = 5
+    try:
+        Duration = float(Duration)
+    except (TypeError, ValueError):
+        Duration = 5.0
     print(
-        "[LEDcommander][LaunchPlanetFly] Planet Blast — until StopEvent "
-        f"(alive={not StopEvent.is_set() if StopEvent is not None else 'n/a'})..."
+        f"[LEDcommander][LaunchPlanetFly] Planet Blast for {Duration} minutes "
+        f"(StopEvent wired)..."
     )
-    _run_game_dimmed(
-        lambda: PF.LaunchPlanetFly(ShowIntro=True, StopEvent=StopEvent)
-    )
+    try:
+        _run_game_dimmed(
+            lambda: PF.LaunchPlanetFly(
+                Duration=Duration, ShowIntro=True, StopEvent=StopEvent
+            )
+        )
+    finally:
+        print("[LEDcommander][LaunchPlanetFly] finished — returning to rotation")
 
 
 def LaunchPinball(Command, StopEvent):

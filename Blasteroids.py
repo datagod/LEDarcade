@@ -1006,6 +1006,17 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
     ClockFontSize = 12
     ClockRGB = (0,200,0)
 
+    # Duration is minutes (same convention as other LEDarcade games / clocks)
+    try:
+        duration_min = float(Duration) if Duration not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        duration_min = 0.0
+    start_time = time.time()
+    print(
+        f"[Blasteroids] Play start  Duration={duration_min} min  "
+        f"StopEvent={'yes' if StopEvent is not None else 'no'}"
+    )
+
     clock_img = LED.GenerateClockImageWithFixedTiles(FontSize=ClockFontSize, TextColor=ClockRGB, BackgroundColor=(0, 0, 0))
 
     for asteroid in asteroids:
@@ -1031,8 +1042,14 @@ def PlayBlasteroids(Duration = 10000, StopEvent = None):
                 Done = True
                 break
 
-
             now = time.time()
+            if duration_min > 0 and (now - start_time) / 60.0 >= duration_min:
+                print(
+                    f"[Blasteroids] Duration reached "
+                    f"({duration_min} min) — exiting."
+                )
+                Done = True
+                break
 
             # Paint the time as the background
             current_time_str = datetime.now().strftime('%H:%M')

@@ -374,9 +374,6 @@ _CLOCK_DIGIT_W = 5
 _CLOCK_DIGIT_H = 9
 _CLOCK_DIGIT_GAP = 1
 _CLOCK_RGB = (40, 220, 180)       # teal CRT / retro digital
-_CLOCK_SHADOW_RGB = (0, 18, 14)   # dark drop shadow under digits
-_CLOCK_SHADOW_OX = 1              # shadow offset right
-_CLOCK_SHADOW_OY = 1              # shadow offset down
 # 5-wide bit rows (MSB left) — single-pixel stroke skeleton
 _CLOCK_DIGITS = {
     "0": (
@@ -2680,10 +2677,11 @@ class SpaceIntro(object):
 
     def _draw_space_clock(self, canvas):
         """
-        Skinny hairline digital clock with drop shadow.
+        Skinny hairline digital clock — solid color only (no shadow, no AA).
 
         Fly-through uses continuous float scale anchored at the rest-clock
-        center so growth is smooth (no integer cell jumps 1→2→3…).
+        center so growth is smooth. Any pixel the stroke touches is full
+        clock color (same footprint as coverage AA, no dim edge pixels).
         """
         set_px = canvas.SetPixel
         text = self._clock_string()
@@ -2694,9 +2692,7 @@ class SpaceIntro(object):
         if alpha < 0.02:
             return
 
-        # Layout in glyph-units (continuous). Gap is in same units.
         n = len(text)
-        # Per-character unit offsets
         unit_x = []
         u = 0.0
         for i, ch in enumerate(text):
@@ -2708,8 +2704,6 @@ class SpaceIntro(object):
         total_w = total_units * sc
         total_h = float(_CLOCK_DIGIT_H) * sc
 
-        # Rest pose (fly==1): top-centered. Anchor stays fixed while scaling so
-        # the zoom expands from the middle of the digits, not the top-left.
         rest_w = total_units * base_sc
         rest_h = float(_CLOCK_DIGIT_H) * base_sc
         rest_x0 = (self.w - rest_w) * 0.5
@@ -2722,17 +2716,11 @@ class SpaceIntro(object):
         cr = int(_CLOCK_RGB[0] * alpha)
         cg = int(_CLOCK_RGB[1] * alpha)
         cb = int(_CLOCK_RGB[2] * alpha)
-        sr = int(_CLOCK_SHADOW_RGB[0] * alpha)
-        sg = int(_CLOCK_SHADOW_RGB[1] * alpha)
-        sb = int(_CLOCK_SHADOW_RGB[2] * alpha)
-        # Shadow offset grows gently with scale (still continuous)
-        sox = float(_CLOCK_SHADOW_OX) * min(2.5, sc)
-        soy = float(_CLOCK_SHADOW_OY) * min(2.5, sc)
-
         msb = 1 << (_CLOCK_DIGIT_W - 1)
+        lit = set()
 
-        def _fill_rect(sx0, sy0, sx1, sy1, r, g, b):
-            """Fill LED pixels whose centers lie inside the continuous rect."""
+        def _stamp_rect(sx0, sy0, sx1, sy1):
+            """Solid-fill every pixel the continuous stroke cell overlaps."""
             if sx1 <= sx0 or sy1 <= sy0:
                 return
             ix0 = max(0, int(math.floor(sx0)))
@@ -2740,32 +2728,28 @@ class SpaceIntro(object):
             ix1 = min(self.w, int(math.ceil(sx1)))
             iy1 = min(self.h, int(math.ceil(sy1)))
             for py in range(iy0, iy1):
-                cy = py + 0.5
-                if cy < sy0 or cy >= sy1:
+                if min(sy1, py + 1.0) - max(sy0, float(py)) <= 0.0:
                     continue
                 for px in range(ix0, ix1):
-                    cx = px + 0.5
-                    if cx < sx0 or cx >= sx1:
+                    if min(sx1, px + 1.0) - max(sx0, float(px)) <= 0.0:
                         continue
-                    set_px(px, py, r, g, b)
+                    lit.add(py * self.w + px)
 
-        def _blit_pass(ox, oy, r, g, b):
-            for i, ch in enumerate(text):
-                rows = _CLOCK_DIGITS.get(ch)
-                if rows is None:
-                    continue
-                ux = unit_x[i]
-                for row_i, bits in enumerate(rows):
-                    for col in range(_CLOCK_DIGIT_W):
-                        if not (bits & (msb >> col)):
-                            continue
-                        sx0 = x0 + ox + (ux + col) * sc
-                        sy0 = y0 + oy + row_i * sc
-                        _fill_rect(sx0, sy0, sx0 + sc, sy0 + sc, r, g, b)
+        for i, ch in enumerate(text):
+            rows = _CLOCK_DIGITS.get(ch)
+            if rows is None:
+                continue
+            ux = unit_x[i]
+            for row_i, bits in enumerate(rows):
+                for col in range(_CLOCK_DIGIT_W):
+                    if not (bits & (msb >> col)):
+                        continue
+                    sx0 = x0 + (ux + col) * sc
+                    sy0 = y0 + row_i * sc
+                    _stamp_rect(sx0, sy0, sx0 + sc, sy0 + sc)
 
-        # Shadow under, then main strokes
-        _blit_pass(sox, soy, sr, sg, sb)
-        _blit_pass(0.0, 0.0, cr, cg, cb)
+        for key in lit:
+            set_px(key % self.w, key // self.w, cr, cg, cb)
 
     def update(self, dt):
         self.t += dt
@@ -3512,6 +3496,44 @@ class PlanetCamera(object):
             f"chatter {ORBIT_HOLD_SEC:.0f}s then WARCOM order → dive"
         )
 
+    def _unwrap_lon(self, current, target):
+        """Return target longitude unwrapped so the path from current is shortest."""
+        d = (float(target) - float(current) + math.pi) % (math.pi * 2) - math.pi
+        return float(current) + d
+
+    def _set_dive_facing_targets(self, city):
+        """
+        Aim the globe at city without snapping: keep current lon/lat and set
+        continuous lon1/lat1 for a smooth slew during the dive.
+        """
+        tlon, tlat = self._world_to_lon_lat(city["x"], city["y"])
+        cur_lon = float(getattr(self, "orbit_lon", tlon))
+        cur_lat = float(getattr(self, "orbit_lat", tlat))
+        self.orbit_lon0 = cur_lon
+        self.orbit_lat0 = cur_lat
+        self.orbit_lon1 = self._unwrap_lon(cur_lon, tlon)
+        self.orbit_lat1 = float(tlat)
+        # Leave orbit_lon/lat at current — dive update eases toward lon1/lat1
+
+    def _cam_for_city_under_crosshair(self, city, mpp=None):
+        """
+        Surface camera pose so the city sits under the reticle (not dead center).
+        Matches bomb/zoom_in framing to avoid a handoff jump.
+        """
+        if mpp is None:
+            mpp = self._mpp()
+        hdg = -math.pi * 0.5
+        cos_h = math.cos(hdg)
+        sin_h = math.sin(hdg)
+        fwd = float(CROSSHAIR_UP_PX) * float(mpp)
+        cx = float(city["x"])
+        cy = float(city["y"])
+        return (
+            cx - cos_h * fwd,
+            cy - sin_h * fwd,
+            hdg,
+        )
+
     def _begin_first_dive(self):
         """WARCOM authorized — continuous dive to the pick city, then fire."""
         city = self.next_city or self.city or self.strike_city
@@ -3520,17 +3542,18 @@ class PlanetCamera(object):
         self.city = city
         self.strike_city = city
         self.next_city = city
-        self.x = float(city["x"])
-        self.y = float(city["y"])
-        lon, lat = self._world_to_lon_lat(city["x"], city["y"])
-        self.orbit_lon = lon
-        self.orbit_lat = lat
+        # Surface pose ready for late-dive handoff (city under crosshair)
+        mpp0 = float(getattr(self, "orbit_mpp0", self._mpp()) or self._mpp())
+        self.x, self.y, self.heading = self._cam_for_city_under_crosshair(city, mpp0)
+        # Do NOT snap globe facing to the city — slew smoothly from hold spin
+        self._set_dive_facing_targets(city)
         self.orbit_local_blend = 0.0
         self.orbit_use_surface = False
         self.orbit_r = float(self.orbit_r_full)
         self.orbit_mpp = float(self.orbit_mpp0)
-        self.heading = -math.pi * 0.5
         self._orbit_dive_heading_set = True
+        self.aim_err_x = 0.0
+        self.aim_err_y = 0.0
         self.phase = "orbit_in"
         self.phase_t = 0.0
         self._first_approach = True
@@ -4071,8 +4094,9 @@ class PlanetCamera(object):
         self.bombs = []
         self.blasts = []
         self.bomb_cd = 0.4
-        self.aim_err_x = random.uniform(-0.5, 0.5) * CAM_AIM_ERR_M
-        self.aim_err_y = random.uniform(-0.5, 0.5) * CAM_AIM_ERR_M
+        # No aim teleport on acquire — wander builds up during zoom_in/bomb
+        self.aim_err_x = 0.0
+        self.aim_err_y = 0.0
         self.hud_text = "SCAN"
         self.hud_rgb = HUD_RGB
         self.clock_text = ""  # no clock during strike acquire/bomb
@@ -4337,15 +4361,12 @@ class PlanetCamera(object):
             if self.next_city is None:
                 self.next_city = self._pick_orbit_target()
                 self.orbit_picked = True
-            # Keep continuous facing (orbit_lon may include 2π spin). Do not
-            # re-snap via world_to_lon_lat — that can re-wrap and hitch.
-            tlon, tlat = self._world_to_lon_lat(
-                self.next_city["x"], self.next_city["y"],
-            )
-            # Only nudge onto the principal lon if we're already facing it
-            dlon = (tlon - self.orbit_lon + math.pi) % (math.pi * 2) - math.pi
-            self.orbit_lon = self.orbit_lon + dlon
-            self.orbit_lat = tlat
+            # Keep continuous facing into the dive (no lon re-wrap snap)
+            self._set_dive_facing_targets(self.next_city)
+            # If turn already finished facing the city, lon≈lon1 — no visible move
+            self.aim_err_x = 0.0
+            self.aim_err_y = 0.0
+            self.orbit_use_surface = False
             self.phase = "orbit_in"
             self.phase_t = 0.0
             print(
@@ -4367,26 +4388,31 @@ class PlanetCamera(object):
 
     def _update_orbit_in(self, dt):
         """
-        Continuous dive on ONE map: sphere projection only, FOV tightens to
-        strike scale. No mid-dive switch to a second flat-map path (that was
-        the terrain "jump"). Surface/bomb view starts only after handoff when
-        angular FOV is already tiny and matches the flat sampler.
+        Continuous dive on ONE PlanetMap.
+
+        Early: sphere zoom while facing slews smoothly onto the city
+        (no lon re-wrap snap toward principal range).
+
+        Late: when the disc overfills the panel, switch to the flat surface
+        raster at the same mpp with the city already under the crosshair —
+        so weapons-free is the same projection (no end-of-dive map jump).
         """
         city = self.next_city
         if city is None:
             city = self._pick_orbit_target()
             self.next_city = city
+            self._set_dive_facing_targets(city)
 
-        # Keep globe facing locked on the city (smooth, no snaps)
-        tlon, tlat = self._world_to_lon_lat(city["x"], city["y"])
-        self.orbit_lon = _lerp(self.orbit_lon, tlon, min(1.0, 3.0 * dt))
-        self.orbit_lat = _lerp(self.orbit_lat, tlat, min(1.0, 3.0 * dt))
+        # Continuous facing targets (set at dive start; never re-principalize)
+        if not hasattr(self, "orbit_lon1") or self.orbit_lon1 is None:
+            self._set_dive_facing_targets(city)
+        tlon = float(self.orbit_lon1)
+        tlat = float(self.orbit_lat1)
 
         diameter = 2.0 * _city_radius_m(city)
         mpp_close = diameter / max(1.5, CITY_TARGET_PX)
         world_r = float(getattr(self.planet, "R", PLANET_R) or PLANET_R)
         first = getattr(self, "_first_approach", False)
-        # Sphere FOV: mpp = R / disc_radius (one formula from hold through strike)
         if first and getattr(self, "orbit_mpp0", None) is not None:
             mpp_orbit = float(self.orbit_mpp0)
         else:
@@ -4395,29 +4421,55 @@ class PlanetCamera(object):
         u_lin = _clamp(self.phase_t / max(0.05, ORBIT_IN_SEC), 0.0, 1.0)
         ease = u_lin * u_lin * (3.0 - 2.0 * u_lin)
 
-        # Pure sphere zoom: never increase mpp, never flip to flat raster
+        # FOV: continuous sphere identity mpp = R / r
         mpp_start = max(float(mpp_orbit), float(mpp_close))
         self.orbit_mpp = _lerp(mpp_start, mpp_close, ease)
-        # Disc radius locked to sphere FOV identity: R / mpp
         self.orbit_r = world_r / max(float(self.orbit_mpp), 1.0)
-        # local_blend only softens limb lighting (not UV). Stays sphere sample.
         self.orbit_local_blend = 0.0
-        self.orbit_limb_flat = ease  # 0=globe limb, 1=flat lighting near surface
-        self.orbit_use_surface = False  # entire dive on globe renderer
-
+        self.orbit_limb_flat = ease
         self.orbit_px = self.w * 0.5
         self.orbit_py = self.h * 0.5
 
-        # Sync surface camera every frame for seamless bomb handoff
-        self.x = float(city["x"])
-        self.y = float(city["y"])
-        self.alt_wide = _alt_for_city_pixels(city, self.h, CITY_WIDE_PX)
-        self.alt_close = _alt_for_city_pixels(city, self.h, CITY_TARGET_PX)
-        self.alt_ft = self._alt_from_mpp(self.orbit_mpp)
-        # Heading matches sphere local axes (screen right→+X, down→+Y)
-        if not getattr(self, "_orbit_dive_heading_set", False):
+        # Slew facing onto the city early, then lock (no principal-lon snap)
+        face_k = min(1.0, 3.5 * dt)
+        # Finish facing by ~40% of the dive so the zoom is on-target
+        face_u = _smoothstep(min(1.0, u_lin / 0.40))
+        self.orbit_lon = _lerp(float(self.orbit_lon0), tlon, face_u)
+        self.orbit_lat = _lerp(float(self.orbit_lat0), tlat, face_u)
+        # Also exponential settle so we never freeze short of the target
+        self.orbit_lon += (tlon - self.orbit_lon) * face_k * face_u
+        self.orbit_lat += (tlat - self.orbit_lat) * face_k * face_u
+
+        # Late dive: overfilled disc → flat surface at same FOV (bomb path)
+        panel_diag = math.hypot(self.w, self.h)
+        surface_ready = (
+            float(self.orbit_r) >= panel_diag * 0.92
+            or ease >= 0.70
+        )
+        if surface_ready:
+            self.orbit_use_surface = True
+            self.orbit_limb_flat = 1.0
             self.heading = -math.pi * 0.5
             self._orbit_dive_heading_set = True
+            # City under crosshair every frame (matches bomb framing)
+            self.x, self.y, self.heading = self._cam_for_city_under_crosshair(
+                city, self.orbit_mpp,
+            )
+        else:
+            self.orbit_use_surface = False
+            # Pre-position surface cam so the switch frame is already correct
+            self.x, self.y, hdg = self._cam_for_city_under_crosshair(
+                city, self.orbit_mpp,
+            )
+            if not getattr(self, "_orbit_dive_heading_set", False):
+                self.heading = hdg
+                self._orbit_dive_heading_set = True
+
+        self.alt_wide = _alt_for_city_pixels(city, self.h, CITY_WIDE_PX)
+        self.alt_close = self._alt_from_mpp(mpp_close)
+        self.alt_ft = self._alt_from_mpp(self.orbit_mpp)
+        self.aim_err_x = 0.0
+        self.aim_err_y = 0.0
 
         name = _hud_fit(_city_display_name(city), max(8, self.w - 2))
         if first:
@@ -4439,14 +4491,13 @@ class PlanetCamera(object):
             else:
                 self.hud_text, self.hud_rgb = "LOCKED", HUD_RGB
 
-        if self._orbit_space is not None:
-            # Stars fade as the disc grows past the panel
+        if self._orbit_space is not None and not self.orbit_use_surface:
             panel_r = math.hypot(self.w, self.h) * 0.55
             star_u = _clamp(1.0 - (self.orbit_r / max(panel_r, 1.0)), 0.0, 1.0)
             self._orbit_space.update(dt, streak=0.1 + 0.4 * star_u)
 
         if self.phase_t >= ORBIT_IN_SEC:
-            # Handoff: same map, same FOV, sphere already ≈ top-down at this mpp
+            # Handoff on SURFACE path already — same FOV, city under reticle
             self.city = city
             self.strike_city = city
             self.next_city = None
@@ -4459,9 +4510,12 @@ class PlanetCamera(object):
             self.alt_ft = float(self.alt_close)
             self.alt_from = float(self.alt_close)
             self.alt_to = float(self.alt_close)
-            self.heading = -math.pi * 0.5
-            self.aim_err_x = random.uniform(-0.35, 0.35) * CAM_AIM_ERR_M
-            self.aim_err_y = random.uniform(-0.35, 0.35) * CAM_AIM_ERR_M
+            self.x, self.y, self.heading = self._cam_for_city_under_crosshair(
+                city, mpp_close,
+            )
+            # No random aim teleport — wander starts from zero in bomb phase
+            self.aim_err_x = 0.0
+            self.aim_err_y = 0.0
             self.bombs = []
             self.blasts = []
             self.bomb_cd = 0.35
@@ -4470,8 +4524,8 @@ class PlanetCamera(object):
             self.clock_text = ""
             self.hud_text, self.hud_rgb = "LOCKED", HUD_RGB
             self._orbit_dive_heading_set = False
-            self.orbit_use_surface = False
-            self.orbit_local_blend = 0.0
+            self.orbit_use_surface = True
+            self.orbit_local_blend = 1.0
             self._first_approach = False
             day0 = self.planet.day_factor_flat(city["x"], city["y"])
             nv = "NV" if self._city_is_night(city) else "VIS"
@@ -4480,7 +4534,7 @@ class PlanetCamera(object):
                 f"[PlanetBlast] {self.batch_side.upper()} batch {n}/{TARGETS_PER_BATCH}  "
                 f"city={_city_display_name(city)} size={city['size']}  "
                 f"day={day0:.2f} {nv}  weapons free @ {self.alt_close:.0f} ft  "
-                f"(sphere-only dive complete, mpp={mpp_close:.0f})"
+                f"(surface handoff mpp={mpp_close:.0f})"
             )
 
     def _render_globe(self, canvas):
@@ -5394,26 +5448,32 @@ class PlanetCamera(object):
 
     def render(self, canvas):
         """Top-down map + crosshairs, bombs, smoke rings, fire — or globe orbit."""
-        # Smooth pullback: early orbit_out stays on surface; late uses globe.
-        # Late orbit_in is the same idea in reverse.
-        # Globe / sphere-only dive — one PlanetMap projection all the way in
-        if self.phase in ("orbit_hold", "orbit_turn", "orbit_in") or (
-            self.phase == "warcom_order" and getattr(self, "_first_approach", False)
-        ):
-            self._render_globe(canvas)
-            self._draw_hud(canvas)
-            if self._nv:
-                self._apply_full_frame_nv(canvas)
-            return
-        if self.phase == "orbit_out" and not getattr(self, "orbit_use_surface", False):
+        # Globe for hold/turn and early dive. Late orbit_in uses surface when
+        # orbit_use_surface (matched FOV, city under crosshair → no bomb jump).
+        use_globe = (
+            self.phase in ("orbit_hold", "orbit_turn")
+            or (
+                self.phase == "warcom_order"
+                and getattr(self, "_first_approach", False)
+            )
+            or (
+                self.phase == "orbit_in"
+                and not getattr(self, "orbit_use_surface", False)
+            )
+            or (
+                self.phase == "orbit_out"
+                and not getattr(self, "orbit_use_surface", False)
+            )
+        )
+        if use_globe:
             self._render_globe(canvas)
             self._draw_hud(canvas)
             if self._nv:
                 self._apply_full_frame_nv(canvas)
             return
 
-        # Surface path (strike flight, cruise, early orbit_out flat stage)
-        if self.phase == "orbit_out" and getattr(self, "orbit_mpp", None):
+        # Surface path (strike, cruise, early orbit_out, late orbit_in)
+        if self.phase in ("orbit_out", "orbit_in") and getattr(self, "orbit_mpp", None):
             self.alt_ft = self._alt_from_mpp(float(self.orbit_mpp))
 
         mpp = self._mpp()
@@ -6150,15 +6210,24 @@ def PlayPlanetBlastTitle(StopEvent=None):
     print("[PlanetBlast] Title complete — beginning mission")
 
 
-def PlayPlanetFly(Duration=None, StopEvent=None):
+def PlayPlanetFly(Duration=5, StopEvent=None):
     """
     Space intro → planet approach → surface strike tour.
 
-    Runs until StopEvent is set (LEDcommander next/stop/preempt) or Ctrl-C.
-    Duration is accepted for API compatibility but ignored — no wall-clock limit.
+    Runs until:
+      - StopEvent is set (LEDcommander next/stop/preempt), or
+      - wall-clock Duration (minutes) elapses (default 5), or
+      - Ctrl-C
+
+    Duration <= 0 disables the wall-clock limit (StopEvent only).
     """
     width = int(getattr(LED, "HatWidth", 64) or 64)
     height = int(getattr(LED, "HatHeight", 32) or 32)
+
+    try:
+        duration_min = float(Duration) if Duration not in (None, "") else 5.0
+    except (TypeError, ValueError):
+        duration_min = 5.0
 
     try:
         canvas = LED.TheMatrix.CreateFrameCanvas()
@@ -6172,10 +6241,13 @@ def PlayPlanetFly(Duration=None, StopEvent=None):
     cam = None
     tick = pygame.time.Clock() if HAS_PYGAME else None
     last = time.time()
+    start_time = time.time()
 
     print(
         f"[PlanetBlast] {width}x{height}  space → zoom city → strike  "
-        f"until StopEvent  fps~{TARGET_FPS}"
+        f"Duration={duration_min} min  "
+        f"StopEvent={'yes' if StopEvent is not None else 'no'}  "
+        f"fps~{TARGET_FPS}"
     )
 
     try:
@@ -6185,6 +6257,13 @@ def PlayPlanetFly(Duration=None, StopEvent=None):
                 break
 
             now = time.time()
+            if duration_min > 0 and (now - start_time) / 60.0 >= duration_min:
+                print(
+                    f"[PlanetBlast] Duration reached "
+                    f"({duration_min} min) — exiting."
+                )
+                break
+
             dt = _clamp(now - last, 0.001, 0.1)
             last = now
 
@@ -6232,6 +6311,7 @@ def PlayPlanetFly(Duration=None, StopEvent=None):
                 canvas = LED.TheMatrix.SwapOnVSync(canvas)
                 LED.Canvas = canvas
             except Exception:
+                # Keep looping so StopEvent / duration are still polled every frame
                 pass
 
             if tick:
@@ -6249,13 +6329,18 @@ def PlayPlanetFly(Duration=None, StopEvent=None):
         pass
 
 
-def LaunchPlanetFly(Duration=None, ShowIntro=True, StopEvent=None):
+def LaunchPlanetFly(Duration=5, ShowIntro=True, StopEvent=None):
     """
     Public entry for LEDcommander / Twitch / LEDsim — Planet Blast.
 
     Honors StopEvent so commander can preempt (next, stop, other launch).
-    Duration is ignored (no time limit); kept for call-site compatibility.
+    Duration is wall-clock minutes (default 5). Duration <= 0 = no time limit.
     """
+    try:
+        duration_min = float(Duration) if Duration not in (None, "") else 5.0
+    except (TypeError, ValueError):
+        duration_min = 5.0
+
     try:
         LED.LoadConfigData()
     except Exception:
@@ -6263,6 +6348,11 @@ def LaunchPlanetFly(Duration=None, ShowIntro=True, StopEvent=None):
     if _stop(StopEvent):
         print("[PlanetBlast] Launch aborted (StopEvent already set)")
         return
+    print(
+        f"[PlanetBlast] Launch  Duration={duration_min} min  "
+        f"intro={bool(ShowIntro)}  "
+        f"StopEvent={'yes' if StopEvent is not None else 'no'}"
+    )
     # Compile or load cached surface kernels before first frame / title zoom
     _warm_planet_numba(StopEvent)
     if _stop(StopEvent):
@@ -6281,7 +6371,7 @@ def LaunchPlanetFly(Duration=None, ShowIntro=True, StopEvent=None):
     if _stop(StopEvent):
         print("[PlanetBlast] StopEvent after title — exiting")
         return
-    PlayPlanetFly(Duration=Duration, StopEvent=StopEvent)
+    PlayPlanetFly(Duration=duration_min, StopEvent=StopEvent)
 
 
 # Friendly alias
@@ -6290,6 +6380,6 @@ LaunchPlanetBlast = LaunchPlanetFly
 
 if __name__ == "__main__":
     try:
-        LaunchPlanetFly(ShowIntro=True, StopEvent=None)
+        LaunchPlanetFly(Duration=5, ShowIntro=True, StopEvent=None)
     except KeyboardInterrupt:
         print("Exiting Planet Blast.")
