@@ -25,7 +25,7 @@ except Exception:
 
 # ---- Exact pinball apron clock constants (Pinball2.py) ----
 CLOCK_RGB = (255, 36, 28)           # lit LED red
-CLOCK_DIM = (55, 12, 10)            # unlit segment ghost
+CLOCK_DIM = (27, 6, 5)              # unlit segment ghost (50% of prior 55,12,10)
 CLOCK_DIGIT_W = 5
 CLOCK_DIGIT_H = 9
 CLOCK_THICK = 1
