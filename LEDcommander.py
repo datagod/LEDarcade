@@ -120,6 +120,7 @@ VALID_WEB_ACTIONS = {
     "retrodigital": [],
     "flipclock": ["duration"],
     "sevensegclock": ["duration"],  # full-panel 7-segment digital clock
+    "rocketclock": ["duration"],    # full-panel digital HH:MM with rocket digit transitions
     "waterclock": ["duration"],
     "launch_planet": ["duration"],
     "ledarcade_intro": [],
@@ -430,6 +431,7 @@ def fallback_action_generator():
         {"Action": "retrodigital", "duration": 5},
         {"Action": "flipclock", "duration": 5},
         {"Action": "sevensegclock", "duration": 5},
+        {"Action": "rocketclock", "duration": 5},
         {"Action": "waterclock", "duration": 5},
         {"Action": "analogclock", "duration": 5},
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 5, "Delay": 20},
@@ -705,6 +707,16 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "clock"
                 DisplayProcess = Process(
                     target=ShowSevenSegClock, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
+            elif Action == "rocketclock":
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(
+                    target=ShowRocketClock, args=(Command, StopEvent)
                 )
                 DisplayProcess.start()
 
@@ -1334,6 +1346,32 @@ def ShowSevenSegClock(Command, StopEvent):
     try:
         LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
         SSC.LaunchSevenSegClock(
+            Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
+        )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
+
+def ShowRocketClock(Command, StopEvent):
+    """Full-panel digital HH:MM — digits rocket away and land with exhaust."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import RocketClock as RC
+
+    RunMinutes = Command.get("duration", 10)
+    try:
+        RunMinutes = float(RunMinutes)
+    except (TypeError, ValueError):
+        RunMinutes = 10.0
+
+    print(
+        f"[LEDcommander] Showing rocket clock: "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
+
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        RC.LaunchRocketClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
     finally:

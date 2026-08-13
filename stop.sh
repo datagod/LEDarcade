@@ -123,6 +123,9 @@ LAUNCHERS=(
     StockTicker.py
     AnalogClock.py
     WeatherClock.py
+    SevenSegClock.py
+    RocketClock.py
+    WaterClock.py
     LEDweb.py
     LEDpanel.py
     OnAir.py
