@@ -426,13 +426,8 @@ class Glyph(object):
         self.collide_idx = None
         self._pad_smoke_done = False
         self.tilt = 0.0
-        # Launch with whatever fuel was loaded (ideally ~full); burn on ascent
-        if self.fuel_epoch is not None:
-            self.fuel = _refuel_frac(
-                _minute_elapsed(), self.fuel_epoch, self.fuel_window,
-            )
-        else:
-            self.fuel = 1.0
+        # Blast-off is fully fueled — keep full bright look for the whole ascent
+        self.fuel = 1.0
         self.fuel_epoch = None
         self.fuel_window = None
         self._fuel_path = max(8.0, self.cy + 14.0)
@@ -611,21 +606,22 @@ class Glyph(object):
     def update(self, dt, panel_h=32):
         self.t += dt
         if self.mode == "launch":
+            # Stay fully bright the entire launch (hold + climb)
+            self.fuel = 1.0
             if self.t < LAUNCH_HOLD_SECONDS:
                 # Flames blow on the pad; ascent delayed
                 self.dx = self.dy = 0.0
-                if self.fuel > 0.02 and random.random() < 0.98:
+                if random.random() < 0.98:
                     self._spawn_jet(count=5, intensity=1.25, spit=True, crash=False)
                 if random.random() < 0.35:
                     self._spawn_jet(count=3, intensity=1.4, spit=True, crash=False)
             else:
-                # Liftoff
+                # Liftoff — full fuel look preserved (no ascent burn visual)
                 self.vy -= 38.0 * dt
                 self.vx += math.sin(self.t * 14.0) * 10.0 * dt
                 self.dx += self.vx * dt
                 self.dy += self.vy * dt
-                self._sync_fuel_ascent()
-                if self.fuel > 0.02 and random.random() < 0.92:
+                if random.random() < 0.92:
                     self._spawn_jet(count=4, intensity=1.1, crash=False)
                 if self.cy + self.dy < -12:
                     self.mode = "gone"
@@ -814,8 +810,10 @@ class Glyph(object):
                     )
                 elif self.fuel < 0.999:
                     pix = _pixels_for_fuel_level(self.home, self.fuel)
-            # In flight: remaining fuel is bright bottom, spent top is dark
-            elif self.mode in ("launch", "approach", "miss_fall", "dust"):
+            # Launch: full fuel (original bright glyph). Descent: fuel burns down.
+            elif self.mode == "launch":
+                pix = self.home  # full bright — tanks topped for takeoff
+            elif self.mode in ("approach", "miss_fall", "dust"):
                 pix = _pixels_for_fuel_level(self.home, self.fuel)
             upright = (
                 self.mode == "idle"
