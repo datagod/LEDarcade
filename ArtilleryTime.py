@@ -98,8 +98,10 @@ _CLOUD_PUFFS = (
 )
 
 # ---- Top HUD 7-seg clock (same style as SevenSegClock / pinball apron) ----
-SEG_CLOCK_RGB = (255, 36, 28)       # lit red
+SEG_CLOCK_RGB = (255, 36, 28)       # lit red (night / default)
 SEG_CLOCK_DIM = (27, 6, 5)          # ghost segments
+SEG_CLOCK_RGB_DAY = (255, 70, 45)   # brighter red-orange for blue day sky
+SEG_CLOCK_DIM_DAY = (55, 14, 10)    # stronger ghost so digits still read
 SEG_DIGIT_W = 5
 SEG_DIGIT_H = 9
 SEG_THICK = 1
@@ -135,6 +137,10 @@ EXPLODE_SPARKS = 22
 # phosphorous — bouncing burner that keeps sparking
 # bouncer     — bouncing bomb; 3 ground bounces then detonates
 # sam         — surface-to-air missile; huge airburst over the target
+# acid        — dissolves earth; ground collapses/shifts (re-aim needed)
+# flame       — lands and flames burst out across the ground
+# mg30        — high-arc 30mm; bullets fall in a storm
+# drone       — single-pixel drones hover over enemy, intercept shots, then storm
 # nuke        — one mushroom-cloud super shell per war
 WEAPONS = (
     "standard",
@@ -144,12 +150,19 @@ WEAPONS = (
     "phosphorous",
     "bouncer",
     "sam",
+    "acid",
+    "flame",
+    "mg30",
+    "drone",
     "nuke",
 )
 WEAPON_AMMO = {
     "heavy": 2,
     "nuke": 1,
     "sam": 3,
+    "acid": 3,
+    "mg30": 4,
+    "drone": 2,
 }
 WEAPON_RGB = {
     "standard": (255, 240, 120),
@@ -159,26 +172,45 @@ WEAPON_RGB = {
     "phosphorous": (180, 255, 80),
     "bouncer": (255, 170, 60),
     "sam": (120, 255, 200),
+    "acid": (80, 255, 40),
+    "flame": (255, 90, 20),
+    "mg30": (200, 200, 180),
+    "drone": (100, 230, 255),
     "nuke": (255, 255, 200),
 }
 BOUNCE_BOMB_BOUNCES = 3       # bouncer detonates after this many ground hits
 AIRBURST_OVER_X = 9.0         # horizontal window over enemy for airburst fuse
 SAM_OVER_X = 11.0             # SAM fuse window over enemy
 SAM_AIR_CLEARANCE = 4.5       # min px above surface / target for SAM fuse
+ACID_RADIUS = 12
+ACID_DEPTH = 6
+FLAME_MAX_REACH = 16
+MG30_BULLETS = 32
+DRONE_COUNT = 5
+DRONE_SPEED = 32.0
+DRONE_INTERCEPT_R = 2.6
+DRONE_HOVER_MAX = 7.5         # storm if no intercept by then
+DRONE_HOVER_MIN = 1.2         # min hover before timeout storm
 
 # ---- Timing (seconds) ----
 THINK_SEC = 1.4
 CHARGE_SEC = 1.1
 IMPACT_HOLD = 1.0
-ROUND_BANNER = 1.2
-WAR_BANNER = 1.0
+CLOCK_HOLD_SEC = 5.0          # full clock visible this long at banners
+# Banner: fade-in (~1s) + 5s hold + fade-out (~0.9s)
+ROUND_BANNER = 7.0
+WAR_BANNER = 7.0
 PHOS_BURN_SEC = 2.8
 MUSHROOM_SEC = 2.2
+ACID_FX_SEC = 1.9
+FLAME_BURST_SEC = 2.5
+MG_RAIN_SEC = 1.6
+DRONE_STORM_SEC = 1.8
 DESTROY_FX_SEC = 1.5          # big death explosion hold
 DRIVE_IN_SEC = 2.2            # replacement rolls onto the field
 VICTORY_DRIVE_SEC = 2.8       # winner to center
 VICTORY_FIREWORKS_SEC = 4.0   # fireworks + YOU WIN
-YOU_WIN_RGB = (255, 230, 60)
+YOU_WIN_RGB = (255, 255, 0)   # solid pure yellow
 
 # ---- Match ----
 ROUNDS_TO_WIN = 2
@@ -279,15 +311,15 @@ _NIGHT_STARS = (
 
 
 def _moon_params(hour, width, height):
-    """Soft moon at night. Returns (cx, cy, rad) or None."""
+    """Soft moon at night — high and left. Returns (cx, cy, rad) or None."""
     h = float(hour) % 24.0
     elev = math.cos((h - 12.0) / 12.0 * math.pi)
     if elev >= -0.12:
         return None
+    # Stay on the left third of the panel; tiny drift with hour so it isn't frozen
     day_u = _clamp((h - 5.0) / 15.0, 0.0, 1.0)
-    moon_u = (day_u + 0.55) % 1.0
-    cx = 5.0 + moon_u * (width - 10.0)
-    cy = height * (0.16 + 0.12 * min(1.0, abs(elev)))
+    cx = 4.0 + day_u * (width * 0.22)   # roughly x 4..18 on 64-wide
+    cy = height * (0.06 + 0.04 * min(1.0, abs(elev)))  # high near top
     return cx, cy, 1.35
 
 
@@ -520,13 +552,92 @@ def surface_y(heights, x):
 def crater(heights, x, radius=4, depth=3):
     """Blast a bowl into the heightmap."""
     xi = int(round(x))
-    r = int(radius)
+    r = int(max(1, radius))
+    d0 = max(1, depth)
     for dx in range(-r, r + 1):
         px = xi + dx
         if 0 <= px < len(heights):
             fall = 1.0 - (abs(dx) / float(max(1, r)))
-            dig = depth * fall * fall
+            dig = d0 * fall * fall
             heights[px] = int(_clamp(heights[px] + dig, VIEW_H * 0.35, VIEW_H - 2))
+
+
+def blast_push_gun(g, heights, ix, iy, radius, strength=1.0):
+    """
+    If a gun is close to a blast, shove it away from the impact and reseat
+    it on the (possibly cratered) ground. Returns True if moved.
+    """
+    if g is None or not g.alive or g.driving:
+        return False
+    dx = g.x - float(ix)
+    dy = g.y - float(iy)
+    dist = math.hypot(dx, dy)
+    horiz = abs(dx)
+    r = max(2.5, float(radius))
+    # Use the nearer of full distance / horizontal so high airbursts still shove
+    use = min(dist, horiz) if dist > 0.01 else horiz
+    if use > r:
+        return False
+    falloff = 1.0 - (use / r)
+    push = (1.8 + 5.5 * falloff * falloff) * max(0.35, strength)
+    if push < 0.6:
+        return False
+    direction = 1.0 if dx >= 0.0 else -1.0
+    if abs(dx) < 0.4:
+        direction = -1.0 if g.side == "L" else 1.0
+    g.x = _clamp(g.x + direction * push, 5.0, WORLD_W - 6.0)
+    g.home_x = g.x
+    g.sit_on_ground(heights)
+    return True
+
+
+def acid_dissolve(heights, x, radius=ACID_RADIUS, depth=ACID_DEPTH, strength=1.0):
+    """
+    Dissolve earth under x and shift/settle the surface so hills collapse
+    into the pit — opponent must re-calculate ballistics.
+    """
+    xi = int(round(x))
+    r = int(max(2, radius))
+    n = len(heights)
+    lo, hi = VIEW_H * 0.35, VIEW_H - 2
+    # Eat an irregular acidic pit (larger height = lower surface)
+    for dx in range(-r, r + 1):
+        px = xi + dx
+        if not (0 <= px < n):
+            continue
+        fall = 1.0 - (abs(dx) / float(r))
+        dig = depth * strength * (fall ** 1.15) * random.uniform(0.75, 1.2)
+        heights[px] = int(_clamp(heights[px] + dig, lo, hi))
+    # Collapse: taller ground (smaller y) shifts into deeper pockets
+    for _ in range(3):
+        nxt = heights[:]
+        for px in range(1, n - 1):
+            # Smooth settle
+            nxt[px] = (
+                0.18 * heights[px - 1]
+                + 0.64 * heights[px]
+                + 0.18 * heights[px + 1]
+            )
+        heights[:] = [int(round(_clamp(v, lo, hi))) for v in nxt]
+    # Lateral shift: peaks slump toward valleys
+    for px in range(2, n - 2):
+        for d in (-1, 1):
+            # If neighbor is higher ground (lower surface y), pull material in
+            if heights[px] > heights[px + d] + 1.5:
+                shift = 0.55 * strength
+                heights[px] = int(_clamp(heights[px] - shift * 0.35, lo, hi))
+                heights[px + d] = int(_clamp(heights[px + d] + shift, lo, hi))
+
+
+def smooth_terrain(heights, passes=1):
+    """Light blur so acid-shifted ground looks settled."""
+    n = len(heights)
+    lo, hi = VIEW_H * 0.35, VIEW_H - 2
+    for _ in range(passes):
+        nxt = heights[:]
+        for px in range(1, n - 1):
+            nxt[px] = 0.25 * heights[px - 1] + 0.5 * heights[px] + 0.25 * heights[px + 1]
+        heights[:] = [int(round(_clamp(v, lo, hi))) for v in nxt]
 
 
 # ---------------- Guns ----------------
@@ -622,7 +733,9 @@ class Gun(object):
         if self.ammo is not None and self.ammo > 0:
             self.ammo -= 1
             # Out of special ammo → fall back to standard
-            if self.ammo <= 0 and self.weapon in ("heavy", "nuke", "sam"):
+            if self.ammo <= 0 and self.weapon in (
+                "heavy", "nuke", "sam", "acid", "mg30", "drone",
+            ):
                 print(f"[ArtilleryTime] {self.side} {self.weapon} ammo empty → standard")
                 self.weapon = "standard"
                 self.ammo = None
@@ -646,6 +759,35 @@ def simulate_shot(
     Integrate projectile until ground / airburst / OOB.
     Returns (impact_x, impact_y, min_dist_to_enemy, frames[, path]).
     """
+    # Drone swarm: straight-ish climb toward a hover point over the enemy
+    if weapon == "drone":
+        hx = enemy_x
+        hy = max(3.0, enemy_y - 9.0)
+        x, y = float(x0), float(y0)
+        path = [(x, y)] if record_path else None
+        best = math.hypot(x - enemy_x, y - enemy_y)
+        for frame in range(120):
+            dx = hx - x
+            dy = hy - y
+            dist = math.hypot(dx, dy) or 1.0
+            step = DRONE_SPEED * dt
+            if dist <= step:
+                x, y = hx, hy
+                if record_path:
+                    path.append((x, y))
+                best = min(best, math.hypot(x - enemy_x, y - enemy_y))
+                if record_path:
+                    return x, y, best, frame, path
+                return x, y, best, frame
+            x += (dx / dist) * step
+            y += (dy / dist) * step
+            if record_path and frame % 2 == 0:
+                path.append((x, y))
+            best = min(best, math.hypot(x - enemy_x, y - enemy_y))
+        if record_path:
+            return x, y, best, 120, path
+        return x, y, best, 120
+
     rad = math.radians(angle_deg)
     speed = 8.0 + power * 42.0
     if weapon == "heavy":
@@ -658,13 +800,24 @@ def simulate_shot(
         speed = 16.0 + power * 36.0
     elif weapon == "bouncer":
         speed *= 0.95
+    elif weapon == "acid":
+        speed *= 0.90
+    elif weapon == "flame":
+        speed *= 0.96
+    elif weapon == "mg30":
+        # High lofting 30mm — slightly slower horizontal, more hang time
+        speed = 10.0 + power * 34.0
     vx = math.cos(rad) * speed
     vy = -math.sin(rad) * speed
+    if weapon == "mg30":
+        # Bias upward for high arc
+        vy -= 6.0 + power * 8.0
     x, y = float(x0), float(y0)
     best = 1e9
     path = [(x, y)] if record_path else None
     bounces = 0
     aim_y = enemy_y - 8.0
+    passed_apex = False
 
     for frame in range(500):
         if weapon == "laser":
@@ -728,6 +881,21 @@ def simulate_shot(
                     return x, y, best, frame, path
                 return x, y, best, frame
 
+        # MG30: open the bullet storm high over the enemy half
+        if weapon == "mg30" and frame > 10:
+            if vy > 0:
+                passed_apex = True
+            if (
+                passed_apex
+                and left_home
+                and y < surf - 6
+                and abs(x - enemy_x) < 22
+            ):
+                if record_path:
+                    path.append((x, y))
+                    return x, y, best, frame, path
+                return x, y, best, frame
+
         if y >= surf - 0.3 and frame > 3:
             if weapon == "phosphorous" and bounces < 5:
                 y = surf - 0.5
@@ -750,16 +918,22 @@ def simulate_shot(
     return x, y, best, 500
 
 
-def ai_choose_shot(gun, enemy, wind, heights):
-    """Search angle/power for best predicted hit (weapon-aware)."""
+def ai_choose_shot(gun, enemy, wind, heights, power_bias=0.0):
+    """
+    Search angle/power for best predicted hit (weapon-aware).
+    power_bias > 0 after short shots → prefer higher charge.
+    """
     best = None
     best_score = 1e18
     weapon = gun.weapon
+    bias = _clamp(float(power_bias), -0.25, 0.4)
     if gun.side == "L":
         if weapon == "laser":
             angles = range(15, 70, 2)   # lower bank angles
         elif weapon == "sam":
             angles = range(40, 82, 2)  # loft toward sky then enemy
+        elif weapon == "mg30":
+            angles = range(52, 84, 2)  # high arc for bullet storm
         else:
             angles = range(28, 78, 2)
     else:
@@ -767,10 +941,20 @@ def ai_choose_shot(gun, enemy, wind, heights):
             angles = range(110, 165, 2)
         elif weapon == "sam":
             angles = range(98, 140, 2)
+        elif weapon == "mg30":
+            angles = range(96, 128, 2)
         else:
             angles = range(102, 152, 2)
+    # After falling short, don't even consider weak charges
+    p_lo = 25
+    p_hi = 100
+    if bias > 0.04:
+        p_lo = min(82, 25 + int(bias * 120))
+    elif bias < -0.04:
+        # Long last time — prefer not maxing power again
+        p_hi = max(p_lo + 15, 100 + int(bias * 90))
     for ang in angles:
-        for p10 in range(25, 100, 3):
+        for p10 in range(p_lo, p_hi, 3):
             power = p10 / 100.0
             mx, my = gun.muzzle()
             ix, iy, mind, _fr = simulate_shot(
@@ -786,13 +970,43 @@ def ai_choose_shot(gun, enemy, wind, heights):
                 score += abs(iy - enemy.y) * 0.1
             if weapon == "bouncer":
                 score += abs(ix - enemy.x) * 0.2
+            if weapon == "acid":
+                # Prefer dissolve under / near enemy pad
+                score += abs(ix - enemy.x) * 0.25
+            if weapon == "flame":
+                score += abs(ix - enemy.x) * 0.2
+            if weapon == "mg30":
+                # Prefer opening the storm near enemy column, still high
+                score += abs(ix - enemy.x) * 0.35
+                score += max(0, iy - 8) * 0.05
+            if weapon == "drone":
+                # Always deploy toward enemy — angle barely matters
+                score = abs(ix - enemy.x) * 0.1 + mind * 0.5
+            # Bias: reward reaching / passing the enemy when we were short
+            if bias > 0.02:
+                if gun.side == "L":
+                    short_err = max(0.0, enemy.x - ix)
+                else:
+                    short_err = max(0.0, ix - enemy.x)
+                score += short_err * (0.25 + bias * 1.2)
+                # Prefer stronger charges after short falls
+                score += max(0.0, (0.5 + bias) - power) * 1.8
+            elif bias < -0.02:
+                if gun.side == "L":
+                    long_err = max(0.0, ix - enemy.x)
+                else:
+                    long_err = max(0.0, enemy.x - ix)
+                score += long_err * 0.2
             score += random.uniform(0, 0.35)
             if score < best_score:
                 best_score = score
                 best = (float(ang), power, mind)
     if best is None:
         return 45.0 if gun.side == "L" else 135.0, 0.6, 99.0
-    return best
+    ang, power, mind = best
+    # Direct power nudge from learned short/long memory
+    power = _clamp(power + bias * 0.85, 0.22, 1.0)
+    return ang, power, mind
 
 
 # ---------------- Shell / FX ----------------
@@ -816,6 +1030,7 @@ class Shell(object):
         self.target_x = float(target_x if target_x is not None else x)
         self.target_y = float(target_y if target_y is not None else y)
         self.age = 0.0
+        self.passed_apex = False
 
     def _age_trail(self, dt, rate=None):
         r = SHELL_TRAIL_FADE_RATE if rate is None else rate
@@ -844,7 +1059,8 @@ class Shell(object):
     def update(self, dt, wind, heights, sparks=None):
         """
         Returns status:
-          fly | ground | oob | dead | airburst | sam_burst | burn | mushroom
+          fly | ground | oob | dead | airburst | sam_burst | burn |
+          mushroom | mg_rain
         """
         self._age_trail(dt)
         if not self.alive:
@@ -863,6 +1079,9 @@ class Shell(object):
             if self.kind == "nuke" and self.effect_t > 0:
                 self.effect_t -= dt
                 return "mushroom" if self.effect_t > 0 else "dead"
+            if self.kind == "mg30" and self.effect_t > 0:
+                self.effect_t -= dt
+                return "mg_rain" if self.effect_t > 0 else "dead"
             return "dead"
 
         self.age += dt
@@ -870,6 +1089,8 @@ class Shell(object):
         max_trail = SHELL_TRAIL + (20 if self.kind == "laser" else 0)
         if self.kind == "sam":
             max_trail = SHELL_TRAIL + 10
+        if self.kind == "mg30":
+            max_trail = SHELL_TRAIL + 8
         if len(self.trail) > max_trail:
             self.trail.pop(0)
 
@@ -926,6 +1147,23 @@ class Shell(object):
                 self.trail.append([self.x, self.y, 1.0])
                 return "sam_burst" if self.kind == "sam" else "airburst"
 
+        # MG30: after high apex, open bullet storm near enemy
+        if self.kind == "mg30" and not self.fuse_done and self.age > 0.2:
+            if self.vy > 0:
+                self.passed_apex = True
+            surf_chk = surface_y(heights, self.x)
+            if (
+                self.passed_apex
+                and abs(self.x - self.start_x) > 10
+                and self.y < surf_chk - 6
+                and abs(self.x - self.target_x) < 22
+            ):
+                self.alive = False
+                self.fuse_done = True
+                self.effect_t = MG_RAIN_SEC
+                self.trail.append([self.x, self.y, 1.0])
+                return "mg_rain"
+
         surf = surface_y(heights, self.x)
         if self.y >= surf - 0.2:
             # Phosphorous: many hops then burn
@@ -963,8 +1201,194 @@ class Shell(object):
             if self.kind == "sam":
                 self.fuse_done = True
                 return "sam_burst"
+            if self.kind == "mg30":
+                self.fuse_done = True
+                self.effect_t = MG_RAIN_SEC
+                return "mg_rain"
             return "ground"
         return "fly"
+
+
+class RainBullet(object):
+    """Single 30mm round in an MG storm."""
+    __slots__ = ("x", "y", "vx", "vy", "owner", "alive", "hit")
+
+    def __init__(self, x, y, owner, aim_x=None):
+        self.x = float(x) + random.uniform(-1.5, 1.5)
+        self.y = float(y) + random.uniform(-1.0, 1.0)
+        # Fall mostly down with scatter toward aim
+        self.vx = random.uniform(-10, 10)
+        if aim_x is not None:
+            self.vx += _clamp((aim_x - self.x) * 0.35, -14, 14)
+        self.vy = random.uniform(8, 22)
+        self.owner = owner
+        self.alive = True
+        self.hit = False
+
+    def update(self, dt, wind, heights):
+        if not self.alive:
+            return "dead"
+        self.vx += wind * 1.5 * dt
+        self.vy += GRAVITY * 1.15 * dt
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        if self.x < -4 or self.x > WORLD_W + 4 or self.y > VIEW_H + 4:
+            self.alive = False
+            return "oob"
+        surf = surface_y(heights, self.x)
+        if self.y >= surf - 0.15:
+            self.y = surf - 0.15
+            self.alive = False
+            self.hit = True
+            return "ground"
+        return "fly"
+
+
+class GroundFX(object):
+    """Lingering ground effect: acid dissolve or surface flame burst."""
+    __slots__ = ("kind", "x", "life", "max_life", "reach", "tick", "owner")
+
+    def __init__(self, kind, x, life, owner=None):
+        self.kind = kind          # "acid" | "flame"
+        self.x = float(x)
+        self.life = float(life)
+        self.max_life = float(life)
+        self.reach = 0.0
+        self.tick = 0.0
+        self.owner = owner
+
+    def update(self, dt, heights, sparks=None):
+        self.life -= dt
+        self.tick += dt
+        if self.kind == "acid":
+            # Keep dissolving / shifting ground while active
+            if self.tick >= 0.22:
+                self.tick = 0.0
+                acid_dissolve(
+                    heights, self.x,
+                    radius=int(ACID_RADIUS * (0.55 + 0.45 * (self.life / self.max_life))),
+                    depth=max(1, int(ACID_DEPTH * 0.35)),
+                    strength=0.45,
+                )
+                if sparks is not None:
+                    for _ in range(3):
+                        sparks.append(Spark(
+                            self.x + random.uniform(-ACID_RADIUS * 0.6, ACID_RADIUS * 0.6),
+                            surface_y(heights, self.x) - random.uniform(0, 2),
+                            random.choice(((60, 255, 40), (120, 255, 80), (40, 180, 30))),
+                        ))
+        elif self.kind == "flame":
+            # Flames race outward along the surface
+            self.reach = min(
+                FLAME_MAX_REACH,
+                self.reach + dt * (FLAME_MAX_REACH / max(0.35, FLAME_BURST_SEC * 0.55)),
+            )
+            if sparks is not None and random.random() < 0.7:
+                dx = random.uniform(-self.reach, self.reach)
+                fx = self.x + dx
+                sparks.append(Spark(
+                    fx,
+                    surface_y(heights, fx) - random.uniform(0, 1.5),
+                    random.choice(((255, 80, 10), (255, 160, 20), (255, 220, 40), (200, 40, 10))),
+                ))
+        return self.life > 0
+
+
+class Drone(object):
+    """
+    Single-pixel interceptor drone.
+    Flies from the cannon, hovers over the enemy, swats incoming shells,
+    then dumps into an electric storm.
+    """
+    __slots__ = (
+        "x", "y", "owner", "state", "hx", "hy", "ox", "oy",
+        "delay", "hover_t", "phase", "alive",
+    )
+
+    def __init__(self, x, y, owner, hover_x, hover_y, delay=0.0):
+        self.x = float(x)
+        self.y = float(y)
+        self.owner = owner
+        self.state = "fly"       # fly | hover | dead
+        self.ox = random.uniform(-5.5, 5.5)
+        self.oy = random.uniform(-2.0, 1.5)
+        self.hx = float(hover_x) + self.ox
+        self.hy = float(hover_y) + self.oy
+        self.delay = float(delay)
+        self.hover_t = 0.0
+        self.phase = random.uniform(0, math.tau)
+        self.alive = True
+
+    def update(self, dt, enemy_x, enemy_y):
+        if not self.alive or self.state == "dead":
+            return
+        if self.delay > 0:
+            self.delay -= dt
+            return
+        # Hover point tracks enemy pad
+        self.hx = enemy_x + self.ox
+        self.hy = max(2.5, enemy_y - 8.5 + self.oy)
+        if self.state == "fly":
+            dx = self.hx - self.x
+            dy = self.hy - self.y
+            dist = math.hypot(dx, dy) or 1.0
+            step = DRONE_SPEED * dt
+            if dist <= step + 0.8:
+                self.x = self.hx
+                self.y = self.hy
+                self.state = "hover"
+                self.hover_t = 0.0
+            else:
+                self.x += (dx / dist) * step
+                self.y += (dy / dist) * step
+        elif self.state == "hover":
+            self.hover_t += dt
+            self.phase += dt * 5.5
+            # Soft track + bob
+            self.x = _lerp(self.x, self.hx, min(1.0, 4.0 * dt))
+            self.y = _lerp(self.y, self.hy, min(1.0, 4.0 * dt))
+            self.y += math.sin(self.phase) * 0.12
+
+
+class ElectricStorm(object):
+    """Short cyan lightning storm over a world point."""
+    __slots__ = ("x", "y", "life", "max_life", "bolts", "tick")
+
+    def __init__(self, x, y, life=DRONE_STORM_SEC):
+        self.x = float(x)
+        self.y = float(y)
+        self.life = float(life)
+        self.max_life = float(life)
+        self.bolts = []  # list of [(x,y), ...] polylines in world space
+        self.tick = 0.0
+        self._regen_bolts()
+
+    def _regen_bolts(self):
+        self.bolts = []
+        for _ in range(random.randint(3, 6)):
+            x0 = self.x + random.uniform(-8, 8)
+            y0 = self.y + random.uniform(-4, 1)
+            pts = [(x0, y0)]
+            x, y = x0, y0
+            for _seg in range(random.randint(3, 6)):
+                x += random.uniform(-2.5, 2.5)
+                y += random.uniform(1.2, 3.2)
+                pts.append((x, y))
+            self.bolts.append(pts)
+
+    def update(self, dt, sparks=None):
+        self.life -= dt
+        self.tick += dt
+        if self.tick >= 0.08:
+            self.tick = 0.0
+            self._regen_bolts()
+            if sparks is not None and random.random() < 0.7:
+                sparks.append(Spark(
+                    self.x + random.uniform(-6, 6),
+                    self.y + random.uniform(-2, 4),
+                    random.choice(((120, 220, 255), (200, 240, 255), (80, 160, 255))),
+                ))
+        return self.life > 0
 
 
 class Spark(object):
@@ -1052,14 +1476,37 @@ def _scale_rgb(rgb, a):
 
 
 def _draw_top_7seg_clock(canvas, width, height, alpha=1.0):
-    """HH:MM red 7-seg clock, top-center. alpha 0=hidden, 1=full bright."""
-    a = _clamp(float(alpha), 0.0, 1.0)
-    if a < 0.02:
+    """HH:MM red 7-seg clock, top-center on a dark plate.
+    alpha 0=hidden → 1=full (callers ramp this for fade in/out).
+    Daytime uses a hotter red for blue sky; boost scales with alpha so
+    fades stay smooth.
+    """
+    # Ease curve so fade in/out feels soft, not linear
+    t = _clamp(float(alpha), 0.0, 1.0)
+    if t < 0.01:
         return
-    lit = _scale_rgb(SEG_CLOCK_RGB, a)
-    dim = _scale_rgb(SEG_CLOCK_DIM, a)
+    a = _smooth(t)
+    day = sky_is_day()
+    if day:
+        # Hotter palette; multiply only (no floor) so fade can reach zero
+        a_draw = min(1.0, a * 1.28)
+        base_lit, base_dim = SEG_CLOCK_RGB_DAY, SEG_CLOCK_DIM_DAY
+    else:
+        a_draw = a
+        base_lit, base_dim = SEG_CLOCK_RGB, SEG_CLOCK_DIM
+    lit = _scale_rgb(base_lit, a_draw)
+    dim = _scale_rgb(base_dim, a_draw)
     if lit is None:
         return
+    # Day core only once mostly faded in (keeps early fade soft)
+    lit_core = None
+    if day and a_draw > 0.55:
+        k = (a_draw - 0.55) / 0.45
+        lit_core = (
+            min(255, int(lit[0] + 40 * k)),
+            min(255, int(lit[1] + 55 * k)),
+            min(255, int(lit[2] + 30 * k)),
+        )
     now = datetime.now()
     hh = now.hour
     mm = now.minute
@@ -1067,24 +1514,42 @@ def _draw_top_7seg_clock(canvas, width, height, alpha=1.0):
     total_w = _seg_clock_width()
     ox = (width - total_w) // 2
     oy = 1
+    set_px = canvas.SetPixel
+
+    # Dark plate behind the digits — opacity tracks fade
+    pad_x, pad_y = 1, 1
+    bx0 = max(0, ox - pad_x)
+    by0 = max(0, oy - pad_y)
+    bx1 = min(width - 1, ox + total_w + pad_x - 1)
+    by1 = min(height - 1, oy + SEG_DIGIT_H + pad_y - 1)
+    # Near-black plate; at low alpha almost invisible so sky shows through feel
+    plate = (
+        min(255, int(6 * a_draw)),
+        min(255, int(3 * a_draw)),
+        min(255, int(3 * a_draw)),
+    )
+    for py in range(by0, by1 + 1):
+        for px in range(bx0, bx1 + 1):
+            set_px(px, py, *plate)
+
     x = ox
-    _draw_7seg_digit(canvas, x, oy, digits[0], lit, dim, width, height)
+    colon = lit_core or lit
+    _draw_7seg_digit(canvas, x, oy, digits[0], colon, dim, width, height)
     x += SEG_DIGIT_W + SEG_GAP
-    _draw_7seg_digit(canvas, x, oy, digits[1], lit, dim, width, height)
+    _draw_7seg_digit(canvas, x, oy, digits[1], colon, dim, width, height)
     x += SEG_DIGIT_W + SEG_GAP
     # Colon
-    set_px = canvas.SetPixel
     mid = SEG_DIGIT_H // 2
     for cy in (mid - 2, mid + 1):
         for xx in range(SEG_COLON_W):
             for yy in range(SEG_THICK):
                 px, py = x + xx, oy + cy + yy
                 if 0 <= px < width and 0 <= py < height:
-                    set_px(px, py, *lit)
+                    set_px(px, py, *colon)
     x += SEG_COLON_W + SEG_GAP
-    _draw_7seg_digit(canvas, x, oy, digits[2], lit, dim, width, height)
+    _draw_7seg_digit(canvas, x, oy, digits[2], colon, dim, width, height)
     x += SEG_DIGIT_W + SEG_GAP
-    _draw_7seg_digit(canvas, x, oy, digits[3], lit, dim, width, height)
+    _draw_7seg_digit(canvas, x, oy, digits[3], colon, dim, width, height)
 
 
 # ---------------- Main game ----------------
@@ -1124,6 +1589,10 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
     wind = 0.0
     shell = None
     sparks = []
+    ground_fx = []            # acid pools / surface flame bursts
+    rain_bullets = []         # 30mm storm
+    drones = []               # interceptor drones (persist across turns)
+    storms = []               # electric storm FX
     cam_x = 0.0
     last_impact = None
     hit_kind = None           # "direct" | "shrapnel" | "miss"
@@ -1131,13 +1600,18 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
     pending_power = 0.5
     charge_show = 0.0
     aim_preview = []
+    # Per-side aim learning: raise power after short shots, ease off after longs
+    power_bias = {"L": 0.0, "R": 0.0}
+    last_shot = {"owner": None, "kind": None, "enemy_x": None}
     killed_side = None
     round_winner = None
     victory_side = None
     you_win_scale = 0.0
     # 7-seg clock visibility: full at war/round start & end; fades during combat
-    clock_alpha = 1.0
-    CLOCK_FADE_SPEED = 2.2   # alpha units per second
+    # Start hidden so the first war_start fades the clock in
+    clock_alpha = 0.0
+    CLOCK_FADE_IN_SEC = 1.05   # seconds 0 → full
+    CLOCK_FADE_OUT_SEC = 0.90  # seconds full → 0
 
     heights = generate_terrain(WORLD_W, VIEW_H)
     gun_l = Gun("L", 10, heights)
@@ -1161,7 +1635,8 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
     def _reset_round(new_war=False):
         nonlocal heights, gun_l, gun_r, guns, shell, sparks, wind, turn
         nonlocal phase, phase_t, hit_kind, last_impact, aim_preview, charge_show
-        nonlocal war_weapons, war_ammo
+        nonlocal war_weapons, war_ammo, ground_fx, rain_bullets, drones, storms
+        nonlocal power_bias
         heights = generate_terrain(WORLD_W, VIEW_H)
         gun_l = Gun("L", 10, heights)
         gun_r = Gun("R", WORLD_W - 11, heights)
@@ -1170,10 +1645,17 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
             assign_random_weapons(gun_l, gun_r)
             war_weapons = {"L": gun_l.weapon, "R": gun_r.weapon}
             war_ammo = {"L": gun_l.ammo, "R": gun_r.ammo}
+            power_bias = {"L": 0.0, "R": 0.0}
         else:
             _restore_weapons_on_guns()
         shell = None
         sparks = []
+        ground_fx = []
+        rain_bullets = []
+        drones = []
+        storms = []
+        last_shot["owner"] = None
+        last_shot["kind"] = None
         wind = random.uniform(WIND_MIN, WIND_MAX)
         turn = random.choice(("L", "R"))
         phase = "think"
@@ -1185,6 +1667,163 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
         gun_l.sit_on_ground(heights)
         gun_r.sit_on_ground(heights)
 
+    def _spawn_mg_rain(cx, cy, owner, aim_x):
+        """Open a high-arc 30mm bullet storm centered near (cx, cy)."""
+        nonlocal rain_bullets, last_impact
+        last_impact = (cx, cy)
+        n = MG30_BULLETS + random.randint(-4, 6)
+        for i in range(n):
+            # Stagger spawn positions in a cloud above the target column
+            bx = cx + random.uniform(-14, 14) + (aim_x - cx) * 0.15
+            by = cy + random.uniform(-3, 5)
+            rain_bullets.append(RainBullet(bx, by, owner, aim_x=aim_x))
+        print(f"[ArtilleryTime] MG30 storm x{n} over ~{cx:.0f}")
+
+    def _update_ground_fx(dt):
+        """Advance acid/flame ground effects; re-seat guns after acid shifts."""
+        nonlocal ground_fx
+        if not ground_fx:
+            return
+        alive = []
+        acid_moved = False
+        for fx in ground_fx:
+            if fx.update(dt, heights, sparks=sparks):
+                alive.append(fx)
+                if fx.kind == "acid":
+                    acid_moved = True
+            elif fx.kind == "acid":
+                acid_moved = True
+        ground_fx = alive
+        if acid_moved:
+            for g in guns.values():
+                if g.alive:
+                    g.sit_on_ground(heights)
+
+    def _update_rain_bullets(dt):
+        """Falling 30mm rounds — damage guns on near hit / ground splash."""
+        nonlocal rain_bullets, hit_kind, killed_side
+        if not rain_bullets:
+            return
+        alive = []
+        for b in rain_bullets:
+            st = b.update(dt, wind, heights)
+            if st == "fly":
+                # Direct hit while falling
+                for side, g in guns.items():
+                    if not g.alive or side == b.owner:
+                        continue
+                    if math.hypot(b.x - g.x, b.y - g.y) <= 1.35:
+                        b.alive = False
+                        b.hit = True
+                        g.hp -= 1
+                        hit_kind = "shrapnel" if hit_kind in (None, "miss") else hit_kind
+                        sparks.append(Spark(b.x, b.y, (255, 220, 120)))
+                        print(f"[ArtilleryTime] MG30 hit {side} hp={g.hp}")
+                        if g.hp <= 0:
+                            g.start_death_explosion(sparks)
+                            killed_side = side
+                            hit_kind = "direct"
+                            print(f"[ArtilleryTime] {side} destroyed by MG30")
+                            _check_round_over()
+                        break
+                if b.alive:
+                    alive.append(b)
+            elif st == "ground" and b.hit:
+                # Every round scars the dirt; close hits shove the piece
+                crater(heights, b.x, radius=2, depth=1)
+                for side, g in guns.items():
+                    if not g.alive or side == b.owner:
+                        continue
+                    if blast_push_gun(g, heights, b.x, b.y, radius=4.5, strength=0.45):
+                        print(f"[ArtilleryTime] MG30 blast shoved {side} → x={g.x:.1f}")
+                    if abs(b.x - g.x) <= 2.8 and abs(b.y - g.y) <= 3.5:
+                        g.hp -= 1
+                        hit_kind = "shrapnel" if hit_kind in (None, "miss") else hit_kind
+                        sparks.append(Spark(g.x, g.y, (255, 200, 80)))
+                        print(f"[ArtilleryTime] MG30 splash {side} hp={g.hp}")
+                        if g.hp <= 0:
+                            g.start_death_explosion(sparks)
+                            killed_side = side
+                            print(f"[ArtilleryTime] {side} destroyed by MG30 splash")
+                            _check_round_over()
+                    g.sit_on_ground(heights)
+                if random.random() < 0.25:
+                    sparks.append(Spark(b.x, b.y, (200, 200, 160)))
+        rain_bullets = alive
+
+    def _flame_damage_tick():
+        """Flames spreading on the ground burn any gun in the fire line."""
+        nonlocal hit_kind, killed_side
+        for fx in ground_fx:
+            if fx.kind != "flame" or fx.reach < 1.0:
+                continue
+            for side, g in guns.items():
+                if not g.alive:
+                    continue
+                if abs(g.x - fx.x) <= fx.reach + 0.5:
+                    # Occasional burn tick
+                    if random.random() < 0.04:
+                        g.hp -= 1
+                        hit_kind = "shrapnel" if hit_kind in (None, "miss") else hit_kind
+                        sparks.append(Spark(g.x, g.y - 1, (255, 100, 20)))
+                        print(f"[ArtilleryTime] Flame burn {side} hp={g.hp}")
+                        if g.hp <= 0:
+                            g.start_death_explosion(sparks)
+                            killed_side = side
+                            print(f"[ArtilleryTime] {side} destroyed by flame")
+                            _check_round_over()
+
+    def _learn_from_shot(owner, impact_x, enemy_x, result="miss"):
+        """Adjust power_bias when a shell lands short (or long) of the enemy."""
+        nonlocal power_bias
+        if owner not in ("L", "R"):
+            return
+        if result in ("direct", "shrapnel"):
+            # Close enough — decay learned bias
+            power_bias[owner] *= 0.45
+            return
+        # Sign: negative delta = fell short of enemy column
+        if owner == "L":
+            delta = float(impact_x) - float(enemy_x)
+        else:
+            delta = float(enemy_x) - float(impact_x)
+        if delta < -2.5:
+            short_by = -delta
+            boost = _clamp(0.06 + short_by * 0.012, 0.06, 0.28)
+            power_bias[owner] = _clamp(power_bias[owner] + boost, -0.2, 0.42)
+            print(
+                f"[ArtilleryTime] {owner} SHORT by {short_by:.1f}px "
+                f"→ power bias {power_bias[owner]:+.2f}"
+            )
+        elif delta > 6.0:
+            power_bias[owner] = _clamp(power_bias[owner] - 0.08, -0.2, 0.42)
+            print(
+                f"[ArtilleryTime] {owner} LONG by {delta:.1f}px "
+                f"→ power bias {power_bias[owner]:+.2f}"
+            )
+        else:
+            power_bias[owner] *= 0.75
+
+    def _record_shot_outcome(impact_x=None, result=None):
+        """Apply learning for the shell that just resolved."""
+        owner = last_shot.get("owner")
+        kind = last_shot.get("kind")
+        if owner is None or kind in (None, "drone"):
+            return
+        ix = impact_x
+        if ix is None and last_impact is not None:
+            ix = last_impact[0]
+        if ix is None:
+            return
+        enemy_x = last_shot.get("enemy_x")
+        if enemy_x is None:
+            foe = guns.get("R" if owner == "L" else "L")
+            enemy_x = foe.x if foe else WORLD_W * 0.5
+        res = result if result is not None else (hit_kind or "miss")
+        _learn_from_shot(owner, ix, enemy_x, result=res)
+        last_shot["owner"] = None
+        last_shot["kind"] = None
+
     def _start_think():
         nonlocal phase, phase_t, pending_angle, pending_power, aim_preview, wind
         active = guns[turn]
@@ -1195,7 +1834,10 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
             active.weapon = "standard"
             active.ammo = None
         wind = _clamp(wind + random.uniform(-1.2, 1.2), WIND_MIN, WIND_MAX)
-        ang, power, mind = ai_choose_shot(active, enemy, wind, heights)
+        bias = power_bias.get(turn, 0.0)
+        ang, power, mind = ai_choose_shot(
+            active, enemy, wind, heights, power_bias=bias,
+        )
         pending_angle = ang
         pending_power = power
         active.angle = ang
@@ -1208,10 +1850,160 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
         aim_preview = path or []
         phase = "think"
         phase_t = 0.0
+        bias_s = f"  bias={bias:+.2f}" if abs(bias) > 0.02 else ""
         print(
             f"[ArtilleryTime] {turn}/{active.weapon} aims  ang={ang:.0f}°  "
-            f"pwr={power:.2f}  wind={wind:+.1f}  pred~{mind:.1f}px"
+            f"pwr={power:.2f}  wind={wind:+.1f}  pred~{mind:.1f}px{bias_s}"
         )
+
+    def _spawn_drones(owner_gun, enemy_gun):
+        """Launch single-pixel drones from the muzzle toward the enemy sky."""
+        nonlocal drones, last_impact
+        mx, my = owner_gun.muzzle()
+        # Clear any prior swarm from this side (new deploy replaces)
+        drones = [d for d in drones if d.owner != owner_gun.side and d.alive]
+        n = DRONE_COUNT
+        for i in range(n):
+            hx = enemy_gun.x
+            hy = max(3.0, enemy_gun.y - 9.0)
+            drones.append(Drone(
+                mx + random.uniform(-0.4, 0.4),
+                my + random.uniform(-0.4, 0.4),
+                owner_gun.side,
+                hx, hy,
+                delay=i * 0.07,
+            ))
+        last_impact = (enemy_gun.x, enemy_gun.y - 8)
+        print(f"[ArtilleryTime] {owner_gun.side} deploys {n} drones")
+
+    def _update_drones(dt):
+        """Fly / hover all live drones; track their assigned enemy."""
+        if not drones:
+            return
+        for d in drones:
+            if not d.alive:
+                continue
+            foe = guns.get("R" if d.owner == "L" else "L")
+            if foe is None:
+                continue
+            # Track pad even if wrecked so hover still makes sense
+            d.update(dt, foe.x, foe.y)
+
+    def _trigger_drone_storm(owner, reason="timeout"):
+        """Drones dump into an electric storm over the enemy."""
+        nonlocal drones, storms, last_impact, phase, phase_t
+        swarm = [d for d in drones if d.owner == owner and d.alive]
+        if not swarm:
+            return
+        foe = guns.get("R" if owner == "L" else "L")
+        cx = sum(d.x for d in swarm) / len(swarm)
+        cy = sum(d.y for d in swarm) / len(swarm)
+        if foe is not None:
+            cx = _lerp(cx, foe.x, 0.55)
+            cy = _lerp(cy, max(3.0, foe.y - 6.0), 0.4)
+        last_impact = (cx, cy)
+        # Pop drones into sparks
+        for d in swarm:
+            d.alive = False
+            d.state = "dead"
+            sparks.append(Spark(d.x, d.y, (100, 230, 255)))
+            sparks.append(Spark(d.x, d.y, (200, 240, 255)))
+        drones[:] = [d for d in drones if d.alive]
+        storms.append(ElectricStorm(cx, cy, DRONE_STORM_SEC))
+        print(f"[ArtilleryTime] Drone electric storm ({reason}) by {owner} @ {cx:.0f}")
+        # Big electric damage over the enemy
+        for _ in range(14):
+            sparks.append(Spark(
+                cx + random.uniform(-7, 7),
+                cy + random.uniform(-3, 5),
+                random.choice(((100, 220, 255), (180, 240, 255), (60, 140, 255))),
+            ))
+        # learn=False: storm is not the live shell's landing
+        _damage_at(
+            cx, cy if foe is None else foe.y - 2,
+            direct_r=3.2, shrap_r=11.0,
+            crater_r=2, crater_d=1, n_sparks=30, kind_label="drone-storm",
+            learn=False,
+        )
+        # Never freeze a live shell in impact — stay in flight so it can finish
+        if phase in ("destroy_fx", "round_end", "victory_drive", "victory_fx"):
+            return
+        if shell is not None and shell.alive:
+            return
+        if phase != "impact":
+            phase = "impact"
+            phase_t = 0.0
+
+    def _try_drone_intercept():
+        """
+        Hovering enemy drones swat the live shell / rain bullets.
+        On intercept → electric storm from that swarm.
+        Returns True if the shell was killed.
+        """
+        nonlocal shell, hit_kind, rain_bullets
+        shell_killed = False
+        if shell is not None and shell.alive:
+            for d in drones:
+                if not d.alive or d.state != "hover":
+                    continue
+                if d.owner == shell.owner:
+                    continue
+                if math.hypot(d.x - shell.x, d.y - shell.y) <= DRONE_INTERCEPT_R:
+                    shell.alive = False
+                    shell.trail.append([shell.x, shell.y, 1.0])
+                    shell._detonated = True  # no ground boom
+                    shell_killed = True
+                    hit_kind = "miss"
+                    for _ in range(8):
+                        sparks.append(Spark(
+                            shell.x, shell.y,
+                            random.choice(((100, 230, 255), (255, 255, 200), (80, 180, 255))),
+                        ))
+                    print(f"[ArtilleryTime] Drone intercept! shell from {shell.owner}")
+                    _trigger_drone_storm(d.owner, reason="intercept")
+                    break
+        # Also swat MG rain belonging to the other side
+        if rain_bullets:
+            kept = []
+            for b in rain_bullets:
+                swatted = False
+                if b.alive:
+                    for d in drones:
+                        if not d.alive or d.state != "hover" or d.owner == b.owner:
+                            continue
+                        if math.hypot(d.x - b.x, d.y - b.y) <= DRONE_INTERCEPT_R:
+                            b.alive = False
+                            swatted = True
+                            sparks.append(Spark(b.x, b.y, (100, 230, 255)))
+                            print("[ArtilleryTime] Drone swatted MG round")
+                            _trigger_drone_storm(d.owner, reason="intercept-mg")
+                            break
+                if b.alive and not swatted:
+                    kept.append(b)
+            rain_bullets = kept
+        return shell_killed
+
+    def _drone_timeout_storms(dt):
+        """If a swarm has hovered long enough without intercept, storm anyway."""
+        owners_hover = {}
+        for d in drones:
+            if d.alive and d.state == "hover":
+                owners_hover.setdefault(d.owner, []).append(d)
+        for owner, swarm in owners_hover.items():
+            # Use max hover time in the swarm
+            ht = max(d.hover_t for d in swarm)
+            if ht >= DRONE_HOVER_MAX:
+                _trigger_drone_storm(owner, reason="timeout")
+
+    def _update_storms(dt):
+        nonlocal storms
+        if not storms:
+            return
+        alive = []
+        for st in storms:
+            if st.update(dt, sparks=sparks):
+                alive.append(st)
+        storms = alive
 
     def _fire():
         nonlocal shell, phase, phase_t, war_ammo
@@ -1220,6 +2012,20 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
         mx, my = active.muzzle()
         rad = math.radians(active.angle)
         kind = active.weapon
+        last_shot["owner"] = turn
+        last_shot["kind"] = kind
+        last_shot["enemy_x"] = enemy.x if enemy else WORLD_W * 0.5
+        if kind == "drone":
+            # Swarm launch — no ballistic shell
+            shell = None
+            _spawn_drones(active, enemy)
+            active.flash = 0.3
+            active.consume_ammo()
+            war_ammo[turn] = active.ammo
+            phase = "flight"
+            phase_t = 0.0
+            print(f"[ArtilleryTime] {turn} FIRE drone!")
+            return
         speed = 8.0 + active.power * 42.0
         if kind == "heavy":
             speed *= 0.92
@@ -1231,8 +2037,16 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
             speed = 16.0 + active.power * 36.0
         elif kind == "bouncer":
             speed *= 0.95
+        elif kind == "acid":
+            speed *= 0.90
+        elif kind == "flame":
+            speed *= 0.96
+        elif kind == "mg30":
+            speed = 10.0 + active.power * 34.0
         vx = math.cos(rad) * speed
         vy = -math.sin(rad) * speed
+        if kind == "mg30":
+            vy -= 6.0 + active.power * 8.0
         shell = Shell(
             mx, my, vx, vy, turn, kind=kind,
             target_x=enemy.x, target_y=enemy.y,
@@ -1244,12 +2058,42 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
         phase_t = 0.0
         print(f"[ArtilleryTime] {turn} FIRE {kind}!")
 
-    def _damage_at(ix, iy, direct_r, shrap_r, crater_r, crater_d, n_sparks, kind_label="HE"):
-        """Apply blast damage at (ix,iy). Returns True if round ended."""
+    def _damage_at(
+        ix, iy, direct_r, shrap_r, crater_r, crater_d, n_sparks,
+        kind_label="HE", learn=True,
+    ):
+        """
+        Apply blast at (ix,iy): always scar the ground, shove nearby guns,
+        then HP / kill checks. Returns True if round ended.
+        learn=False skips short/long power memory (e.g. drone storms).
+        """
         nonlocal hit_kind, last_impact, phase, phase_t, score, killed_side
         last_impact = (ix, iy)
-        if crater_r > 0:
-            crater(heights, ix, radius=crater_r, depth=crater_d)
+
+        # Every hit damages the ground — at least a small pock if weapon
+        # passed crater_r=0 (e.g. acid already dissolved, still add scar).
+        cr = int(crater_r)
+        cd = int(crater_d)
+        if cr <= 0:
+            cr = max(2, int(round(1.2 + shrap_r * 0.22)))
+        if cd <= 0:
+            cd = max(1, int(round(1 + shrap_r * 0.1)))
+        crater(heights, ix, radius=cr, depth=cd)
+
+        # Blast shove: pieces close to the impact are moved by the force
+        push_r = max(float(shrap_r) + 1.5, float(cr) + 2.5, 5.5)
+        push_str = 0.55 + cd * 0.18 + cr * 0.07
+        for side, g in guns.items():
+            if not g.alive:
+                continue
+            if blast_push_gun(g, heights, ix, iy, push_r, strength=push_str):
+                print(
+                    f"[ArtilleryTime] Blast shoved {side} "
+                    f"→ x={g.x:.1f} ({kind_label})"
+                )
+                for _ in range(3):
+                    sparks.append(Spark(g.x, g.y, (160, 140, 100)))
+
         hit_kind = "miss"
         for side, g in guns.items():
             if not g.alive:
@@ -1273,6 +2117,9 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
             g.sit_on_ground(heights)
         for _ in range(n_sparks):
             sparks.append(Spark(ix, iy))
+        # Learn short/long for the shooter who just landed this blast
+        if learn and last_shot.get("owner") is not None:
+            _record_shot_outcome(impact_x=ix, result=hit_kind)
         return _check_round_over()
 
     def _check_round_over():
@@ -1398,8 +2245,8 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
         ox = (VIEW_W - tw) * 0.5
         oy = (VIEW_H - th) * 0.5
 
-        # Brightness ramps up with zoom progress
-        bright = 0.35 + 0.65 * t
+        # Solid yellow — only a tiny ramp at the very start of the zoom
+        bright = 0.92 + 0.08 * t
         base_r = YOU_WIN_RGB[0] * bright
         base_g = YOU_WIN_RGB[1] * bright
         base_b = YOU_WIN_RGB[2] * bright
@@ -1407,6 +2254,7 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
         set_px = canvas.SetPixel
         # Soft-box stamp: each lit unit cell becomes an sc×sc square with
         # edge coverage so fractional scales look continuous, not stepped.
+        # Interior pixels are forced solid yellow (no washed-out orange).
         for cx, cy in cells:
             x0 = ox + cx * sc
             y0 = oy + cy * sc
@@ -1426,9 +2274,13 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
                     if cov_x <= 0.0:
                         continue
                     cov = cov_x * cov_y  # 0..1 for sc>=1; smaller when sc<1
-                    if cov < 0.04:
+                    if cov < 0.08:
                         continue
-                    cov = min(1.0, cov)
+                    # Solid fill for most of each cell; soft only on hairline edges
+                    if cov >= 0.35:
+                        cov = 1.0
+                    else:
+                        cov = min(1.0, cov * 2.2)
                     set_px(
                         px, py,
                         min(255, int(base_r * cov)),
@@ -1490,6 +2342,41 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
             # Bouncing bomb final detonation — solid HE after 3 hops
             if _damage_at(ix, iy, direct_r=3.2, shrap_r=7.0,
                           crater_r=5, crater_d=3, n_sparks=32, kind_label="bouncer"):
+                return
+        elif kind == "acid":
+            # Dissolve earth + collapse/shift surrounding ground
+            for _ in range(8):
+                sparks.append(Spark(
+                    ix + random.uniform(-5, 5),
+                    iy + random.uniform(-2, 1),
+                    random.choice(((60, 255, 40), (100, 255, 70), (40, 160, 30))),
+                ))
+            acid_dissolve(heights, ix, radius=ACID_RADIUS, depth=ACID_DEPTH, strength=1.0)
+            smooth_terrain(heights, passes=1)
+            for g in guns.values():
+                if g.alive:
+                    g.sit_on_ground(heights)
+            ground_fx.append(GroundFX("acid", ix, ACID_FX_SEC, owner=None))
+            # Mild chemical burn damage near the pit
+            if _damage_at(ix, iy, direct_r=2.0, shrap_r=6.5,
+                          crater_r=0, crater_d=0, n_sparks=12, kind_label="acid"):
+                return
+        elif kind == "flame":
+            # Impact then flames burst along the ground
+            for _ in range(10):
+                sparks.append(Spark(
+                    ix + random.uniform(-3, 3),
+                    iy + random.uniform(-1, 1),
+                    random.choice(((255, 80, 10), (255, 160, 20), (255, 220, 40))),
+                ))
+            ground_fx.append(GroundFX("flame", ix, FLAME_BURST_SEC, owner=None))
+            if _damage_at(ix, iy, direct_r=2.4, shrap_r=5.5,
+                          crater_r=2, crater_d=1, n_sparks=16, kind_label="flame"):
+                return
+        elif kind == "mg30":
+            # Primary shell opens the storm; bullets apply most of the hurt
+            if _damage_at(ix, iy, direct_r=1.5, shrap_r=3.0,
+                          crater_r=1, crater_d=1, n_sparks=8, kind_label="mg30"):
                 return
         else:
             if _damage_at(ix, iy, direct_r=2.2, shrap_r=5.0,
@@ -1694,10 +2581,135 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
                 if 0 <= px < VIEW_W and 0 <= py < VIEW_H:
                     set_px(px, py, 40, 40, 55)
 
+    def _draw_ground_fx():
+        """Acid stains + surface flame burst along the terrain."""
+        if not ground_fx:
+            return
+        set_px = canvas.SetPixel
+        for fx in ground_fx:
+            if fx.kind == "acid":
+                r = int(ACID_RADIUS * (0.4 + 0.6 * (fx.life / max(0.01, fx.max_life))))
+                for dx in range(-r, r + 1):
+                    wx = int(round(fx.x + dx))
+                    if wx < 0 or wx >= WORLD_W:
+                        continue
+                    sy = int(surface_y(heights, wx))
+                    px = int(round(wx - cam_x))
+                    # Greenish slime on surface + one deep pixel
+                    for dy in (0, 1):
+                        py = sy + dy
+                        if 0 <= px < VIEW_W and 0 <= py < VIEW_H:
+                            fall = 1.0 - abs(dx) / float(max(1, r))
+                            set_px(
+                                px, py,
+                                min(255, int(30 + 40 * fall)),
+                                min(255, int(140 + 100 * fall)),
+                                min(255, int(20 + 30 * fall)),
+                            )
+            elif fx.kind == "flame":
+                reach = int(math.ceil(fx.reach))
+                for dx in range(-reach, reach + 1):
+                    wx = int(round(fx.x + dx))
+                    if wx < 0 or wx >= WORLD_W:
+                        continue
+                    sy = int(surface_y(heights, wx))
+                    px = int(round(wx - cam_x))
+                    # Fire line on the ground + flicker upward
+                    flick = random.randint(1, 3)
+                    for dy in range(0, flick + 1):
+                        py = sy - dy
+                        if not (0 <= px < VIEW_W and 0 <= py < VIEW_H):
+                            continue
+                        if dy == 0:
+                            set_px(px, py, 255, 90, 15)
+                        elif dy == 1:
+                            set_px(px, py, 255, 160, 30)
+                        else:
+                            set_px(px, py, 255, 220, 60)
+
+    def _draw_rain_bullets():
+        if not rain_bullets:
+            return
+        set_px = canvas.SetPixel
+        for b in rain_bullets:
+            if not b.alive:
+                continue
+            px = int(round(b.x - cam_x))
+            py = int(round(b.y))
+            if 0 <= px < VIEW_W and 0 <= py < VIEW_H:
+                set_px(px, py, 220, 210, 160)
+                # short streak
+                py2 = py - 1
+                if 0 <= py2 < VIEW_H:
+                    set_px(px, py2, 140, 140, 110)
+
+    def _draw_drones():
+        """Single-pixel drones — cyan while flying, brighter on station."""
+        if not drones:
+            return
+        set_px = canvas.SetPixel
+        for d in drones:
+            if not d.alive:
+                continue
+            px = int(round(d.x - cam_x))
+            py = int(round(d.y))
+            if not (0 <= px < VIEW_W and 0 <= py < VIEW_H):
+                continue
+            if d.state == "hover":
+                # Tiny blink while on station
+                blink = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(d.phase * 2.0))
+                set_px(
+                    px, py,
+                    min(255, int(100 * blink + 40)),
+                    min(255, int(230 * blink)),
+                    255,
+                )
+            else:
+                set_px(px, py, 80, 180, 220)
+
+    def _draw_storms():
+        """Electric storm lightning bolts (world → screen)."""
+        if not storms:
+            return
+        set_px = canvas.SetPixel
+        for st in storms:
+            fade = _clamp(st.life / max(0.05, st.max_life), 0.2, 1.0)
+            for bolt in st.bolts:
+                for i in range(len(bolt) - 1):
+                    x0, y0 = bolt[i]
+                    x1, y1 = bolt[i + 1]
+                    steps = max(1, int(math.hypot(x1 - x0, y1 - y0)))
+                    for s in range(steps + 1):
+                        u = s / float(steps)
+                        wx = x0 + (x1 - x0) * u
+                        wy = y0 + (y1 - y0) * u
+                        px = int(round(wx - cam_x))
+                        py = int(round(wy))
+                        if 0 <= px < VIEW_W and 0 <= py < VIEW_H:
+                            set_px(
+                                px, py,
+                                min(255, int(140 * fade)),
+                                min(255, int(220 * fade)),
+                                255,
+                            )
+            # Core glow at storm origin
+            cxp = int(round(st.x - cam_x))
+            cyp = int(round(st.y))
+            for dx, dy in ((0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)):
+                px, py = cxp + dx, cyp + dy
+                if 0 <= px < VIEW_W and 0 <= py < VIEW_H:
+                    set_px(px, py, 200, 240, 255)
+
     def _draw_shell():
         if shell is None:
             return
-        if not shell.alive and not shell.trail and shell.burn_t <= 0 and shell.effect_t <= 0:
+        if (
+            not shell.alive
+            and not shell.trail
+            and shell.burn_t <= 0
+            and shell.effect_t <= 0
+            and not rain_bullets
+        ):
             return
         set_px = canvas.SetPixel
         rgb = shell.rgb
@@ -1739,6 +2751,20 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
                         qx, qy = px + dx, py + dy
                         if 0 <= qx < VIEW_W and 0 <= qy < VIEW_H:
                             set_px(qx, qy, 255, 140, 40)
+                elif shell.kind == "acid":
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1)):
+                        qx, qy = px + dx, py + dy
+                        if 0 <= qx < VIEW_W and 0 <= qy < VIEW_H:
+                            set_px(qx, qy, 40, 200, 30)
+                elif shell.kind == "flame":
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1)):
+                        qx, qy = px + dx, py + dy
+                        if 0 <= qx < VIEW_W and 0 <= qy < VIEW_H:
+                            set_px(qx, qy, 255, 120, 20)
+                elif shell.kind == "mg30":
+                    # Tracer round
+                    if 0 <= py - 1 < VIEW_H:
+                        set_px(px, py - 1, 255, 240, 120)
         # Mushroom cloud after nuke impact
         if shell.kind == "nuke" and shell.effect_t > 0 and not shell.alive:
             t = 1.0 - shell.effect_t / MUSHROOM_SEC
@@ -1804,27 +2830,39 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
 
             phase_t += dt
 
-            # Clock: visible at beginning/end; hidden during combat + victory show
-            if phase in ("war_start", "round_end", "war_end", "destroy_fx", "drive_in"):
-                clock_target = 1.0 if phase in ("war_start", "round_end", "war_end") else 0.35
-            elif phase in ("victory_drive", "victory_fx"):
-                clock_target = 0.0
+            # Clock: fade in, hold ~5s full, then fade out with the banner
+            if phase in ("war_start", "round_end", "war_end"):
+                # Full for CLOCK_HOLD_SEC after fade-in completes
+                if phase_t < CLOCK_FADE_IN_SEC + CLOCK_HOLD_SEC:
+                    clock_target = 1.0
+                else:
+                    clock_target = 0.0
+            elif phase in ("destroy_fx", "drive_in"):
+                clock_target = 0.35
             else:
+                # think / charge / flight / impact / victory — fully out
                 clock_target = 0.0
             if clock_alpha < clock_target:
-                clock_alpha = min(clock_target, clock_alpha + CLOCK_FADE_SPEED * dt)
+                step = dt / max(0.05, CLOCK_FADE_IN_SEC)
+                clock_alpha = min(clock_target, clock_alpha + step)
             elif clock_alpha > clock_target:
-                clock_alpha = max(clock_target, clock_alpha - CLOCK_FADE_SPEED * dt)
+                step = dt / max(0.05, CLOCK_FADE_OUT_SEC)
+                clock_alpha = max(clock_target, clock_alpha - step)
 
             # ---- Phase machine ----
             if phase == "war_start":
                 cam_x = camera_follow(WORLD_W * 0.5, cam_x, snap=(phase_t < 0.05))
+                # Wait for fade-in + 5s hold + fade-out before combat
                 if phase_t >= ROUND_BANNER:
                     # Terrain/guns refresh; weapons come from war loadout
                     _reset_round(new_war=False)
                     _start_think()
 
             elif phase == "think":
+                # Hovering drones keep station / may timeout into storm
+                _update_drones(dt)
+                _drone_timeout_storms(dt)
+                _update_storms(dt)
                 active = guns[turn]
                 cam_x = camera_follow(active.x, cam_x)
                 active.angle = pending_angle
@@ -1835,6 +2873,9 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
                     charge_show = 0.0
 
             elif phase == "charge":
+                _update_drones(dt)
+                _drone_timeout_storms(dt)
+                _update_storms(dt)
                 active = guns[turn]
                 cam_x = camera_follow(active.x, cam_x)
                 charge_show = _smooth(phase_t / max(0.05, CHARGE_SEC))
@@ -1844,77 +2885,176 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
                     _fire()
 
             elif phase == "flight":
+                # Drones always tick (deploy flight + intercept watch)
+                _update_drones(dt)
+                _drone_timeout_storms(dt)
+                _update_storms(dt)
+
                 if shell is not None:
-                    status = shell.update(dt, wind, heights, sparks=sparks)
-                    cam_x = camera_follow(shell.x, cam_x)
-                    if shell.alive:
-                        # Airburst / SAM only detonate on fuse over enemy —
-                        # direct body hits still count for solid shells.
-                        if shell.kind not in ("airburst", "sam"):
-                            hit_r = {
-                                "laser": 2.2, "heavy": 2.4, "nuke": 2.8,
-                                "phosphorous": 1.7, "bouncer": 1.9,
-                            }.get(shell.kind, 1.6)
-                            for side, g in guns.items():
-                                if not g.alive or side == shell.owner:
-                                    continue
-                                if math.hypot(shell.x - g.x, shell.y - g.y) <= hit_r:
-                                    shell.alive = False
-                                    shell.trail.append([shell.x, shell.y, 1.0])
-                                    if shell.kind == "nuke":
-                                        shell.effect_t = MUSHROOM_SEC
-                                    if shell.kind == "phosphorous":
-                                        shell.burn_t = PHOS_BURN_SEC
-                                    if not getattr(shell, "_detonated", False):
-                                        shell._detonated = True
-                                        _apply_hit(shell.x, shell.y, kind=shell.kind)
-                                    status = "hit"
-                                    break
-                        else:
-                            # Keep target locked on live enemy while guiding
-                            foe = guns.get("R" if shell.owner == "L" else "L")
-                            if foe and foe.alive:
-                                shell.target_x = foe.x
-                                shell.target_y = foe.y
+                    # Enemy drones may swat this shell before it advances
+                    if _try_drone_intercept():
+                        if phase not in ("destroy_fx", "round_end"):
+                            phase = "impact"
+                            phase_t = 0.0
+                    else:
+                        status = shell.update(dt, wind, heights, sparks=sparks)
+                        cam_x = camera_follow(shell.x, cam_x)
+                        # Intercept again mid-path (drones near shell)
+                        if shell.alive and _try_drone_intercept():
+                            if phase not in ("destroy_fx", "round_end"):
+                                phase = "impact"
+                                phase_t = 0.0
+                            status = "intercepted"
+                        if shell.alive:
+                            # Airburst / SAM only detonate on fuse over enemy —
+                            # direct body hits still count for solid shells.
+                            if shell.kind not in ("airburst", "sam", "mg30"):
+                                hit_r = {
+                                    "laser": 2.2, "heavy": 2.4, "nuke": 2.8,
+                                    "phosphorous": 1.7, "bouncer": 1.9,
+                                    "acid": 1.8, "flame": 1.8,
+                                }.get(shell.kind, 1.6)
+                                for side, g in guns.items():
+                                    if not g.alive or side == shell.owner:
+                                        continue
+                                    if math.hypot(shell.x - g.x, shell.y - g.y) <= hit_r:
+                                        shell.alive = False
+                                        shell.trail.append([shell.x, shell.y, 1.0])
+                                        if shell.kind == "nuke":
+                                            shell.effect_t = MUSHROOM_SEC
+                                        if shell.kind == "phosphorous":
+                                            shell.burn_t = PHOS_BURN_SEC
+                                        if not getattr(shell, "_detonated", False):
+                                            shell._detonated = True
+                                            _apply_hit(shell.x, shell.y, kind=shell.kind)
+                                        status = "hit"
+                                        break
+                            else:
+                                # Keep target locked on live enemy while guiding
+                                foe = guns.get("R" if shell.owner == "L" else "L")
+                                if foe and foe.alive:
+                                    shell.target_x = foe.x
+                                    shell.target_y = foe.y
 
-                    def _detonate_once(kind):
-                        if getattr(shell, "_detonated", False):
-                            return
-                        shell._detonated = True
-                        _apply_hit(shell.x, shell.y, kind=kind)
+                        def _detonate_once(kind):
+                            if getattr(shell, "_detonated", False):
+                                return
+                            shell._detonated = True
+                            _apply_hit(shell.x, shell.y, kind=kind)
 
-                    if status == "ground":
-                        _detonate_once(shell.kind)
-                    elif status == "airburst":
-                        _detonate_once("airburst")
-                    elif status == "sam_burst":
-                        _detonate_once("sam")
-                    elif status == "mushroom":
-                        _detonate_once("nuke")
-                        if shell.effect_t <= 0 and not shell.trail:
+                        if status == "ground":
+                            _detonate_once(shell.kind)
+                        elif status == "airburst":
+                            _detonate_once("airburst")
+                        elif status == "sam_burst":
+                            _detonate_once("sam")
+                        elif status == "mg_rain":
+                            if not getattr(shell, "_rain_spawned", False):
+                                shell._rain_spawned = True
+                                aim = shell.target_x
+                                _spawn_mg_rain(shell.x, shell.y, shell.owner, aim)
+                                # Tiny open-burst at rain origin
+                                if not getattr(shell, "_detonated", False):
+                                    shell._detonated = True
+                                    _apply_hit(shell.x, shell.y, kind="mg30")
+                            _update_rain_bullets(dt)
+                            _try_drone_intercept()
+                            if shell.effect_t <= 0 and not rain_bullets and not shell.trail:
+                                if phase not in ("round_end", "destroy_fx"):
+                                    phase = "impact"
+                                    phase_t = 0.0
+                        elif status == "mushroom":
+                            _detonate_once("nuke")
+                            if shell.effect_t <= 0 and not shell.trail:
+                                if phase != "round_end":
+                                    phase = "impact"
+                                    phase_t = 0.0
+                        elif status == "burn":
+                            _detonate_once("phosphorous")
+                            if shell.burn_t <= 0 and not shell.trail:
+                                if phase != "round_end":
+                                    phase = "impact"
+                                    phase_t = max(phase_t, IMPACT_HOLD * 0.4)
+                        elif status == "oob":
+                            hit_kind = "miss"
+                            # OOB counts as short/long for power learning
+                            ox = shell.x if shell is not None else None
+                            if ox is not None:
+                                last_impact = (ox, shell.y if shell else 0)
+                                _record_shot_outcome(impact_x=ox, result="miss")
+                            phase = "impact"
+                            phase_t = 0.0
+                        elif status == "intercepted":
+                            # Intercepted — don't treat as short ballistic miss
+                            last_shot["owner"] = None
+                            last_shot["kind"] = None
+                        elif status == "dead" and not shell.trail and not rain_bullets:
                             if phase != "round_end":
                                 phase = "impact"
                                 phase_t = 0.0
-                    elif status == "burn":
-                        _detonate_once("phosphorous")
-                        if shell.burn_t <= 0 and not shell.trail:
-                            if phase != "round_end":
-                                phase = "impact"
-                                phase_t = max(phase_t, IMPACT_HOLD * 0.4)
-                    elif status == "oob":
-                        hit_kind = "miss"
+                        # Lingering ground FX can start mid-flight (acid/flame detonate)
+                        _update_ground_fx(dt)
+                        _flame_damage_tick()
+                        if rain_bullets and status != "mg_rain":
+                            _update_rain_bullets(dt)
+                            _try_drone_intercept()
+                else:
+                    # Drone deploy in progress (no shell)
+                    flying = any(
+                        d.alive and d.owner == turn and d.state == "fly"
+                        for d in drones
+                    )
+                    hovering = any(
+                        d.alive and d.owner == turn and d.state == "hover"
+                        for d in drones
+                    )
+                    if hovering and not flying:
+                        # Swarm on station — end deploy turn
                         phase = "impact"
                         phase_t = 0.0
-                    elif status == "dead" and not shell.trail:
-                        if phase != "round_end":
-                            phase = "impact"
-                            phase_t = 0.0
-                else:
-                    phase = "impact"
-                    phase_t = 0.0
+                        hit_kind = hit_kind or "miss"
+                        print(f"[ArtilleryTime] Drones on station ({turn})")
+                    elif not flying and not hovering:
+                        # Deploy failed / empty
+                        phase = "impact"
+                        phase_t = 0.0
+                        hit_kind = "miss"
+                    else:
+                        # Follow the lead drone
+                        lead = next(
+                            (d for d in drones if d.alive and d.owner == turn),
+                            None,
+                        )
+                        if lead is not None:
+                            cam_x = camera_follow(lead.x, cam_x)
 
             elif phase == "impact":
-                if shell is not None:
+                # If a live shell was yanked into impact (e.g. old storm bug),
+                # keep integrating it so the turn cannot freeze forever.
+                if shell is not None and shell.alive:
+                    st = shell.update(dt, wind, heights, sparks=sparks)
+                    cam_x = camera_follow(shell.x, cam_x)
+                    if st in ("ground", "airburst", "sam_burst", "mg_rain", "mushroom", "burn"):
+                        if not getattr(shell, "_detonated", False):
+                            shell._detonated = True
+                            kind = {
+                                "airburst": "airburst",
+                                "sam_burst": "sam",
+                                "mg_rain": "mg30",
+                                "mushroom": "nuke",
+                                "burn": "phosphorous",
+                            }.get(st, shell.kind)
+                            if st == "mg_rain" and not getattr(shell, "_rain_spawned", False):
+                                shell._rain_spawned = True
+                                _spawn_mg_rain(
+                                    shell.x, shell.y, shell.owner, shell.target_x,
+                                )
+                            _apply_hit(shell.x, shell.y, kind=kind)
+                    elif st == "oob":
+                        shell.alive = False
+                        hit_kind = "miss"
+                        _record_shot_outcome(impact_x=shell.x, result="miss")
+                elif shell is not None:
                     shell._age_trail(dt, rate=SHELL_TRAIL_FADE_RATE * 1.15)
                     if shell.kind == "phosphorous" and shell.burn_t > 0:
                         shell.update(dt, wind, heights, sparks=sparks)
@@ -1926,20 +3066,64 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
                                 shell.y - random.uniform(0, 8),
                                 random.choice(((255, 200, 40), (255, 100, 20), (200, 200, 200))),
                             ))
+                    if shell.kind == "mg30" and shell.effect_t > 0:
+                        shell.effect_t -= dt
+                _update_drones(dt)
+                _drone_timeout_storms(dt)
+                _update_storms(dt)
+                _update_ground_fx(dt)
+                _flame_damage_tick()
+                _update_rain_bullets(dt)
+                _try_drone_intercept()
                 focus = last_impact[0] if last_impact else (
                     shell.x if shell else WORLD_W * 0.5
                 )
+                if rain_bullets:
+                    focus = rain_bullets[0].x
+                if storms:
+                    focus = storms[0].x
+                if shell is not None and shell.alive:
+                    focus = shell.x
                 cam_x = camera_follow(focus, cam_x)
                 trail_done = (
-                    shell is None
-                    or (
-                        not shell.alive
-                        and len(shell.trail) < 2
-                        and shell.burn_t <= 0
-                        and shell.effect_t <= 0
+                    (
+                        shell is None
+                        or (
+                            not shell.alive
+                            and len(shell.trail) < 2
+                            and shell.burn_t <= 0
+                            and shell.effect_t <= 0
+                        )
                     )
+                    and not ground_fx
+                    and not rain_bullets
+                    and not storms
                 )
-                if phase_t >= IMPACT_HOLD and trail_done:
+                # Drones that just reached hover: don't wait forever on impact
+                # (they persist into later turns)
+                hold = IMPACT_HOLD
+                if shell is not None and shell.kind in ("acid", "flame", "mg30"):
+                    hold = max(hold, 1.6)
+                if storms:
+                    hold = max(hold, DRONE_STORM_SEC * 0.85)
+                # If only drones hovering (deploy done), short hold
+                if (
+                    shell is None
+                    and not storms
+                    and any(d.alive and d.state == "hover" for d in drones)
+                ):
+                    hold = min(hold, 0.7)
+                # Hard safety: never freeze the match on a stuck shell / FX
+                IMPACT_MAX_SEC = 6.0
+                if phase_t >= IMPACT_MAX_SEC and not trail_done:
+                    print("[ArtilleryTime] impact timeout — forcing turn advance")
+                    shell = None
+                    ground_fx = []
+                    rain_bullets = []
+                    storms = []
+                    trail_done = True
+                    hold = 0.0
+                if phase_t >= hold and trail_done:
                     if not guns["L"].alive or not guns["R"].alive:
                         # Death already set phase to destroy_fx via _check_round_over
                         if phase != "destroy_fx":
@@ -2091,6 +3275,7 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
             try:
                 _draw_sky()
                 _draw_terrain()
+                _draw_ground_fx()
                 _draw_mid_pedestal()
                 if phase not in ("victory_drive", "victory_fx", "destroy_fx", "drive_in"):
                     _draw_trajectory()
@@ -2099,6 +3284,9 @@ def PlayArtilleryTime(Duration=10, StopEvent=None):
                 if phase not in ("victory_drive", "victory_fx"):
                     _draw_power_pips()
                 _draw_shell()
+                _draw_rain_bullets()
+                _draw_drones()
+                _draw_storms()
                 _draw_sparks()
                 if phase == "victory_fx" and you_win_scale > 0.05:
                     _draw_you_win(you_win_scale)
