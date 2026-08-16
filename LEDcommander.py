@@ -147,6 +147,7 @@ VALID_WEB_ACTIONS = {
     "launch_rallydot": ["duration"],
     "launch_spaceexplorer": ["duration"],
     "launch_skyfall": ["duration"],
+    "launch_artillerytime": ["duration"],
     "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
     "twitchtimer_off": [],
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
@@ -420,7 +421,9 @@ def fallback_action_generator():
         {"Action": "launch_spacedot", "duration": 5},
         {"Action": "launch_fallingsand", "duration": 5},
         {"Action": "launch_particles", "duration": 5},
+        # Fractal Blaster — multi-type tour, color cycle, digital clock, 5 min
         {"Action": "launch_fractal", "duration": 5},
+        {"Action": "launch_artillerytime", "duration": 5},
         {"Action": "launch_planet", "duration": 5},
         # One pinball slot per lap — table chosen at random when it runs
         {"Action": "launch_pinball_random", "duration": 5},
@@ -993,6 +996,17 @@ def Run(CommandQueue):
                 StopEvent.clear()
                 CurrentDisplayMode = "skyfall"
                 DisplayProcess = Process(target=LaunchSkyfall, args=(Command, StopEvent))
+                DisplayProcess.start()
+
+            elif Action == "launch_artillerytime":
+                print("[LEDcommander][Run] Launching Artillery Time")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "artillerytime"
+                DisplayProcess = Process(
+                    target=LaunchArtilleryTime, args=(Command, StopEvent)
+                )
                 DisplayProcess.start()
 
 
@@ -2216,6 +2230,39 @@ def LaunchSkyfall(Command, StopEvent):
             pass
 
 
+def LaunchArtilleryTime(Command, StopEvent):
+    """Artillery Time — best-of-3 duel on a wide scrolling battlefield (5 min)."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import ArtilleryTime as AT
+    Duration = Command.get("duration", 5)
+    if Duration in (None, ""):
+        Duration = 5
+    try:
+        Duration = float(Duration)
+    except (TypeError, ValueError):
+        Duration = 5.0
+    if Duration <= 0:
+        Duration = 5.0
+    print(
+        f"[LEDcommander][LaunchArtilleryTime] Artillery Time — "
+        f"{Duration} minutes..."
+    )
+    try:
+        _run_game_dimmed(
+            lambda: AT.LaunchArtilleryTime(
+                Duration=Duration, ShowIntro=True, StopEvent=StopEvent
+            )
+        )
+    finally:
+        print("[LEDcommander][LaunchArtilleryTime] finished")
+        try:
+            LED.ClearBigLED()
+            LED.ClearBuffers()
+        except Exception:
+            pass
+
+
 def LaunchFallingSand(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
@@ -2240,11 +2287,19 @@ def LaunchParticles(Command, StopEvent):
 
 
 def LaunchFractal(Command, StopEvent):
-    """Mandelbrot fractal zoom explorer."""
+    """Fractal Blaster — multi-type zoom tour + clock reveal (idle rotation: 5 min)."""
     import LEDarcade as LED
     LED.Initialize()
     import Fractal as FR
-    Duration = Command.get("duration", 10)
+    Duration = Command.get("duration", 5)
+    if Duration in (None, ""):
+        Duration = 5
+    try:
+        Duration = float(Duration)
+    except (TypeError, ValueError):
+        Duration = 5.0
+    if Duration <= 0:
+        Duration = 5.0
     print(f"[LEDcommander][LaunchFractal] Fractal Blaster — {Duration} minutes...")
     _run_game_dimmed(
         lambda: FR.LaunchFractal(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)

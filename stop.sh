@@ -120,6 +120,7 @@ LAUNCHERS=(
     RallyDot.py
     SpaceExplorer.py
     Skyfall.py
+    ArtilleryTime.py
     StockTicker.py
     AnalogClock.py
     WeatherClock.py

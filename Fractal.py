@@ -1,11 +1,14 @@
 # =====================================================================================
-# FRACTAL BLASTER — Mandelbrot explorer for the LED matrix
+# FRACTAL BLASTER — multi-type fractal explorer for the LED matrix
 #
-# Title: "FRACTAL BLASTER" zooms in from nothing, then the camera dives into
-# a letter and the Mandelbrot set begins there.
+# Title: "FRACTAL BLASTER" zooms in, dives into a letter, then the tour begins.
 #
-# Tour: zoom in → pan coastline → zoom in/out series → repeat.
-# (Optional blaster ship after zoom-in: ENABLE_BLASTER_SHIP — currently off.)
+# Tour (repeats until duration ends):
+#   1) Pick a random fractal type (Mandelbrot, Julia, Burning Ship, …)
+#   2) Smooth zoom-in hops (5 s each) toward coastline spots — 5 levels deep
+#   3) Classic color rotation at the deepest view
+#   4) Zoom into a bright digital HH:MM clock
+#   5) Smooth zoom back out to the starting framing
 #
 # Launch:
 #   LEDsim key 5 / LEDpanel / LEDcommander "launch_fractal" / ?fractal
@@ -30,36 +33,70 @@ except Exception:
 
 # ---------------- Configuration ----------------
 TARGET_FPS = 20
-# Initial classic Mandelbrot framing
+# Default framing (overridden per fractal type)
 INIT_CX = -0.55
 INIT_CY = 0.0
 INIT_SCALE = 1.35          # half-height of view in complex plane
-# Motion timing (frames @ TARGET_FPS)
-ZOOM_IN_FRAMES = 72        # one zoom-in hop
-ZOOM_OUT_FRAMES = 60       # one zoom-out hop
-PAN_FRAMES = 90            # coastline pan
-PAUSE_FRAMES = 32          # slowdown between hops
-START_PAUSE_FRAMES = 36    # pause before a new cycle
-# Series length
-HOPS_MIN = 2
-HOPS_MAX = 3
-# Scale change per hop
-ZOOM_IN_FACTOR = 0.20      # scale *= this each zoom-in
-ZOOM_OUT_FACTOR = 4.0      # scale *= this each zoom-out (capped at INIT)
-MAX_ZOOM_DEPTH = 1e-11
+
+# New tour timing
+ZOOM_LEVELS = 5            # zoom hops before color cycle
+ZOOM_IN_SEC = 5.0          # smooth zoom per level
+ZOOM_OUT_SEC = 8.0         # return to start framing
+COLOR_CYCLE_SEC = 10.0     # full palette rotation at deepest level
+COLOR_CYCLE_SPEED = 0.55   # hue shifts per second
+ZOOM_IN_FACTOR = 0.22      # scale *= this each zoom-in hop
+MAX_ZOOM_DEPTH = 1e-12
+LEVEL_PAUSE_SEC = 0.35     # brief settle between hops
+# Digital clock reveal at deepest level (before zoom-out)
+CLOCK_ZOOM_SEC = 4.0       # longer smooth zoom-in of HH:MM
+CLOCK_HOLD_SEC = 2.2       # hold full clock before pull-out
+CLOCK_RGB = (255, 255, 255)  # bright white digital face
+CLOCK_GLOW = (60, 200, 255)  # soft cyan glow under digits
+
 # Iterations grow as we zoom (detail)
 BASE_ITERS = 48
 MAX_ITERS = 220
-# ---- Blaster ship (after zoom-in: shoot holes, then zoom again) ----
-ENABLE_BLASTER_SHIP = False  # set True to re-enable combat interlude
-BLAST_FRAMES = 130         # ~6.5 s @ 20 fps of ship combat
-BLAST_SHIP_SPEED = 0.72    # px per frame
-BLAST_TURN = 0.35          # steering blend toward target
-BLAST_SHOT_COOLDOWN = 7    # frames between shots
+
+# Fractal kinds available each tour cycle
+FRACTAL_KINDS = (
+    "mandelbrot",
+    "julia",
+    "burning_ship",
+    "tricorn",
+    "multibrot3",
+)
+
+# Interesting Julia seeds
+JULIA_C_CHOICES = (
+    (-0.7, 0.27015),
+    (-0.8, 0.156),
+    (-0.4, 0.6),
+    (0.285, 0.01),
+    (-0.835, -0.2321),
+    (-0.7269, 0.1889),
+    (0.355, 0.355),
+    (-0.162, 1.04),
+)
+
+# Per-kind default camera (cx, cy, scale)
+FRACTAL_START = {
+    "mandelbrot": (-0.55, 0.0, 1.35),
+    "julia": (0.0, 0.0, 1.55),
+    "burning_ship": (-0.45, -0.55, 1.55),
+    "tricorn": (-0.25, 0.0, 1.55),
+    "multibrot3": (0.0, 0.0, 1.45),
+}
+
+# ---- Blaster ship leftovers (unused in new tour; kept for possible re-enable) ----
+ENABLE_BLASTER_SHIP = False
+BLAST_FRAMES = 130
+BLAST_SHIP_SPEED = 0.72
+BLAST_TURN = 0.35
+BLAST_SHOT_COOLDOWN = 7
 BLAST_SHOT_SPEED = 1.55
 BLAST_MAX_SHOTS = 6
 BLAST_MAX_SPARKS = 96
-BLAST_HOLE_R = 1           # destroy radius (1 → ~3×3)
+BLAST_HOLE_R = 1
 BLAST_SPARKS_PER_HIT = (5, 11)
 BLAST_SHIP_RGB = (240, 245, 255)
 BLAST_SHIP_ACCENT = (40, 200, 255)
@@ -82,26 +119,36 @@ def _smoothstep(t):
     return t * t * (3.0 - 2.0 * t)
 
 
+def _smootherstep(t):
+    """Perlin smootherstep — softer ease-in/out for zoom animations."""
+    t = _clamp(t, 0.0, 1.0)
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+
+
 # ---------------- Color palette ----------------
-def _palette_color(t, inside=False):
+_PALETTE_STOPS = (
+    (0.00, (5, 5, 40)),
+    (0.12, (10, 30, 140)),
+    (0.28, (20, 140, 200)),
+    (0.42, (30, 200, 90)),
+    (0.55, (200, 210, 30)),
+    (0.70, (255, 100, 20)),
+    (0.85, (220, 30, 160)),
+    (1.00, (255, 240, 255)),
+)
+
+
+def _palette_color(t, inside=False, shift=0.0):
     """
     Map normalized escape (0..1) to RGB. Interior of the set = near black.
-    Classic psychedelic LED-friendly ramps.
+    shift (0..1) rotates the palette for classic color cycling.
     """
     if inside:
         return (0, 0, 0)
     t = _clamp(float(t), 0.0, 1.0)
-    # Multi-stop palette: deep blue → cyan → lime → gold → magenta → white
-    stops = (
-        (0.00, (5, 5, 40)),
-        (0.12, (10, 30, 140)),
-        (0.28, (20, 140, 200)),
-        (0.42, (30, 200, 90)),
-        (0.55, (200, 210, 30)),
-        (0.70, (255, 100, 20)),
-        (0.85, (220, 30, 160)),
-        (1.00, (255, 240, 255)),
-    )
+    # Classic rotation: slide along the gradient, wrap
+    t = (t + float(shift)) % 1.0
+    stops = _PALETTE_STOPS
     for i in range(len(stops) - 1):
         t0, c0 = stops[i]
         t1, c1 = stops[i + 1]
@@ -117,39 +164,102 @@ def _palette_color(t, inside=False):
 
 def _iters_for_scale(scale):
     """More iterations as we zoom in (log depth)."""
-    # scale ~1 at start, tiny when deep
     depth = max(0.0, -math.log10(max(scale, 1e-16)))
     it = int(BASE_ITERS + depth * 28)
     return _clamp(it, BASE_ITERS, MAX_ITERS)
 
 
-# ---------------- Mandelbrot ----------------
-def mandelbrot_escape(cx, cy, max_iter):
+def _smooth_escape(n, zx, zy, max_iter):
+    """Smooth iteration count → 0..1 exterior value."""
+    r2 = zx * zx + zy * zy
+    if r2 <= 0:
+        return _clamp((n + 1) / float(max_iter), 0.0, 1.0)
+    log_zn = math.log(r2) * 0.5
+    nu = math.log(log_zn / math.log(2.0)) / math.log(2.0) if log_zn > 0 else 0.0
+    smooth = (n + 1 - nu) / float(max_iter)
+    return _clamp(smooth, 0.0, 1.0)
+
+
+# ---------------- Fractal iterators ----------------
+def fractal_escape(kind, cx, cy, max_iter, julia_c=None):
     """
-    Smooth-ish escape value for c = cx + i*cy.
-    Returns (escaped, value) where value is 0..1 for exterior, 0 for interior.
+    Escape-time for various fractal families.
+    Returns (escaped, value) with value 0..1 exterior, 0 interior.
     """
-    zx = 0.0
-    zy = 0.0
+    kind = (kind or "mandelbrot").lower()
+    if kind == "julia":
+        jx, jy = julia_c if julia_c else (-0.7, 0.27015)
+        zx, zy = cx, cy
+        for n in range(max_iter):
+            zx2 = zx * zx
+            zy2 = zy * zy
+            if zx2 + zy2 > 4.0:
+                return True, _smooth_escape(n, zx, zy, max_iter)
+            zy = 2.0 * zx * zy + jy
+            zx = zx2 - zy2 + jx
+        return False, 0.0
+
+    if kind == "burning_ship":
+        zx = zy = 0.0
+        for n in range(max_iter):
+            # z = (|Re z| + i |Im z|)^2 + c
+            ax = abs(zx)
+            ay = abs(zy)
+            zx2 = ax * ax
+            zy2 = ay * ay
+            if zx2 + zy2 > 4.0:
+                return True, _smooth_escape(n, ax, ay, max_iter)
+            zy = 2.0 * ax * ay + cy
+            zx = zx2 - zy2 + cx
+        return False, 0.0
+
+    if kind == "tricorn":
+        # Mandelbar: z → conj(z)^2 + c
+        zx = zy = 0.0
+        for n in range(max_iter):
+            zx2 = zx * zx
+            zy2 = zy * zy
+            if zx2 + zy2 > 4.0:
+                return True, _smooth_escape(n, zx, zy, max_iter)
+            # conj(z)^2 = (zx - i zy)^2 = zx^2 - zy^2 - 2 i zx zy
+            zy = -2.0 * zx * zy + cy
+            zx = zx2 - zy2 + cx
+        return False, 0.0
+
+    if kind == "multibrot3":
+        # z → z^3 + c
+        zx = zy = 0.0
+        for n in range(max_iter):
+            r2 = zx * zx + zy * zy
+            if r2 > 4.0:
+                return True, _smooth_escape(n, zx, zy, max_iter)
+            # (zx + i zy)^3 = zx^3 - 3 zx zy^2 + i (3 zx^2 zy - zy^3)
+            zx2 = zx * zx
+            zy2 = zy * zy
+            nx = zx * (zx2 - 3.0 * zy2) + cx
+            ny = zy * (3.0 * zx2 - zy2) + cy
+            zx, zy = nx, ny
+        return False, 0.0
+
+    # Default: Mandelbrot z → z^2 + c
+    zx = zy = 0.0
     for n in range(max_iter):
-        # z = z^2 + c
         zx2 = zx * zx
         zy2 = zy * zy
         if zx2 + zy2 > 4.0:
-            # Smooth iteration count
-            log_zn = math.log(zx2 + zy2) * 0.5
-            nu = math.log(log_zn / math.log(2.0)) / math.log(2.0) if log_zn > 0 else 0.0
-            smooth = (n + 1 - nu) / float(max_iter)
-            return True, _clamp(smooth, 0.0, 1.0)
+            return True, _smooth_escape(n, zx, zy, max_iter)
         zy = 2.0 * zx * zy + cy
         zx = zx2 - zy2 + cx
     return False, 0.0
 
 
-def render_mandelbrot(width, height, center_x, center_y, scale, max_iter):
+def render_fractal(
+    width, height, center_x, center_y, scale, max_iter,
+    kind="mandelbrot", julia_c=None, color_shift=0.0,
+):
     """
-    Render Mandelbrot to a list of (r,g,b) rows.
-    Aspect-correct: scale is half-height; width uses height aspect.
+    Render fractal to pixel rows + escape map.
+    scale = half-height in the complex plane (aspect-correct width).
     """
     aspect = width / float(max(1, height))
     half_h = scale
@@ -159,24 +269,41 @@ def render_mandelbrot(width, height, center_x, center_y, scale, max_iter):
     dx = (2.0 * half_w) / float(max(1, width))
     dy = (2.0 * half_h) / float(max(1, height))
 
-    # Also return escape map for zoom-target picking (float 0 interior, >0 exterior)
     pixels = [[(0, 0, 0) for _ in range(width)] for _ in range(height)]
     escape = [[0.0 for _ in range(width)] for _ in range(height)]
 
     for py in range(height):
-        cy = y0 + (py + 0.5) * dy
+        icy = y0 + (py + 0.5) * dy
         row_pix = pixels[py]
         row_esc = escape[py]
         for px in range(width):
-            cx = x0 + (px + 0.5) * dx
-            escaped, val = mandelbrot_escape(cx, cy, max_iter)
+            icx = x0 + (px + 0.5) * dx
+            escaped, val = fractal_escape(kind, icx, icy, max_iter, julia_c=julia_c)
             if escaped:
                 row_esc[px] = val
-                row_pix[px] = _palette_color(val, inside=False)
+                row_pix[px] = _palette_color(val, inside=False, shift=color_shift)
             else:
                 row_esc[px] = 0.0
-                row_pix[px] = _palette_color(0.0, inside=True)
+                row_pix[px] = _palette_color(0.0, inside=True, shift=color_shift)
     return pixels, escape
+
+
+def render_mandelbrot(width, height, center_x, center_y, scale, max_iter, color_shift=0.0):
+    """Back-compat wrapper (title intro, etc.)."""
+    return render_fractal(
+        width, height, center_x, center_y, scale, max_iter,
+        kind="mandelbrot", color_shift=color_shift,
+    )
+
+
+def pick_fractal_kind():
+    """Random fractal family + optional Julia parameter."""
+    kind = random.choice(FRACTAL_KINDS)
+    julia_c = None
+    if kind == "julia":
+        julia_c = random.choice(JULIA_C_CHOICES)
+    start = FRACTAL_START.get(kind, (INIT_CX, INIT_CY, INIT_SCALE))
+    return kind, julia_c, start
 
 
 def blit_pixels(canvas, pixels, width, height):
@@ -646,41 +773,7 @@ def pick_zoom_target(center_x, center_y, scale, width, height, escape, prefer_ed
     return random.choice(_COASTAL_LANDMARKS)
 
 
-# ---------------- Tour choreography ----------------
-def _build_cycle_plan():
-    """
-    One tour cycle:
-      pause → (zoom-in [→ blast ship] → pause) ×(2–3) → pan coastline →
-      either (zoom-in [→ blast]) or zoom-out series with pauses.
-
-    Blast ship steps are only inserted when ENABLE_BLASTER_SHIP is True.
-    """
-    plan = [("pause", START_PAUSE_FRAMES)]
-    n_in = random.randint(HOPS_MIN, HOPS_MAX)
-    for i in range(n_in):
-        plan.append(("zoom_in", None))
-        plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
-        if ENABLE_BLASTER_SHIP:
-            plan.append(("blast", None))
-            plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
-    plan.append(("pan", None))
-    plan.append(("pause", PAUSE_FRAMES))
-    n2 = random.randint(HOPS_MIN, HOPS_MAX)
-    if random.random() < 0.55:
-        kind = "zoom_in"
-    else:
-        kind = "zoom_out"
-    for i in range(n2):
-        plan.append((kind, None))
-        plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
-        if kind == "zoom_in" and ENABLE_BLASTER_SHIP:
-            plan.append(("blast", None))
-            plan.append(("pause", max(8, PAUSE_FRAMES // 2)))
-        elif kind == "zoom_out":
-            plan.append(("pause", PAUSE_FRAMES // 2))
-    return plan, n_in, kind, n2
-
-
+# ---------------- Tour helpers ----------------
 def _lerp_view(z_from, z_to, u):
     """Smoothstep view lerp; log-lerp scale for constant perceived zoom speed."""
     u = _smoothstep(u)
@@ -700,36 +793,175 @@ def _begin_zoom_in(cx, cy, scale, width, height, escape):
     return (cx, cy, scale), (tx, ty, target_scale)
 
 
-def _begin_zoom_out(cx, cy, scale):
-    target_scale = min(INIT_SCALE, scale * ZOOM_OUT_FACTOR)
-    # Drift center toward the classic full framing as we pull out
-    blend = 0.40 if target_scale < INIT_SCALE * 0.9 else 1.0
-    tx = cx + (INIT_CX - cx) * blend
-    ty = cy + (INIT_CY - cy) * blend
-    if target_scale >= INIT_SCALE * 0.98:
-        tx, ty, target_scale = INIT_CX, INIT_CY, INIT_SCALE
-    return (cx, cy, scale), (tx, ty, target_scale)
+# ---------------- Digital clock overlay (depth reveal) ----------------
+# Compact 3×5 digits + colon for HH:MM (fits 64×32 when scaled)
+_DIGIT_3X5 = {
+    "0": ("111", "101", "101", "101", "111"),
+    "1": ("010", "110", "010", "010", "111"),
+    "2": ("111", "001", "111", "100", "111"),
+    "3": ("111", "001", "111", "001", "111"),
+    "4": ("101", "101", "111", "001", "001"),
+    "5": ("111", "100", "111", "001", "111"),
+    "6": ("111", "100", "111", "101", "111"),
+    "7": ("111", "001", "001", "001", "001"),
+    "8": ("111", "101", "111", "101", "111"),
+    "9": ("111", "101", "111", "001", "111"),
+    ":": ("0", "1", "0", "1", "0"),
+}
 
 
-def _begin_pan(cx, cy, scale, width, height, escape):
-    """Pan to another coastal point at the *same* scale."""
-    tx, ty = pick_zoom_target(cx, cy, scale, width, height, escape)
-    # Keep scale fixed; if target equals current, nudge along a landmark coast
-    if abs(tx - cx) + abs(ty - cy) < scale * 0.02:
-        lx, ly = random.choice(_COASTAL_LANDMARKS)
-        # Stay roughly at this depth: only move a fraction of the way
-        tx = cx + (lx - cx) * 0.15
-        ty = cy + (ly - cy) * 0.15
-    return (cx, cy, scale), (tx, ty, scale)
+def _clock_text_now():
+    return time.strftime("%H:%M")
+
+
+def _clock_glyph_size(ch):
+    rows = _DIGIT_3X5.get(ch, _DIGIT_3X5["0"])
+    return len(rows[0]), len(rows)
+
+
+def _clock_layout_size(text):
+    """Native (unscaled) width/height of the digit string with 1px gaps."""
+    tw, th = 0, 5
+    for i, ch in enumerate(text):
+        w, h = _clock_glyph_size(ch)
+        th = max(th, h)
+        tw += w
+        if i < len(text) - 1:
+            tw += 1  # gap
+    return tw, th
+
+
+def _clock_lit_cells(text):
+    """List of (ux0, uy0, ux1, uy1) unit rectangles for lit digit cells."""
+    cells = []
+    x = 0.0
+    for i, ch in enumerate(text):
+        rows = _DIGIT_3X5.get(ch, _DIGIT_3X5["0"])
+        gw = len(rows[0])
+        for ry, row in enumerate(rows):
+            for rx, bit in enumerate(row):
+                if bit == "1":
+                    cells.append((x + rx, float(ry), x + rx + 1.0, float(ry + 1)))
+        x += gw + (1 if i < len(text) - 1 else 0)
+    return cells
+
+
+def _draw_digital_clock(canvas, width, height, scale, rgb=None, glow=None):
+    """
+    Draw HH:MM centered with *continuous* scale (smooth zoom, not integer steps).
+    Samples each LED with soft coverage for anti-aliased growth.
+    """
+    text = _clock_text_now()
+    rgb = rgb or CLOCK_RGB
+    glow = glow or CLOCK_GLOW
+    nw, nh = _clock_layout_size(text)
+    if nw < 1 or nh < 1:
+        return
+    # Max unit→pixel scale that fits with margin
+    max_sc = min(
+        (width - 4) / float(nw),
+        (height - 4) / float(nh),
+    )
+    # Continuous scale — no int() snap (was the choppy zoom)
+    sc = max(0.35, float(scale) * max_sc)
+    block_w = nw * sc
+    block_h = nh * sc
+    ox = (width - block_w) * 0.5
+    oy = (height - block_h) * 0.5
+
+    cells = _clock_lit_cells(text)
+    if not cells:
+        return
+
+    # Bounds in panel space (+ soft margin for glow)
+    soft_u = 0.65  # soft edge in unit cells
+    pad = sc * (soft_u + 0.35)
+    x_lo = max(0, int(math.floor(ox - pad)))
+    y_lo = max(0, int(math.floor(oy - pad)))
+    x_hi = min(width, int(math.ceil(ox + block_w + pad)))
+    y_hi = min(height, int(math.ceil(oy + block_h + pad)))
+
+    set_px = canvas.SetPixel
+    inv_sc = 1.0 / sc
+
+    for py in range(y_lo, y_hi):
+        # pixel center → unit coords
+        uy = (py + 0.5 - oy) * inv_sc
+        for px in range(x_lo, x_hi):
+            ux = (px + 0.5 - ox) * inv_sc
+            # Max coverage over any lit cell (core + soft)
+            core = 0.0
+            halo = 0.0
+            for cx0, cy0, cx1, cy1 in cells:
+                # Expand glow rect slightly
+                g0x, g0y = cx0 - 0.35, cy0 - 0.35
+                g1x, g1y = cx1 + 0.35, cy1 + 0.35
+                # Distance-based soft cover for core cell
+                # pixel as unit-square mapped: (ux±0.5/sc)
+                half = 0.5 * inv_sc
+                # Treat LED as point sample with soft radius in unit space
+                # Core
+                dx = 0.0
+                if ux < cx0:
+                    dx = cx0 - ux
+                elif ux > cx1:
+                    dx = ux - cx1
+                dy = 0.0
+                if uy < cy0:
+                    dy = cy0 - uy
+                elif uy > cy1:
+                    dy = uy - cy1
+                if dx <= 0.0 and dy <= 0.0:
+                    core = 1.0
+                else:
+                    d = math.hypot(dx, dy) if (dx > 0 and dy > 0) else (dx + dy)
+                    # Soft AA rim ~0.4 unit cells (smooth as sc grows)
+                    rim = 0.45
+                    if d < rim:
+                        core = max(core, 1.0 - d / rim)
+                # Halo
+                hdx = 0.0
+                if ux < g0x:
+                    hdx = g0x - ux
+                elif ux > g1x:
+                    hdx = ux - g1x
+                hdy = 0.0
+                if uy < g0y:
+                    hdy = g0y - uy
+                elif uy > g1y:
+                    hdy = uy - g1y
+                if hdx <= 0.0 and hdy <= 0.0:
+                    halo = max(halo, 0.55)
+                else:
+                    hd = math.hypot(hdx, hdy) if (hdx > 0 and hdy > 0) else (hdx + hdy)
+                    hr = 0.55
+                    if hd < hr:
+                        halo = max(halo, 0.55 * (1.0 - hd / hr))
+                if core >= 0.99:
+                    break
+
+            if core < 0.02 and halo < 0.02:
+                continue
+            # Composite: glow under bright core
+            cr = int(glow[0] * halo * (1.0 - core) + rgb[0] * core)
+            cg = int(glow[1] * halo * (1.0 - core) + rgb[1] * core)
+            cb = int(glow[2] * halo * (1.0 - core) + rgb[2] * core)
+            cr = min(255, cr)
+            cg = min(255, cg)
+            cb = min(255, cb)
+            if cr + cg + cb > 8:
+                set_px(px, py, cr, cg, cb)
 
 
 # ---------------- Main loop ----------------
 def PlayFractal(Duration=10, StopEvent=None, start_cam=None):
     """
-    Mandelbrot coastal tour. Duration is minutes (LEDarcade convention).
+    Multi-type fractal tour (Duration in minutes):
 
-    start_cam: optional dict {cx, cy, scale} from the title intro letter-dive
-    so the fractal continues already mid-zoom after FRACTAL BLASTER.
+      pick fractal → zoom-in ×5 → color cycle → digital clock zoom-in →
+      zoom out to start → repeat
+
+    start_cam: optional {cx, cy, scale} from the title intro (first Mandelbrot cycle).
     """
     width = int(getattr(LED, "HatWidth", 64) or 64)
     height = int(getattr(LED, "HatHeight", 32) or 32)
@@ -748,111 +980,139 @@ def PlayFractal(Duration=10, StopEvent=None, start_cam=None):
         run_min = 10.0
 
     tick = pygame.time.Clock() if HAS_PYGAME else None
+    zoom_in_frames = max(1, int(round(ZOOM_IN_SEC * TARGET_FPS)))
+    zoom_out_frames = max(1, int(round(ZOOM_OUT_SEC * TARGET_FPS)))
+    color_frames = max(1, int(round(COLOR_CYCLE_SEC * TARGET_FPS)))
+    pause_frames = max(1, int(round(LEVEL_PAUSE_SEC * TARGET_FPS)))
+    clock_zoom_frames = max(1, int(round(CLOCK_ZOOM_SEC * TARGET_FPS)))
+    clock_hold_frames = max(1, int(round(CLOCK_HOLD_SEC * TARGET_FPS)))
 
-    if start_cam and isinstance(start_cam, dict):
-        cx = float(start_cam.get("cx", INIT_CX))
-        cy = float(start_cam.get("cy", INIT_CY))
-        scale = float(start_cam.get("scale", INIT_SCALE))
-    else:
-        cx, cy, scale = INIT_CX, INIT_CY, INIT_SCALE
+    kind = "mandelbrot"
+    julia_c = None
+    start_view = (INIT_CX, INIT_CY, INIT_SCALE)
+    cx, cy, scale = start_view
+    color_shift = 0.0
     last_escape = None
-    hop = 0
+    level = 0
+    cycle = 0
+    clock_scale = 0.0          # 0..1 digital clock zoom amount
+    fractal_dim = 1.0          # dim fractal under the clock
 
-    # Active motion
-    phase = "idle"       # idle | pause | zoom_in | zoom_out | pan | blast
+    phase = "new_cycle"
     phase_t = 0
     phase_len = 1
-    z_from = (cx, cy, scale)
-    z_to = (cx, cy, scale)
-    pause_left = 0
+    z_from = start_view
+    z_to = start_view
 
-    plan = []
-    cycle = 0
-    blaster = FractalBlasterShip(width, height)
-    blast_base_pixels = None   # frozen frame the ship chews through
-    blast_base_escape = None
+    def _start_new_cycle():
+        nonlocal kind, julia_c, start_view, cx, cy, scale, color_shift
+        nonlocal last_escape, level, cycle, phase, phase_t, phase_len, z_from, z_to
+        nonlocal clock_scale, fractal_dim
+        cycle += 1
+        kind, julia_c, start_view = pick_fractal_kind()
+        if (
+            cycle == 1
+            and start_cam
+            and isinstance(start_cam, dict)
+            and kind == "mandelbrot"
+        ):
+            cx = float(start_cam.get("cx", start_view[0]))
+            cy = float(start_cam.get("cy", start_view[1]))
+            scale = float(start_cam.get("scale", start_view[2]))
+            start_view = (cx, cy, scale)
+        else:
+            cx, cy, scale = start_view
+        color_shift = 0.0
+        clock_scale = 0.0
+        fractal_dim = 1.0
+        level = 0
+        last_escape = None
+        max_iter = _iters_for_scale(scale)
+        _pix, last_escape = render_fractal(
+            width, height, cx, cy, scale, max_iter,
+            kind=kind, julia_c=julia_c, color_shift=0.0,
+        )
+        z_from, z_to = _begin_zoom_in(cx, cy, scale, width, height, last_escape)
+        phase = "zoom_in"
+        phase_t = 0
+        phase_len = zoom_in_frames
+        level = 1
+        jc = f"  c={julia_c}" if julia_c else ""
+        print(
+            f"[Fractal] Cycle #{cycle}: {kind}{jc}  "
+            f"start=({start_view[0]:.4f},{start_view[1]:.4f}) "
+            f"scale={start_view[2]:.3f}  "
+            f"→ zoom-in level 1/{ZOOM_LEVELS}"
+        )
 
-    def _pull_next_action():
-        """Start the next planned action; rebuild cycle when empty."""
-        nonlocal plan, cycle, phase, phase_t, phase_len, z_from, z_to, pause_left, hop
-        nonlocal cx, cy, scale, blast_base_pixels, blast_base_escape, last_escape
-        while True:
-            if not plan:
-                plan, n_in, second_kind, n2 = _build_cycle_plan()
-                cycle += 1
-                blast_note = " (+blast)" if ENABLE_BLASTER_SHIP else ""
-                print(
-                    f"[Fractal] Cycle #{cycle}: zoom-in×{n_in}{blast_note} → pan → "
-                    f"{second_kind}×{n2}"
-                )
-            action, arg = plan.pop(0)
-            if action == "pause":
-                phase = "pause"
-                pause_left = int(arg or PAUSE_FRAMES)
-                phase_t = 0
-                phase_len = pause_left
-                return
-            if action == "zoom_in":
-                z_from, z_to = _begin_zoom_in(
-                    cx, cy, scale, width, height, last_escape,
-                )
-                phase = "zoom_in"
-                phase_t = 0
-                phase_len = ZOOM_IN_FRAMES
-                hop += 1
-                print(
-                    f"[Fractal] Zoom-in #{hop} → ({z_to[0]:.6f}, {z_to[1]:.6f})  "
-                    f"scale {z_from[2]:.3e} → {z_to[2]:.3e}"
-                )
-                return
-            if action == "zoom_out":
-                z_from, z_to = _begin_zoom_out(cx, cy, scale)
-                phase = "zoom_out"
-                phase_t = 0
-                phase_len = ZOOM_OUT_FRAMES
-                hop += 1
-                print(
-                    f"[Fractal] Zoom-out #{hop}  "
-                    f"scale {z_from[2]:.3e} → {z_to[2]:.3e}"
-                )
-                return
-            if action == "pan":
-                z_from, z_to = _begin_pan(
-                    cx, cy, scale, width, height, last_escape,
-                )
-                phase = "pan"
-                phase_t = 0
-                phase_len = PAN_FRAMES
-                print(
-                    f"[Fractal] Pan coastline → ({z_to[0]:.6f}, {z_to[1]:.6f})"
-                )
-                return
-            if action == "blast":
-                if not ENABLE_BLASTER_SHIP:
-                    continue  # ship disabled — skip
-                # Freeze current view; ship chews holes until timer ends,
-                # then the plan continues (typically another zoom-in).
-                max_iter = _iters_for_scale(scale)
-                blast_base_pixels, blast_base_escape = render_mandelbrot(
-                    width, height, cx, cy, scale, max_iter,
-                )
-                last_escape = blast_base_escape
-                blaster.reset()
-                phase = "blast"
-                phase_t = 0
-                phase_len = BLAST_FRAMES
-                print(
-                    f"[Fractal] Blaster ship engaged  "
-                    f"({BLAST_FRAMES} frames @ view scale {scale:.3e})"
-                )
-                return
+    def _begin_next_zoom_in():
+        nonlocal phase, phase_t, phase_len, z_from, z_to, level
+        z_from, z_to = _begin_zoom_in(cx, cy, scale, width, height, last_escape)
+        phase = "zoom_in"
+        phase_t = 0
+        phase_len = zoom_in_frames
+        level += 1
+        print(
+            f"[Fractal] Zoom-in level {level}/{ZOOM_LEVELS}  "
+            f"→ ({z_to[0]:.6f}, {z_to[1]:.6f})  "
+            f"scale {z_from[2]:.3e} → {z_to[2]:.3e}"
+        )
 
-    _pull_next_action()
+    def _begin_color_cycle():
+        nonlocal phase, phase_t, phase_len, color_shift
+        phase = "color_cycle"
+        phase_t = 0
+        phase_len = color_frames
+        color_shift = 0.0
+        print(
+            f"[Fractal] Color rotation @ depth scale={scale:.3e}  "
+            f"({COLOR_CYCLE_SEC:.1f}s)"
+        )
 
-    mode = "coastal tour + blaster" if ENABLE_BLASTER_SHIP else "coastal tour"
+    def _begin_clock_zoom():
+        nonlocal phase, phase_t, phase_len, clock_scale, fractal_dim
+        phase = "clock_zoom"
+        phase_t = 0
+        phase_len = clock_zoom_frames
+        clock_scale = 0.12
+        fractal_dim = 1.0
+        print(
+            f"[Fractal] Digital clock zoom-in  ({CLOCK_ZOOM_SEC:.1f}s)  "
+            f"time={_clock_text_now()}"
+        )
+
+    def _begin_clock_hold():
+        nonlocal phase, phase_t, phase_len, clock_scale, fractal_dim
+        phase = "clock_hold"
+        phase_t = 0
+        phase_len = clock_hold_frames
+        clock_scale = 1.0
+        fractal_dim = 0.22
+        print(f"[Fractal] Clock hold  {_clock_text_now()}  ({CLOCK_HOLD_SEC:.1f}s)")
+
+    def _begin_zoom_out():
+        nonlocal phase, phase_t, phase_len, z_from, z_to, color_shift
+        nonlocal clock_scale, fractal_dim
+        z_from = (cx, cy, scale)
+        z_to = start_view
+        phase = "zoom_out"
+        phase_t = 0
+        phase_len = zoom_out_frames
+        color_shift = 0.0
+        clock_scale = 0.0
+        fractal_dim = 1.0
+        print(
+            f"[Fractal] Zoom-out → start  "
+            f"scale {z_from[2]:.3e} → {z_to[2]:.3e}  ({ZOOM_OUT_SEC:.1f}s)"
+        )
+
+    _start_new_cycle()
+
     print(
-        f"[Fractal] Mandelbrot {mode}  {width}x{height}  "
-        f"duration={run_min} min  fps~{TARGET_FPS}"
+        f"[Fractal] Multi-type tour  {width}x{height}  "
+        f"levels={ZOOM_LEVELS}  zoom={ZOOM_IN_SEC}s  "
+        f"color={COLOR_CYCLE_SEC}s  clock={CLOCK_ZOOM_SEC}+{CLOCK_HOLD_SEC}s  "
+        f"out={ZOOM_OUT_SEC}s  duration={run_min} min  fps~{TARGET_FPS}"
     )
 
     try:
@@ -865,52 +1125,93 @@ def PlayFractal(Duration=10, StopEvent=None, start_cam=None):
                 break
 
             max_iter = _iters_for_scale(scale)
+            show_clock = False
 
-            # --- Advance current action ---
-            if phase == "pause":
-                pause_left -= 1
-                phase_t += 1
-                if pause_left <= 0:
-                    _pull_next_action()
-
-            elif phase in ("zoom_in", "zoom_out", "pan"):
+            if phase == "zoom_in":
                 phase_t += 1
                 u = phase_t / float(max(1, phase_len))
                 cx, cy, scale = _lerp_view(z_from, z_to, u)
                 if phase_t >= phase_len:
                     cx, cy, scale = z_to[0], z_to[1], z_to[2]
-                    _pull_next_action()
+                    phase = "pause"
+                    phase_t = 0
+                    phase_len = pause_frames
 
-            elif phase == "blast":
+            elif phase == "pause":
                 phase_t += 1
-                if blast_base_pixels is None:
-                    blast_base_pixels, blast_base_escape = render_mandelbrot(
-                        width, height, cx, cy, scale, max_iter,
-                    )
-                    last_escape = blast_base_escape
-                    blaster.reset()
-                blaster.update(blast_base_pixels)
                 if phase_t >= phase_len:
-                    print(
-                        f"[Fractal] Blaster done — {len(blaster.holes)} holes  "
-                        f"→ resume coastline zoom"
-                    )
-                    blast_base_pixels = None
-                    _pull_next_action()
+                    if level < ZOOM_LEVELS:
+                        _begin_next_zoom_in()
+                    else:
+                        _begin_color_cycle()
 
-            elif phase == "idle":
-                _pull_next_action()
+            elif phase == "color_cycle":
+                phase_t += 1
+                color_shift = (
+                    (phase_t / float(TARGET_FPS)) * COLOR_CYCLE_SPEED
+                ) % 1.0
+                if phase_t >= phase_len:
+                    _begin_clock_zoom()
 
-            # --- Render ---
+            elif phase == "clock_zoom":
+                phase_t += 1
+                # Smootherstep for gentler ease-in/out (no linear jumps)
+                u = _smootherstep(phase_t / float(max(1, phase_len)))
+                # Clock grows continuously 0.08 → 1.0; fractal dims underneath
+                clock_scale = 0.08 + 0.92 * u
+                fractal_dim = 1.0 - 0.82 * u
+                show_clock = True
+                if phase_t >= phase_len:
+                    _begin_clock_hold()
+
+            elif phase == "clock_hold":
+                phase_t += 1
+                clock_scale = 1.0
+                fractal_dim = 0.18
+                show_clock = True
+                if phase_t >= phase_len:
+                    _begin_zoom_out()
+
+            elif phase == "zoom_out":
+                phase_t += 1
+                u = phase_t / float(max(1, phase_len))
+                cx, cy, scale = _lerp_view(z_from, z_to, u)
+                color_shift = 0.0
+                clock_scale = 0.0
+                fractal_dim = 1.0
+                if phase_t >= phase_len:
+                    cx, cy, scale = start_view
+                    print(f"[Fractal] Cycle #{cycle} complete — next fractal")
+                    _start_new_cycle()
+
+            elif phase == "new_cycle":
+                _start_new_cycle()
+
             try:
                 canvas.Fill(0, 0, 0)
-                if phase == "blast" and blast_base_pixels is not None:
-                    blaster.draw(canvas, blast_base_pixels)
+                pixels, last_escape = render_fractal(
+                    width, height, cx, cy, scale, max_iter,
+                    kind=kind, julia_c=julia_c, color_shift=color_shift,
+                )
+                # Dim fractal under the clock reveal
+                if fractal_dim < 0.999:
+                    dim = max(0.0, min(1.0, fractal_dim))
+                    set_px = canvas.SetPixel
+                    for y in range(height):
+                        row = pixels[y]
+                        for x in range(width):
+                            r, g, b = row[x]
+                            set_px(
+                                x, y,
+                                int(r * dim), int(g * dim), int(b * dim),
+                            )
                 else:
-                    pixels, last_escape = render_mandelbrot(
-                        width, height, cx, cy, scale, max_iter,
-                    )
                     blit_pixels(canvas, pixels, width, height)
+                if show_clock and clock_scale > 0.05:
+                    _draw_digital_clock(
+                        canvas, width, height, clock_scale,
+                        rgb=CLOCK_RGB, glow=CLOCK_GLOW,
+                    )
                 canvas = LED.TheMatrix.SwapOnVSync(canvas)
                 LED.Canvas = canvas
             except Exception:
