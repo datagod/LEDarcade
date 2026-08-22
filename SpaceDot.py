@@ -164,6 +164,8 @@ MonthH,      MonthV,      MonthRGB      = 0,12, (0,20,200)
 DayOfMonthH, DayOfMonthV, DayOfMonthRGB = 2,18, (100,100,0)
 SpriteFillerRGB = (0,4,0)
 CheckClockSpeed = 50
+# Wave / level number (left HUD — above ground, not under crust cleanup zone)
+LevelRGB = LED.MedBlue
 
 
 
@@ -525,12 +527,47 @@ class AsteroidWave(object):
 
 
 def CleanupDebris(StartH,EndH,StartV,EndV,Playfield):
-  for V in range(StartV,EndV):
-    for H in range (StartH,EndH):
+  # Inclusive playfield range (callers pass MaxH/MaxV as last playable cells)
+  for V in range(StartV, EndV + 1):
+    if V < 0 or V >= LED.HatHeight:
+      continue
+    for H in range(StartH, EndH + 1):
+      if H < 0 or H >= LED.HatWidth:
+        continue
       if ((Playfield[V][H].name  == 'EmptyObject') 
        or (Playfield[V][H].name  in ('Explosion','HomingMissile') and Playfield[V][H].alive == 0)):
         LED.setpixel(H,V,0,0,0)
         Playfield[V][H] = LED.EmptyObject
+  # Explosions often paint below the crust (GroundV) into unused rows —
+  # always black those out so white/missile pixels don't pile up under ground.
+  ClearBelowGround()
+
+
+def ClearBelowGround():
+  """Wipe leftover pixels under the planet surface (rows GroundV+1 .. bottom)."""
+  for V in range(GroundV + 1, LED.HatHeight):
+    for H in range(0, LED.HatWidth):
+      LED.setpixel(H, V, 0, 0, 0)
+
+
+def ShowWaveLevel(wave_num):
+  """
+  Keep the wave/level number visible on the left HUD (above the ground).
+  Default DisplayLevel draws at the bottom of the panel — under the crust —
+  where ClearBelowGround wipes it every few frames.
+  """
+  try:
+    LevelSprite = LED.CreateBannerSprite(str(int(wave_num)))
+  except Exception:
+    return
+  LevelSprite.r, LevelSprite.g, LevelSprite.b = LevelRGB
+  # Sit under the day-of-month row on the left strip (not in the playfield)
+  lh = 0
+  lv = max(0, DayOfMonthV + 6)
+  # Never draw under the ground crust
+  if lv + LevelSprite.height > GroundV:
+    lv = max(0, GroundV - LevelSprite.height)
+  LevelSprite.DisplayIncludeBlack(lh, lv)
 
 
   
@@ -1562,6 +1599,8 @@ def MoveMissile(Missile):
     #Missile.Display()
     Missile.Explosion.DisplayAnimated()
     LED.setpixel(h,v,0,0,0)
+    # Explosions often bleed under the crust — wipe those rows
+    ClearBelowGround()
     return
 
   #See if other target ship is hit
@@ -1682,11 +1721,15 @@ def ExplodeGround(count,speed):
 
 def RedrawGround(TheGround):
   GroundCount = 0
-  for i in range (SpaceDotMinH,SpaceDotMaxH):
+  # Include MaxH so the rightmost crust column is drawn
+  for i in range(SpaceDotMinH, SpaceDotMaxH + 1):
+    if GroundCount >= len(TheGround):
+      break
     Playfield[GroundV][i] = TheGround[GroundCount]
-    if(Playfield[GroundV][i].r < 255):
-      Playfield[GroundV][i].Display()
+    # Always re-paint ground; damaged (r==255) was skipping and looked broken
+    Playfield[GroundV][i].Display()
     GroundCount = GroundCount + 1
+  ClearBelowGround()
   return
 
 
@@ -1694,7 +1737,7 @@ def CheckGroundDamage(TheGround):
   global PlayerShip
   
   DamageCount = 0
-  for i in range (SpaceDotMinH,SpaceDotMaxH):
+  for i in range(SpaceDotMinH, SpaceDotMaxH + 1):
     if (Playfield[GroundV][i].r == 255):
       DamageCount = DamageCount + 1
       #print ("Ground Damage:",DamageCount)
@@ -1935,7 +1978,7 @@ def PlaySpaceDot(Duration = 5,StopEvent=None):
     
     Wave = AsteroidWave(AsteroidsInWaveMin)
     Wave.CreateAsteroidWave()
-    LED.DisplayLevel(Wave.WaveCount,LED.MedBlue)
+    ShowWaveLevel(Wave.WaveCount)
     
 
     
@@ -1949,18 +1992,19 @@ def PlaySpaceDot(Duration = 5,StopEvent=None):
 
     
     
-    #Draw the ground
+    #Draw the ground (include MaxH — previously rightmost column was missing)
     color = random.randint(1,7) * 4 + 1
     r,g,b = LED.ColorList[color]    
     TheGround   = []    
     GroundCount = 0
-    for i in range (SpaceDotMinH,SpaceDotMaxH):
+    for i in range(SpaceDotMinH, SpaceDotMaxH + 1):
       TheGround.append(LED.Ship(i,GroundV,r,g,b,0,0,0,1,SpaceDotGroundLives,'Ground', 0,0))
       Playfield[GroundV][i] = TheGround[GroundCount]
       Playfield[GroundV][i].Display()
       LED.FlashDot2(i,GroundV,0.02)
       #print("Ground:",i,GroundV)
       GroundCount = GroundCount + 1
+    ClearBelowGround()
 
 
 
@@ -2029,10 +2073,14 @@ def PlaySpaceDot(Duration = 5,StopEvent=None):
 
 
 
-      #Cleanup debris (leftover pixels from explosions)
+      #Cleanup debris (leftover pixels from explosions) + wipe under crust
       m,r = divmod(moves,DebrisCleanupSleep)
       if (r == 0):
         CleanupDebris(SpaceDotMinH,SpaceDotMaxH,SpaceDotMinV,SpaceDotMaxV,Playfield)
+      # Explosions constantly paint white under the ground — clear often
+      m,r = divmod(moves, max(1, DebrisCleanupSleep // 4))
+      if (r == 0):
+        ClearBelowGround()
 
      
 
@@ -2526,9 +2574,10 @@ def PlaySpaceDot(Duration = 5,StopEvent=None):
   
      
       #-------------------------------------
-      # Display Score
+      # Display Score + Wave/Level (every frame so they stay visible)
       #-------------------------------------
       LED.DisplayScore(SpaceDotScore,LED.MedGreen)
+      ShowWaveLevel(Wave.WaveCount)
       if(SpaceDotScore > LED.SpaceDotHighScore):
         LED.SpaceDotHighScore = SpaceDotScore
 
@@ -2587,12 +2636,10 @@ def PlaySpaceDot(Duration = 5,StopEvent=None):
           if(AsteroidMaxSpeed < WaveMinSpeed + WaveSpeedRange ):
             AsteroidMaxSpeed = WaveMinSpeed + WaveSpeedRange
 
-          LED.DisplayLevel(Wave.WaveCount,LED.MedBlue)
-
-
           #launch next wave of asteroids, maybe show some fancy graphics here
           Wave.AsteroidCount = Wave.AsteroidCount + 1
           Wave.WaveCount     = Wave.WaveCount + 1
+          ShowWaveLevel(Wave.WaveCount)
 
           if(Wave.AsteroidCount  >= AsteroidsInWaveMax):
             Wave.AsteroidCount    = AsteroidsInWaveMax

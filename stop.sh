@@ -133,6 +133,9 @@ LAUNCHERS=(
     RunningTest.py
     demo.py
     clock.py
+    IsoWorld.py
+    TetWorld.py
+    preview_stick_figure.py
 )
 
 for script in "${LAUNCHERS[@]}"; do

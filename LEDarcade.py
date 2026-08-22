@@ -2896,10 +2896,11 @@ class Sprite(object):
   def Scroll(self, start_h=None, start_v=None, direction="right", moves=1, sleep=0.01):
         # Scroll a sprite across the panel using the frame canvas.
         #
-        # Title / intro text is drawn with SetPixel (front buffer + ScreenArray).
-        # Canvas is often empty. The old code SwapOnVSync'd that empty canvas
-        # once up front (blanking ALERT / title on LEDsim) then only swapped
-        # again at the end — so the scroll looked like a long black screen.
+        # Title / intro text lives in ScreenArray (and often only on the front
+        # buffer). Double-buffering means Erase-to-black on the back buffer
+        # punches holes and never restores the underlay — yellow bottom banners
+        # look broken/garbled. Fix: freeze the underlay, re-blit it every frame,
+        # then draw the banner on top (canvas only; don't dirty ScreenArray).
         global Canvas, TheMatrix, ScreenArray
 
         if start_h is not None:
@@ -2910,15 +2911,18 @@ class Sprite(object):
         if Canvas is None and TheMatrix is not None:
             Canvas = TheMatrix.CreateFrameCanvas()
 
-        # Seed canvas from ScreenArray so the title stays visible under the banner
+        # Snapshot underlay once (title art before the banner moves)
         try:
+            bg = copy.deepcopy(ScreenArray)
+        except Exception:
+            bg = [[(0, 0, 0) for _ in range(HatWidth)] for _ in range(HatHeight)]
+
+        def _blit_underlay(cv):
             for vv in range(HatHeight):
-                row = ScreenArray[vv]
+                row = bg[vv]
                 for hh in range(HatWidth):
                     r, g, b = row[hh]
-                    Canvas.SetPixel(hh, vv, r, g, b)
-        except Exception:
-            pass
+                    cv.SetPixel(hh, vv, r, g, b)
 
         if direction == "right":
             modifier = 1
@@ -2940,13 +2944,20 @@ class Sprite(object):
         positions = compute_scroll_positions(start_pos, moves, modifier)
 
         for pos in positions:
-            self.Erase(Canvas)
             if axis == 'h':
-                self.h = pos
+                self.h = int(pos)
             else:
-                self.v = pos
-            self.DisplayToCanvas(Canvas)
-            # Present every step so LEDsim (and Pi) show motion, not a blank pause
+                self.v = int(pos)
+            _blit_underlay(Canvas)
+            # Draw lit glyph pixels onto canvas only (no ScreenArray pollution)
+            for count in range(self.width * self.height):
+                y, x = divmod(count, self.width)
+                if self.grid[count] != 1:
+                    continue
+                px = self.h + x
+                py = self.v + y
+                if 0 <= px < HatWidth and 0 <= py < HatHeight:
+                    Canvas.SetPixel(px, py, self.r, self.g, self.b)
             Canvas = TheMatrix.SwapOnVSync(Canvas)
             if sleep > 0:
                 time.sleep(sleep)
@@ -6770,8 +6781,144 @@ RunningManSpriteMap.map= (
 RunningManSpriteMap.CopyMapToColorSprite(TheSprite=RunningManSprite)
 
 
+#------------------------------------------------------------------------------
+# Stick figure walk cycle (hand-authored ColorAnimatedSprite)
+# 8×12, 6 frames — classic contact → pass → contact stride
+# Palette: '#' high white, 'o' med white, ' ' black/empty
+#------------------------------------------------------------------------------
+StickFigureWalking = ColorAnimatedSprite(
+  h=0,
+  v=0,
+  name="StickFigureWalking",
+  width=8,
+  height=12,
+  frames=0,
+  framerate=3,
+  grid=[],
+)
 
+StickFigureWalkingMap = TextMap(h=0, v=0, width=8, height=12)
+StickFigureWalkingMap.ColorList = {
+  ' ': 0,   # empty / black
+  '#': 4,   # high white — bone lines
+  'o': 3,   # med white — joints / head fill
+}
+StickFigureWalkingMap.TypeList = {
+  ' ': 'Empty',
+  '#': 'wall',
+  'o': 'wall',
+}
 
+# Frame 0 — right leg forward, left arm forward (contact)
+StickFigureWalkingMap.map = (
+  "   oo   ",
+  "   oo   ",
+  "    #   ",
+  "  ##### ",
+  " #  #  #",
+  "    #   ",
+  "    #   ",
+  "   # #  ",
+  "  #   # ",
+  " #     #",
+  "#       ",
+  "        ",
+)
+StickFigureWalkingMap.CopyMapToColorSprite(TheSprite=StickFigureWalking)
+
+# Frame 1 — passing (legs under body, arms lowering)
+StickFigureWalkingMap.map = (
+  "   oo   ",
+  "   oo   ",
+  "    #   ",
+  "   ###  ",
+  "  # # # ",
+  "    #   ",
+  "    #   ",
+  "    #   ",
+  "   # #  ",
+  "   # #  ",
+  "  #   # ",
+  "        ",
+)
+StickFigureWalkingMap.CopyMapToColorSprite(TheSprite=StickFigureWalking)
+
+# Frame 2 — left leg forward, right arm forward (contact)
+StickFigureWalkingMap.map = (
+  "   oo   ",
+  "   oo   ",
+  "    #   ",
+  " #####  ",
+  "#  #  # ",
+  "    #   ",
+  "    #   ",
+  "  # #   ",
+  " #   #  ",
+  "#     # ",
+  "       #",
+  "        ",
+)
+StickFigureWalkingMap.CopyMapToColorSprite(TheSprite=StickFigureWalking)
+
+# Frame 3 — passing (mirror of frame 1)
+StickFigureWalkingMap.map = (
+  "   oo   ",
+  "   oo   ",
+  "    #   ",
+  "  ###   ",
+  " # # #  ",
+  "    #   ",
+  "    #   ",
+  "    #   ",
+  "   # #  ",
+  "   # #  ",
+  "  #   # ",
+  "        ",
+)
+StickFigureWalkingMap.CopyMapToColorSprite(TheSprite=StickFigureWalking)
+
+# Frame 4 — right leg forward again (slightly different arm angle)
+StickFigureWalkingMap.map = (
+  "   oo   ",
+  "   oo   ",
+  "    #   ",
+  "  ##### ",
+  " #  # # ",
+  "    #  #",
+  "    #   ",
+  "   # #  ",
+  "  #   # ",
+  " #    # ",
+  "#       ",
+  "        ",
+)
+StickFigureWalkingMap.CopyMapToColorSprite(TheSprite=StickFigureWalking)
+
+# Frame 5 — left leg forward again (slightly different arm angle)
+StickFigureWalkingMap.map = (
+  "   oo   ",
+  "   oo   ",
+  "    #   ",
+  " #####  ",
+  " # #  # ",
+  "#  #    ",
+  "    #   ",
+  "  # #   ",
+  " #   #  ",
+  " #    # ",
+  "       #",
+  "        ",
+)
+StickFigureWalkingMap.CopyMapToColorSprite(TheSprite=StickFigureWalking)
+
+# Constructor seeds grid with [[]]; CopyMap appends real frames after it.
+# DisplayAnimated uses 1-based currentframe (1..frames). Normalize so:
+#   grid[0] = blank pad, grid[1..frames] = authored walk frames.
+_sf_blank = [0] * (StickFigureWalking.width * StickFigureWalking.height)
+StickFigureWalking.grid = [f for f in StickFigureWalking.grid if f]  # drop empty []
+StickFigureWalking.grid.insert(0, _sf_blank)
+StickFigureWalking.frames = len(StickFigureWalking.grid) - 1
+StickFigureWalking.currentframe = 1
 
 
 RunningMan2Sprite = ColorAnimatedSprite(
@@ -16101,10 +16248,12 @@ def ShowTitleScreen(
   flushMatrix()
 
 
-  #Scrolling Message
+  #Scrolling Message — bottom strip under the title art
+  # 5-high banner font: leave 1px margin above panel bottom
   EraseMessageArea(LinesFromBottom=6)
   BrightRGB, ShadowRGB = GetBrightAndShadowRGB()
-  ShowScrollingBanner2(ScrollText,ScrollTextRGB,ScrollSpeed=ScrollSleep,v=26)
+  scroll_v = max(0, HatHeight - 6)  # 26 on 32-row panels
+  ShowScrollingBanner2(ScrollText, ScrollTextRGB, ScrollSpeed=ScrollSleep, v=scroll_v)
   flushMatrix()
 
 
