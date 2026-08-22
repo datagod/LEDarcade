@@ -121,6 +121,7 @@ LAUNCHERS=(
     SpaceExplorer.py
     Skyfall.py
     ArtilleryTime.py
+    NightDriver.py
     StockTicker.py
     AnalogClock.py
     WeatherClock.py
@@ -135,7 +136,6 @@ LAUNCHERS=(
     clock.py
     IsoWorld.py
     TetWorld.py
-    preview_stick_figure.py
 )
 
 for script in "${LAUNCHERS[@]}"; do

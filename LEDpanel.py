@@ -44,6 +44,7 @@ GAME_LAUNCHERS = [
     ("launch_spaceexplorer", "Space Explorer"),
     ("launch_skyfall", "Skyfall"),
     ("launch_artillerytime", "Artillery Time"),
+    ("launch_nightdriver", "Night Driver"),
     ("launch_rallydot", "Rally Dot"),  # last — also last in idle rotation
 ]
 
@@ -76,6 +77,7 @@ ACTION_LABELS = {
     "launch_pinball2": "Central Park (1966)",
     "launch_rallydot": "Rally Dot",
     "launch_artillerytime": "Artillery Time",
+    "launch_nightdriver": "Night Driver",
     "launch_skyfall": "Skyfall",
     "twitchtimer_on": "Twitch Timer On",
     "twitchtimer_off": "Twitch Timer Off",

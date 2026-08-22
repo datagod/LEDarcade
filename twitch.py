@@ -2383,6 +2383,15 @@ class Bot(commands.Bot ):
     # PLANET BLAST                         --
     #----------------------------------------
 
+    @commands.command(name="nightdriver", aliases=["nite", "nightdrive", "night"])
+    async def nightdriver(self, ctx: commands.Context):
+      """Chat: ?nite — 1976 Night Driver auto-play."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Night Driver — headlights on, stay between the posts..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_nightdriver", "duration": 10 })
+
+
     @commands.command(name="planet", aliases=["planetfly", "planetblast", "world", "flyover"])
     async def planet(self, ctx: commands.Context):
       """Chat: ?planet — Planet Blast orbital strike tour."""

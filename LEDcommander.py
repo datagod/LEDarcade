@@ -149,6 +149,7 @@ VALID_WEB_ACTIONS = {
     "launch_spaceexplorer": ["duration"],
     "launch_skyfall": ["duration"],
     "launch_artillerytime": ["duration"],
+    "launch_nightdriver": ["duration"],
     "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
     "twitchtimer_off": [],
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
@@ -408,9 +409,9 @@ def fallback_action_generator():
          Pattern: content → clock → content → clock → …
          So after the intro the first item is always a game, never a clock.
 
-    Timed content runs 5 minutes (including Planet Blast, LEDtv, Rally Dot).
-    Weather ends when the scroll finishes. Originals is one slot that picks
-    Dot Invaders, Tron, or Space Dot at random when it runs.
+    Timed content runs 5 minutes (including Planet Blast, LEDtv, Rally Dot,
+    Night Driver). Weather ends when the scroll finishes. Originals is one
+    slot that picks Dot Invaders, Tron, or Space Dot at random when it runs.
     """
     # Boot title — once
     yield {"Action": "ledarcade_intro"}
@@ -430,6 +431,7 @@ def fallback_action_generator():
         # Fractal Blaster — multi-type tour, color cycle, digital clock, 5 min
         {"Action": "launch_fractal", "duration": 5},
         {"Action": "launch_artillerytime", "duration": 5},
+        {"Action": "launch_nightdriver", "duration": 5},
         {"Action": "launch_planet", "duration": 5},
         {"Action": "launch_ledtv", "duration": 5},
         # One Originals slot per lap — game chosen at random when it runs
@@ -1026,6 +1028,17 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "artillerytime"
                 DisplayProcess = Process(
                     target=LaunchArtilleryTime, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
+            elif Action == "launch_nightdriver":
+                print("[LEDcommander][Run] Launching Night Driver")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "nightdriver"
+                DisplayProcess = Process(
+                    target=LaunchNightDriver, args=(Command, StopEvent)
                 )
                 DisplayProcess.start()
 
@@ -2233,6 +2246,39 @@ def LaunchSkyfall(Command, StopEvent):
         )
     finally:
         print("[LEDcommander][LaunchSkyfall] Process exit")
+        try:
+            LED.ClearBigLED()
+            LED.ClearBuffers()
+        except Exception:
+            pass
+
+
+def LaunchNightDriver(Command, StopEvent):
+    """Night Driver — 1976-style auto-play night drive (5 min)."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import NightDriver as ND
+    Duration = Command.get("duration", 5)
+    if Duration in (None, ""):
+        Duration = 5
+    try:
+        Duration = float(Duration)
+    except (TypeError, ValueError):
+        Duration = 5.0
+    if Duration <= 0:
+        Duration = 5.0
+    print(
+        f"[LEDcommander][LaunchNightDriver] Night Driver — "
+        f"{Duration} minutes..."
+    )
+    try:
+        _run_game_dimmed(
+            lambda: ND.LaunchNightDriver(
+                Duration=Duration, ShowIntro=True, StopEvent=StopEvent
+            )
+        )
+    finally:
+        print("[LEDcommander][LaunchNightDriver] finished")
         try:
             LED.ClearBigLED()
             LED.ClearBuffers()
