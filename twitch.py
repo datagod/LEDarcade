@@ -2243,11 +2243,11 @@ class Bot(commands.Bot ):
 
     @commands.command(name="rally", aliases=["rallydot"])
     async def rally(self, ctx: commands.Context):
-      # Rally Dot — default plays until game over (3 lives)
+      # Rally Dot — 5 minutes (same default as idle rotation)
       if(SHOW_CHATBOT_MESSAGES == True):
-        message = "Start your engines! Rally Dot (until game over)..."
+        message = "Start your engines! Rally Dot (5 minutes)..."
         await self.Channel.send(message)
-      CommandQueue.put({"Action": "launch_rallydot"})
+      CommandQueue.put({"Action": "launch_rallydot", "duration": 5})
 
 
     #----------------------------------------

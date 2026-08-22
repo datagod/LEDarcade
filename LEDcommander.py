@@ -130,6 +130,7 @@ VALID_WEB_ACTIONS = {
     "launch_defender2": ["duration"],
     "launch_tron": ["duration"],
     "launch_outbreak": ["duration"],
+    "launch_originals": ["duration"],  # random Originals game at launch
     "launch_ledtv": ["duration", "effect", "youtube_url", "channel"],
     "launch_spacedot": ["duration"],
     "launch_pacdot": ["duration"],
@@ -171,6 +172,13 @@ VALID_WEB_ACTIONS = {
 PINBALL_TABLE_ACTIONS = (
     "launch_pinball",
     "launch_pinball2",
+)
+
+# Original arcade games — one rotation slot picks a random member at launch.
+ORIGINALS_ACTIONS = (
+    "launch_dotinvaders",
+    "launch_tron",
+    "launch_spacedot",
 )
 
 
@@ -400,8 +408,9 @@ def fallback_action_generator():
          Pattern: content → clock → content → clock → …
          So after the intro the first item is always a game, never a clock.
 
-    Timed content runs 5 minutes (including Planet Blast). Weather ends when
-    the scroll finishes. Rally Dot runs until game over.
+    Timed content runs 5 minutes (including Planet Blast, LEDtv, Rally Dot).
+    Weather ends when the scroll finishes. Originals is one slot that picks
+    Dot Invaders, Tron, or Space Dot at random when it runs.
     """
     # Boot title — once
     yield {"Action": "ledarcade_intro"}
@@ -413,21 +422,21 @@ def fallback_action_generator():
         {"Action": "launch_spaceexplorer", "duration": 5},
         {"Action": "launch_defender2", "duration": 5},
         {"Action": "weatherterminal"},  # natural scroll end
-        {"Action": "launch_dotinvaders", "duration": 5},
         {"Action": "launch_gravitysim", "duration": 5},
-        {"Action": "launch_tron", "duration": 5},
         # outbreak paused from idle rotation for now
         # {"Action": "launch_outbreak", "duration": 5},
-        {"Action": "launch_spacedot", "duration": 5},
         {"Action": "launch_fallingsand", "duration": 5},
         {"Action": "launch_particles", "duration": 5},
         # Fractal Blaster — multi-type tour, color cycle, digital clock, 5 min
         {"Action": "launch_fractal", "duration": 5},
         {"Action": "launch_artillerytime", "duration": 5},
         {"Action": "launch_planet", "duration": 5},
+        {"Action": "launch_ledtv", "duration": 5},
+        # One Originals slot per lap — game chosen at random when it runs
+        {"Action": "launch_originals", "duration": 5},
         # One pinball slot per lap — table chosen at random when it runs
         {"Action": "launch_pinball_random", "duration": 5},
-        {"Action": "launch_rallydot"},  # until game over
+        {"Action": "launch_rallydot", "duration": 5},
     ]
 
     clock_pool = [
@@ -579,6 +588,17 @@ def Run(CommandQueue):
 
             Action = Command.get("Action", "").lower()
             print(f"<-- [LEDcommander] Action: {Action}")
+
+            # Originals group: one rotation slot → random classic game
+            if Action == "launch_originals":
+                chosen = random.choice(ORIGINALS_ACTIONS)
+                print(
+                    f"[LEDcommander][Run] Originals → {chosen} "
+                    f"(from {len(ORIGINALS_ACTIONS)} games)"
+                )
+                Action = chosen
+                Command = dict(Command)
+                Command["Action"] = chosen
 
             # Handle off (force stop, proceed)
             if Action == "showonair_off":
@@ -2157,30 +2177,20 @@ def LaunchMazeCar(Command, StopEvent):
 
 
 def LaunchRallyDot(Command, StopEvent):
-    """Launch Rally Dot. Default duration empty/0 = play until game over (3 lives)."""
+    """Launch Rally Dot. Default duration is 5 minutes (same as idle rotation)."""
     import LEDarcade as LED
     LED.Initialize()
     import RallyDot as RD
-    raw = Command.get("duration", None)
-    # Default / 0 / blank → run until stock lives exhausted (not a wall-clock cut)
-    until_game_over = raw in (None, "", 0, "0")
-    if until_game_over:
-        Duration = 100000
-        print("[LEDcommander][LaunchRallyDot] Launching until game over...")
-    else:
-        try:
-            Duration = int(raw)
-        except (TypeError, ValueError):
-            Duration = 100000
-            until_game_over = True
-            print("[LEDcommander][LaunchRallyDot] bad duration; until game over")
-        else:
-            if Duration <= 0:
-                Duration = 100000
-                until_game_over = True
-                print("[LEDcommander][LaunchRallyDot] Launching until game over...")
-            else:
-                print(f"[LEDcommander][LaunchRallyDot] Launching for {Duration} minutes...")
+    Duration = Command.get("duration", 5)
+    if Duration == "" or Duration is None:
+        Duration = 5
+    try:
+        Duration = int(Duration)
+    except (TypeError, ValueError):
+        Duration = 5
+    if Duration <= 0:
+        Duration = 5
+    print(f"[LEDcommander][LaunchRallyDot] Launching for {Duration} minutes...")
     try:
         _run_game_dimmed(
             lambda: RD.LaunchRallyDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)

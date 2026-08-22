@@ -21,12 +21,8 @@ CLOCK_LAUNCHERS = [
     ("stopclock", "Stop Clock", []),
 ]
 
-# Games that default to play-until-game-over (duration 0)
-UNTIL_GAME_OVER_LAUNCHERS = {
-    "launch_rallydot",
-}
-
 GAME_LAUNCHERS = [
+    ("launch_originals", "Originals (random)"),
     ("launch_dotinvaders", "Dot Invaders"),
     ("launch_defender2", "Defender"),
     ("launch_tron", "Tron"),
@@ -66,6 +62,7 @@ ACTION_LABELS = {
     "ledarcade_intro": "LED Arcade Intro",
     "starrynightdisplaytext": "Starry Night Text",
     "launch_stockticker": "Stock Ticker",
+    "launch_originals": "Originals (random)",
     "launch_ledtv": "LED TV",
     "launch_defender": "Defender",
     "launch_defender2": "Defender",
@@ -420,27 +417,15 @@ def render_games_section(valid_actions):
             continue
         fields = valid_actions[action]
         field_html = ""
-        until_go = action in UNTIL_GAME_OVER_LAUNCHERS
         for field in fields:
-            if field == "duration":
-                # 0 = until game over (Rally Dot default)
-                value = 0 if until_go else DEFAULT_GAME_DURATION
-            else:
-                value = ""
+            value = DEFAULT_GAME_DURATION if field == "duration" else ""
             field_html += (
                 f'<label>{field}'
                 f'<input type="text" name="{field}" value="{value}"></label>'
             )
-        note = ""
-        if until_go:
-            note = (
-                '<p class="game-note">Default duration 0 = play until game over '
-                '(3 lives). Set minutes to cap the run.</p>'
-            )
         cards.append(f"""
             <div class="command-section game-card">
                 <h3>{title}</h3>
-                {note}
                 <form class="command-form" action="/command" method="post">
                     <input type="hidden" name="Action" value="{action}">
                     {field_html}
@@ -452,7 +437,7 @@ def render_games_section(valid_actions):
     return f"""
         <div class="command-section games-section">
             <h2>Games &amp; Simulations</h2>
-            <p>Duration is in minutes (0 = until game over where supported).
+            <p>Duration is in minutes.
                Games here are part of the idle rotation.</p>
             <div class="games-grid">
                 {"".join(cards)}
