@@ -18,6 +18,7 @@ CLOCK_LAUNCHERS = [
     ("sevensegclock", "7-Seg LED Clock", ["duration"]),
     ("rocketclock", "Rocket Clock", ["duration"]),
     ("waterclock", "Water Clock", ["duration"]),
+    ("wheelclock", "Wheel Clock", ["duration"]),
     ("stopclock", "Stop Clock", []),
 ]
 
@@ -45,6 +46,7 @@ GAME_LAUNCHERS = [
     ("launch_skyfall", "Skyfall"),
     ("launch_artillerytime", "Artillery Time"),
     ("launch_nightdriver", "Night Driver"),
+    ("launch_spaceclock", "Space Clock"),
     ("launch_rallydot", "Rally Dot"),  # last — also last in idle rotation
 ]
 
@@ -60,6 +62,7 @@ ACTION_LABELS = {
     "sevensegclock": "7-Seg LED Clock",
     "rocketclock": "Rocket Clock",
     "waterclock": "Water Clock",
+    "wheelclock": "Wheel Clock",
     "ledarcade_intro": "LED Arcade Intro",
     "starrynightdisplaytext": "Starry Night Text",
     "launch_stockticker": "Stock Ticker",
@@ -78,6 +81,7 @@ ACTION_LABELS = {
     "launch_rallydot": "Rally Dot",
     "launch_artillerytime": "Artillery Time",
     "launch_nightdriver": "Night Driver",
+    "launch_spaceclock": "Space Clock",
     "launch_skyfall": "Skyfall",
     "twitchtimer_on": "Twitch Timer On",
     "twitchtimer_off": "Twitch Timer Off",

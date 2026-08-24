@@ -122,6 +122,7 @@ VALID_WEB_ACTIONS = {
     "sevensegclock": ["duration"],  # full-panel 7-segment digital clock
     "rocketclock": ["duration"],    # full-panel digital HH:MM with rocket digit transitions
     "waterclock": ["duration"],
+    "wheelclock": ["duration"],    # HH:MM:SS digit-wheel clock
     "launch_planet": ["duration"],
     "ledarcade_intro": [],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
@@ -150,6 +151,7 @@ VALID_WEB_ACTIONS = {
     "launch_skyfall": ["duration"],
     "launch_artillerytime": ["duration"],
     "launch_nightdriver": ["duration"],
+    "launch_spaceclock": ["duration"],
     "twitchtimer_on": ["StreamStartedDateTime", "StreamDurationHHMMSS"],
     "twitchtimer_off": [],
     "terminalmode_on": ["Message", "RGB", "ScrollSleep"],
@@ -432,6 +434,7 @@ def fallback_action_generator():
         {"Action": "launch_fractal", "duration": 5},
         {"Action": "launch_artillerytime", "duration": 5},
         {"Action": "launch_nightdriver", "duration": 5},
+        {"Action": "launch_spaceclock", "duration": 5},
         {"Action": "launch_planet", "duration": 5},
         {"Action": "launch_ledtv", "duration": 5},
         # One Originals slot per lap — game chosen at random when it runs
@@ -448,6 +451,7 @@ def fallback_action_generator():
         {"Action": "rocketclock", "duration": 5},
         {"Action": "waterclock", "duration": 5},
         {"Action": "analogclock", "duration": 5},
+        {"Action": "wheelclock", "duration": 5},
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 5, "Delay": 20},
         {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 5, "Delay": 10},
         {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 5, "Delay": 10},
@@ -755,6 +759,16 @@ def Run(CommandQueue):
                 )
                 DisplayProcess.start()
 
+            elif Action == "wheelclock":
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(
+                    target=ShowWheelClock, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
             elif Action == "ledarcade_intro":
                 stop_current_display(Action)
                 StopEvent.clear()
@@ -1039,6 +1053,17 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "nightdriver"
                 DisplayProcess = Process(
                     target=LaunchNightDriver, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
+            elif Action == "launch_spaceclock":
+                print("[LEDcommander][Run] Launching Space Clock")
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "spaceclock"
+                DisplayProcess = Process(
+                    target=LaunchSpaceClock, args=(Command, StopEvent)
                 )
                 DisplayProcess.start()
 
@@ -1445,6 +1470,32 @@ def ShowWaterClock(Command, StopEvent):
     try:
         LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
         WC.LaunchWaterClock(
+            Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
+        )
+    finally:
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
+
+def ShowWheelClock(Command, StopEvent):
+    """Full-panel HH:MM:SS rolling digit-wheel clock."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import WheelClock as WHC
+
+    RunMinutes = Command.get("duration", 10)
+    try:
+        RunMinutes = float(RunMinutes)
+    except (TypeError, ValueError):
+        RunMinutes = 10.0
+
+    print(
+        f"[LEDcommander] Showing wheel clock: "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
+
+    try:
+        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
+        WHC.LaunchWheelClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
     finally:
@@ -2246,6 +2297,39 @@ def LaunchSkyfall(Command, StopEvent):
         )
     finally:
         print("[LEDcommander][LaunchSkyfall] Process exit")
+        try:
+            LED.ClearBigLED()
+            LED.ClearBuffers()
+        except Exception:
+            pass
+
+
+def LaunchSpaceClock(Command, StopEvent):
+    """Space Clock — parallax fly-through with clocks on planets (5 min)."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import SpaceClock as SC
+    Duration = Command.get("duration", 5)
+    if Duration in (None, ""):
+        Duration = 5
+    try:
+        Duration = float(Duration)
+    except (TypeError, ValueError):
+        Duration = 5.0
+    if Duration <= 0:
+        Duration = 5.0
+    print(
+        f"[LEDcommander][LaunchSpaceClock] Space Clock — "
+        f"{Duration} minutes..."
+    )
+    try:
+        _run_game_dimmed(
+            lambda: SC.LaunchSpaceClock(
+                Duration=Duration, ShowIntro=True, StopEvent=StopEvent
+            )
+        )
+    finally:
+        print("[LEDcommander][LaunchSpaceClock] finished")
         try:
             LED.ClearBigLED()
             LED.ClearBuffers()

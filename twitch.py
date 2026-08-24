@@ -2241,6 +2241,14 @@ class Bot(commands.Bot ):
       CommandQueue.put({"Action": "launch_outbreak", "duration": 10 })
 
 
+    @commands.command(name="spaceclock", aliases=["spaceclk", "parallaxclock"])
+    async def spaceclock(self, ctx: commands.Context):
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Space Clock — drifting through the clocks..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "launch_spaceclock", "duration": 5})
+
+
     @commands.command(name="rally", aliases=["rallydot"])
     async def rally(self, ctx: commands.Context):
       # Rally Dot — 5 minutes (same default as idle rotation)
@@ -2377,6 +2385,19 @@ class Bot(commands.Bot ):
         message = "Tide's coming in — water clock on the panel..."
         await self.Channel.send(message)
       CommandQueue.put({"Action": "waterclock", "duration": 10 })
+
+
+    #----------------------------------------
+    # WHEEL CLOCK                          --
+    #----------------------------------------
+
+    @commands.command(name="wheelclock", aliases=["wheel", "reels"])
+    async def wheelclock(self, ctx: commands.Context):
+      """Chat: ?wheelclock — HH:MM:SS rolling digit wheels."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Spinning up the wheel clock..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "wheelclock", "duration": 10 })
 
 
     #----------------------------------------

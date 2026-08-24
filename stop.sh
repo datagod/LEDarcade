@@ -128,6 +128,9 @@ LAUNCHERS=(
     SevenSegClock.py
     RocketClock.py
     WaterClock.py
+    Clock3D.py
+    SpaceClock.py
+    WheelClock.py
     LEDweb.py
     LEDpanel.py
     OnAir.py
