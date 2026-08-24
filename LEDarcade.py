@@ -148,6 +148,7 @@ import time
 import gc
 import random
 import os
+import threading
 
 try:
     from configparser import SafeConfigParser  # Python < 3.12
@@ -21604,6 +21605,82 @@ def ActivateRGBMatrix():
 
 
 _initialized = False
+_fade_gen = 0
+
+
+def PrepareFadeIn(duration=0.45, steps=12):
+    """Set brightness to 0, then ramp up while the next program draws.
+
+    Skip this when the program has its own intro / start routine.
+    """
+    global TheMatrix, _fade_gen
+    if TheMatrix is None:
+        return
+    try:
+        target = int(TheMatrix.brightness)
+    except Exception:
+        return
+    if target <= 0:
+        target = 100
+    _fade_gen += 1
+    gen = _fade_gen
+    try:
+        TheMatrix.brightness = 0
+    except Exception:
+        return
+
+    def _ramp():
+        delay = duration / float(max(1, steps))
+        for i in range(1, steps + 1):
+            if _fade_gen != gen:
+                return
+            time.sleep(delay)
+            try:
+                TheMatrix.brightness = int(round(target * i / float(steps)))
+            except Exception:
+                return
+
+    threading.Thread(target=_ramp, daemon=True).start()
+
+
+def FadeOutDisplay(duration=0.45, steps=12):
+    """Ramp panel brightness to black, then clear. Restores brightness after.
+
+    Skip this when the program has its own exit routine.
+    """
+    global TheMatrix, Canvas, _fade_gen
+    _fade_gen += 1
+    if TheMatrix is None:
+        return
+    try:
+        old = int(TheMatrix.brightness)
+    except Exception:
+        old = 100
+    if old < 0:
+        old = 0
+    delay = duration / float(max(1, steps))
+    for i in range(steps - 1, -1, -1):
+        try:
+            TheMatrix.brightness = int(round(old * i / float(steps)))
+        except Exception:
+            break
+        time.sleep(delay)
+    try:
+        TheMatrix.Clear()
+    except Exception:
+        pass
+    try:
+        if Canvas is not None:
+            Canvas.Clear()
+            Canvas.Fill(0, 0, 0)
+    except Exception:
+        pass
+    try:
+        TheMatrix.brightness = old
+    except Exception:
+        pass
+
+
 def Initialize():
     global TheMatrix, Canvas, ScreenArray, HatWidth, HatHeight, Gamma, _initialized
     if _initialized:

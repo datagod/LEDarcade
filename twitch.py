@@ -2401,6 +2401,19 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
+    # NIXIE CLOCK                          --
+    #----------------------------------------
+
+    @commands.command(name="nixieclock", aliases=["nixie", "in12"])
+    async def nixieclock(self, ctx: commands.Context):
+      """Chat: ?nixieclock — HH:MM neon nixie tubes."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Warming up the nixie tubes..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "nixieclock", "duration": 10 })
+
+
+    #----------------------------------------
     # PLANET BLAST                         --
     #----------------------------------------
 

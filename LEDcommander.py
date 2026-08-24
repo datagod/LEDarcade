@@ -123,6 +123,7 @@ VALID_WEB_ACTIONS = {
     "rocketclock": ["duration"],    # full-panel digital HH:MM with rocket digit transitions
     "waterclock": ["duration"],
     "wheelclock": ["duration"],    # HH:MM:SS digit-wheel clock
+    "nixieclock": ["duration"],    # HH:MM nixie-tube clock
     "launch_planet": ["duration"],
     "ledarcade_intro": [],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
@@ -389,15 +390,50 @@ def _apply_matrix_brightness(level):
         pass
 
 
-def _run_game_dimmed(launch_fn):
+def _run_game_dimmed(launch_fn, fade_in=False, fade_out=True):
     """Run a game at stream/game brightness; full brightness after.
     Standalone LEDcommander: 100. Twitch stream mode: dimmed (70).
+
+    fade_in: ramp from black unless the program has its own start/intro.
+    fade_out: ramp to black unless the program has its own exit routine.
     """
+    import LEDarcade as LED
     _refresh_stream_brightness()
     _apply_matrix_brightness(STREAM_GAME_BRIGHTNESS)
     try:
+        if fade_in:
+            try:
+                LED.PrepareFadeIn()
+            except Exception:
+                pass
         return launch_fn()
     finally:
+        if fade_out:
+            try:
+                LED.FadeOutDisplay()
+            except Exception:
+                pass
+        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+
+
+def _run_clock(run_fn, fade_in=True, fade_out=True):
+    """Run a clock at stream/clock brightness with optional fade in/out."""
+    import LEDarcade as LED
+    _refresh_stream_brightness()
+    _apply_matrix_brightness(STREAM_CLOCK_BRIGHTNESS)
+    try:
+        if fade_in:
+            try:
+                LED.PrepareFadeIn()
+            except Exception:
+                pass
+        return run_fn()
+    finally:
+        if fade_out:
+            try:
+                LED.FadeOutDisplay()
+            except Exception:
+                pass
         _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
 
 
@@ -452,6 +488,7 @@ def fallback_action_generator():
         {"Action": "waterclock", "duration": 5},
         {"Action": "analogclock", "duration": 5},
         {"Action": "wheelclock", "duration": 5},
+        {"Action": "nixieclock", "duration": 5},
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 5, "Delay": 20},
         {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 5, "Delay": 10},
         {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 5, "Delay": 10},
@@ -766,6 +803,16 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "clock"
                 DisplayProcess = Process(
                     target=ShowWheelClock, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
+            elif Action == "nixieclock":
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(
+                    target=ShowNixieClock, args=(Command, StopEvent)
                 )
                 DisplayProcess.start()
 
@@ -1317,9 +1364,8 @@ def ShowDigitalClock(Command,StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        LED.DisplayDigitalClock(
+    _run_clock(
+        lambda: LED.DisplayDigitalClock(
             ClockStyle=ClockStyle,
             CenterHoriz=True,
             v=1,
@@ -1331,8 +1377,7 @@ def ShowDigitalClock(Command,StopEvent):
             RunMinutes     = RunMinutes,
             StopEvent      = StopEvent
         )
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    )
 
 
 
@@ -1350,9 +1395,8 @@ def ShowRetroDigital(Command,StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        LED.DisplayDigitalClock(
+    _run_clock(
+        lambda: LED.DisplayDigitalClock(
             ClockStyle=ClockStyle,
             CenterHoriz=True,
             v=1,
@@ -1364,8 +1408,7 @@ def ShowRetroDigital(Command,StopEvent):
             RunMinutes     = RunMinutes,
             StopEvent      = StopEvent
         )
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    )
 
 
 def ShowFlipClock(Command, StopEvent):
@@ -1384,9 +1427,8 @@ def ShowFlipClock(Command, StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        LED.DisplayDigitalClock(
+    _run_clock(
+        lambda: LED.DisplayDigitalClock(
             ClockStyle=6,
             CenterHoriz=True,
             v=1,
@@ -1394,8 +1436,7 @@ def ShowFlipClock(Command, StopEvent):
             RunMinutes=RunMinutes,
             StopEvent=StopEvent,
         )
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    )
 
 
 def ShowSevenSegClock(Command, StopEvent):
@@ -1415,13 +1456,11 @@ def ShowSevenSegClock(Command, StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        SSC.LaunchSevenSegClock(
+    _run_clock(
+        lambda: SSC.LaunchSevenSegClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    )
 
 
 def ShowRocketClock(Command, StopEvent):
@@ -1441,13 +1480,11 @@ def ShowRocketClock(Command, StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        RC.LaunchRocketClock(
+    _run_clock(
+        lambda: RC.LaunchRocketClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    )
 
 
 def ShowWaterClock(Command, StopEvent):
@@ -1467,13 +1504,11 @@ def ShowWaterClock(Command, StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        WC.LaunchWaterClock(
+    _run_clock(
+        lambda: WC.LaunchWaterClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    )
 
 
 def ShowWheelClock(Command, StopEvent):
@@ -1493,13 +1528,35 @@ def ShowWheelClock(Command, StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        WHC.LaunchWheelClock(
+    _run_clock(
+        lambda: WHC.LaunchWheelClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    )
+
+
+def ShowNixieClock(Command, StopEvent):
+    """Full-panel HH:MM nixie-tube clock."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import Experiment3 as NX
+
+    RunMinutes = Command.get("duration", 10)
+    try:
+        RunMinutes = float(RunMinutes)
+    except (TypeError, ValueError):
+        RunMinutes = 10.0
+
+    print(
+        f"[LEDcommander] Showing nixie clock: "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
+
+    _run_clock(
+        lambda: NX.LaunchExperiment3(
+            Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
+        )
+    )
 
 
 def ShowLEDArcadeIntro(Command, StopEvent):
@@ -2033,7 +2090,8 @@ def LaunchDotInvaders(Command, StopEvent):
     print("[LEDcommander][LaunchDotInvaders] Launching...")
     try:
         _run_game_dimmed(
-            lambda: DI.LaunchDotInvaders(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+            lambda: DI.LaunchDotInvaders(Duration=Duration, ShowIntro=True, StopEvent=StopEvent),
+            fade_out=False,
         )
     finally:
         LED.SweepClean()
@@ -2048,7 +2106,8 @@ def LaunchDefender(Command, StopEvent):
     print(f"[LEDcommander][LaunchDefender] Launching Defender2 for {Duration} minutes...")
     try:
         _run_game_dimmed(
-            lambda: DE.LaunchDefender2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+            lambda: DE.LaunchDefender2(Duration=Duration, ShowIntro=True, StopEvent=StopEvent),
+            fade_out=False,
         )
     finally:
         LED.SweepClean()
@@ -2103,7 +2162,8 @@ def LaunchPacDot(Command, StopEvent):
     print(f"[LEDcommander][LaunchPacDot] Launching PacDot for {Duration} minutes...")
     try:
         _run_game_dimmed(
-            lambda: PD.LaunchPacDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+            lambda: PD.LaunchPacDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent),
+            fade_out=False,
         )
     finally:
         LED.SweepClean()
@@ -2124,7 +2184,8 @@ def LaunchDotZerk(Command, StopEvent):
     print(f"[LEDcommander][LaunchDotZerk] Launching DotZerk for {Duration} minutes...")
     try:
         _run_game_dimmed(
-            lambda: DZ.LaunchDotZerk(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+            lambda: DZ.LaunchDotZerk(Duration=Duration, ShowIntro=True, StopEvent=StopEvent),
+            fade_out=False,
         )
     finally:
         LED.SweepClean()
@@ -2197,7 +2258,9 @@ def LaunchLEDtv(Command, StopEvent):
                 youtube_url=YoutubeUrl,
                 channel=Channel,
                 boot_intro=bool(BootIntro),
-            )
+            ),
+            fade_in=not (bool(ShowIntro) or bool(BootIntro)),
+            fade_out=False,
         )
     finally:
         try:
@@ -2257,7 +2320,8 @@ def LaunchRallyDot(Command, StopEvent):
     print(f"[LEDcommander][LaunchRallyDot] Launching for {Duration} minutes...")
     try:
         _run_game_dimmed(
-            lambda: RD.LaunchRallyDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent)
+            lambda: RD.LaunchRallyDot(Duration=Duration, ShowIntro=True, StopEvent=StopEvent),
+            fade_out=False,
         )
     finally:
         try:
@@ -2326,7 +2390,8 @@ def LaunchSpaceClock(Command, StopEvent):
         _run_game_dimmed(
             lambda: SC.LaunchSpaceClock(
                 Duration=Duration, ShowIntro=True, StopEvent=StopEvent
-            )
+            ),
+            fade_in=True,
         )
     finally:
         print("[LEDcommander][LaunchSpaceClock] finished")
@@ -2514,11 +2579,9 @@ def ShowAnalogClock(Command, StopEvent):
         f"duration={Duration:g} min, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
-    try:
-        LED.TheMatrix.brightness = STREAM_CLOCK_BRIGHTNESS
-        AC.RunClock(Duration=Duration, StopEvent=StopEvent)
-    finally:
-        _apply_matrix_brightness(STREAM_MAX_BRIGHTNESS)
+    _run_clock(
+        lambda: AC.RunClock(Duration=Duration, StopEvent=StopEvent)
+    )
 
 
 

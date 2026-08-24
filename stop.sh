@@ -131,6 +131,7 @@ LAUNCHERS=(
     Clock3D.py
     SpaceClock.py
     WheelClock.py
+    Experiment3.py
     LEDweb.py
     LEDpanel.py
     OnAir.py
