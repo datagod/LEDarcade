@@ -1,11 +1,11 @@
 # =====================================================================================
-# EXPERIMENT3 — Nixie-tube clock
+# NIXIE CLOCK — four IN-12 style tubes, HH:MM
 #
-# Four IN-12 style tubes: HH:MM. Neon-orange cathodes, glass bulb, stem,
-# bakelite socket, stacked ghosts, bloom. Digits snap like real nixies.
+# Neon-orange cathodes, glass bulb, stem, bakelite socket, stacked ghosts,
+# bloom. Digits snap like real nixies; a brief flicker before each change.
 # Idle rotation: clock slot "nixieclock" (5 min).
 #
-# Run:  python3 Experiment3.py
+# Run:  python3 NixieClock.py
 # =====================================================================================
 
 from __future__ import annotations
@@ -272,10 +272,10 @@ def _draw_colon(buf, cx, y0, flicker, vw, vh):
                 _add(buf, cx - 1 + ox, by + oy, rgb, vw, vh)
 
 
-def PlayExperiment3(Duration=0, StopEvent=None):
+def PlayNixieClock(Duration=0, StopEvent=None):
     vw = int(getattr(LED, "HatWidth", 64) or 64)
     vh = int(getattr(LED, "HatHeight", 32) or 32)
-    print("[Experiment3] {}x{}  nixie HH:MM".format(vw, vh))
+    print("[NixieClock] {}x{}  nixie HH:MM".format(vw, vh))
 
     canvas = getattr(LED, "Canvas", None)
     if canvas is None and getattr(LED, "TheMatrix", None) is not None:
@@ -290,11 +290,11 @@ def PlayExperiment3(Duration=0, StopEvent=None):
     try:
         while True:
             if _stop(StopEvent):
-                print("[Experiment3] StopEvent")
+                print("[NixieClock] StopEvent")
                 return
             if Duration and float(Duration) > 0:
                 if (time.time() - start) >= float(Duration) * 60.0:
-                    print("[Experiment3] Duration reached")
+                    print("[NixieClock] Duration reached")
                     return
 
             now = time.time()
@@ -328,10 +328,10 @@ def PlayExperiment3(Duration=0, StopEvent=None):
             else:
                 time.sleep(max(0.0, frame_dt - (time.time() - now)))
     except KeyboardInterrupt:
-        print("[Experiment3] Interrupted")
+        print("[NixieClock] Interrupted")
 
 
-def LaunchExperiment3(Duration=0, ShowIntro=True, StopEvent=None):
+def LaunchNixieClock(Duration=0, ShowIntro=True, StopEvent=None):
     try:
         LED.LoadConfigData()
     except Exception:
@@ -344,11 +344,11 @@ def LaunchExperiment3(Duration=0, ShowIntro=True, StopEvent=None):
         pass
     if _stop(StopEvent):
         return
-    PlayExperiment3(Duration=Duration, StopEvent=StopEvent)
+    PlayNixieClock(Duration=Duration, StopEvent=StopEvent)
 
 
 if __name__ == "__main__":
     try:
-        LaunchExperiment3(Duration=0)
+        LaunchNixieClock(Duration=0)
     except KeyboardInterrupt:
-        print("Exiting Experiment3.")
+        print("Exiting NixieClock.")

@@ -1539,7 +1539,7 @@ def ShowNixieClock(Command, StopEvent):
     """Full-panel HH:MM nixie-tube clock."""
     import LEDarcade as LED
     LED.Initialize()
-    import Experiment3 as NX
+    import NixieClock as NX
 
     RunMinutes = Command.get("duration", 10)
     try:
@@ -1553,7 +1553,7 @@ def ShowNixieClock(Command, StopEvent):
     )
 
     _run_clock(
-        lambda: NX.LaunchExperiment3(
+        lambda: NX.LaunchNixieClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
     )

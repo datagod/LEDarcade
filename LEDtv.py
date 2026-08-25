@@ -325,6 +325,15 @@ CLOCK_SHADOW_RGB = (0, 35, 12)
 CLOCK_SHADOW_OX = 1           # shadow offset right
 CLOCK_SHADOW_OY = 1           # shadow offset down
 CLOCK_FORMAT = "%H:%M"        # 24h; update once per second
+# CH5: analog scrambled-channel wobble (per-scanline shear)
+CLOCK_SCRAMBLE_FPS = 24
+CLOCK_SCRAMBLE_AMP = 1.0      # 25% of original 4px wobble
+CLOCK_SCRAMBLE_WAVE = 0.48    # spatial frequency down the frame
+CLOCK_SCRAMBLE_SPEED = 6.8    # rad/s
+CLOCK_SCRAMBLE_IDLE_MIN = 2.8
+CLOCK_SCRAMBLE_IDLE_MAX = 5.5
+CLOCK_SCRAMBLE_DUR_MIN = 0.35
+CLOCK_SCRAMBLE_DUR_MAX = 0.75
 
 # --- Skyfall-style title drop ("LEDTV") ---
 TITLE_WORD = "LEDTV"
@@ -1057,6 +1066,22 @@ def make_clock_image(now=None, show_channel_label=None):
     return img
 
 
+def _apply_clock_scramble(img, t):
+    """Per-scanline horizontal shear — analog scrambled-channel wobble."""
+    arr = np.array(img, dtype=np.uint8)
+    h = arr.shape[0]
+    out = np.empty_like(arr)
+    ys = np.arange(h, dtype=np.float64)
+    amp = CLOCK_SCRAMBLE_AMP * (0.72 + 0.28 * np.sin(t * 0.95))
+    shifts = np.round(
+        amp * np.sin(t * CLOCK_SCRAMBLE_SPEED + ys * CLOCK_SCRAMBLE_WAVE)
+        + 0.35 * np.sin(t * 2.15 + ys * 0.19)
+    ).astype(np.int32)
+    for y in range(h):
+        out[y] = np.roll(arr[y], int(shifts[y]), axis=0)
+    return Image.fromarray(out, mode="RGB")
+
+
 def play_clock_channel(
     session_start,
     duration_minutes,
@@ -1065,8 +1090,7 @@ def play_clock_channel(
     play_seconds=None,
 ):
     """
-    CH5: centered digital clock (big time + shadow). Runs for play_seconds
-    (default VIDEO_PLAY_SEC), updating once per second.
+    CH5: centered digital clock with analog scrambled-channel wobble.
     Returns False if session should end.
     """
     if channel is None:
@@ -1074,37 +1098,43 @@ def play_clock_channel(
     if play_seconds is None:
         play_seconds = channel_dwell_sec()
     label = channel_label(channel)
-    print("[LEDtv] {}  Clock channel ({:.0f}s)".format(label, play_seconds), flush=True)
+    print("[LEDtv] {}  Clock channel ({:.0f}s, scrambled wobble)".format(
+        label, play_seconds,
+    ), flush=True)
 
     canvas = LED.Canvas
     matrix = LED.TheMatrix
     clip_start = time.time()
-    last_key = None  # (HH:MM, show_bug)
     bug_until = clip_start + float(CHANNEL_BUG_SHOW_SEC)
+    frame_dt = 1.0 / float(CLOCK_SCRAMBLE_FPS)
+    scramble_until = 0.0
+    next_scramble = clip_start + random.uniform(
+        CLOCK_SCRAMBLE_IDLE_MIN, CLOCK_SCRAMBLE_IDLE_MAX,
+    )
 
     while not _time_up(session_start, duration_minutes, stop_event):
-        elapsed = time.time() - clip_start
+        now_t = time.time()
+        elapsed = now_t - clip_start
         if elapsed >= float(play_seconds):
             break
         now = time.localtime()
-        text = time.strftime(CLOCK_FORMAT, now)
-        show_bug = time.time() < bug_until
-        key = (text, show_bug)
-        if key != last_key:
-            img = make_clock_image(
-                now, show_channel_label=label if show_bug else None,
+        show_bug = now_t < bug_until
+        img = make_clock_image(now, show_channel_label=None)
+        if now_t >= next_scramble and now_t >= scramble_until:
+            scramble_until = now_t + random.uniform(
+                CLOCK_SCRAMBLE_DUR_MIN, CLOCK_SCRAMBLE_DUR_MAX,
             )
-            canvas.SetImage(img, 0, 0)
-            canvas = matrix.SwapOnVSync(canvas)
-            LED.Canvas = canvas
-            last_key = key
-        # Wake on second tick or when CHn is about to hide
-        until_next_sec = 1.0 - (time.time() % 1.0)
-        if until_next_sec < 0.05:
-            until_next_sec = 0.05
+            next_scramble = scramble_until + random.uniform(
+                CLOCK_SCRAMBLE_IDLE_MIN, CLOCK_SCRAMBLE_IDLE_MAX,
+            )
+        if now_t < scramble_until:
+            img = _apply_clock_scramble(img, elapsed)
         if show_bug:
-            until_next_sec = min(until_next_sec, max(0.05, bug_until - time.time()))
-        time.sleep(min(until_next_sec, 0.5))
+            apply_channel_bug(img, label)
+        canvas.SetImage(img, 0, 0)
+        canvas = matrix.SwapOnVSync(canvas)
+        LED.Canvas = canvas
+        time.sleep(frame_dt)
 
     # No ClearBigLED — next channel paints over immediately
     print("[LEDtv] {}  Clock channel done".format(label), flush=True)

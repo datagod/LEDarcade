@@ -49,7 +49,7 @@ MAP_W = WIDTH
 MAP_H = HEIGHT * MAP_SCALE_Y + TABLE_EXTRA_H
 
 TARGET_FPS = 40
-PHYSICS_SUBSTEPS = 3               # smoother collision / less tunneling & jitter
+PHYSICS_SUBSTEPS = 4               # smoother collision / less tunneling & jitter
 GRAVITY = 0.085
 AIR_DRAG = 0.9992                  # slightly less drag per full frame via substeps
 BOUNCE = 0.72
@@ -581,15 +581,17 @@ class Flipper:
         self.pressed = bool(pressed)
         self.target = self.active if self.pressed else self.rest
 
-    def update(self):
+    def update(self, dt_scale=1.0):
         prev = self.angle
         # Move toward target with capped step — snap up fast when firing so
         # the blade visibly travels while the ball is flung; return slower.
         d = (self.target - self.angle + math.pi) % (2 * math.pi) - math.pi
         speed = self.swing_speed if self.pressed else self.swing_speed * FLIPPER_RETURN_SCALE
-        step = _clamp(d, -speed, speed)
+        s = max(1e-9, float(dt_scale))
+        step = _clamp(d, -speed * s, speed * s)
         self.angle += step
-        self.omega = self.angle - prev
+        # rad per full frame so hit impulse stays consistent across substeps
+        self.omega = (self.angle - prev) / s
 
     def endpoints(self):
         return _segment_points(self.px, self.py, self.angle, self.length)
@@ -1083,37 +1085,44 @@ def collide_walls(ball):
         ball.alive = False
 
 
-def collide_flipper(ball, flipper):
-    """
-    Ball vs flipper segment.
+def _ang_wrap(a):
+    return (a + math.pi) % (2.0 * math.pi) - math.pi
 
-    Stationary flipper → bounce only (no free energy). Swinging flipper
-    (nonzero omega) imparts bat velocity / FLIPPER_POWER along the swing.
-    """
-    x1, y1, x2, y2 = flipper.endpoints()
-    dist, nx, ny, t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
-    hit_r = BALL_RADIUS + FLIPPER_THICK * 0.5 + FLIPPER_PAD
-    if dist >= hit_r or dist < 1e-6:
-        return False
 
-    # Surface normal from segment toward ball
+def _flipper_hit_r():
+    return BALL_RADIUS + FLIPPER_THICK * 0.5 + FLIPPER_PAD
+
+
+def _flipper_face_normal(x1, y1, x2, y2, bx, by, nx, ny, dist, omega):
+    """Unit normal from blade toward the ball (or along the swing if embedded)."""
     sx, sy = x2 - x1, y2 - y1
     nlen = math.hypot(sx, sy) or 1.0
-    n1x, n1y = -sy / nlen, sx / nlen
+    n1x, n1y = -sy / nlen, sx / nlen   # CCW of blade
     n2x, n2y = sy / nlen, -sx / nlen
-    to_bx, to_by = ball.x - nx, ball.y - ny
-    if n1x * to_bx + n1y * to_by >= n2x * to_bx + n2y * to_by:
-        nnx, nny = n1x, n1y
-    else:
-        nnx, nny = n2x, n2y
+    if dist >= 1e-6:
+        to_bx, to_by = bx - nx, by - ny
+        if n1x * to_bx + n1y * to_by >= n2x * to_bx + n2y * to_by:
+            return n1x, n1y
+        return n2x, n2y
+    if omega > 1e-6:
+        return n1x, n1y
+    if omega < -1e-6:
+        return n2x, n2y
+    return n1x, n1y
 
-    # Push out of the solid blade
+
+def _resolve_flipper_hit(ball, flipper, nx, ny, t, nnx, nny, dist, hit_r, dt_scale=1.0):
+    """Push out, cradle or bounce, add swing impulse. Always a hit."""
+    x1, y1, x2, y2 = flipper.endpoints()
     pen = hit_r - dist
-    ball.x += nnx * pen
-    ball.y += nny * pen
+    if pen > 0.0:
+        ball.x += nnx * pen
+        ball.y += nny * pen
+    elif dist < 1e-6:
+        ball.x = nx + nnx * hit_r
+        ball.y = ny + nny * hit_r
 
     speed = ball.speed()
-    # Cradle: resting flipper holds a slow ball instead of batting it away
     if (not flipper.pressed) and speed < FLIP_HOLD_SPEED and 0.05 <= t <= 0.98:
         vn = ball.vx * nnx + ball.vy * nny
         if vn < 0:
@@ -1127,37 +1136,106 @@ def collide_flipper(ball, flipper):
         ball.vy = ty * vt * 0.88 + 0.02
         return True
 
-    # Always: elastic-ish bounce off the solid bat (no energy added yet)
     vn = ball.vx * nnx + ball.vy * nny
     if vn < 0:
         ball.vx -= (1.0 + BOUNCE) * vn * nnx
         ball.vy -= (1.0 + BOUNCE) * vn * nny
 
-    # Active hit only while the flipper is *moving* (swinging omega).
-    # Held-still raised bats do not give free power.
     omega_eps = 0.04
+    s = max(1e-9, float(dt_scale))
     if abs(flipper.omega) > omega_eps:
         tip_scale = 0.55 + 0.75 * _clamp(t, 0.0, 1.0)
         rx, ry = nx - flipper.px, ny - flipper.py
         fvx = -flipper.omega * ry
         fvy = flipper.omega * rx
-        # Only add energy when the bat face is swinging into the ball
         bat_into_ball = fvx * nnx + fvy * nny
         if bat_into_ball > 0.0:
             f_power = float(getattr(flipper, "power", FLIPPER_POWER))
             f_swing = float(getattr(flipper, "swing_speed", FLIPPER_SWING_SPEED))
             swing = abs(flipper.omega) / max(1e-3, f_swing)
             power = f_power * tip_scale * (0.45 + 0.55 * _clamp(swing, 0.0, 1.2))
-            ball.vx += fvx * power
-            ball.vy += fvy * power - abs(flipper.omega) * f_power * tip_scale * 0.55
+            ball.vx += fvx * power * s
+            ball.vy += (
+                fvy * power - abs(flipper.omega) * f_power * tip_scale * 0.55
+            ) * s
 
-    # Cap
     sp = ball.speed()
     if sp > MAX_SPEED:
-        s = MAX_SPEED / sp
-        ball.vx *= s
-        ball.vy *= s
+        k = MAX_SPEED / sp
+        ball.vx *= k
+        ball.vy *= k
     return True
+
+
+def collide_flipper(ball, flipper, prev_angle=None, prev_ball=None, dt_scale=1.0):
+    """
+    Ball vs flipper capsule, plus swept-rotation and motion CCD so a fast
+    swing or falling ball cannot tunnel through the blade.
+    """
+    hit_r = _flipper_hit_r()
+    x1, y1, x2, y2 = flipper.endpoints()
+    dist, nx, ny, t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
+    hit = dist < hit_r
+
+    if (not hit) and prev_ball is not None:
+        p0x, p0y = prev_ball
+        samples = 4
+        for i in range(1, samples + 1):
+            u = i / float(samples)
+            px = p0x + (ball.x - p0x) * u
+            py = p0y + (ball.y - p0y) * u
+            d2, n2x, n2y, t2 = _dist_point_segment(px, py, x1, y1, x2, y2)
+            if d2 < hit_r:
+                hit = True
+                dist, nx, ny, t = d2, n2x, n2y, t2
+                ball.x, ball.y = px, py
+                break
+
+    if (not hit) and prev_angle is not None:
+        da = _ang_wrap(flipper.angle - prev_angle)
+        if abs(da) > 0.015:
+            dx = ball.x - flipper.px
+            dy = ball.y - flipper.py
+            dist_p = math.hypot(dx, dy)
+            if 0.08 < dist_p <= flipper.length + hit_r:
+                ball_ang = math.atan2(dy, dx)
+                to_b = _ang_wrap(ball_ang - prev_angle)
+                pad_ang = math.atan2(hit_r, max(dist_p, 0.4))
+                if da >= 0:
+                    crossed = -pad_ang <= to_b <= da + pad_ang
+                else:
+                    crossed = da - pad_ang <= to_b <= pad_ang
+                if crossed:
+                    hit = True
+                    dist, nx, ny, t = _dist_point_segment(
+                        ball.x, ball.y, x1, y1, x2, y2,
+                    )
+                    sx, sy = x2 - x1, y2 - y1
+                    nlen = math.hypot(sx, sy) or 1.0
+                    if flipper.omega >= 0:
+                        nnx, nny = -sy / nlen, sx / nlen
+                    else:
+                        nnx, nny = sy / nlen, -sx / nlen
+                    if dist < 1e-6:
+                        nx, ny = (
+                            flipper.px + math.cos(flipper.angle) * _clamp(dist_p, 0.0, flipper.length),
+                            flipper.py + math.sin(flipper.angle) * _clamp(dist_p, 0.0, flipper.length),
+                        )
+                    ball.x = nx + nnx * hit_r
+                    ball.y = ny + nny * hit_r
+                    return _resolve_flipper_hit(
+                        ball, flipper, nx, ny, t, nnx, nny, 0.0, hit_r, dt_scale,
+                    )
+
+    if not hit:
+        return False
+
+    nnx, nny = _flipper_face_normal(
+        x1, y1, x2, y2, ball.x, ball.y, nx, ny, dist, flipper.omega,
+    )
+    return _resolve_flipper_hit(
+        ball, flipper, nx, ny, t, nnx, nny, dist, hit_r, dt_scale,
+    )
 
 
 def _ball_flipper_contact(ball, flipper):
@@ -3837,13 +3915,6 @@ def PlayPinball(Duration=10000, StopEvent=None):
                     up_left.set_pressed(False)
                 if up_right:
                     up_right.set_pressed(False)
-            left.update()
-            right.update()
-            if up_left:
-                up_left.update()
-            if up_right:
-                up_right.update()
-
             # --- Saucers once per frame (vanish/pan timers must not run ×substeps) ---
             if ball.alive:
                 update_saucers(
@@ -3857,6 +3928,16 @@ def PlayPinball(Duration=10000, StopEvent=None):
             if ball.alive and not saucer_state.get("held"):
                 step_scale = 1.0 / float(PHYSICS_SUBSTEPS)
                 for _ in range(PHYSICS_SUBSTEPS):
+                    la, ra = left.angle, right.angle
+                    ula = up_left.angle if up_left else 0.0
+                    ura = up_right.angle if up_right else 0.0
+                    left.update(step_scale)
+                    right.update(step_scale)
+                    if up_left:
+                        up_left.update(step_scale)
+                    if up_right:
+                        up_right.update(step_scale)
+                    bx, by = ball.x, ball.y
                     ball.integrate(dt_scale=step_scale)
                     collide_walls(ball)
                     if not ball.in_plunger:
@@ -3885,18 +3966,26 @@ def PlayPinball(Duration=10000, StopEvent=None):
                                 )
                             if ramps:
                                 collide_ramps(ball, ramps, ramp_states)
-                        collide_flipper(ball, left)
-                        collide_flipper(ball, right)
+                        prev_b = (bx, by)
+                        collide_flipper(ball, left, la, prev_b, step_scale)
+                        collide_flipper(ball, right, ra, prev_b, step_scale)
                         if up_left:
-                            collide_flipper(ball, up_left)
+                            collide_flipper(ball, up_left, ula, prev_b, step_scale)
                         if up_right:
-                            collide_flipper(ball, up_right)
+                            collide_flipper(ball, up_right, ura, prev_b, step_scale)
                         collide_top_arc(ball)
                         ensure_ball_inside_arc(ball)
                     clamp_ball_on_table(ball)
                 # Tick airborne once per frame (not per substep)
                 if ball.is_airborne():
                     ball.airborne = max(0, int(ball.airborne) - 1)
+            else:
+                left.update()
+                right.update()
+                if up_left:
+                    up_left.update()
+                if up_right:
+                    up_right.update()
 
             update_spinners(spinner_states)
             drop_bank_timers, just_reset = update_drop_targets(
