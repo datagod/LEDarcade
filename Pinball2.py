@@ -576,9 +576,15 @@ class Flipper:
         self.target = float(rest_angle)
         self.omega = 0.0  # rad/frame (for hit impulse)
         self.pressed = False
+        self.struck = False  # one powered hit per swing
 
     def set_pressed(self, pressed):
-        self.pressed = bool(pressed)
+        nxt = bool(pressed)
+        if nxt and not self.pressed:
+            self.struck = False
+        if not nxt:
+            self.struck = False
+        self.pressed = nxt
         self.target = self.active if self.pressed else self.rest
 
     def update(self, dt_scale=1.0):
@@ -1112,7 +1118,7 @@ def _flipper_face_normal(x1, y1, x2, y2, bx, by, nx, ny, dist, omega):
 
 
 def _resolve_flipper_hit(ball, flipper, nx, ny, t, nnx, nny, dist, hit_r, dt_scale=1.0):
-    """Push out, cradle or bounce, add swing impulse. Always a hit."""
+    """Push out, cradle, or one-shot bat the ball off the face (no carry)."""
     x1, y1, x2, y2 = flipper.endpoints()
     pen = hit_r - dist
     if pen > 0.0:
@@ -1136,28 +1142,40 @@ def _resolve_flipper_hit(ball, flipper, nx, ny, t, nnx, nny, dist, hit_r, dt_sca
         ball.vy = ty * vt * 0.88 + 0.02
         return True
 
-    vn = ball.vx * nnx + ball.vy * nny
-    if vn < 0:
-        ball.vx -= (1.0 + BOUNCE) * vn * nnx
-        ball.vy -= (1.0 + BOUNCE) * vn * nny
+    if getattr(flipper, "struck", False) and flipper.pressed:
+        vn = ball.vx * nnx + ball.vy * nny
+        if vn < 0:
+            ball.vx -= vn * nnx
+            ball.vy -= vn * nny
+        ball.x += nnx * 0.2
+        ball.y += nny * 0.2
+        return True
 
     omega_eps = 0.04
-    s = max(1e-9, float(dt_scale))
-    if abs(flipper.omega) > omega_eps:
+    swinging = abs(flipper.omega) > omega_eps and flipper.pressed
+    rx, ry = nx - flipper.px, ny - flipper.py
+    fvx = -flipper.omega * ry
+    fvy = flipper.omega * rx
+    bat_n = fvx * nnx + fvy * nny
+
+    if swinging and bat_n > 0.0:
         tip_scale = 0.55 + 0.75 * _clamp(t, 0.0, 1.0)
-        rx, ry = nx - flipper.px, ny - flipper.py
-        fvx = -flipper.omega * ry
-        fvy = flipper.omega * rx
-        bat_into_ball = fvx * nnx + fvy * nny
-        if bat_into_ball > 0.0:
-            f_power = float(getattr(flipper, "power", FLIPPER_POWER))
-            f_swing = float(getattr(flipper, "swing_speed", FLIPPER_SWING_SPEED))
-            swing = abs(flipper.omega) / max(1e-3, f_swing)
-            power = f_power * tip_scale * (0.45 + 0.55 * _clamp(swing, 0.0, 1.2))
-            ball.vx += fvx * power * s
-            ball.vy += (
-                fvy * power - abs(flipper.omega) * f_power * tip_scale * 0.55
-            ) * s
+        f_power = float(getattr(flipper, "power", FLIPPER_POWER))
+        boost = (0.90 + 0.70 * tip_scale) * (f_power / max(1e-3, FLIPPER_POWER))
+        vn = ball.vx * nnx + ball.vy * nny
+        e = 0.42
+        out_n = bat_n * boost - e * min(0.0, vn)
+        ball.vx += (out_n - vn) * nnx
+        ball.vy += (out_n - vn) * nny
+        ball.vy -= 0.28 * max(0.0, out_n)
+        ball.x += nnx * 0.45
+        ball.y += nny * 0.45
+        flipper.struck = True
+    else:
+        vn = ball.vx * nnx + ball.vy * nny
+        if vn < 0:
+            ball.vx -= (1.0 + BOUNCE) * vn * nnx
+            ball.vy -= (1.0 + BOUNCE) * vn * nny
 
     sp = ball.speed()
     if sp > MAX_SPEED:
@@ -1170,12 +1188,13 @@ def _resolve_flipper_hit(ball, flipper, nx, ny, t, nnx, nny, dist, hit_r, dt_sca
 def collide_flipper(ball, flipper, prev_angle=None, prev_ball=None, dt_scale=1.0):
     """
     Ball vs flipper capsule, plus swept-rotation and motion CCD so a fast
-    swing or falling ball cannot tunnel through the blade.
+    swing cannot tunnel. A live swing imparts one hit, then the ball leaves.
     """
     hit_r = _flipper_hit_r()
     x1, y1, x2, y2 = flipper.endpoints()
     dist, nx, ny, t = _dist_point_segment(ball.x, ball.y, x1, y1, x2, y2)
     hit = dist < hit_r
+    already = getattr(flipper, "struck", False) and flipper.pressed
 
     if (not hit) and prev_ball is not None:
         p0x, p0y = prev_ball
@@ -1191,7 +1210,7 @@ def collide_flipper(ball, flipper, prev_angle=None, prev_ball=None, dt_scale=1.0
                 ball.x, ball.y = px, py
                 break
 
-    if (not hit) and prev_angle is not None:
+    if (not hit) and (not already) and prev_angle is not None:
         da = _ang_wrap(flipper.angle - prev_angle)
         if abs(da) > 0.015:
             dx = ball.x - flipper.px
@@ -1206,25 +1225,21 @@ def collide_flipper(ball, flipper, prev_angle=None, prev_ball=None, dt_scale=1.0
                 else:
                     crossed = da - pad_ang <= to_b <= pad_ang
                 if crossed:
-                    hit = True
                     dist, nx, ny, t = _dist_point_segment(
                         ball.x, ball.y, x1, y1, x2, y2,
                     )
-                    sx, sy = x2 - x1, y2 - y1
-                    nlen = math.hypot(sx, sy) or 1.0
-                    if flipper.omega >= 0:
-                        nnx, nny = -sy / nlen, sx / nlen
-                    else:
-                        nnx, nny = sy / nlen, -sx / nlen
+                    nnx, nny = _flipper_face_normal(
+                        x1, y1, x2, y2, ball.x, ball.y, nx, ny, dist, flipper.omega,
+                    )
                     if dist < 1e-6:
-                        nx, ny = (
-                            flipper.px + math.cos(flipper.angle) * _clamp(dist_p, 0.0, flipper.length),
-                            flipper.py + math.sin(flipper.angle) * _clamp(dist_p, 0.0, flipper.length),
+                        nx = flipper.px + math.cos(flipper.angle) * _clamp(
+                            dist_p, 0.0, flipper.length,
                         )
-                    ball.x = nx + nnx * hit_r
-                    ball.y = ny + nny * hit_r
+                        ny = flipper.py + math.sin(flipper.angle) * _clamp(
+                            dist_p, 0.0, flipper.length,
+                        )
                     return _resolve_flipper_hit(
-                        ball, flipper, nx, ny, t, nnx, nny, 0.0, hit_r, dt_scale,
+                        ball, flipper, nx, ny, t, nnx, nny, dist, hit_r, dt_scale,
                     )
 
     if not hit:
