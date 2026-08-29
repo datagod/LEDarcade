@@ -3,7 +3,7 @@ import LEDupdate
 from WeatherClock import DEFAULT_LOCATION
 from StockReport import LoadStockSymbols
 
-PANEL_VERSION = "1.6"
+PANEL_VERSION = "1.7"
 PANEL_TITLE = f"LED Commander Control Panel {PANEL_VERSION}"
 
 DEFAULT_GAME_DURATION = 10
@@ -94,6 +94,8 @@ ACTION_LABELS = {
     "showintro": "Show Intro",
     "showonair": "On Air",
     "showonair_off": "On Air Off",
+    "showsign": "Custom Sign",
+    "showsign_off": "Sign Off",
     "showdemotivate": "Demotivator",
     "showgif": "Show GIF",
     "showviewers": "Show Viewers",
@@ -234,6 +236,9 @@ input[type="submit"]:hover {
     margin-top: 12px;
 }
 .clocks-section {
+    grid-column: 1 / -1;
+}
+.signs-section {
     grid-column: 1 / -1;
 }
 .clock-grid {
@@ -382,6 +387,49 @@ def render_clocks_section(valid_actions):
     """
 
 
+def render_signs_section():
+    """On Air plus custom studio words such as ALERT or INTRUDER."""
+    return """
+        <div class="command-section signs-section">
+            <h2>Studio Signs</h2>
+            <p>Full-panel red signs. Duration is in seconds. Custom words such as ALERT or INTRUDER auto-fit the panel.</p>
+            <div class="clock-grid">
+                <div class="command-section clock-card">
+                    <h3>On Air</h3>
+                    <form class="command-form" action="/command" method="post">
+                        <input type="hidden" name="Action" value="showonair">
+                        <label>duration (sec)
+                            <input type="text" name="duration" value="1800">
+                        </label>
+                        <input type="submit" value="On Air">
+                    </form>
+                </div>
+                <div class="command-section clock-card">
+                    <h3>Custom Sign</h3>
+                    <form class="command-form" action="/command" method="post">
+                        <input type="hidden" name="Action" value="showsign">
+                        <label>word
+                            <input type="text" name="message" value="ALERT" placeholder="ALERT">
+                        </label>
+                        <label>duration (sec)
+                            <input type="text" name="duration" value="60">
+                        </label>
+                        <input type="submit" value="Show Sign">
+                    </form>
+                </div>
+                <div class="command-section clock-card">
+                    <h3>Sign Off</h3>
+                    <form class="command-form" action="/command" method="post">
+                        <input type="hidden" name="Action" value="showsign_off">
+                        <p>Stops On Air or a custom sign and returns to the playlist.</p>
+                        <input type="submit" value="Sign Off">
+                    </form>
+                </div>
+            </div>
+        </div>
+    """
+
+
 def render_ledtv_section():
     """Dedicated LED TV launch control (same action as Twitch ?tv)."""
     return f"""
@@ -478,6 +526,7 @@ def render_homepage(valid_actions):
     """
 
     html += render_clocks_section(valid_actions)
+    html += render_signs_section()
     html += render_weather_section()
     html += render_stock_section()
     if "launch_ledtv" in valid_actions:
@@ -488,7 +537,10 @@ def render_homepage(valid_actions):
     clock_actions = {action for action, _, _ in CLOCK_LAUNCHERS}
     for action, fields in valid_actions.items():
         if (
-            action in ("weatherterminal", "stockterminal", "launch_ledtv")
+            action in (
+                "weatherterminal", "stockterminal", "launch_ledtv",
+                "showonair", "showonair_off", "showsign", "showsign_off",
+            )
             or action in game_actions
             or action in clock_actions
         ):

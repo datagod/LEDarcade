@@ -1730,8 +1730,8 @@ class Bot(commands.Bot ):
     @commands.command()
     async def clock(self, ctx: commands.Context):
         await ctx.send(
-            'Available commands: ?demotivate ?hello ?hug ?intro ?onair ?profile ?me '
-            '?flip ?retro ?starrynight ?taco ?time ?tv ?tv2-15 ?uptime ?viewers ?views ?who'
+            'Available commands: ?alert ?demotivate ?hello ?hug ?intro ?intruder ?onair ?profile ?me '
+            '?flip ?retro ?sign ?starrynight ?taco ?time ?tv ?tv2-15 ?uptime ?viewers ?views ?who'
         )
         time.sleep(4)
         await ctx.send(
@@ -1810,6 +1810,29 @@ class Bot(commands.Bot ):
     @commands.command()
     async def onair(self, ctx: commands.Context):
       CommandQueue.put({"Action": "showonair", "duration": 1800})
+
+
+    #----------------------------------------
+    # Custom studio sign (On Air clone)    --
+    #----------------------------------------
+    @commands.command(name="sign", aliases=["alert"])
+    async def sign(self, ctx: commands.Context, *, text: str = "ALERT"):
+      word = " ".join((text or "ALERT").split()) or "ALERT"
+      CommandQueue.put({"Action": "showsign", "message": word, "duration": 60})
+      if SHOW_CHATBOT_MESSAGES == True:
+        await self.Channel.send(f"Sign: {word.upper()}")
+
+
+    @commands.command()
+    async def intruder(self, ctx: commands.Context):
+      CommandQueue.put({"Action": "showsign", "message": "INTRUDER", "duration": 60})
+      if SHOW_CHATBOT_MESSAGES == True:
+        await self.Channel.send("Sign: INTRUDER")
+
+
+    @commands.command(name="signoff", aliases=["alertoff"])
+    async def signoff(self, ctx: commands.Context):
+      CommandQueue.put({"Action": "showsign_off"})
 
 
     #----------------------------------------

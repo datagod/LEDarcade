@@ -103,6 +103,11 @@ IsOnAirActive = False
 IsStockTickerPinned = False
 ON_AIR_DEFAULT_MINUTES = 30
 ON_AIR_DEFAULT_SECONDS = ON_AIR_DEFAULT_MINUTES * 60
+SIGN_DEFAULT_SECONDS = 60
+SIGN_HOLD_ACTIONS = (
+    "showonair", "showonair_off", "showsign", "showsign_off",
+    "stop", "stopclock", "next", "quit",
+)
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_DIR = os.path.join(REPO_DIR, "images")
@@ -164,6 +169,8 @@ VALID_WEB_ACTIONS = {
     "showintro": [],
     "showonair": ["duration"],
     "showonair_off": [],
+    "showsign": ["message", "duration"],
+    "showsign_off": [],
     "showdemotivate": [],
     "showgif": ["GIF", "loops", "sleep"],
     "showviewers": ["chatusers"],
@@ -192,7 +199,7 @@ def sanitize_web_command(data, action):
         data["loops"] = data["Loops"]
     if "Image" in data and "image" not in data:
         data["image"] = data["Image"]
-    if "Duration" in data and "duration" not in data and action in ["showonair"] + [a for a in VALID_WEB_ACTIONS if a.startswith("launch_")]:
+    if "Duration" in data and "duration" not in data and action in ["showonair", "showsign"] + [a for a in VALID_WEB_ACTIONS if a.startswith("launch_")]:
         data["duration"] = data["Duration"]
 
     for key in data:
@@ -202,7 +209,7 @@ def sanitize_web_command(data, action):
             except Exception:
                 data[key] = (255, 255, 255)
 
-    if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "weatherterminal", "showonair", "twitchtimer_on"] or action.startswith("launch_"):
+    if action in ["showgif", "showimagezoom", "showtitlescreen", "terminalmode_on", "terminalmessage", "weatherterminal", "showonair", "showsign", "twitchtimer_on"] or action.startswith("launch_"):
         for key in ["Duration", "loops", "sleep", "ScrollSleep", "DisplayTime", "zoommin", "zoommax", "zoomfinal", "step", "duration"]:
             if key in data:
                 try:
@@ -275,6 +282,13 @@ def sanitize_web_command(data, action):
             data["symbols"] = [s.strip().upper() for s in data["symbols"].split(",") if s.strip()]
         elif isinstance(data["symbols"], list):
             data["symbols"] = [str(s).strip().upper() for s in data["symbols"] if str(s).strip()]
+
+    if action == "showsign":
+        if "Message" in data and "message" not in data:
+            data["message"] = data["Message"]
+        raw = data.get("message", "ALERT")
+        text = " ".join(str(raw or "").split())
+        data["message"] = (text or "ALERT").upper()[:16]
 
     return data
 
@@ -644,9 +658,9 @@ def Run(CommandQueue):
                 Command["Action"] = chosen
 
             # Handle off (force stop, proceed)
-            if Action == "showonair_off":
+            if Action in ("showonair_off", "showsign_off"):
                 if IsOnAirActive:
-                    print("[LEDcommander] Manual stop OnAir, proceeding to next")
+                    print(f"[LEDcommander] Manual stop {Action}, proceeding to next")
                     stop_current_display(Action)
                     IsOnAirActive = False
                 continue  # Loop will now pull next queue/generator
@@ -661,6 +675,18 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "onair"
                 IsOnAirActive = True
                 DisplayProcess = Process(target=ShowOnAir, args=(Command, StopEvent))
+                DisplayProcess.start()
+                continue
+
+            if Action == "showsign":
+                print("[LEDcommander] Starting custom sign")
+                stop_current_display(Action)
+                StopEvent.clear()
+                if "duration" not in Command:
+                    Command["duration"] = SIGN_DEFAULT_SECONDS
+                CurrentDisplayMode = "sign"
+                IsOnAirActive = True
+                DisplayProcess = Process(target=ShowCustomSign, args=(Command, StopEvent))
                 DisplayProcess.start()
                 continue
 
@@ -691,17 +717,16 @@ def Run(CommandQueue):
                     print(f"[LEDcommander] Next failed to pull fallback: {NextErr}")
                 continue
 
-            # While On Air, hold the display until manual off or duration expiry.
-            if IsOnAirActive and Action not in (
-                "showonair", "showonair_off", "stop", "stopclock", "next", "quit",
-            ):
-                print(f"[LEDcommander] OnAir active—ignoring command: {Action}")
+            # While On Air / custom sign, hold the display until manual off or duration expiry.
+            if IsOnAirActive and Action not in SIGN_HOLD_ACTIONS:
+                print(f"[LEDcommander] Sign active—ignoring command: {Action}")
                 continue
 
             # While stock ticker is pinned (user set duration), hold until it finishes.
             if (IsStockTickerPinned
                     and Action not in (
                         "launch_stockticker", "showonair", "showonair_off",
+                        "showsign", "showsign_off",
                         "quit", "stop", "stopclock", "next",
                     )):
                 print(f"[LEDcommander] Stock ticker pinned—ignoring command: {Action}")
@@ -1928,31 +1953,57 @@ def ShowHeart(Command, StopEvent):
 
 
 
+def _parse_sign_duration(Command, default_seconds, label):
+    duration_str = Command.get("duration", default_seconds)
+    try:
+        duration = int(duration_str)
+        if duration <= 0:
+            duration = default_seconds
+    except (ValueError, TypeError):
+        print(f"[LEDcommander][{label}] Invalid duration provided, using default {default_seconds}s")
+        duration = default_seconds
+    return duration
+
+
 def ShowOnAir(Command, StopEvent):
     import LEDarcade as LED
     LED.Initialize()
 
     MaxBrightness = 100
+    duration = _parse_sign_duration(Command, ON_AIR_DEFAULT_SECONDS, "ShowOnAir")
+    message = Command.get("message") or Command.get("Message") or "ON AIR"
 
-    duration_str = Command.get("duration", ON_AIR_DEFAULT_SECONDS)
-    try:
-        duration = int(duration_str)
-        if duration <= 0:
-            duration = ON_AIR_DEFAULT_SECONDS
-    except (ValueError, TypeError):
-        print(f"[LEDcommander][ShowOnAir] Invalid duration provided, using default {ON_AIR_DEFAULT_SECONDS}s")
-        duration = ON_AIR_DEFAULT_SECONDS
-
-    print(f"[LEDcommander][ShowOnAir] Show ON AIR sign for {duration}s ({duration / 60:.0f} minutes)")
+    print(f"[LEDcommander][ShowOnAir] Show {message} sign for {duration}s ({duration / 60:.0f} minutes)")
 
     LED.TheMatrix.brightness = MaxBrightness
-    LED.ShowOnAir(StopEvent, duration=duration)
+    LED.ShowOnAir(StopEvent, duration=duration, message=message)
 
     print("[LEDcommander][ShowOnAir] Ending")
     if StopEvent.is_set():
         print("[LEDcommander][ShowOnAir] Stopped by showonair_off")
     else:
         print("[LEDcommander][ShowOnAir] Duration expired")
+    LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.05)
+
+
+def ShowCustomSign(Command, StopEvent):
+    import LEDarcade as LED
+    LED.Initialize()
+
+    MaxBrightness = 100
+    duration = _parse_sign_duration(Command, SIGN_DEFAULT_SECONDS, "ShowCustomSign")
+    message = Command.get("message") or Command.get("Message") or "ALERT"
+
+    print(f"[LEDcommander][ShowCustomSign] Show {message} sign for {duration}s")
+
+    LED.TheMatrix.brightness = MaxBrightness
+    LED.ShowSign(StopEvent, duration=duration, message=message)
+
+    print("[LEDcommander][ShowCustomSign] Ending")
+    if StopEvent.is_set():
+        print("[LEDcommander][ShowCustomSign] Stopped by showsign_off")
+    else:
+        print("[LEDcommander][ShowCustomSign] Duration expired")
     LED.ZoomScreen(LED.ScreenArray, 32, 1, Fade=True, ZoomSleep=0.05)
 
 

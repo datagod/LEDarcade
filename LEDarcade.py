@@ -1081,50 +1081,67 @@ SuperWormLevels    = 3           #number of levels
 
 
 
-def ShowOnAir(StopEvent=None,duration=60):
+def NormalizeSignMessage(message, default="ON AIR", max_len=16):
+    """Uppercase, trim, and cap a studio-sign word so it can fit the panel."""
+    text = " ".join(str(message or "").split())
+    if not text:
+        text = default
+    text = text.upper()
+    if len(text) > max_len:
+        text = text[:max_len].rstrip()
+    return text or default
+
+
+def ShowStudioSign(StopEvent=None, duration=60, message="ON AIR"):
+    """Full-panel red studio sign (On Air / ALERT / INTRUDER)."""
     width  = HatWidth
     height = HatHeight
+    msg = NormalizeSignMessage(message, default="ON AIR")
+    font_path = ResolveFontPath("Anton-Regular.ttf")
 
     def MakeMessageImage():
-        msg = "ON AIR"
-
-        # Create blank image and drawing context
         image = Image.new("RGB", (width, height), color=(255, 0, 0))  # Red background
         draw = ImageDraw.Draw(image)
 
-        #draw shadow
-        font = ImageFont.truetype(ResolveFontPath("Anton-Regular.ttf"), 21)
-        bbox = draw.textbbox((0, 0), msg, font=font)
+        # Same look as classic On Air (size 20, shadow 21). Shrink for longer words.
+        max_w = max(8, width - 2)
+        max_h = max(8, height - 2)
+        size = 20
+        font = None
+        bbox = None
+        while size >= 8:
+            font = ImageFont.truetype(font_path, size)
+            bbox = draw.textbbox((0, 0), msg, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            if text_width <= max_w and text_height <= max_h:
+                break
+            size -= 1
+        else:
+            font = ImageFont.truetype(font_path, 8)
+            bbox = draw.textbbox((0, 0), msg, font=font)
+
+        shadow_font = ImageFont.truetype(font_path, size + 1)
+        shadow_bbox = draw.textbbox((0, 0), msg, font=shadow_font)
+        shadow_w = shadow_bbox[2] - shadow_bbox[0]
+        shadow_h = shadow_bbox[3] - shadow_bbox[1]
+        sx = (width - shadow_w) // 2
+        sy = (height - shadow_h) // 2 - shadow_bbox[1]
+        draw.text((sx, sy), msg, font=shadow_font, fill=(0, 0, 0))
+
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
         x = (width - text_width) // 2
-        y = (height - text_height) // 2 -bbox[1]
-        draw.text((x, y), msg, font=font, fill=(0, 0, 0))  # black (for outline)
-
-
-        #draw text
-        font = ImageFont.truetype(ResolveFontPath("Anton-Regular.ttf"), 20)
-        # Measure text size and center it
-        bbox = draw.textbbox((0, 0), msg, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        x = (width - text_width) // 2
-        y = (height - text_height) // 2 -bbox[1]
-        draw.text((x, y), msg, font=font, fill=(255, 255, 255))  # black (for outline)
+        y = (height - text_height) // 2 - bbox[1]
+        draw.text((x, y), msg, font=font, fill=(255, 255, 255))
 
         return image
 
-
-
-    # Display image using LEDarcade canvas
     image = MakeMessageImage()
     ScreenArray  = CopyImageToScreenArray(image, 0, 0)
 
-
-
     SpinShrinkTransition(ScreenArray, steps=32, delay=0.01, start_zoom=0, end_zoom=100)
 
-    # Timer logic
     start_time = time.time()
     try:
         while True:
@@ -1135,6 +1152,15 @@ def ShowOnAir(StopEvent=None,duration=60):
             time.sleep(1)  # prevent busy loop
     except KeyboardInterrupt:
         TheMatrix.Clear()
+
+
+def ShowOnAir(StopEvent=None, duration=60, message="ON AIR"):
+    ShowStudioSign(StopEvent=StopEvent, duration=duration, message=message)
+
+
+def ShowSign(StopEvent=None, duration=60, message="ALERT"):
+    """On Air clone for custom words such as ALERT or INTRUDER."""
+    ShowStudioSign(StopEvent=StopEvent, duration=duration, message=message)
 
 
 
