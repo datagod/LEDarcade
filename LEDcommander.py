@@ -129,6 +129,7 @@ VALID_WEB_ACTIONS = {
     "waterclock": ["duration"],
     "wheelclock": ["duration"],    # HH:MM:SS digit-wheel clock
     "nixieclock": ["duration"],    # HH:MM nixie-tube clock
+    "laserclock": ["duration"],    # HH:MM laser-forged clock
     "launch_planet": ["duration"],
     "ledarcade_intro": [],
     "starrynightdisplaytext": ["text1", "text2", "text3"],
@@ -503,6 +504,7 @@ def fallback_action_generator():
         {"Action": "analogclock", "duration": 5},
         {"Action": "wheelclock", "duration": 5},
         {"Action": "nixieclock", "duration": 5},
+        {"Action": "laserclock", "duration": 5},
         {"Action": "showclock", "Style": 1, "Zoom": 3, "duration": 5, "Delay": 20},
         {"Action": "showclock", "Style": 3, "Zoom": 2, "duration": 5, "Delay": 10},
         {"Action": "showclock", "Style": 5, "Zoom": 1, "duration": 5, "Delay": 10},
@@ -838,6 +840,16 @@ def Run(CommandQueue):
                 CurrentDisplayMode = "clock"
                 DisplayProcess = Process(
                     target=ShowNixieClock, args=(Command, StopEvent)
+                )
+                DisplayProcess.start()
+
+            elif Action == "laserclock":
+                stop_current_display(Action)
+
+                StopEvent.clear()
+                CurrentDisplayMode = "clock"
+                DisplayProcess = Process(
+                    target=ShowLaserClock, args=(Command, StopEvent)
                 )
                 DisplayProcess.start()
 
@@ -1579,6 +1591,30 @@ def ShowNixieClock(Command, StopEvent):
 
     _run_clock(
         lambda: NX.LaunchNixieClock(
+            Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
+        )
+    )
+
+
+def ShowLaserClock(Command, StopEvent):
+    """HH:MM forged by one continuous laser, left to right, top to bottom."""
+    import LEDarcade as LED
+    LED.Initialize()
+    import LaserClock as LZ
+
+    RunMinutes = Command.get("duration", 10)
+    try:
+        RunMinutes = float(RunMinutes)
+    except (TypeError, ValueError):
+        RunMinutes = 10.0
+
+    print(
+        f"[LEDcommander] Showing laser clock: "
+        f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
+    )
+
+    _run_clock(
+        lambda: LZ.LaunchLaserClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
         )
     )

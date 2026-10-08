@@ -2437,6 +2437,19 @@ class Bot(commands.Bot ):
 
 
     #----------------------------------------
+    # LASER CLOCK                          --
+    #----------------------------------------
+
+    @commands.command(name="laserclock", aliases=["laser", "weld"])
+    async def laserclock(self, ctx: commands.Context):
+      """Chat: ?laserclock — HH:MM welded by one continuous laser."""
+      if(SHOW_CHATBOT_MESSAGES == True):
+        message = "Laser clock — welding the time into the panel..."
+        await self.Channel.send(message)
+      CommandQueue.put({"Action": "laserclock", "duration": 10 })
+
+
+    #----------------------------------------
     # PLANET BLAST                         --
     #----------------------------------------
 

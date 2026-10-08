@@ -20,6 +20,7 @@ CLOCK_LAUNCHERS = [
     ("waterclock", "Water Clock", ["duration"]),
     ("wheelclock", "Wheel Clock", ["duration"]),
     ("nixieclock", "Nixie Clock", ["duration"]),
+    ("laserclock", "Laser Clock", ["duration"]),
     ("stopclock", "Stop Clock", []),
 ]
 
@@ -65,6 +66,7 @@ ACTION_LABELS = {
     "waterclock": "Water Clock",
     "wheelclock": "Wheel Clock",
     "nixieclock": "Nixie Clock",
+    "laserclock": "Laser Clock",
     "ledarcade_intro": "LED Arcade Intro",
     "starrynightdisplaytext": "Starry Night Text",
     "launch_stockticker": "Stock Ticker",
