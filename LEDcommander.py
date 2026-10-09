@@ -1613,10 +1613,14 @@ def ShowLaserClock(Command, StopEvent):
         f"Duration={RunMinutes}, brightness={STREAM_CLOCK_BRIGHTNESS}"
     )
 
+    # LaserClock fades its own frames. The shared brightness ramp would
+    # stack on top of that and hold black after the picture is already gone.
     _run_clock(
         lambda: LZ.LaunchLaserClock(
             Duration=RunMinutes, ShowIntro=False, StopEvent=StopEvent,
-        )
+        ),
+        fade_in=False,
+        fade_out=False,
     )
 
 

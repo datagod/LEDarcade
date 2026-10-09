@@ -7,14 +7,19 @@
 # Each dot is blasted into view and throws sparks that arc, fall, and bounce.
 # The dot cools from white-hot to red.
 # The nozzle at the source fades into and out of existence.
+# The weekday is on its own line. The month and day share the line under it.
+# Each weld starts from a random corner of the panel.
+# A blue two-pixel mark travels the outer edge, one sixtieth per second,
+# fading in and out as it moves. At :00 it sits in the center of the top edge.
 # A few seconds before the minute, the beam goes out. A digit that is about
-# to change falls backwards on its own, slams on the ground, and shatters
-# into dark particles. Then the beam welds the new one.
+# to change falls backwards on its own, slams on the ledge above that caption,
+# and shatters into dark particles. Then the beam welds the new one.
 #
 # A "dot" is one cell of a 5×7 clock font, drawn as a 2×2 block so the strike
 # reads as a single hot pixel on a 64×32 panel.
 #
-# Idle rotation: clock slot "laserclock" (5 min).
+# Idle rotation: clock slot "laserclock" (5 min), between the other clocks.
+# The whole picture fades in when the clock starts and fades out when it stops.
 #
 # Run:  python3 LaserClock.py
 #       LEDpanel / action "laserclock" / ?laserclock
@@ -55,11 +60,67 @@ GLYPH_W = 5
 GLYPH_H = 7
 COLON_ROWS = (2, 4)   # which glyph rows get a colon dot
 
+# 3×5 captions. Bit 2 is the leftmost column. Widest names are 9 letters.
+TINY_W = 3
+TINY_H = 5
+TINY_GAP = 1
+DATE_GAP = 1
+DATE_BLOCK = TINY_H * 2 + DATE_GAP
+DATE_RGB = (255, 150, 0)
+SECOND_RGB = (0, 0, 255)
+WEEKDAYS = (
+    "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY",
+    "FRIDAY", "SATURDAY", "SUNDAY",
+)
+MONTHS = (
+    "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
+)
+TINY_FONT = {
+    "A": (0b111, 0b101, 0b111, 0b101, 0b101),
+    "B": (0b110, 0b101, 0b110, 0b101, 0b110),
+    "C": (0b111, 0b100, 0b100, 0b100, 0b111),
+    "D": (0b110, 0b101, 0b101, 0b101, 0b110),
+    "E": (0b111, 0b100, 0b110, 0b100, 0b111),
+    "F": (0b111, 0b100, 0b110, 0b100, 0b100),
+    "G": (0b111, 0b100, 0b101, 0b101, 0b111),
+    "H": (0b101, 0b101, 0b111, 0b101, 0b101),
+    "I": (0b010, 0b010, 0b010, 0b010, 0b010),
+    "J": (0b001, 0b001, 0b001, 0b101, 0b111),
+    "K": (0b101, 0b110, 0b100, 0b110, 0b101),
+    "L": (0b100, 0b100, 0b100, 0b100, 0b111),
+    "M": (0b101, 0b111, 0b101, 0b101, 0b101),
+    "N": (0b101, 0b110, 0b101, 0b101, 0b101),
+    "O": (0b111, 0b101, 0b101, 0b101, 0b111),
+    "P": (0b111, 0b101, 0b111, 0b100, 0b100),
+    "Q": (0b111, 0b101, 0b101, 0b111, 0b001),
+    "R": (0b110, 0b101, 0b110, 0b101, 0b101),
+    "S": (0b111, 0b100, 0b111, 0b001, 0b111),
+    "T": (0b111, 0b010, 0b010, 0b010, 0b010),
+    "U": (0b101, 0b101, 0b101, 0b101, 0b111),
+    "V": (0b101, 0b101, 0b101, 0b101, 0b010),
+    "W": (0b101, 0b101, 0b101, 0b111, 0b101),
+    "X": (0b101, 0b101, 0b010, 0b101, 0b101),
+    "Y": (0b101, 0b101, 0b010, 0b010, 0b010),
+    "Z": (0b111, 0b001, 0b010, 0b100, 0b111),
+    "0": (0b111, 0b101, 0b101, 0b101, 0b111),
+    "1": (0b010, 0b110, 0b010, 0b010, 0b111),
+    "2": (0b111, 0b001, 0b111, 0b100, 0b111),
+    "3": (0b111, 0b001, 0b111, 0b001, 0b111),
+    "4": (0b101, 0b101, 0b111, 0b001, 0b001),
+    "5": (0b111, 0b100, 0b111, 0b001, 0b111),
+    "6": (0b111, 0b100, 0b111, 0b101, 0b111),
+    "7": (0b111, 0b001, 0b010, 0b010, 0b010),
+    "8": (0b111, 0b101, 0b111, 0b101, 0b111),
+    "9": (0b111, 0b101, 0b111, 0b001, 0b111),
+}
+
 # Largest cell size that still leaves a black margin for the beam to travel.
 DOT_ZOOM_CANDIDATES = (2, 1)
 MARGIN = 4
 
 INTRO_PAUSE = 0.30     # black field before the beam comes on
+FADE_SECONDS = 0.50    # whole picture in at the start, out at the stop
 HOP_STEPS = 4          # frames to sweep the head from one dot to the next
 FALL_TIME = 0.78       # tip backwards onto the floor
 SLAM_TIME = 0.12       # flat contact, still dark
@@ -98,12 +159,27 @@ def _stop(StopEvent):
         return False
 
 
-def _clamp(v, lo, hi):
-    if v < lo:
-        return lo
-    if v > hi:
-        return hi
-    return v
+def _perimeter(vw, vh):
+    """Clockwise loop of the outer edge. Corners are included once."""
+    if vw <= 1 or vh <= 1:
+        return [(x, y) for y in range(max(vh, 0)) for x in range(max(vw, 0))]
+    path = []
+    for x in range(vw):
+        path.append((x, 0))
+    for y in range(1, vh):
+        path.append((vw - 1, y))
+    for x in range(vw - 2, -1, -1):
+        path.append((x, vh - 1))
+    for y in range(vh - 2, 0, -1):
+        path.append((0, y))
+    return path
+
+
+def _second_u(clock):
+    """0 at the start of a minute, 1 at the next. Smooth within each second."""
+    if clock is None:
+        clock = datetime.now()
+    return (clock.second + clock.microsecond / 1000000.0) / 60.0
 
 
 def _outside(x, y, bounds):
@@ -179,14 +255,54 @@ def _max(buf, x, y, rgb, vw, vh):
     buf[y][x] = (r if r > rgb[0] else rgb[0], g if g > rgb[1] else rgb[1], b if b > rgb[2] else rgb[2])
 
 
+def _blend(buf, x, y, rgb, alpha, vw, vh):
+    """Fade rgb in over whatever is already there. alpha 0 is gone."""
+    if alpha <= 0.0 or x < 0 or y < 0 or x >= vw or y >= vh:
+        return
+    if alpha > 1.0:
+        alpha = 1.0
+    r, g, b = buf[y][x]
+    buf[y][x] = (
+        int(r + (rgb[0] - r) * alpha),
+        int(g + (rgb[1] - g) * alpha),
+        int(b + (rgb[2] - b) * alpha),
+    )
+
+
+def _tiny_width(text):
+    n = len(text)
+    if n <= 0:
+        return 0
+    return n * TINY_W + (n - 1) * TINY_GAP
+
+
+def _caption(hhmm, clock):
+    """Weekday and month for the minute being shown, including a midnight roll."""
+    if clock is None:
+        clock = datetime.now()
+    base = clock.replace(second=0, microsecond=0)
+    try:
+        shown = base.replace(hour=int(hhmm[0:2]), minute=int(hhmm[2:4]))
+    except (ValueError, IndexError):
+        shown = clock
+    if shown < base:
+        shown = shown + timedelta(days=1)
+    month = MONTHS[shown.month - 1] + " " + str(shown.day)
+    return (WEEKDAYS[shown.weekday()], month)
+
+
 def layout_for(vw, vh):
-    """Place HH : MM. Returns zoom, per-slot origins, and the clock rectangle."""
+    """Place HH : MM above the weekday and the month-day line."""
     zoom = 1
     pair_gap = 1
     colon_gap = 2
     colon_w = 1
     dw = GLYPH_W
     dh = GLYPH_H
+    # Top margin, a gap, and the caption. Zoom has to fit above that.
+    room_h = vh - DATE_BLOCK - 3
+    if room_h < GLYPH_H:
+        room_h = vh
     for z in DOT_ZOOM_CANDIDATES:
         dw_z = GLYPH_W * z
         dh_z = GLYPH_H * z
@@ -195,7 +311,7 @@ def layout_for(vw, vh):
         colon_w_z = z
         total_w = dw_z * 4 + pair_z * 2 + colon_gap_z * 2 + colon_w_z
         total_h = dh_z
-        if total_w <= vw - 2 * MARGIN and total_h <= vh - 2 * MARGIN:
+        if total_w <= vw - 2 * MARGIN and total_h <= room_h:
             zoom = z
             pair_gap = pair_z
             colon_gap = colon_gap_z
@@ -206,7 +322,13 @@ def layout_for(vw, vh):
 
     total_w = dw * 4 + pair_gap * 2 + colon_gap * 2 + colon_w
     x = max(0, (vw - total_w) // 2)
-    y = max(0, (vh - dh) // 2)
+    date_top = max(0, vh - DATE_BLOCK - 1)
+    # The open row above the caption is the floor. The slam stays on it.
+    floor = max(0, date_top - 1)
+    y = 1 if vh > dh + 2 else 0
+    y += 2
+    if y + dh > date_top:
+        y = max(0, date_top - dh)
     origins = [None] * 5
     origins[0] = (x, y)
     x += dw + pair_gap
@@ -225,7 +347,33 @@ def layout_for(vw, vh):
         "bounds": (origins[0][0], y, x1, y1),
         "dw": dw,
         "dh": dh,
+        "date_top": date_top,
+        "floor": floor,
     }
+
+
+def _paint_tiny(buf, text, y, rgb, vw, vh):
+    """Center one 3×5 line. Returns the pixels it drew."""
+    gap = TINY_GAP
+    width = _tiny_width(text)
+    if width > vw and text:
+        gap = 0
+        width = len(text) * TINY_W
+    x = max(0, (vw - width) // 2)
+    drawn = []
+    for ch in text:
+        rows = TINY_FONT.get(ch)
+        if rows is None:
+            x += TINY_W + gap
+            continue
+        for row, bits in enumerate(rows):
+            for col in range(TINY_W):
+                if bits & (1 << (TINY_W - 1 - col)):
+                    px, py = x + col, y + row
+                    _set(buf, px, py, rgb, vw, vh)
+                    drawn.append((px, py))
+        x += TINY_W + gap
+    return drawn
 
 
 def _cell_pixels(ox, oy, col, row, zoom):
@@ -285,6 +433,10 @@ class World:
         self.vh = int(vh)
         self.layout = layout_for(self.vw, self.vh)
         self.bounds = self.layout["bounds"]
+        self.floor = self.layout["floor"]
+        self.caption = ("", "")
+        self.perimeter = _perimeter(self.vw, self.vh)
+        self.second_u = 0.0
         self.live = []          # {slot, pixels, born}
         self.breaks = []        # a digit tipping back, then shards
         self.shards = []        # dark debris, separate from weld sparks
@@ -310,11 +462,13 @@ class World:
         self.nozzle_pixels = []
 
     def update(self, now, hhmm, clock=None):
+        self.second_u = _second_u(clock)
         if not self.started:
             self.started = True
             self.last_now = now
             self.phase = "pause"
             self.phase_until = now + INTRO_PAUSE
+            self.caption = _caption(hhmm, clock)
             return
 
         dt = now - self.last_now
@@ -329,6 +483,7 @@ class World:
             self.nozzle_out_t = None
 
         hhmm = self._target_hhmm(hhmm, clock)
+        self.caption = _caption(hhmm, clock)
         target = _target_chars(hhmm)
         if self.phase == "beam":
             self._update_beam(now, target)
@@ -342,7 +497,7 @@ class World:
             self._poll(now, target)
 
     def _move_sparks(self, dt):
-        floor = float(self.vh - 1)
+        floor = float(self.floor)
         alive = []
         for s in self.sparks:
             s["age"] += dt
@@ -413,7 +568,7 @@ class World:
         self.live = kept
         self.queue = [d for d in self.queue if d["slot"] not in slotset]
         already = {b["slot"] for b in self.breaks if now < b["until"]}
-        ground = float(self.vh - 2)
+        ground = float(self.floor)
         had = False
         for i in slots:
             if self.shown[i] is not None:
@@ -558,14 +713,16 @@ class World:
             pivot_y = ground
             shade = 0.0
             slam = 0.0
+        cap = float(self.layout["date_top"] - 1)
+        if pivot_y > cap:
+            pivot_y = cap
         return theta, pivot_y, shade, slam
 
     def _begin_pass(self, slots, target, now):
         """One sweep, in reading order, over every slot that changed."""
         self.queue = []
         self.goal = [None] * 5
-        if self.origin is None:
-            self.origin = self._pass_origin()
+        self.origin = self._pass_origin()
         self.head = self.origin
         self._arm_nozzle(now)
         for i in slots:
@@ -705,23 +862,18 @@ class World:
         return nxt
 
     def _pass_origin(self):
-        """One fixed point outside the clock for the whole sweep."""
-        x0, y0, x1, y1 = self.bounds
+        """One screen corner for this weld. It stays put until the next pass."""
         vw, vh = self.vw, self.vh
-        cx = (x0 + x1) // 2
-        if y0 > 0:
-            ox = _clamp(cx + random.randint(-6, 6), 0, vw - 1)
-            oy = 0
-        elif y1 < vh - 1:
-            ox = _clamp(cx + random.randint(-6, 6), 0, vw - 1)
-            oy = vh - 1
-        elif x0 > 0:
-            ox, oy = 0, _clamp((y0 + y1) // 2, 0, vh - 1)
-        else:
-            ox, oy = vw - 1, _clamp((y0 + y1) // 2, 0, vh - 1)
-        if not _outside(ox, oy, self.bounds):
-            ox, oy = 0, 0
-        return (ox, oy)
+        corners = (
+            (0, 0),
+            (vw - 1, 0),
+            (0, vh - 1),
+            (vw - 1, vh - 1),
+        )
+        for ox, oy in random.sample(corners, len(corners)):
+            if _outside(ox, oy, self.bounds):
+                return (ox, oy)
+        return corners[0]
 
     def _update_beam(self, now, target):
         if self.beam is None:
@@ -864,22 +1016,50 @@ class World:
                     _max(buf, tx, ty, (rgb[0] // 3, rgb[1] // 3, 0), vw, vh)
 
         # The falling digit is on its own. The beam comes back to weld.
-        if any(now < b["until"] for b in self.breaks):
-            return buf
-        if self.beam is not None:
-            pixels = self._beam_pixels()
-            self._paint_beam(buf, pixels, vw, vh)
-            self.nozzle_pixels = pixels[:2]
-            self._paint_nozzle(buf, self.nozzle_pixels, self._nozzle_alpha(now), vw, vh)
-        elif self.nozzle_out_t is not None:
-            u = (now - self.nozzle_out_t) / NOZZLE_OUT
-            if u < 0.0:
-                u = 0.0
-            elif u > 1.0:
-                u = 1.0
-            self._paint_nozzle(buf, self.nozzle_pixels, self.nozzle_out_a * (1.0 - u), vw, vh)
+        if not any(now < b["until"] for b in self.breaks):
+            if self.beam is not None:
+                pixels = self._beam_pixels()
+                self._paint_beam(buf, pixels, vw, vh)
+                self.nozzle_pixels = pixels[:2]
+                self._paint_nozzle(buf, self.nozzle_pixels, self._nozzle_alpha(now), vw, vh)
+            elif self.nozzle_out_t is not None:
+                u = (now - self.nozzle_out_t) / NOZZLE_OUT
+                if u < 0.0:
+                    u = 0.0
+                elif u > 1.0:
+                    u = 1.0
+                self._paint_nozzle(buf, self.nozzle_pixels, self.nozzle_out_a * (1.0 - u), vw, vh)
 
+        self._paint_caption(buf)
+        self._paint_second(buf)
         return buf
+
+    def _paint_second(self, buf):
+        """Two blue pixels on the bezel. :00 is the center of the top edge."""
+        path = self.perimeter
+        n = len(path)
+        if n == 0:
+            return
+        # Even widths sit on the two middle pixels. Odd widths sit on the middle one.
+        origin = self.vw // 2 - (0 if self.vw % 2 else 1)
+        start = self.second_u * n + origin
+        # The mark covers two steps of the loop. A partial step fades.
+        i0 = int(math.floor(start))
+        i1 = int(math.floor(start + 2.0))
+        for i in range(i0, i1 + 1):
+            left = i if i > start else start
+            right = (i + 1.0) if (i + 1.0) < (start + 2.0) else (start + 2.0)
+            alpha = right - left
+            if alpha <= 0.02:
+                continue
+            x, y = path[i % n]
+            _blend(buf, x, y, SECOND_RGB, alpha, self.vw, self.vh)
+
+    def _paint_caption(self, buf):
+        y = self.layout["date_top"]
+        for text in self.caption:
+            _paint_tiny(buf, text, y, DATE_RGB, self.vw, self.vh)
+            y += TINY_H + DATE_GAP
 
     def _paint_breaks(self, buf, now, vw, vh):
         for b in self.breaks:
@@ -940,6 +1120,31 @@ class World:
             _max(buf, x, y, BEAM_RGB, vw, vh)
 
 
+def _smooth(u):
+    """Smoothstep. 0 at the start of a fade, 1 at the end."""
+    if u <= 0.0:
+        return 0.0
+    if u >= 1.0:
+        return 1.0
+    return u * u * (3.0 - 2.0 * u)
+
+
+def _fade_level(elapsed, remain, stop_elapsed, stop_level):
+    """Brightness of the whole picture. 1 is full.
+
+    remain is None when the clock runs until it is stopped.
+    stop_elapsed is None until a stop has been requested.
+    stop_level is the level captured on that request.
+    """
+    level = _smooth(elapsed / FADE_SECONDS)
+    if remain is not None and remain < FADE_SECONDS:
+        level = min(level, _smooth(max(0.0, remain / FADE_SECONDS)))
+    if stop_elapsed is not None:
+        out = 1.0 - _smooth(min(1.0, stop_elapsed / FADE_SECONDS))
+        level = min(level, stop_level * out)
+    return level
+
+
 def _blank_canvas(vw, vh):
     canvas = getattr(LED, "Canvas", None)
     if canvas is None and getattr(LED, "TheMatrix", None) is not None:
@@ -958,42 +1163,57 @@ def PlayLaserClock(Duration=0, StopEvent=None):
     clock = pygame.time.Clock() if HAS_PYGAME else None
     start = time.time()
     frame_dt = 1.0 / TARGET_FPS
+    run_seconds = float(Duration) * 60.0 if Duration and float(Duration) > 0 else None
+    stop_t = None
+    stop_level = 1.0
 
     try:
         while True:
-            if _stop(StopEvent):
-                print("[LaserClock] StopEvent")
-                return
-            if Duration and float(Duration) > 0:
-                if (time.time() - start) >= float(Duration) * 60.0:
-                    print("[LaserClock] Duration reached")
-                    return
-
             now = time.time()
+            elapsed = now - start
+            remain = None if run_seconds is None else run_seconds - elapsed
+            if _stop(StopEvent) and stop_t is None:
+                stop_t = now
+                stop_level = _fade_level(elapsed, remain, None, 1.0)
+            stop_elapsed = None if stop_t is None else now - stop_t
+            level = _fade_level(elapsed, remain, stop_elapsed, stop_level)
+
             clock_now = datetime.now()
             world.update(now, clock_now.strftime("%H%M"), clock_now)
 
             if canvas is None:
                 time.sleep(frame_dt)
-                continue
-
-            buf = world.render(now)
-            canvas.Fill(0, 0, 0)
-            for y in range(vh):
-                row = buf[y]
-                for x in range(vw):
-                    r, g, b = row[x]
-                    if r or g or b:
-                        canvas.SetPixel(x, y, r, g, b)
-            canvas = LED.TheMatrix.SwapOnVSync(canvas)
-            LED.Canvas = canvas
-
-            if clock is not None:
-                clock.tick(TARGET_FPS)
             else:
-                remain = frame_dt - (time.time() - now)
-                if remain > 0.0:
-                    time.sleep(remain)
+                buf = world.render(now)
+                canvas.Fill(0, 0, 0)
+                if level > 0.004:
+                    for y in range(vh):
+                        row = buf[y]
+                        for x in range(vw):
+                            r, g, b = row[x]
+                            if not (r or g or b):
+                                continue
+                            if level < 0.999:
+                                r = int(r * level)
+                                g = int(g * level)
+                                b = int(b * level)
+                            if r or g or b:
+                                canvas.SetPixel(x, y, r, g, b)
+                canvas = LED.TheMatrix.SwapOnVSync(canvas)
+                LED.Canvas = canvas
+                if clock is not None:
+                    clock.tick(TARGET_FPS)
+                else:
+                    left = frame_dt - (time.time() - now)
+                    if left > 0.0:
+                        time.sleep(left)
+
+            if stop_elapsed is not None and stop_elapsed >= FADE_SECONDS:
+                print("[LaserClock] StopEvent")
+                return
+            if remain is not None and remain <= 0.0:
+                print("[LaserClock] Duration reached")
+                return
     except KeyboardInterrupt:
         print("[LaserClock] Interrupted")
 
